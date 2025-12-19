@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, typography, spacing } from '../theme';
 import GradientBackground from '../components/GradientBackground';
-import Svg, { Circle, Ellipse } from 'react-native-svg';
+import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 
 const HomeScreen = ({
     partnerName = 'Partner',
@@ -114,7 +114,7 @@ const HomeScreen = ({
                         <View style={styles.moodSection}>
                             {/* Blob Container */}
                             <View style={styles.blobContainer}>
-                                {/* Your Blob (Left - Sage Green) */}
+                                {/* Your Blob (Left) */}
                                 <Svg
                                     width="180"
                                     height="180"
@@ -126,12 +126,12 @@ const HomeScreen = ({
                                         cy="90"
                                         rx="75"
                                         ry="80"
-                                        fill="#8AB7A7"
+                                        fill={yourMoodColor}
                                         opacity={0.7}
                                     />
                                 </Svg>
 
-                                {/* Partner Blob (Right - Yellow) */}
+                                {/* Partner Blob (Right) */}
                                 <Svg
                                     width="180"
                                     height="180"
@@ -143,18 +143,18 @@ const HomeScreen = ({
                                         cy="90"
                                         rx="75"
                                         ry="80"
-                                        fill="#E5C368"
+                                        fill={partnerMoodColor}
                                         opacity={0.7}
                                     />
                                 </Svg>
 
                                 {/* Your Avatar */}
-                                <View style={[styles.avatar, styles.yourAvatar]}>
+                                <View style={[styles.avatar, styles.yourAvatar, { backgroundColor: "white", borderColor: yourMoodColor }]}>
                                     <Text style={styles.avatarEmoji}>{yourMood?.emoji || '😊'}</Text>
                                 </View>
 
                                 {/* Partner Avatar */}
-                                <View style={[styles.avatar, styles.partnerAvatar]}>
+                                <View style={[styles.avatar, styles.partnerAvatar, { backgroundColor: "white", borderColor: partnerMoodColor }]}>
                                     <Text style={styles.avatarEmoji}>{partnerMood?.emoji || '😊'}</Text>
                                 </View>
 
@@ -171,13 +171,13 @@ const HomeScreen = ({
                                 <Text style={styles.moodName}>
                                     {yourMood?.label || 'Happy'}
                                 </Text>
-                                {' (Sage Green blob).'}
+                                .
                                 {'\n'}
                                 {partnerName} is feeling{' '}
                                 <Text style={styles.moodName}>
                                     {partnerMood?.label || 'Happy'}
                                 </Text>
-                                {' (Yellow blob).'}
+                                .
                             </Text>
 
                             {/* Update Mood Button */}
@@ -199,14 +199,27 @@ const HomeScreen = ({
                             onPress={onQuestionPress}
                             activeOpacity={0.9}
                         >
-                            {/* Question Icon */}
-                            {/* <View style={styles.questionIcon}>
-                                <Svg width={56} height={56} viewBox="0 0 56 56">
-                                    <Circle cx="28" cy="28" r="28" fill="#B8DAEF" opacity={0.3} />
-                                    <Circle cx="20" cy="24" r="12" fill={colors.secondary} opacity={0.2} />
-                                    <Circle cx="36" cy="24" r="12" fill={colors.secondary} opacity={0.2} />
+                            {/* Calendar Icon - Exotic Design */}
+                            <View style={styles.iconContainer}>
+                                <Svg width={48} height={48} viewBox="0 0 48 48" fill="none">
+                                    {/* Background circle */}
+                                    <Circle cx="24" cy="24" r="22" fill="#E8F4F8" opacity="0.6" />
+                                    {/* Calendar body */}
+                                    <Rect x="14" y="16" width="20" height="20" rx="3" stroke="#5BB5A6" strokeWidth="2.5" fill="#FFFFFF" />
+                                    {/* Top tabs */}
+                                    <Path d="M20 14v4M28 14v4" stroke="#5BB5A6" strokeWidth="2.5" strokeLinecap="round" />
+                                    {/* Header line */}
+                                    <Path d="M14 22h20" stroke="#5BB5A6" strokeWidth="2" />
+                                    {/* Decorative dots */}
+                                    <Circle cx="19" cy="26" r="1.5" fill="#5BB5A6" />
+                                    <Circle cx="24" cy="26" r="1.5" fill="#5BB5A6" />
+                                    <Circle cx="29" cy="26" r="1.5" fill="#5BB5A6" />
+                                    <Circle cx="19" cy="30" r="1.5" fill="#5BB5A6" opacity="0.5" />
+                                    <Circle cx="24" cy="30" r="1.5" fill="#5BB5A6" opacity="0.5" />
+                                    {/* Heart highlight */}
+                                    <Path d="M29 29c0 1.5-1.5 3-2.5 3.5-1-0.5-2.5-2-2.5-3.5 0-1 0.7-1.5 1.5-1.5 0.4 0 0.8 0.2 1 0.5 0.2-0.3 0.6-0.5 1-0.5 0.8 0 1.5 0.5 1.5 1.5z" fill="#FF6B9D" opacity="0.8" />
                                 </Svg>
-                            </View> */}
+                            </View>
 
                             <Text style={styles.cardTitle}>Today's Question</Text>
                             <Text style={styles.questionText}>
@@ -229,13 +242,49 @@ const HomeScreen = ({
                             onPress={onScribblePress}
                             activeOpacity={0.9}
                         >
-                            {/* Pencil Icon */}
-                            {/* <View style={styles.pencilIcon}>
-                                <Svg width={56} height={56} viewBox="0 0 56 56">
-                                    <Circle cx="40" cy="16" r="12" fill={colors.accent} opacity={0.3} />
-                                    <Circle cx="30" cy="26" r="8" fill={colors.accent} opacity={0.5} />
+                            {/* Pencil Icon - With Drawing Stroke */}
+                            <View style={styles.iconContainer}>
+                                <Svg width={52} height={52} viewBox="0 0 52 52" fill="none">
+                                    {/* Background circle */}
+                                    <Circle cx="26" cy="26" r="24" fill="#FFF9F0" opacity="0.8" />
+                                    {/* Artistic wavy line (the drawing) */}
+                                    <Path
+                                        d="M8 35 Q 14 30, 20 32 T 32 28 T 44 30"
+                                        stroke="#E5A85F"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="round"
+                                        fill="none"
+                                        opacity="0.4"
+                                    />
+                                    {/* Heart drawing */}
+                                    <Path
+                                        d="M15 22c0-2 1.5-3 3-3 1 0 2 0.5 2.5 1.5C21 19.5 22 19 23 19c1.5 0 3 1 3 3 0 3-5 6-5.5 6.5C20 28 15 25 15 22z"
+                                        stroke="#FF6B9D"
+                                        strokeWidth="1.5"
+                                        fill="none"
+                                        opacity="0.5"
+                                    />
+                                    {/* Pencil body - larger and more detailed */}
+                                    <Path
+                                        d="M30 10l8 8-16 16-10 2 2-10L30 10z"
+                                        fill="#E5A85F"
+                                        opacity="0.9"
+                                    />
+                                    {/* Pencil outline */}
+                                    <Path
+                                        d="M30 10l8 8-16 16-10 2 2-10L30 10z"
+                                        stroke="#D4894A"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        fill="none"
+                                    />
+                                    {/* Pencil tip detail */}
+                                    <Path d="M32 12l4 4" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+                                    {/* Drawing point */}
+                                    <Circle cx="22" cy="34" r="2" fill="#E5A85F" />
                                 </Svg>
-                            </View> */}
+                            </View>
 
                             <Text style={styles.cardTitle}>Our Canvas</Text>
                             <Text style={styles.canvasText}>
@@ -287,7 +336,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         marginTop: 8,
-        marginBottom: 20,
+        marginBottom: 8,
     },
     logo: {
         width: 40,
@@ -313,22 +362,27 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     greetingSection: {
-        marginBottom: 28,
+        marginBottom: 0,
     },
     greeting: {
-        fontSize: 28,
-        fontWeight: '700',
+        fontSize: 32,
+        fontWeight: '300',
         color: colors.text,
         textAlign: 'center',
-        lineHeight: 38,
+        lineHeight: 44,
+        letterSpacing: 0.3,
     },
     names: {
-        fontSize: 28,
-        fontWeight: '900',
+        fontSize: 36,
+        fontWeight: '700',
         color: colors.text,
+        letterSpacing: -0.5,
+        fontFamily: 'System',
     },
     moodSection: {
         alignItems: 'center',
+       
+        borderRadius: 20,
         marginBottom: 32,
     },
     blobContainer: {
@@ -336,7 +390,7 @@ const styles = StyleSheet.create({
         height: 220,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 12,
+        marginBottom: 8,
         position: 'relative',
     },
     yourBlob: {
@@ -353,7 +407,6 @@ const styles = StyleSheet.create({
         width: 52,
         height: 52,
         borderRadius: 26,
-        backgroundColor: '#8AB7A7',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 3,
@@ -368,7 +421,6 @@ const styles = StyleSheet.create({
     partnerAvatar: {
         right: '5%',
         top: 24,
-        backgroundColor: '#E5C368',
     },
     avatarEmoji: {
         fontSize: 24,
@@ -424,7 +476,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.surface,
         borderRadius: 20,
-        padding: 20,
+        padding: 14,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.15,
@@ -439,11 +491,9 @@ const styles = StyleSheet.create({
     canvasCard: {
         backgroundColor: '#FFF9F0', // Light cream
     },
-    questionIcon: {
-        marginBottom: 10,
-    },
-    pencilIcon: {
-        marginBottom: 10,
+    iconContainer: {
+        alignSelf: 'center',
+        marginBottom: 8,
     },
     cardTitle: {
         fontSize: 17,
@@ -466,11 +516,17 @@ const styles = StyleSheet.create({
     answerBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(91, 181, 166, 0.12)',
-        paddingHorizontal: 10,
+        alignSelf: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 12,
         paddingVertical: 8,
-        borderRadius: 10,
+        borderRadius: 12,
         gap: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
     },
     answerDot: {
         width: 6,
@@ -482,14 +538,18 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: colors.secondary,
         fontWeight: '600',
-        flex: 1,
     },
     newDrawingBadge: {
-        alignSelf: 'flex-end',
-        backgroundColor: 'white',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 10,
+        alignSelf: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
     },
     newDrawingText: {
         fontSize: 11,
