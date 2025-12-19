@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     ScrollView,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, typography, spacing } from '../theme';
 import GradientBackground from '../components/GradientBackground';
@@ -199,6 +200,14 @@ const HomeScreen = ({
                             onPress={onQuestionPress}
                             activeOpacity={0.9}
                         >
+                            {/* Subtle Gradient Background */}
+                            <LinearGradient
+                                colors={['#F5F5F5', '#E8F4F8', '#F5F5F5']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.cardGradient}
+                            />
+
                             {/* Calendar Icon - Exotic Design */}
                             <View style={styles.iconContainer}>
                                 <Svg width={48} height={48} viewBox="0 0 48 48" fill="none">
@@ -242,6 +251,8 @@ const HomeScreen = ({
                             onPress={onScribblePress}
                             activeOpacity={0.9}
                         >
+                            {/* Removed paper texture */}
+
                             {/* Pencil Icon - With Drawing Stroke */}
                             <View style={styles.iconContainer}>
                                 <Svg width={52} height={52} viewBox="0 0 52 52" fill="none">
@@ -381,7 +392,7 @@ const styles = StyleSheet.create({
     },
     moodSection: {
         alignItems: 'center',
-       
+
         borderRadius: 20,
         marginBottom: 32,
     },
@@ -486,10 +497,38 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(0, 0, 0, 0.04)',
     },
     questionCard: {
-        backgroundColor: '#E8F4F8', // Light blue
+        backgroundColor: 'transparent',
+        overflow: 'hidden',
+    },
+    cardGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: 20,
     },
     canvasCard: {
-        backgroundColor: '#FFF9F0', // Light cream
+        backgroundColor: '#F5E6D3',
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    paperTexture: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    paperCrease: {
+        position: 'absolute',
+        width: 60,
+        height: 1.5,
+        backgroundColor: 'rgba(139, 119, 101, 0.08)',
+        shadowColor: 'rgba(139, 119, 101, 0.15)',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 1,
+        shadowRadius: 2,
     },
     iconContainer: {
         alignSelf: 'center',
@@ -536,7 +575,7 @@ const styles = StyleSheet.create({
     },
     answerText: {
         fontSize: 11,
-        color: colors.secondary,
+        color: "black",
         fontWeight: '600',
     },
     newDrawingBadge: {
@@ -553,7 +592,7 @@ const styles = StyleSheet.create({
     },
     newDrawingText: {
         fontSize: 11,
-        color: colors.accent,
+        color: "black",
         fontWeight: '700',
     },
     noPartnerContainer: {
