@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../igbackend"
+		},
+		{
+			"path": "../../../gtdfront"
+		}
+	],
+	"settings": {}
+}
