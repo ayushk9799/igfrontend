@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, typography, spacing } from '../theme';
 import GradientBackground from '../components/GradientBackground';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
+import { SplashLeft, SplashRight } from '../components/SplashSvg';
 
 const HomeScreen = ({
     partnerName = 'Partner',
@@ -113,41 +114,30 @@ const HomeScreen = ({
                     {/* Mood Blobs Section */}
                     {hasPartner && (
                         <View style={styles.moodSection}>
-                            {/* Blob Container */}
+                            {/* Blob Container - Paint Splatter */}
                             <View style={styles.blobContainer}>
-                                {/* Your Blob (Left) */}
-                                <Svg
-                                    width="180"
-                                    height="180"
-                                    viewBox="0 0 180 180"
-                                    style={styles.yourBlob}
-                                >
-                                    <Ellipse
-                                        cx="90"
-                                        cy="90"
-                                        rx="75"
-                                        ry="80"
-                                        fill={yourMoodColor}
-                                        opacity={0.7}
+                                {/* Left Splash - Your Mood */}
+                                <View style={styles.splashLeft}>
+                                    <SplashLeft
+                                        color={yourMoodColor}
+                                        width={220}
+                                        height={240}
+                                        opacity={0.75}
                                     />
-                                </Svg>
+                                </View>
 
-                                {/* Partner Blob (Right) */}
-                                <Svg
-                                    width="180"
-                                    height="180"
-                                    viewBox="0 0 180 180"
-                                    style={styles.partnerBlob}
-                                >
-                                    <Ellipse
-                                        cx="90"
-                                        cy="90"
-                                        rx="75"
-                                        ry="80"
-                                        fill={partnerMoodColor}
-                                        opacity={0.7}
+                                {/* Right Splash - Partner Mood */}
+                                <View style={styles.splashRight}>
+                                    <SplashRight
+                                        color={partnerMoodColor}
+                                        width={220}
+                                        height={240}
+                                        opacity={0.75}
                                     />
-                                </Svg>
+                                </View>
+
+                                {/* Center Merge Effect */}
+
 
                                 {/* Your Avatar */}
                                 <View style={[styles.avatar, styles.yourAvatar, { backgroundColor: "white", borderColor: yourMoodColor }]}>
@@ -165,6 +155,7 @@ const HomeScreen = ({
                                     {partnerName}
                                 </Text>
                             </View>
+
 
                             {/* Mood Description */}
                             <Text style={styles.moodDescription}>
@@ -358,10 +349,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
+        shadowColor: '#FF6B9D',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
         elevation: 5,
     },
     connectionText: {
@@ -398,11 +389,35 @@ const styles = StyleSheet.create({
     },
     blobContainer: {
         width: '100%',
-        height: 220,
+        height: 260,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 8,
         position: 'relative',
+        overflow: 'visible',
+    },
+    splashLeft: {
+        position: 'absolute',
+        left: -30,
+        top: -5,
+    },
+    splashRight: {
+        position: 'absolute',
+        right: -30,
+        top: -5,
+    },
+    centerMerge: {
+        position: 'absolute',
+        left: '50%',
+        top: '50%',
+        marginLeft: -40,
+        marginTop: -40,
+    },
+    combinedBlobs: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
     },
     yourBlob: {
         position: 'absolute',
@@ -423,32 +438,38 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         borderColor: colors.surface,
         position: 'absolute',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
     },
     yourAvatar: {
-        left: '5%',
-        bottom: 24,
+        left: 45,
+        top: 105,
         backgroundColor: '#8AB7A7',
     },
     partnerAvatar: {
-        right: '5%',
-        top: 24,
+        right: 45,
+        top: 105,
     },
     avatarEmoji: {
         fontSize: 24,
     },
     blobLabel: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: colors.surface,
+        fontSize: 14,
+        fontWeight: '700',
+        color: colors.text,
         position: 'absolute',
+        opacity: 0.9,
     },
     yourLabel: {
-        left: '28%',
-        top: '48%',
+        left: 50,
+        top: 165,
     },
     partnerLabel: {
-        right: '24%',
-        top: '48%',
+        right: 46,
+        top: 165,
     },
     moodDescription: {
         fontSize: 15,
