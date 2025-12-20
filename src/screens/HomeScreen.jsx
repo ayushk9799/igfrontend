@@ -5,6 +5,7 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
+    Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -191,9 +192,9 @@ const HomeScreen = ({
                             onPress={onQuestionPress}
                             activeOpacity={0.9}
                         >
-                            {/* Subtle Gradient Background */}
+                            {/* Elegant Gradient Background */}
                             <LinearGradient
-                                colors={['#F5F5F5', '#E8F4F8', '#F5F5F5']}
+                                colors={['#FFFFFF', '#F0F9F7', '#E8F4F1']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 style={styles.cardGradient}
@@ -226,12 +227,16 @@ const HomeScreen = ({
                                 What's one small thing I did this week that made you feel loved?
                             </Text>
 
-                            {hasPartner && (
+                            {hasPartner ? (
                                 <View style={styles.answerBadge}>
                                     <View style={styles.answerDot} />
                                     <Text style={styles.answerText}>
-                                        {partnerName} has answered!{'\n'}Tap to reveal
+                                        {partnerName} answered!
                                     </Text>
+                                </View>
+                            ) : (
+                                <View style={styles.actionBadge}>
+                                    <Text style={styles.actionBadgeText}>Answer Now</Text>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -242,50 +247,21 @@ const HomeScreen = ({
                             onPress={onScribblePress}
                             activeOpacity={0.9}
                         >
-                            {/* Removed paper texture */}
+                            {/* Warm Canvas Gradient */}
+                            <LinearGradient
+                                colors={['#FDF8F3', '#F8EDE3', '#F3E4D7']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.cardGradient}
+                            />
 
-                            {/* Pencil Icon - With Drawing Stroke */}
-                            <View style={styles.iconContainer}>
-                                <Svg width={52} height={52} viewBox="0 0 52 52" fill="none">
-                                    {/* Background circle */}
-                                    <Circle cx="26" cy="26" r="24" fill="#FFF9F0" opacity="0.8" />
-                                    {/* Artistic wavy line (the drawing) */}
-                                    <Path
-                                        d="M8 35 Q 14 30, 20 32 T 32 28 T 44 30"
-                                        stroke="#E5A85F"
-                                        strokeWidth="2.5"
-                                        strokeLinecap="round"
-                                        fill="none"
-                                        opacity="0.4"
-                                    />
-                                    {/* Heart drawing */}
-                                    <Path
-                                        d="M15 22c0-2 1.5-3 3-3 1 0 2 0.5 2.5 1.5C21 19.5 22 19 23 19c1.5 0 3 1 3 3 0 3-5 6-5.5 6.5C20 28 15 25 15 22z"
-                                        stroke="#FF6B9D"
-                                        strokeWidth="1.5"
-                                        fill="none"
-                                        opacity="0.5"
-                                    />
-                                    {/* Pencil body - larger and more detailed */}
-                                    <Path
-                                        d="M30 10l8 8-16 16-10 2 2-10L30 10z"
-                                        fill="#E5A85F"
-                                        opacity="0.9"
-                                    />
-                                    {/* Pencil outline */}
-                                    <Path
-                                        d="M30 10l8 8-16 16-10 2 2-10L30 10z"
-                                        stroke="#D4894A"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        fill="none"
-                                    />
-                                    {/* Pencil tip detail */}
-                                    <Path d="M32 12l4 4" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
-                                    {/* Drawing point */}
-                                    <Circle cx="22" cy="34" r="2" fill="#E5A85F" />
-                                </Svg>
+                            {/* Pencil Icon */}
+                            <View style={styles.canvasIconContainer}>
+                                <Image
+                                    source={require('../../assets/pencilicon.png')}
+                                    style={styles.pencilIcon}
+                                    resizeMode="contain"
+                                />
                             </View>
 
                             <Text style={styles.cardTitle}>Our Canvas</Text>
@@ -293,9 +269,13 @@ const HomeScreen = ({
                                 Leave a doodle, a love note, or a mess.
                             </Text>
 
-                            {partnerScribble && (
+                            {partnerScribble ? (
                                 <View style={styles.newDrawingBadge}>
                                     <Text style={styles.newDrawingText}>✏️ New Drawing!</Text>
+                                </View>
+                            ) : (
+                                <View style={styles.drawNowBadge}>
+                                    <Text style={styles.drawNowText}>✏️ Draw Now</Text>
                                 </View>
                             )}
                         </TouchableOpacity>
@@ -520,6 +500,8 @@ const styles = StyleSheet.create({
     questionCard: {
         backgroundColor: 'transparent',
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(91, 181, 166, 0.15)',
     },
     cardGradient: {
         position: 'absolute',
@@ -530,9 +512,25 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     canvasCard: {
-        backgroundColor: '#F5E6D3',
+        backgroundColor: 'transparent',
         overflow: 'hidden',
         position: 'relative',
+        borderWidth: 1,
+        borderColor: 'rgba(229, 168, 95, 0.2)',
+    },
+    canvasIconContainer: {
+        alignSelf: 'center',
+        marginBottom: 8,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#FFF5E6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pencilIcon: {
+        width: 100,
+        height: 100,
     },
     paperTexture: {
         position: 'absolute',
@@ -602,18 +600,52 @@ const styles = StyleSheet.create({
     newDrawingBadge: {
         alignSelf: 'center',
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 12,
+        paddingHorizontal: 14,
         paddingVertical: 8,
-        borderRadius: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-        elevation: 2,
+        borderRadius: 16,
+        shadowColor: '#E5A85F',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 3,
     },
     newDrawingText: {
-        fontSize: 11,
-        color: "black",
+        fontSize: 12,
+        color: '#D4894A',
+        fontWeight: '700',
+    },
+    drawNowBadge: {
+        alignSelf: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 16,
+        shadowColor: '#E5A85F',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    drawNowText: {
+        fontSize: 12,
+        color: '#D4894A',
+        fontWeight: '700',
+    },
+    actionBadge: {
+        alignSelf: 'center',
+        backgroundColor: '#5BB5A6',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 16,
+        shadowColor: '#5BB5A6',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    actionBadgeText: {
+        fontSize: 12,
+        color: '#FFFFFF',
         fontWeight: '700',
     },
     noPartnerContainer: {

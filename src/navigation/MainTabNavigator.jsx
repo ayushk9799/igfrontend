@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
-import ConversationsScreen from '../screens/ConversationsScreen';
 import AccountScreen from '../screens/AccountScreen';
+import QuestionsScreen from '../screens/QuestionsScreen';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
 
@@ -25,6 +25,11 @@ export const MainTabNavigator = ({
     userData,
     onLogout,
     onEditProfile,
+    // Questions props
+    currentQuestion,
+    yourAnswer,
+    partnerAnswer,
+    onSubmitAnswer,
 }) => {
     const [currentTab, setCurrentTab] = useState('home');
 
@@ -43,20 +48,23 @@ export const MainTabNavigator = ({
                         pendingInvite={pendingInvite}
                         onMoodPress={onMoodPress}
                         onScribblePress={onScribblePress}
-                        onQuestionPress={onQuestionPress}
+                        onQuestionPress={() => setCurrentTab('questions')}
                         onFindPartner={onFindPartner}
                     />
                 );
-            case 'chat':
+            case 'questions':
                 return (
-                    <ConversationsScreen
+                    <QuestionsScreen
+                        currentQuestion={currentQuestion}
+                        yourAnswer={yourAnswer}
+                        partnerAnswer={partnerAnswer}
                         partnerName={partnerName}
-                        hasPartner={hasPartner}
-                        onChatPress={(chat) => {
-                            console.log('Opening chat:', chat);
-                        }}
+                        isLocked={!yourAnswer}
+                        onSubmitAnswer={onSubmitAnswer}
+                        onBack={() => setCurrentTab('home')}
                     />
                 );
+          
             case 'account':
                 return (
                     <AccountScreen

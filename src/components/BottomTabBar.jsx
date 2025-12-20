@@ -36,17 +36,7 @@ const HomeIcon = ({ color, size = 24 }) => (
     </Svg>
 );
 
-const ChatIcon = ({ color, size = 24 }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-            d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-    </Svg>
-);
+
 
 const UserIcon = ({ color, size = 24 }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -59,6 +49,32 @@ const UserIcon = ({ color, size = 24 }) => (
         />
         <Path
             d="M12 11a4 4 0 100-8 4 4 0 000 8z"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </Svg>
+);
+
+const QuestionsIcon = ({ color, size = 24 }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <Path
+            d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <Path
+            d="M12 17h.01"
             stroke={color}
             strokeWidth={2}
             strokeLinecap="round"
@@ -153,7 +169,7 @@ export const BottomTabBar = ({ currentTab, onTabChange }) => {
 
     const tabs = [
         { key: 'home', label: 'Home', icon: HomeIcon },
-        { key: 'chat', label: 'Chat', icon: ChatIcon },
+        { key: 'questions', label: 'Questions', icon: QuestionsIcon },
         { key: 'account', label: 'Account', icon: UserIcon },
     ];
 
