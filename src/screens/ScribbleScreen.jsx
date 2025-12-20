@@ -23,21 +23,22 @@ const { width } = Dimensions.get('window');
 const CANVAS_SIZE = width - spacing.xl * 2;
 
 const brushColors = [
-    { color: colors.primary, name: 'Pink', glow: colors.primaryGlow },
-    { color: colors.secondary, name: 'Purple', glow: colors.secondaryGlow },
-    { color: colors.heart, name: 'Red', glow: colors.heartGlow },
-    { color: colors.accent, name: 'Rose', glow: colors.primaryGlow },
-    { color: colors.accentGold, name: 'Gold', glow: 'rgba(255, 184, 0, 0.4)' },
-    { color: colors.success, name: 'Green', glow: colors.successGlow },
-    { color: colors.auroraBlue, name: 'Cyan', glow: 'rgba(0, 194, 255, 0.4)' },
-    { color: colors.text, name: 'White', glow: 'rgba(255, 255, 255, 0.4)' },
+    { color: '#FF3B6F', name: 'Pink', glow: 'rgba(255, 59, 111, 0.4)' },
+    { color: '#8B5CF6', name: 'Purple', glow: 'rgba(139, 92, 246, 0.4)' },
+    { color: '#EF4444', name: 'Red', glow: 'rgba(239, 68, 68, 0.4)' },
+    { color: '#F97316', name: 'Orange', glow: 'rgba(249, 115, 22, 0.4)' },
+    { color: '#FACC15', name: 'Yellow', glow: 'rgba(250, 204, 21, 0.4)' },
+    { color: '#22C55E', name: 'Green', glow: 'rgba(34, 197, 94, 0.4)' },
+    { color: '#06B6D4', name: 'Cyan', glow: 'rgba(6, 182, 212, 0.4)' },
+    { color: '#3B82F6', name: 'Blue', glow: 'rgba(59, 130, 246, 0.4)' },
+    { color: '#1F2937', name: 'Dark', glow: 'rgba(31, 41, 55, 0.4)' },
 ];
 
 const brushSizes = [
-    { size: 4, name: 'Fine' },
-    { size: 8, name: 'Medium' },
-    { size: 14, name: 'Bold' },
-    { size: 22, name: 'Thick' },
+    { size: 4, name: 'S' },
+    { size: 8, name: 'M' },
+    { size: 14, name: 'L' },
+    { size: 22, name: 'XL' },
 ];
 
 // Animated Color Bubble Component
@@ -223,18 +224,42 @@ export const ScribbleScreen = ({
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                        <Text style={styles.backIcon}>←</Text>
+                        <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="M19 12H5M12 19l-7-7 7-7"
+                                stroke={colors.text}
+                                strokeWidth={2.5}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
-                        <Text style={styles.title}>✏️ Scribble</Text>
+                        <Text style={styles.title}>Canvas</Text>
                         <Text style={styles.subtitle}>Draw something sweet</Text>
                     </View>
                     <View style={styles.headerActions}>
                         <TouchableOpacity style={styles.headerAction} onPress={handleUndo}>
-                            <Text style={styles.actionIcon}>↩️</Text>
+                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5"
+                                    stroke={colors.text}
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.headerAction} onPress={handleClear}>
-                            <Text style={styles.actionIcon}>🗑️</Text>
+                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                                    stroke={colors.text}
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -350,12 +375,6 @@ export const ScribbleScreen = ({
                                         }
                                     ]}
                                 />
-                                <Text style={[
-                                    styles.sizeName,
-                                    selectedSize === item.size && styles.sizeNameSelected
-                                ]}>
-                                    {item.name}
-                                </Text>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -458,6 +477,7 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
         alignItems: 'center',
+        pointerEvents: 'none',
     },
     emptyEmoji: {
         fontSize: 56,
@@ -488,27 +508,28 @@ const styles = StyleSheet.create({
     },
     colorPicker: {
         flexDirection: 'row',
-        gap: spacing.md,
+        gap: spacing.sm,
+        justifyContent: 'space-between',
     },
     colorWrapper: {
-        padding: 3,
+        padding: 2,
         position: 'relative',
     },
     colorGlow: {
         position: 'absolute',
-        top: -4,
-        left: -4,
-        right: -4,
-        bottom: -4,
-        borderRadius: 24,
+        top: -3,
+        left: -3,
+        right: -3,
+        bottom: -3,
+        borderRadius: 20,
     },
     colorOption: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
     },
     colorSelected: {
-        transform: [{ scale: 1.15 }],
+        transform: [{ scale: 1.2 }],
     },
     sizePicker: {
         flexDirection: 'row',
@@ -516,7 +537,7 @@ const styles = StyleSheet.create({
     },
     sizeOption: {
         flex: 1,
-        height: 64,
+        height: 48,
         borderRadius: borderRadius.lg,
         backgroundColor: colors.glass,
         justifyContent: 'center',
@@ -530,18 +551,9 @@ const styles = StyleSheet.create({
     },
     sizeDot: {
         borderRadius: 50,
-        marginBottom: spacing.xs,
-    },
-    sizeName: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: colors.textSecondary,
-    },
-    sizeNameSelected: {
-        color: colors.primary,
     },
     sendContainer: {
-        marginTop: 'auto',
+        marginTop: '0',
         paddingBottom: spacing['2xl'],
     },
 });

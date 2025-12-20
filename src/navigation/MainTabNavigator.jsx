@@ -4,6 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
+import ScribbleScreen from '../screens/ScribbleScreen';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
 
@@ -30,6 +31,8 @@ export const MainTabNavigator = ({
     yourAnswer,
     partnerAnswer,
     onSubmitAnswer,
+    // Scribble props
+    onScribbleSend,
 }) => {
     const [currentTab, setCurrentTab] = useState('home');
 
@@ -47,9 +50,17 @@ export const MainTabNavigator = ({
                         partnerScribble={partnerScribble}
                         pendingInvite={pendingInvite}
                         onMoodPress={onMoodPress}
-                        onScribblePress={onScribblePress}
+                        onScribblePress={() => setCurrentTab('canvas')}
                         onQuestionPress={() => setCurrentTab('questions')}
                         onFindPartner={onFindPartner}
+                        onSettingsPress={() => setCurrentTab('account')}
+                    />
+                );
+            case 'canvas':
+                return (
+                    <ScribbleScreen
+                        onSend={onScribbleSend}
+                        onBack={() => setCurrentTab('home')}
                     />
                 );
             case 'questions':
@@ -64,7 +75,6 @@ export const MainTabNavigator = ({
                         onBack={() => setCurrentTab('home')}
                     />
                 );
-          
             case 'account':
                 return (
                     <AccountScreen
@@ -75,6 +85,7 @@ export const MainTabNavigator = ({
                         onLogout={onLogout}
                         onEditProfile={onEditProfile}
                         onFindPartner={onFindPartner}
+                        onBack={() => setCurrentTab('home')}
                     />
                 );
             default:
