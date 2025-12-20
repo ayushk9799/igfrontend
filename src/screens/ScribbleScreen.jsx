@@ -479,6 +479,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         pointerEvents: 'none',
     },
+    
     emptyEmoji: {
         fontSize: 56,
         marginBottom: spacing.md,
