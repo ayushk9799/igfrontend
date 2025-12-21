@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
-import QuestionsScreen from '../screens/QuestionsScreen';
+import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
@@ -65,13 +65,15 @@ export const MainTabNavigator = ({
                 );
             case 'questions':
                 return (
-                    <QuestionsScreen
-                        currentQuestion={currentQuestion}
-                        yourAnswer={yourAnswer}
-                        partnerAnswer={partnerAnswer}
+                    <QuestionCategoriesScreen
                         partnerName={partnerName}
-                        isLocked={!yourAnswer}
-                        onSubmitAnswer={onSubmitAnswer}
+                        streak={daysTogether || 1}
+                        onSelectCategory={(category) => {
+                            // Navigate to the full question flow via AppNavigator
+                            if (onQuestionPress) {
+                                onQuestionPress(category);
+                            }
+                        }}
                         onBack={() => setCurrentTab('home')}
                     />
                 );

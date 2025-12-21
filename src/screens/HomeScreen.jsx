@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
         top: 105,
     },
     avatarEmoji: {
-        fontSize: 24,
+        fontSize: 36,
     },
     blobLabel: {
         fontSize: 14,

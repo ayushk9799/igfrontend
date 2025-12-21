@@ -20,11 +20,17 @@ import Button from '../components/Button';
 import { colors, spacing, borderRadius, timing } from '../theme';
 
 const categoryConfig = {
+    // Legacy categories
     memories: { color: '#FF6B9D', emoji: '📸', gradient: ['#FF6B9D30', '#FF6B9D10'] },
     dreams: { color: '#BF5AF2', emoji: '✨', gradient: ['#BF5AF230', '#BF5AF210'] },
     gratitude: { color: '#30D158', emoji: '🙏', gradient: ['#30D15830', '#30D15810'] },
     fun: { color: '#FFD60A', emoji: '🎉', gradient: ['#FFD60A30', '#FFD60A10'] },
     deep: { color: '#FF2D78', emoji: '💭', gradient: ['#FF2D7830', '#7C3AED20'] },
+    // New category types
+    comparison: { color: '#FF6B9D', emoji: '⚖️', gradient: ['#FF6B9D30', '#FF6B9D10'] },
+    knowledge: { color: '#5BB5A6', emoji: '🧠', gradient: ['#5BB5A630', '#5BB5A610'] },
+    agreement: { color: '#BF5AF2', emoji: '🎯', gradient: ['#BF5AF230', '#BF5AF210'] },
+    confessions: { color: '#F4A261', emoji: '🤫', gradient: ['#F4A26130', '#F4A26110'] },
 };
 
 // Typewriter Text Component

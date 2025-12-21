@@ -8,6 +8,8 @@ import HomeScreen from '../screens/HomeScreen';
 import MoodScreen from '../screens/MoodScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
+import ComparisonQuestionScreen from '../screens/LikelyToQuestionScreen';
+import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
 import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import MainTabNavigator from './MainTabNavigator';
@@ -21,6 +23,7 @@ export const AppNavigator = () => {
     const [yourMood, setYourMood] = useState({ emoji: '😊', label: 'Happy' });
     const [userData, setUserData] = useState({ name: '', age: '', gender: 'male' });
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
+    const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -247,7 +250,14 @@ export const AppNavigator = () => {
                         pendingInvite={pendingInvite}
                         onMoodPress={() => navigate('mood')}
                         onScribblePress={() => navigate('scribble')}
-                        onQuestionPress={() => navigate('questions')}
+                        onQuestionPress={(category) => {
+                            if (category) {
+                                setSelectedCategory(category);
+                                navigate('questions');
+                            } else {
+                                navigate('questionCategories');
+                            }
+                        }}
                         onEditProfile={() => navigate('editProfile')}
                         onFindPartner={() => navigate('partnerCode')}
                         userData={userData}
@@ -277,20 +287,62 @@ export const AppNavigator = () => {
                     />
                 );
 
+            case 'questionCategories':
+                // Calculate streak for question categories
+                const qcDaysCount = userData.connectionDate
+                    ? Math.floor((new Date() - new Date(userData.connectionDate)) / (1000 * 60 * 60 * 24))
+                    : 0;
+                return (
+                    <QuestionCategoriesScreen
+                        partnerName={userData.partnerUsername || 'Your Love'}
+                        streak={qcDaysCount || 1}
+                        onSelectCategory={(category) => {
+                            setSelectedCategory(category);
+                            navigate('questions');
+                        }}
+                        onBack={() => navigate('home')}
+                    />
+                );
+
             case 'questions':
+                // Route comparison questions to dedicated screen
+                if (selectedCategory?.id === 'comparison') {
+                    return (
+                        <ComparisonQuestionScreen
+                            currentQuestion={{
+                                id: '1',
+                                text: "Who is more likely to forget an anniversary?",
+                                number: 1,
+                                total: 12,
+                            }}
+                            partnerName={userData.partnerUsername || 'Your Love'}
+                            userName={userData.name || 'You'}
+                            onSubmitAnswer={(answer) => {
+                                console.log('Comparison answer:', answer);
+                            }}
+                            onBack={() => navigate('questionCategories')}
+                        />
+                    );
+                }
                 return (
                     <QuestionsScreen
                         currentQuestion={{
                             id: '1',
-                            text: "What's something you've never told me that you appreciate about us?",
-                            category: 'deep',
+                            text: selectedCategory?.id === 'knowledge'
+                                ? "What's my biggest pet peeve?"
+                                : selectedCategory?.id === 'agreement'
+                                    ? "What's the perfect vacation destination?"
+                                    : selectedCategory?.id === 'confessions'
+                                        ? "Never have I ever... forgotten to reply to a message for days"
+                                        : "What's something you've never told me that you appreciate about us?",
+                            category: selectedCategory?.id || 'deep',
                         }}
                         partnerName={userData.partnerUsername || null}
                         isLocked={true}
                         onSubmitAnswer={(answer) => {
                             console.log('Submitted answer:', answer);
                         }}
-                        onBack={() => navigate('home')}
+                        onBack={() => navigate('questionCategories')}
                     />
                 );
 
