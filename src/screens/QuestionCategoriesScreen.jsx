@@ -1,6 +1,6 @@
 // Question Categories/Aggregate Screen
 // Shows all question types before diving into specific questions
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -9,19 +9,22 @@ import {
     ScrollView,
     Animated,
     Dimensions,
+    ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
+import { API_BASE } from '../constants/Api';
 
 const { width } = Dimensions.get('window');
 
-// Category configurations with unique colors and icons
-const categoryConfig = {
-    comparison: {
-        id: 'comparison',
+// Default category configurations (fallback when API unavailable)
+// These will be overridden by API data at initialization
+const defaultCategoryConfig = {
+    likelyto: {
+        id: 'likelyto',
         title: 'Who is more likely...',
         subtitle: 'Compare yourselves playfully',
         emoji: '⚖️',
@@ -29,7 +32,7 @@ const categoryConfig = {
         gradient: ['#FF6B9D', '#FF8FAB'],
         bgGradient: ['#FFF0F5', '#FFE4EC'],
         description: 'Fun comparisons to discover who does what better!',
-        icon: 'comparison',
+        icon: 'likelyto',
         questionCount: 12,
     },
     knowledge: {
@@ -203,6 +206,59 @@ export const QuestionCategoriesScreen = ({
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(20)).current;
 
+    // State for categories from API
+    const [categories, setCategories] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Fetch categories from API on mount
+    useEffect(() => {
+        fetchCategories();
+    }, []);
+
+    const fetchCategories = async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const response = await fetch(`${API_BASE}/api/categories`);
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                // Map API data to include UI properties (merge with defaults)
+                const apiCategories = result.data.map(cat => {
+                    const defaultConfig = defaultCategoryConfig[cat.slug];
+                    return {
+                        id: cat.slug,
+                        slug: cat.slug,
+                        title: cat.title,
+                        subtitle: defaultConfig?.subtitle || cat.description,
+                        emoji: cat.icon || defaultConfig?.emoji || '❓',
+                        color: defaultConfig?.color || '#6B7280',
+                        gradient: defaultConfig?.gradient || ['#6B7280', '#9CA3AF'],
+                        bgGradient: defaultConfig?.bgGradient || ['#F3F4F6', '#E5E7EB'],
+                        description: cat.description,
+                        icon: cat.icon,
+                        modelName: cat.modelName,
+                        questionCount: defaultConfig?.questionCount || 0,
+                        _id: cat._id,
+                    };
+                });
+                setCategories(apiCategories);
+            } else {
+                // No categories available from API
+                setCategories([]);
+            }
+        } catch (err) {
+            console.error('Error fetching categories:', err);
+            setError(err.message);
+            // Keep categories empty on error
+            setCategories([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
         Animated.parallel([
             Animated.timing(fadeAnim, {
@@ -219,7 +275,57 @@ export const QuestionCategoriesScreen = ({
         ]).start();
     }, [fadeAnim, slideAnim]);
 
-    const categories = Object.values(categoryConfig);
+    // Loading state
+    if (isLoading) {
+        return (
+            <GradientBackground variant="warm">
+                <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={styles.loadingText}>Loading categories...</Text>
+                </View>
+            </GradientBackground>
+        );
+    }
+
+    // Empty state - no categories available
+    if (categories.length === 0) {
+        return (
+            <GradientBackground variant="warm">
+                <View style={[styles.container, { paddingTop: insets.top + spacing.lg, paddingHorizontal: spacing.xl }]}>
+                    {/* Back Button */}
+                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="M15 18l-6-6 6-6"
+                                stroke={colors.text}
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
+                    </TouchableOpacity>
+
+                    {/* Empty State Message */}
+                    <View style={styles.emptyStateContainer}>
+                        <Text style={styles.emptyStateEmoji}>📭</Text>
+                        <Text style={styles.emptyStateTitle}>No Categories Available</Text>
+                        <Text style={styles.emptyStateMessage}>
+                            {error
+                                ? 'Unable to load categories. Please check your connection and try again.'
+                                : 'No question categories have been added yet. Check back later!'
+                            }
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.retryButton}
+                            onPress={fetchCategories}
+                        >
+                            <Text style={styles.retryButtonText}>Try Again</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </GradientBackground>
+        );
+    }
 
     return (
         <GradientBackground variant="warm">
@@ -275,7 +381,7 @@ export const QuestionCategoriesScreen = ({
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Question Categories</Text>
                     <View style={styles.sectionBadge}>
-                        <Text style={styles.sectionBadgeText}>4 types</Text>
+                        <Text style={styles.sectionBadgeText}>{categories.length} types</Text>
                     </View>
                 </View>
 
@@ -305,12 +411,63 @@ export const QuestionCategoriesScreen = ({
     );
 };
 
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
     contentContainer: {
         paddingHorizontal: spacing.xl,
+    },
+    centerContent: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: spacing.md,
+        fontSize: 16,
+        color: colors.textSecondary,
+        fontWeight: '500',
+    },
+    emptyStateContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: spacing.xl,
+    },
+    emptyStateEmoji: {
+        fontSize: 64,
+        marginBottom: spacing.lg,
+    },
+    emptyStateTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: spacing.sm,
+        textAlign: 'center',
+    },
+    emptyStateMessage: {
+        fontSize: 15,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: spacing.xl,
+    },
+    retryButton: {
+        backgroundColor: colors.primary,
+        paddingHorizontal: spacing.xl,
+        paddingVertical: spacing.md,
+        borderRadius: borderRadius.lg,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
     header: {
         flexDirection: 'row',

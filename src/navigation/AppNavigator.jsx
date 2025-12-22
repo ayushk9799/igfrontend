@@ -9,6 +9,7 @@ import MoodScreen from '../screens/MoodScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
 import ComparisonQuestionScreen from '../screens/LikelyToQuestionScreen';
+import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
 import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
@@ -305,8 +306,8 @@ export const AppNavigator = () => {
                 );
 
             case 'questions':
-                // Route comparison questions to dedicated screen
-                if (selectedCategory?.id === 'comparison') {
+                // Route likelyto questions to dedicated screen
+                if (selectedCategory?.id === 'likelyto') {
                     return (
                         <ComparisonQuestionScreen
                             currentQuestion={{
@@ -318,7 +319,28 @@ export const AppNavigator = () => {
                             partnerName={userData.partnerUsername || 'Your Love'}
                             userName={userData.name || 'You'}
                             onSubmitAnswer={(answer) => {
-                                console.log('Comparison answer:', answer);
+                                console.log('LikelyTo answer:', answer);
+                            }}
+                            onBack={() => navigate('questionCategories')}
+                        />
+                    );
+                }
+
+                // Route confessions to Never Have I Ever screen
+                if (selectedCategory?.id === 'confessions') {
+                    return (
+                        <NeverHaveIEverScreen
+                            currentQuestion={{
+                                id: '1',
+                                statement: "stalked my ex on social media",
+                                number: 1,
+                                total: 18,
+                                spiceLevel: 'mild',
+                                options: ['I have', 'Never'],
+                            }}
+                            partnerName={userData.partnerUsername || 'Your Love'}
+                            onSubmitAnswer={(answer) => {
+                                console.log('Confession answer:', answer);
                             }}
                             onBack={() => navigate('questionCategories')}
                         />
