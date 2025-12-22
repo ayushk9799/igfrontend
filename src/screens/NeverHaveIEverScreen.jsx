@@ -22,18 +22,11 @@ const { width, height } = Dimensions.get('window');
 // Category config for confessions type (orange theme)
 const categoryConfig = {
     color: '#F4A261',
-    emoji: '🤫',
     gradient: ['#F4A261', '#FFD093'],
     bgGradient: ['#FFF8F0', '#FFF0E0'],
 };
 
 // Spice level configurations
-const spiceLevelConfig = {
-    mild: { emoji: '🌶️', label: 'Mild', color: '#4CAF50' },
-    medium: { emoji: '🌶️🌶️', label: 'Medium', color: '#FF9800' },
-    spicy: { emoji: '🌶️🌶️🌶️', label: 'Spicy', color: '#F44336' },
-    extra_spicy: { emoji: '🔥', label: 'Extra Spicy', color: '#D32F2F' },
-};
 
 // Answer Choice Card Component
 const ChoiceCard = ({ choice, isSelected, onPress, disabled, index }) => {
@@ -44,19 +37,16 @@ const ChoiceCard = ({ choice, isSelected, onPress, disabled, index }) => {
     // Choice specific config
     const choiceConfig = {
         'I have': {
-            emoji: '😏',
             gradient: ['#FF6B9D', '#FF8FAB'],
             bgGradient: ['#FFF0F5', '#FFE4EC'],
         },
         'Never': {
-            emoji: '😇',
             gradient: ['#5BB5A6', '#8DD5C7'],
             bgGradient: ['#E8F8F5', '#D0F0EA'],
         },
     };
 
     const config = choiceConfig[choice] || {
-        emoji: '❓',
         gradient: ['#6B7280', '#9CA3AF'],
         bgGradient: ['#F3F4F6', '#E5E7EB'],
     };
@@ -137,12 +127,7 @@ const ChoiceCard = ({ choice, isSelected, onPress, disabled, index }) => {
 
                 {/* Content */}
                 <View style={styles.choiceContent}>
-                    <View style={[
-                        styles.emojiContainer,
-                        { backgroundColor: isSelected ? 'rgba(255,255,255,0.3)' : config.gradient[0] + '20' }
-                    ]}>
-                        <Text style={styles.choiceEmoji}>{config.emoji}</Text>
-                    </View>
+
                     <Text style={[
                         styles.choiceText,
                         isSelected && styles.choiceTextSelected,
@@ -163,16 +148,6 @@ const ChoiceCard = ({ choice, isSelected, onPress, disabled, index }) => {
 };
 
 // Spice Level Badge Component
-const SpiceBadge = ({ level }) => {
-    const config = spiceLevelConfig[level] || spiceLevelConfig.mild;
-
-    return (
-        <View style={[styles.spiceBadge, { backgroundColor: config.color + '15' }]}>
-            <Text style={styles.spiceEmoji}>{config.emoji}</Text>
-            <Text style={[styles.spiceLabel, { color: config.color }]}>{config.label}</Text>
-        </View>
-    );
-};
 
 export const NeverHaveIEverScreen = ({
     currentQuestion = {
@@ -247,7 +222,7 @@ export const NeverHaveIEverScreen = ({
 
     return (
         <GradientBackground variant="warm">
-            <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
+            <View style={[styles.container, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.md }]}>
                 {/* Header */}
                 <Animated.View
                     style={[
@@ -282,102 +257,103 @@ export const NeverHaveIEverScreen = ({
                     </View>
                 </Animated.View>
 
-                {/* Question Card */}
-                <Animated.View
-                    style={[
-                        styles.questionCard,
-                        {
-                            opacity: fadeAnim,
-                            transform: [
-                                { translateY: slideAnim },
-                                { scale: pulseAnim },
-                            ],
-                        },
-                    ]}
-                >
-                    <LinearGradient
-                        colors={categoryConfig.bgGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.questionGradient}
-                    />
-
-                  
-                    {/* Question Text */}
-                    <View style={styles.questionTextContainer}>
-                        <Text style={styles.prefixText}>Never have I ever...</Text>
-                        <Text style={styles.questionText}>"{currentQuestion.statement}"</Text>
-                    </View>
-
-                    {/* Spice Level */}
-                </Animated.View>
-
-                {/* Choice Cards */}
-                <View style={styles.choicesContainer}>
-                    <Text style={styles.choicesTitle}>Your confession:</Text>
-                    <View style={styles.choicesRow}>
-                        {options.map((choice, index) => (
-                            <ChoiceCard
-                                key={choice}
-                                choice={choice}
-                                isSelected={selectedAnswer === choice}
-                                onPress={handleChoiceSelect}
-                                disabled={hasSubmitted}
-                                index={index}
-                            />
-                        ))}
-                    </View>
-                </View>
-
-                {/* Submit Button */}
-                {!hasSubmitted && (
+                {/* Main Content Area */}
+                <View style={styles.mainContent}>
+                    {/* Question Card */}
                     <Animated.View
                         style={[
-                            styles.submitContainer,
-                            { opacity: fadeAnim },
+                            styles.questionCard,
+                            {
+                                opacity: fadeAnim,
+                                transform: [
+                                    { translateY: slideAnim },
+                                    { scale: pulseAnim },
+                                ],
+                            },
                         ]}
                     >
-                        <Button
-                            title={selectedAnswer ? "Confess! 🤫" : "Select your answer"}
-                            onPress={handleSubmit}
-                            variant="primary"
-                            size="lg"
-                            fullWidth
-                            disabled={!selectedAnswer}
+                        <LinearGradient
+                            colors={categoryConfig.bgGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.questionGradient}
                         />
-                    </Animated.View>
-                )}
 
-                {/* After Submission */}
-                {hasSubmitted && (
-                    <View style={styles.submittedSection}>
-                        <View style={styles.submittedBadge}>
-                            <Text style={styles.submittedIcon}>✓</Text>
-                            <Text style={styles.submittedText}>Confession Locked!</Text>
+
+                        {/* Question Text */}
+                        <View style={styles.questionTextContainer}>
+                            <Text style={styles.prefixText}>Never have I ever...</Text>
+                            <Text style={styles.questionText}>"{currentQuestion.statement}"</Text>
                         </View>
 
-                        <View style={styles.partnerSection}>
-                            <Text style={styles.partnerSectionTitle}>{partnerName}'s Confession</Text>
-                            <Card variant="glass" padding="lg">
-                                <View style={styles.lockedContent}>
-                                    <View style={styles.lockIcon}>
-                                        <Text style={styles.lockEmoji}>🔒</Text>
+                        {/* Spice Level */}
+                    </Animated.View>
+
+                    {/* After Submission */}
+                    {hasSubmitted && (
+                        <View style={styles.submittedSection}>
+                            <View style={styles.submittedBadge}>
+                                <Text style={styles.submittedIcon}>✓</Text>
+                                <Text style={styles.submittedText}>Confession Locked!</Text>
+                            </View>
+
+                            <View style={styles.partnerSection}>
+                                <Text style={styles.partnerSectionTitle}>{partnerName}'s Confession</Text>
+                                <Card variant="glass" padding="lg">
+                                    <View style={styles.lockedContent}>
+                                        <View style={styles.lockIcon}>
+                                            <Text style={styles.lockEmoji}>🔒</Text>
+                                        </View>
+                                        <Text style={styles.lockTitle}>Waiting...</Text>
+                                        <Text style={styles.lockText}>
+                                            You'll see their confession once they respond
+                                        </Text>
                                     </View>
-                                    <Text style={styles.lockTitle}>Waiting...</Text>
-                                    <Text style={styles.lockText}>
-                                        You'll see their confession once they respond
-                                    </Text>
-                                </View>
-                            </Card>
+                                </Card>
+                            </View>
+                        </View>
+                    )}
+
+                   
+                </View>
+
+                {/* Bottom Section - Choice Cards & Submit Button */}
+                <View style={styles.bottomSection}>
+                    {/* Choice Cards */}
+                    <View style={styles.choicesContainer}>
+                        <Text style={styles.choicesTitle}>Your confession:</Text>
+                        <View style={styles.choicesRow}>
+                            {options.map((choice, index) => (
+                                <ChoiceCard
+                                    key={choice}
+                                    choice={choice}
+                                    isSelected={selectedAnswer === choice}
+                                    onPress={handleChoiceSelect}
+                                    disabled={hasSubmitted}
+                                    index={index}
+                                />
+                            ))}
                         </View>
                     </View>
-                )}
 
-                {/* Tip */}
-                <View style={styles.tipContainer}>
-                    <Text style={styles.tipText}>
-                        💡 Be honest! That's what makes it fun!
-                    </Text>
+                    {/* Submit Button */}
+                    {!hasSubmitted && (
+                        <Animated.View
+                            style={[
+                                styles.submitContainer,
+                                { opacity: fadeAnim },
+                            ]}
+                        >
+                            <Button
+                                title={selectedAnswer ? "Confess! 🤫" : "Select your answer"}
+                                onPress={handleSubmit}
+                                variant="primary"
+                                size="lg"
+                                fullWidth
+                                disabled={!selectedAnswer}
+                            />
+                        </Animated.View>
+                    )}
                 </View>
             </View>
         </GradientBackground>
@@ -388,6 +364,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingHorizontal: spacing.xl,
+    },
+    mainContent: {
+        flex: 1,
+    },
+    bottomSection: {
+        marginTop: 'auto',
     },
     header: {
         flexDirection: 'row',
@@ -443,7 +425,8 @@ const styles = StyleSheet.create({
     questionCard: {
         backgroundColor: colors.surface,
         borderRadius: borderRadius['2xl'],
-        padding: spacing.xl,
+        paddingHorizontal: spacing.xl,
+        paddingVertical: spacing['2xl'],
         marginBottom: spacing.xl,
         overflow: 'hidden',
         borderWidth: 1,
@@ -453,6 +436,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowRadius: 16,
         elevation: 8,
+        minHeight: 400,
+        justifyContent: 'center',
     },
     questionGradient: {
         position: 'absolute',
@@ -589,8 +574,8 @@ const styles = StyleSheet.create({
     choiceText: {
         fontSize: 16,
         fontWeight: '700',
+        textAlignVertical: "center",
         color: colors.text,
-        textAlign: 'center',
     },
     choiceTextSelected: {
         color: '#FFFFFF',
