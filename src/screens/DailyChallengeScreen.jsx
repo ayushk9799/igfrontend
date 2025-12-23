@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
   headerSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
 
-  cardsContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' , borderColor: "red", borderWidth: 1 , paddingVertical: 0},
+  cardsContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 20 },
 
   fullCard: {
     width: width - 32,
