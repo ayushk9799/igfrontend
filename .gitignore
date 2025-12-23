@@ -57,7 +57,7 @@ GoogleService-Info.plist
 
 # Bundle artifact
 *.jsbundle
-
+gitscriptall.sh
 # Ruby / CocoaPods
 **/Pods/
 /vendor/bundle/
