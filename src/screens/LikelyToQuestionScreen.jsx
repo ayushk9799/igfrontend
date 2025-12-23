@@ -269,7 +269,7 @@ export const ComparisonQuestionScreen = ({
 
     return (
         <GradientBackground variant="warm">
-            <View style={[styles.container, { paddingTop: insets.top + spacing.lg }]}>
+            <View style={[styles.container, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.md }]}>
                 {/* Header */}
                 <Animated.View
                     style={[
@@ -304,7 +304,7 @@ export const ComparisonQuestionScreen = ({
                     </View>
                 </Animated.View>
 
-                {/* Question Card */}
+                {/* Question Card - Takes up available space at the top */}
                 <Animated.View
                     style={[
                         styles.questionCard,
@@ -324,84 +324,87 @@ export const ComparisonQuestionScreen = ({
                     <Text style={styles.questionText}>"{currentQuestion.text}"</Text>
                 </Animated.View>
 
-                {/* Drop Zone */}
-                <View style={styles.dropZoneContainer}>
-                    <DropZone
-                        hasSelection={!!selectedAnswer}
-                        selectedName={selectedAnswer === 'you' ? 'you' : partnerName}
-                    />
-                </View>
-
-                {/* Draggable Avatars */}
-                <View style={styles.avatarsContainer}>
-                    <DraggableAvatar
-                        name={userName}
-                        isYou={true}
-                        isSelected={selectedAnswer === 'you'}
-                        onDrop={() => handleDrop('you')}
-                        disabled={hasSubmitted}
-                    />
-                    <View style={styles.vsContainer}>
-                        <Text style={styles.vsText}>VS</Text>
-                    </View>
-                    <DraggableAvatar
-                        name={partnerName}
-                        isYou={false}
-                        isSelected={selectedAnswer === 'partner'}
-                        onDrop={() => handleDrop('partner')}
-                        disabled={hasSubmitted}
-                    />
-                </View>
-
-                {/* Submit Button */}
-                {!hasSubmitted && (
-                    <Animated.View
-                        style={[
-                            styles.submitContainer,
-                            { opacity: fadeAnim },
-                        ]}
-                    >
-                        <Button
-                            title={selectedAnswer ? "Lock In Answer ✨" : "Drag to select"}
-                            onPress={handleSubmit}
-                            variant="primary"
-                            size="lg"
-                            fullWidth
-                            disabled={!selectedAnswer}
+                {/* Actions Section - Anchored at the bottom */}
+                <View style={styles.actionsSection}>
+                    {/* Drop Zone */}
+                    <View style={styles.dropZoneContainer}>
+                        <DropZone
+                            hasSelection={!!selectedAnswer}
+                            selectedName={selectedAnswer === 'you' ? 'you' : partnerName}
                         />
-                    </Animated.View>
-                )}
-
-                {/* After Submission */}
-                {hasSubmitted && (
-                    <View style={styles.submittedSection}>
-                        <View style={styles.submittedBadge}>
-                            <Text style={styles.submittedIcon}>✓</Text>
-                            <Text style={styles.submittedText}>Answer Locked!</Text>
-                        </View>
-
-                        <View style={styles.partnerSection}>
-                            <Text style={styles.partnerSectionTitle}>{partnerName}'s Answer</Text>
-                            <Card variant="glass" padding="lg">
-                                <View style={styles.lockedContent}>
-                                    <View style={styles.lockIcon}>
-                                        <Text style={styles.lockEmoji}>🔒</Text>
-                                    </View>
-                                    <Text style={styles.lockTitle}>Waiting...</Text>
-                                    <Text style={styles.lockText}>
-                                        You'll see their answer once they respond
-                                    </Text>
-                                </View>
-                            </Card>
-                        </View>
                     </View>
-                )}
 
-                {/* Tip */}
-                <View style={styles.tipContainer}>
-                    <Text style={styles.tipText}>
-                        💡 Drag your choice up to the drop zone!
-                    </Text>
+                    {/* Draggable Avatars */}
+                    <View style={styles.avatarsContainer}>
+                        <DraggableAvatar
+                            name={userName}
+                            isYou={true}
+                            isSelected={selectedAnswer === 'you'}
+                            onDrop={() => handleDrop('you')}
+                            disabled={hasSubmitted}
+                        />
+                        <View style={styles.vsContainer}>
+                            <Text style={styles.vsText}>VS</Text>
+                        </View>
+                        <DraggableAvatar
+                            name={partnerName}
+                            isYou={false}
+                            isSelected={selectedAnswer === 'partner'}
+                            onDrop={() => handleDrop('partner')}
+                            disabled={hasSubmitted}
+                        />
+                    </View>
+
+                    {/* Submit Button */}
+                    {!hasSubmitted && (
+                        <Animated.View
+                            style={[
+                                styles.submitContainer,
+                                { opacity: fadeAnim },
+                            ]}
+                        >
+                            <Button
+                                title={selectedAnswer ? "Lock In Answer ✨" : "Drag to select"}
+                                onPress={handleSubmit}
+                                variant="primary"
+                                size="lg"
+                                fullWidth
+                                disabled={!selectedAnswer}
+                            />
+                        </Animated.View>
+                    )}
+
+                    {/* After Submission */}
+                    {hasSubmitted && (
+                        <View style={styles.submittedSection}>
+                            <View style={styles.submittedBadge}>
+                                <Text style={styles.submittedIcon}>✓</Text>
+                                <Text style={styles.submittedText}>Answer Locked!</Text>
+                            </View>
+
+                            <View style={styles.partnerSection}>
+                                <Text style={styles.partnerSectionTitle}>{partnerName}'s Answer</Text>
+                                <Card variant="glass" padding="lg">
+                                    <View style={styles.lockedContent}>
+                                        <View style={styles.lockIcon}>
+                                            <Text style={styles.lockEmoji}>🔒</Text>
+                                        </View>
+                                        <Text style={styles.lockTitle}>Waiting...</Text>
+                                        <Text style={styles.lockText}>
+                                            You'll see their answer once they respond
+                                        </Text>
+                                    </View>
+                                </Card>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Tip */}
+                    <View style={styles.tipContainer}>
+                        <Text style={styles.tipText}>
+                            💡 Drag your choice up to the drop zone!
+                        </Text>
+                    </View>
                 </View>
             </View>
         </GradientBackground>
@@ -417,6 +420,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: spacing.lg,
+    },
+    actionsSection: {
+        marginTop: 'auto',
     },
     backButton: {
         width: 48,
@@ -465,9 +471,10 @@ const styles = StyleSheet.create({
         color: categoryConfig.color,
     },
     questionCard: {
+        flex: 1,
         backgroundColor: colors.surface,
         borderRadius: borderRadius['2xl'],
-        padding: spacing.xl,
+        padding: spacing['2xl'],
         marginBottom: spacing.lg,
         overflow: 'hidden',
         borderWidth: 1,
@@ -477,6 +484,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 12,
         elevation: 4,
+        justifyContent: 'center',
+        minHeight: 180,
     },
     questionGradient: {
         position: 'absolute',
@@ -506,10 +515,10 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     questionText: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '600',
         color: colors.text,
-        lineHeight: 30,
+        lineHeight: 36,
         fontStyle: 'italic',
         textAlign: 'center',
     },

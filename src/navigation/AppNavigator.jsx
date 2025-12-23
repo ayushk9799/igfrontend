@@ -8,7 +8,7 @@ import HomeScreen from '../screens/HomeScreen';
 import MoodScreen from '../screens/MoodScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
-import ComparisonQuestionScreen from '../screens/LikelyToQuestionScreen';
+import LikelyToQuestionScreen from '../screens/LikelyToQuestionScreen';
 import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
 import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
@@ -309,7 +309,7 @@ export const AppNavigator = () => {
                 // Route likelyto questions to dedicated screen
                 if (selectedCategory?.id === 'likelyto') {
                     return (
-                        <ComparisonQuestionScreen
+                        <LikelyToQuestionScreen
                             currentQuestion={{
                                 id: '1',
                                 text: "Who is more likely to forget an anniversary?",

@@ -127,8 +127,8 @@ const HomeScreen = ({
                                 <View style={styles.splashLeft}>
                                     <SplashLeft
                                         color={yourMoodColor}
-                                        width={220}
-                                        height={240}
+                                        width={180}
+                                        height={200}
                                         opacity={0.75}
                                     />
                                 </View>
@@ -137,8 +137,8 @@ const HomeScreen = ({
                                 <View style={styles.splashRight}>
                                     <SplashRight
                                         color={partnerMoodColor}
-                                        width={220}
-                                        height={240}
+                                        width={180}
+                                        height={200}
                                         opacity={0.75}
                                     />
                                 </View>
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
         marginBottom: 0,
     },
     greeting: {
-        fontSize: 32,
+        fontSize: 24,
         fontWeight: '300',
         color: colors.text,
         textAlign: 'center',
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0.3,
     },
     names: {
-        fontSize: 36,
+        fontSize: 28,
         fontWeight: '700',
         color: colors.text,
         letterSpacing: -0.5,
@@ -375,21 +375,22 @@ const styles = StyleSheet.create({
     },
     blobContainer: {
         width: '100%',
-        height: 260,
+        height:200,
         alignItems: 'center',
+      
         justifyContent: 'center',
-        marginBottom: 8,
         position: 'relative',
         overflow: 'visible',
     },
     splashLeft: {
         position: 'absolute',
-        left: -30,
+       
+        left: 10,
         top: -5,
     },
     splashRight: {
         position: 'absolute',
-        right: -30,
+        right: 10,
         top: -5,
     },
     centerMerge: {
@@ -431,12 +432,12 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     yourAvatar: {
-        left: 45,
+        left: 75,
         top: 105,
         backgroundColor: '#8AB7A7',
     },
     partnerAvatar: {
-        right: 45,
+        right: 75,
         top: 105,
     },
     avatarEmoji: {
