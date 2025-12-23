@@ -51,7 +51,12 @@ export const MainTabNavigator = ({
                         pendingInvite={pendingInvite}
                         onMoodPress={onMoodPress}
                         onScribblePress={() => setCurrentTab('canvas')}
-                        onQuestionPress={() => setCurrentTab('questions')}
+                        onQuestionPress={() => {
+                            // Call parent's onQuestionPress to navigate to DailyChallengeScreen
+                            if (onQuestionPress) {
+                                onQuestionPress();
+                            }
+                        }}
                         onFindPartner={onFindPartner}
                         onSettingsPress={() => setCurrentTab('account')}
                     />

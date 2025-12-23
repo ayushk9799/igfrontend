@@ -11,6 +11,7 @@ import QuestionsScreen from '../screens/QuestionsScreen';
 import LikelyToQuestionScreen from '../screens/LikelyToQuestionScreen';
 import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
+import DailyChallengeScreen from '../screens/DailyChallengeScreen';
 import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import MainTabNavigator from './MainTabNavigator';
@@ -253,10 +254,12 @@ export const AppNavigator = () => {
                         onScribblePress={() => navigate('scribble')}
                         onQuestionPress={(category) => {
                             if (category) {
+                                console.log("category", category);
                                 setSelectedCategory(category);
                                 navigate('questions');
                             } else {
-                                navigate('questionCategories');
+                                console.log("category", "else");
+                                navigate('dailyChallenge');
                             }
                         }}
                         onEditProfile={() => navigate('editProfile')}
@@ -288,6 +291,23 @@ export const AppNavigator = () => {
                     />
                 );
 
+            case 'dailyChallenge':
+                return (
+                    <DailyChallengeScreen
+                        partnerName={userData.partnerUsername || 'Your Love'}
+                        onSelectTask={(task) => {
+                            // Route based on task category
+                            const category = {
+                                id: task.category,
+                                task: task,
+                            };
+                            setSelectedCategory(category);
+                            navigate('questions');
+                        }}
+                        onBack={() => navigate('home')}
+                    />
+                );
+
             case 'questionCategories':
                 // Calculate streak for question categories
                 const qcDaysCount = userData.connectionDate
@@ -306,13 +326,16 @@ export const AppNavigator = () => {
                 );
 
             case 'questions':
+                // Determine back destination based on source
+                const backDestination = selectedCategory?.task ? 'dailyChallenge' : 'questionCategories';
+
                 // Route likelyto questions to dedicated screen
                 if (selectedCategory?.id === 'likelyto') {
                     return (
                         <LikelyToQuestionScreen
                             currentQuestion={{
-                                id: '1',
-                                text: "Who is more likely to forget an anniversary?",
+                                id: selectedCategory?.task?._id || '1',
+                                text: selectedCategory?.task?.taskstatement || "Who is more likely to forget an anniversary?",
                                 number: 1,
                                 total: 12,
                             }}
@@ -320,8 +343,9 @@ export const AppNavigator = () => {
                             userName={userData.name || 'You'}
                             onSubmitAnswer={(answer) => {
                                 console.log('LikelyTo answer:', answer);
+                                navigate(backDestination);
                             }}
-                            onBack={() => navigate('questionCategories')}
+                            onBack={() => navigate(backDestination)}
                         />
                     );
                 }
@@ -331,40 +355,46 @@ export const AppNavigator = () => {
                     return (
                         <NeverHaveIEverScreen
                             currentQuestion={{
-                                id: '1',
-                                statement: "stalked my ex on social media",
+                                id: selectedCategory?.task?._id || '1',
+                                statement: selectedCategory?.task?.taskstatement || "stalked my ex on social media",
                                 number: 1,
                                 total: 18,
                                 spiceLevel: 'mild',
-                                options: ['I have', 'Never'],
+                                options: selectedCategory?.task?.options?.length > 0
+                                    ? selectedCategory.task.options
+                                    : ['I have', 'Never'],
                             }}
                             partnerName={userData.partnerUsername || 'Your Love'}
                             onSubmitAnswer={(answer) => {
                                 console.log('NeverHaveIEver answer:', answer);
+                                navigate(backDestination);
                             }}
-                            onBack={() => navigate('questionCategories')}
+                            onBack={() => navigate(backDestination)}
                         />
                     );
                 }
                 return (
                     <QuestionsScreen
                         currentQuestion={{
-                            id: '1',
-                            text: selectedCategory?.id === 'knowledge'
-                                ? "What's my biggest pet peeve?"
-                                : selectedCategory?.id === 'agreement'
-                                    ? "What's the perfect vacation destination?"
-                                    : selectedCategory?.id === 'neverhaveiever'
-                                        ? "Never have I ever... forgotten to reply to a message for days"
-                                        : "What's something you've never told me that you appreciate about us?",
+                            id: selectedCategory?.task?._id || '1',
+                            text: selectedCategory?.task?.taskstatement || (
+                                selectedCategory?.id === 'knowledge'
+                                    ? "What's my biggest pet peeve?"
+                                    : selectedCategory?.id === 'agreement'
+                                        ? "What's the perfect vacation destination?"
+                                        : selectedCategory?.id === 'neverhaveiever'
+                                            ? "Never have I ever... forgotten to reply to a message for days"
+                                            : "What's something you've never told me that you appreciate about us?"
+                            ),
                             category: selectedCategory?.id || 'deep',
                         }}
                         partnerName={userData.partnerUsername || null}
                         isLocked={true}
                         onSubmitAnswer={(answer) => {
                             console.log('Submitted answer:', answer);
+                            navigate(backDestination);
                         }}
-                        onBack={() => navigate('questionCategories')}
+                        onBack={() => navigate(backDestination)}
                     />
                 );
 
