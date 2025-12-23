@@ -11,23 +11,14 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import ReAnimated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  interpolate,
-  runOnJS,
-} from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Svg, { Path } from 'react-native-svg'
 
 import GradientBackground from '../components/GradientBackground';
-import Button from '../components/Button';
 import { colors, spacing, borderRadius } from '../theme';
 import { API_BASE } from '../constants/Api';
 
 const { width, height } = Dimensions.get('window');
-const SWIPE_THRESHOLD = width * 0.25;
 const AVATAR_SIZE = 70;
 
 /* ===================== CATEGORY CONFIG ===================== */
@@ -36,19 +27,19 @@ const categoryConfig = {
   likelyto: {
     emoji: '⚖️',
     color: '#FF6B9D',
-    bgGradient: ['#FFF0F5', '#FFE4EC', '#FFD9E4'],
+    bgGradient: ['#FFE8F0', '#FFD0E0', '#FFBAD0', '#FFA5C5'],
     label: 'Who is more likely...',
   },
   neverhaveiever: {
     emoji: '🤫',
     color: '#F4A261',
-    bgGradient: ['#FFF8F0', '#FFF0E0', '#FFE8D0'],
+    bgGradient: ['#FFF4E8', '#FFE8D0', '#FFDBB8', '#FFCEA0'],
     label: 'Never have I ever',
   },
   deep: {
     emoji: '💭',
     color: '#5BB5A6',
-    bgGradient: ['#E8F8F5', '#D0F0EA', '#C0E8E0'],
+    bgGradient: ['#E0F8F4', '#C8F0EA', '#B0E8E0', '#98E0D6'],
     label: 'Deep question',
   },
 };
@@ -186,7 +177,7 @@ const LikelyToCard = React.memo(({ task, index, totalCards, partnerName, userNam
   };
 
   return (
-    <LinearGradient colors={config.bgGradient} style={styles.fullCard}>
+    <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
       <View style={styles.cardContent}>
         <View style={styles.topRow}>
           <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
@@ -196,19 +187,16 @@ const LikelyToCard = React.memo(({ task, index, totalCards, partnerName, userNam
           <Text style={styles.counterText}>{index + 1}/{totalCards}</Text>
         </View>
 
-        {/* Question */}
         <View style={styles.questionSection}>
           <Text style={styles.questionText}>"{task.taskstatement}"</Text>
         </View>
 
-        {/* Drop Zone */}
         <DropZone
           hasSelection={!!selectedAnswer}
           selectedName={selectedAnswer === 'you' ? 'you' : partnerName}
           categoryColor={config.color}
         />
 
-        {/* Avatars */}
         <View style={styles.avatarsContainer}>
           <DraggableAvatar
             name={userName}
@@ -231,7 +219,6 @@ const LikelyToCard = React.memo(({ task, index, totalCards, partnerName, userNam
           />
         </View>
 
-        {/* Submit */}
         {!locked ? (
           <TouchableOpacity
             style={[styles.submitBtn, { backgroundColor: selectedAnswer ? config.color : colors.borderLight }]}
@@ -305,7 +292,7 @@ const NeverHaveIEverCard = React.memo(({ task, index, totalCards, partnerName, u
   };
 
   return (
-    <LinearGradient colors={config.bgGradient} style={styles.fullCard}>
+    <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
       <View style={styles.cardContent}>
         <View style={styles.topRow}>
           <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
@@ -315,13 +302,11 @@ const NeverHaveIEverCard = React.memo(({ task, index, totalCards, partnerName, u
           <Text style={styles.counterText}>{index + 1}/{totalCards}</Text>
         </View>
 
-        {/* Question */}
         <View style={styles.questionSection}>
           <Text style={[styles.prefixText, { color: config.color }]}>Never have I ever...</Text>
           <Text style={styles.questionText}>"{task.taskstatement}"</Text>
         </View>
 
-        {/* Choice Buttons */}
         <View style={styles.choicesRow}>
           {options.map((choice) => (
             <ChoiceButton
@@ -334,7 +319,6 @@ const NeverHaveIEverCard = React.memo(({ task, index, totalCards, partnerName, u
           ))}
         </View>
 
-        {/* Submit */}
         {!locked ? (
           <TouchableOpacity
             style={[styles.submitBtn, { backgroundColor: selectedAnswer ? config.color : colors.borderLight }]}
@@ -372,7 +356,7 @@ const DeepCard = React.memo(({ task, index, totalCards, partnerName, userName, o
   };
 
   return (
-    <LinearGradient colors={config.bgGradient} style={styles.fullCard}>
+    <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
       <View style={styles.cardContent}>
         <View style={styles.topRow}>
           <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
@@ -407,6 +391,8 @@ const DeepCard = React.memo(({ task, index, totalCards, partnerName, userName, o
 /* ===================== TASK CARD ROUTER ===================== */
 
 const TaskCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit }) => {
+  if (!task) return null;
+
   if (task.category === 'likelyto') {
     return (
       <LikelyToCard
@@ -445,6 +431,49 @@ const TaskCard = React.memo(({ task, index, totalCards, partnerName, userName, o
   );
 });
 
+/* ===================== CARD WRAPPER (No swipe gesture) ===================== */
+
+const CardWrapper = ({ task, index, totalCards, partnerName, userName, onNext, isTop }) => {
+  const opacity = useRef(new Animated.Value(1)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
+
+  const triggerExit = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: -width,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onNext();
+    });
+  }, [translateX, opacity, onNext]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.fullCard,
+        !isTop && styles.behindCard,
+        isTop && { opacity, transform: [{ translateX }] },
+      ]}
+    >
+      <TaskCard
+        task={task}
+        index={index}
+        totalCards={totalCards}
+        partnerName={partnerName}
+        userName={userName}
+        onSubmit={triggerExit}
+      />
+    </Animated.View>
+  );
+};
+
 /* ===================== MAIN SCREEN ===================== */
 
 export default function DailyChallengeScreen({
@@ -455,9 +484,7 @@ export default function DailyChallengeScreen({
   const insets = useSafeAreaInsets();
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [index, setIndex] = useState(0);
-
-  const translateX = useSharedValue(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     fetchToday();
@@ -476,52 +503,11 @@ export default function DailyChallengeScreen({
   };
 
   const tasks = challenge?.tasks || [];
-  const currentTask = tasks[index];
-  const nextTask = tasks[index + 1];
+  const isLastCard = currentIndex >= tasks.length - 1;
 
-  const goNext = useCallback(() => {
-    setIndex(i => Math.min(i + 1, tasks.length - 1));
+  const handleNext = useCallback(() => {
+    setCurrentIndex(prev => Math.min(prev + 1, tasks.length - 1));
   }, [tasks.length]);
-
-  const triggerAutoSwipe = useCallback(() => {
-    if (index < tasks.length - 1) {
-      translateX.value = withTiming(-width, { duration: 220 }, () => {
-        runOnJS(goNext)();
-        translateX.value = 0;
-      });
-    }
-  }, [index, tasks.length, translateX, goNext]);
-
-  /* ===================== GESTURE ===================== */
-
-  const gesture = Gesture.Pan()
-    .onUpdate(e => {
-      translateX.value = e.translationX;
-    })
-    .onEnd(e => {
-      if (e.translationX < -SWIPE_THRESHOLD && index < tasks.length - 1) {
-        translateX.value = withTiming(-width, { duration: 220 }, () => {
-          runOnJS(goNext)();
-          translateX.value = 0;
-        });
-      } else {
-        translateX.value = withTiming(0, { duration: 200 });
-      }
-    });
-
-  const animatedStyle = useAnimatedStyle(() => {
-    const rotate = interpolate(
-      translateX.value,
-      [-width, 0, width],
-      [-12, 0, 12]
-    );
-    return {
-      transform: [
-        { translateX: translateX.value },
-        { rotate: `${rotate}deg` },
-      ],
-    };
-  });
 
   if (loading) {
     return (
@@ -546,6 +532,10 @@ export default function DailyChallengeScreen({
     );
   }
 
+  // Get current and next tasks
+  const currentTask = tasks[currentIndex];
+  const nextTask = tasks[currentIndex + 1];
+
   return (
     <GestureHandlerRootView style={styles.container}>
       {/* Header */}
@@ -557,18 +547,18 @@ export default function DailyChallengeScreen({
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Today's Challenge</Text>
-          <Text style={styles.headerSubtitle}>Swipe through your questions</Text>
+          <Text style={styles.headerSubtitle}>{currentIndex + 1} of {tasks.length} questions</Text>
         </View>
       </View>
 
       {/* Cards Stack */}
       <View style={styles.cardsContainer}>
-        {/* NEXT CARD (STATIC BEHIND) */}
+        {/* NEXT CARD (Behind) */}
         {nextTask && (
-          <View style={[styles.fullCard, styles.behindCard]}>
+          <View key={`next-${nextTask._id}`} style={[styles.fullCard, styles.behindCard]}>
             <TaskCard
               task={nextTask}
-              index={index + 1}
+              index={currentIndex + 1}
               totalCards={tasks.length}
               partnerName={partnerName}
               userName={userName}
@@ -578,21 +568,23 @@ export default function DailyChallengeScreen({
         )}
 
         {/* CURRENT CARD */}
-        <GestureDetector gesture={gesture}>
-          <ReAnimated.View
-            key={currentTask._id}
-            style={[styles.fullCard, animatedStyle]}
-          >
-            <TaskCard
-              task={currentTask}
-              index={index}
-              totalCards={tasks.length}
-              partnerName={partnerName}
-              userName={userName}
-              onSubmit={() => triggerAutoSwipe()}
-            />
-          </ReAnimated.View>
-        </GestureDetector>
+        <CardWrapper
+          key={`current-${currentTask._id}`}
+          task={currentTask}
+          index={currentIndex}
+          totalCards={tasks.length}
+          partnerName={partnerName}
+          userName={userName}
+          onNext={handleNext}
+          isTop={true}
+        />
+
+        {/* Skip Button - absolutely positioned so it doesn't affect card height */}
+        {!isLastCard && (
+          <TouchableOpacity onPress={handleNext} style={styles.skipButton}>
+            <Text style={styles.skipText}>Skip →</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </GestureHandlerRootView>
   );
@@ -627,24 +619,30 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
   headerSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
 
-  cardsContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  cardsContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' , borderColor: "red", borderWidth: 1 , paddingVertical: 0},
 
   fullCard: {
     width: width - 32,
-    height: height * 0.72,
+    height: 640,
     borderRadius: 28,
     position: 'absolute',
     overflow: 'hidden',
-    elevation: 12,
+    elevation: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+  },
+
+  cardInner: {
+    flex: 1,
+    borderRadius: 28,
+    overflow: 'hidden',
   },
 
   behindCard: {
-    transform: [{ scale: 0.94 }, { translateY: -16 }],
-    opacity: 0.6,
+    transform: [{ scale: 0.94 }, { translateY: -20 }],
+    opacity: 0.5,
   },
 
   cardContent: { flex: 1, padding: spacing.lg },
@@ -744,5 +742,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Skip button - absolutely positioned at bottom of cardsContainer
+  skipButton: {
+    position: 'absolute',
+    bottom: 20,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textMuted,
   },
 });
