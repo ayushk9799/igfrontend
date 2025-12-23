@@ -1,4 +1,4 @@
-// Never Have I Ever Question Screen - Confession style UI
+// Never Have I Ever Question Screen - Never Have I Ever style UI
 // Features two-choice selection (I have / Never) with animated cards
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -19,7 +19,7 @@ import { colors, spacing, borderRadius } from '../theme';
 
 const { width, height } = Dimensions.get('window');
 
-// Category config for confessions type (orange theme)
+// Category config for neverhaveiever type (orange theme)
 const categoryConfig = {
     color: '#F4A261',
     gradient: ['#F4A261', '#FFD093'],
@@ -294,11 +294,11 @@ export const NeverHaveIEverScreen = ({
                         <View style={styles.submittedSection}>
                             <View style={styles.submittedBadge}>
                                 <Text style={styles.submittedIcon}>✓</Text>
-                                <Text style={styles.submittedText}>Confession Locked!</Text>
+                                <Text style={styles.submittedText}>Answer Locked!</Text>
                             </View>
 
                             <View style={styles.partnerSection}>
-                                <Text style={styles.partnerSectionTitle}>{partnerName}'s Confession</Text>
+                                <Text style={styles.partnerSectionTitle}>{partnerName}'s Answer</Text>
                                 <Card variant="glass" padding="lg">
                                     <View style={styles.lockedContent}>
                                         <View style={styles.lockIcon}>
@@ -306,7 +306,7 @@ export const NeverHaveIEverScreen = ({
                                         </View>
                                         <Text style={styles.lockTitle}>Waiting...</Text>
                                         <Text style={styles.lockText}>
-                                            You'll see their confession once they respond
+                                            You'll see their answer once they respond
                                         </Text>
                                     </View>
                                 </Card>
@@ -314,14 +314,14 @@ export const NeverHaveIEverScreen = ({
                         </View>
                     )}
 
-                   
+
                 </View>
 
                 {/* Bottom Section - Choice Cards & Submit Button */}
                 <View style={styles.bottomSection}>
                     {/* Choice Cards */}
                     <View style={styles.choicesContainer}>
-                        <Text style={styles.choicesTitle}>Your confession:</Text>
+                        <Text style={styles.choicesTitle}>Your answer:</Text>
                         <View style={styles.choicesRow}>
                             {options.map((choice, index) => (
                                 <ChoiceCard

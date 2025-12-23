@@ -326,8 +326,8 @@ export const AppNavigator = () => {
                     );
                 }
 
-                // Route confessions to Never Have I Ever screen
-                if (selectedCategory?.id === 'confessions') {
+                // Route neverhaveiever to Never Have I Ever screen
+                if (selectedCategory?.id === 'neverhaveiever') {
                     return (
                         <NeverHaveIEverScreen
                             currentQuestion={{
@@ -340,7 +340,7 @@ export const AppNavigator = () => {
                             }}
                             partnerName={userData.partnerUsername || 'Your Love'}
                             onSubmitAnswer={(answer) => {
-                                console.log('Confession answer:', answer);
+                                console.log('NeverHaveIEver answer:', answer);
                             }}
                             onBack={() => navigate('questionCategories')}
                         />
@@ -354,7 +354,7 @@ export const AppNavigator = () => {
                                 ? "What's my biggest pet peeve?"
                                 : selectedCategory?.id === 'agreement'
                                     ? "What's the perfect vacation destination?"
-                                    : selectedCategory?.id === 'confessions'
+                                    : selectedCategory?.id === 'neverhaveiever'
                                         ? "Never have I ever... forgotten to reply to a message for days"
                                         : "What's something you've never told me that you appreciate about us?",
                             category: selectedCategory?.id || 'deep',

@@ -30,7 +30,7 @@ const categoryConfig = {
     comparison: { color: '#FF6B9D', emoji: '⚖️', gradient: ['#FF6B9D30', '#FF6B9D10'] },
     knowledge: { color: '#5BB5A6', emoji: '🧠', gradient: ['#5BB5A630', '#5BB5A610'] },
     agreement: { color: '#BF5AF2', emoji: '🎯', gradient: ['#BF5AF230', '#BF5AF210'] },
-    confessions: { color: '#F4A261', emoji: '🤫', gradient: ['#F4A26130', '#F4A26110'] },
+    neverhaveiever: { color: '#F4A261', emoji: '🤫', gradient: ['#F4A26130', '#F4A26110'] },
 };
 
 // Typewriter Text Component

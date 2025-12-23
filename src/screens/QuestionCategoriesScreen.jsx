@@ -59,8 +59,8 @@ const defaultCategoryConfig = {
         icon: 'agreement',
         questionCount: 10,
     },
-    confessions: {
-        id: 'confessions',
+    neverhaveiever: {
+        id: 'neverhaveiever',
         title: 'Never have I ever...',
         subtitle: 'Reveal your secrets',
         emoji: '🤫',
@@ -68,7 +68,7 @@ const defaultCategoryConfig = {
         gradient: ['#F4A261', '#FFD093'],
         bgGradient: ['#FFF8F0', '#FFF0E0'],
         description: 'Confess and discover hidden truths about each other.',
-        icon: 'confessions',
+        icon: 'neverhaveiever',
         questionCount: 18,
     },
 };
