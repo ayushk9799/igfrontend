@@ -1907,7 +1907,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-keyboard-controller (1.20.1):
+  - react-native-keyboard-controller (1.20.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -1925,7 +1925,7 @@ PODS:
     - React-graphics
     - React-ImageManager
     - React-jsi
-    - react-native-keyboard-controller/common (= 1.20.1)
+    - react-native-keyboard-controller/common (= 1.20.2)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1936,7 +1936,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-keyboard-controller/common (1.20.1):
+  - react-native-keyboard-controller/common (1.20.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -2682,6 +2682,34 @@ PODS:
     - FirebaseCoreExtension
     - React-Core
     - RNFBApp
+  - RNGestureHandler (2.30.0):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - RNReanimated (4.2.0):
     - boost
     - DoubleConversion
@@ -3010,6 +3038,7 @@ DEPENDENCIES:
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
+  - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
@@ -3199,6 +3228,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/app"
   RNFBMessaging:
     :path: "../node_modules/@react-native-firebase/messaging"
+  RNGestureHandler:
+    :path: "../node_modules/react-native-gesture-handler"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNSVG:
@@ -3266,7 +3297,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 06d59c448da7e34eb05b3fb2189e12f6a30fec57
   React-microtasksnativemodule: d1ee999dc9052e23f6488b730fa2d383a4ea40e5
   react-native-credentials-manager: a8a46cdacbae3f9d0be69cd3917aab2eb5000a57
-  react-native-keyboard-controller: 6549ac01a0b4adcfcbc49a8cd08721bba8c6a493
+  react-native-keyboard-controller: d8d31b877dada043156156497b242d9b1ce0d485
   react-native-mmkv: ac7507625cd74bac0eb5333604a7cd7b08fe9e3e
   react-native-safe-area-context: c00143b4823773bba23f2f19f85663ae89ceb460
   react-native-view-shot: 6c008e58f4720de58370848201c5d4a082c6d4ca
@@ -3305,12 +3336,13 @@ SPEC CHECKSUMS:
   RNCClipboard: 4b58c780f63676367640f23c8e114e9bd0cf86ac
   RNFBApp: 0c4cadae3900893d4631ea9a9effd14f853cd8e0
   RNFBMessaging: 873220424f6f6aa5c787baf5c7099e1e2ba087c9
+  RNGestureHandler: f97d19585553412302394c42495cdaf499589d34
   RNReanimated: f1868b36f4b2b52a0ed00062cfda69506f75eaee
   RNSVG: 1bbfeab22b26db18b73d2e36b37a0f02a1180838
   RNWorklets: d9c050940f140af5d8b611d937eab1cbfce5e9a5
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 689c8e04277f3ad631e60fe2a08e41d411daf8eb
 
-PODFILE CHECKSUM: 6e9f84113584004f5d3cfdc0df2714ef3921cd85
+PODFILE CHECKSUM: 81e39ea521a37aa7ba9054c7dae20647cb0f9b3a
 
 COCOAPODS: 1.16.2

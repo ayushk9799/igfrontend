@@ -295,15 +295,7 @@ export const AppNavigator = () => {
                 return (
                     <DailyChallengeScreen
                         partnerName={userData.partnerUsername || 'Your Love'}
-                        onSelectTask={(task) => {
-                            // Route based on task category
-                            const category = {
-                                id: task.category,
-                                task: task,
-                            };
-                            setSelectedCategory(category);
-                            navigate('questions');
-                        }}
+                        userName={userData.name || 'You'}
                         onBack={() => navigate('home')}
                     />
                 );
