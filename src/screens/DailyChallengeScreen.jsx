@@ -8,11 +8,18 @@ import {
   ActivityIndicator,
   Animated,
   PanResponder,
+  Image,
+  Platform,
+  PermissionsAndroid,
+  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import Svg, { Path } from 'react-native-svg'
+import Svg, { Path } from 'react-native-svg';
+import * as ImagePicker from 'expo-image-picker';
+import ExpoImageCropTool from 'expo-image-crop-tool';
+import { Camera } from 'react-native-camera-kit';
 
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
@@ -41,6 +48,12 @@ const categoryConfig = {
     color: '#5BB5A6',
     bgGradient: ['#E0F8F4', '#C8F0EA', '#B0E8E0', '#98E0D6'],
     label: 'Deep question',
+  },
+  takephoto: {
+    emoji: '📸',
+    color: '#9B59B6',
+    bgGradient: ['#F5E6FA', '#EAD0F5', '#DFBAF0', '#D4A4EB'],
+    label: 'Capture a moment',
   },
 };
 
@@ -156,7 +169,7 @@ const DropZone = ({ hasSelection, selectedName, categoryColor }) => (
   </View>
 );
 
-const LikelyToCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit }) => {
+const LikelyToCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit, onSkip, isLastCard }) => {
   const config = categoryConfig.likelyto;
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [locked, setLocked] = useState(false);
@@ -219,18 +232,16 @@ const LikelyToCard = React.memo(({ task, index, totalCards, partnerName, userNam
           />
         </View>
 
-        {!locked ? (
-          <TouchableOpacity
-            style={[styles.submitBtn, { backgroundColor: selectedAnswer ? config.color : colors.borderLight }]}
-            onPress={handleSubmit}
-            disabled={!selectedAnswer}
-          >
-            <Text style={{ color: selectedAnswer ? '#fff' : colors.textMuted, fontWeight: '700' }}>
-              Lock In ✨
-            </Text>
-          </TouchableOpacity>
-        ) : (
+        {locked ? (
           <Text style={styles.waitingText}>Waiting for {partnerName}...</Text>
+        ) : (
+          <View style={styles.cardButtonsRow}>
+            {!isLastCard && (
+              <TouchableOpacity onPress={onSkip} style={styles.skipButtonInCard}>
+                <Text style={styles.skipTextInCard}>Skip →</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
     </LinearGradient>
@@ -269,7 +280,7 @@ const ChoiceButton = ({ choice, isSelected, onPress, disabled }) => {
   );
 };
 
-const NeverHaveIEverCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit }) => {
+const NeverHaveIEverCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit, onSkip, isLastCard }) => {
   const config = categoryConfig.neverhaveiever;
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [locked, setLocked] = useState(false);
@@ -319,18 +330,16 @@ const NeverHaveIEverCard = React.memo(({ task, index, totalCards, partnerName, u
           ))}
         </View>
 
-        {!locked ? (
-          <TouchableOpacity
-            style={[styles.submitBtn, { backgroundColor: selectedAnswer ? config.color : colors.borderLight }]}
-            onPress={handleSubmit}
-            disabled={!selectedAnswer}
-          >
-            <Text style={{ color: selectedAnswer ? '#fff' : colors.textMuted, fontWeight: '700' }}>
-              Confess! 🤫
-            </Text>
-          </TouchableOpacity>
-        ) : (
+        {locked ? (
           <Text style={styles.waitingText}>Waiting for {partnerName}...</Text>
+        ) : (
+          <View style={styles.cardButtonsRow}>
+            {!isLastCard && (
+              <TouchableOpacity onPress={onSkip} style={styles.skipButtonInCard}>
+                <Text style={styles.skipTextInCard}>Skip →</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
     </LinearGradient>
@@ -339,21 +348,8 @@ const NeverHaveIEverCard = React.memo(({ task, index, totalCards, partnerName, u
 
 /* ===================== DEEP/DEFAULT CARD ===================== */
 
-const DeepCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit }) => {
+const DeepCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit, onSkip, isLastCard }) => {
   const config = categoryConfig[task.category] || defaultConfig;
-  const [answer, setAnswer] = useState(null);
-  const [locked, setLocked] = useState(false);
-
-  useEffect(() => {
-    setAnswer(null);
-    setLocked(false);
-  }, [task._id]);
-
-  const handleSubmit = () => {
-    if (!answer) return;
-    setLocked(true);
-    onSubmit(answer);
-  };
 
   return (
     <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
@@ -370,18 +366,231 @@ const DeepCard = React.memo(({ task, index, totalCards, partnerName, userName, o
           <Text style={styles.questionText}>{task.taskstatement}</Text>
         </View>
 
-        {!locked ? (
-          <TouchableOpacity
-            style={[styles.submitBtn, { backgroundColor: answer ? config.color : colors.borderLight }]}
-            onPress={handleSubmit}
-            disabled={!answer}
-          >
-            <Text style={{ color: answer ? '#fff' : colors.textMuted, fontWeight: '700' }}>
-              Lock In ✨
-            </Text>
+        {!isLastCard && (
+          <TouchableOpacity onPress={onSkip} style={styles.skipButtonInCard}>
+            <Text style={styles.skipTextInCard}>Skip →</Text>
           </TouchableOpacity>
+        )}
+      </View>
+    </LinearGradient>
+  );
+});
+
+/* ===================== TAKE PHOTO CARD ===================== */
+
+const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit, onSkip, isLastCard }) => {
+  const config = categoryConfig.takephoto;
+  const cameraRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const [hasPermission, setHasPermission] = useState(Platform.OS === 'ios');
+  const [previewUri, setPreviewUri] = useState(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setPreviewUri(null);
+    setShowCamera(false);
+  }, [task._id]);
+
+  const requestCameraPermission = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        const result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA
+        );
+        const granted = result === PermissionsAndroid.RESULTS.GRANTED;
+        setHasPermission(granted);
+        if (!granted) {
+          Alert.alert('Permission required', 'Please allow Camera access to take a photo.');
+          return false;
+        }
+        return true;
+      }
+      return true;
+    } catch (e) {
+      setHasPermission(false);
+      return false;
+    }
+  };
+
+  const handleOpenCamera = async () => {
+    const granted = await requestCameraPermission();
+    if (granted) {
+      setShowCamera(true);
+    }
+  };
+
+  const handleCapture = async () => {
+    try {
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
+
+      const data = await cameraRef.current?.capture();
+      const source = data?.uri || (data?.path ? `file://${data.path}` : null);
+      if (!source) {
+        throw new Error('No image captured');
+      }
+
+      const cropResult = await ExpoImageCropTool.openCropperAsync({
+        imageUri: source,
+        shape: 'rectangle',
+        format: 'jpeg',
+        compressImageQuality: 0.9,
+      });
+
+      const out = typeof cropResult === 'string' ? cropResult : cropResult?.uri || cropResult?.path;
+      if (!out) throw new Error('Cropping cancelled');
+      const finalUri = out.startsWith('file://') ? out : `file://${out}`;
+
+      setPreviewUri(finalUri);
+      setShowCamera(false);
+    } catch (e) {
+      // ignore
+    } finally {
+      isProcessingRef.current = false;
+    }
+  };
+
+  const handlePickFromGallery = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission required', 'Please allow gallery access to select a photo.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+      });
+
+      if (result.cancelled || result.canceled) return;
+      const asset = result.assets ? result.assets[0] : result;
+      const sourceUri = asset?.uri;
+      if (!sourceUri) return;
+
+      const cropResult = await ExpoImageCropTool.openCropperAsync({
+        imageUri: sourceUri,
+        shape: 'rectangle',
+        format: 'jpeg',
+        compressImageQuality: 0.9,
+      });
+
+      const out = typeof cropResult === 'string' ? cropResult : cropResult?.uri || cropResult?.path;
+      if (!out) return;
+      const finalUri = out.startsWith('file://') ? out : `file://${out}`;
+
+      setPreviewUri(finalUri);
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const handleRetake = () => {
+    setPreviewUri(null);
+  };
+
+  const handleUsePhoto = () => {
+    if (!previewUri || isSubmitting) return;
+    setIsSubmitting(true);
+    onSubmit(previewUri);
+  };
+
+  // Camera View
+  if (showCamera && !previewUri) {
+    return (
+      <View style={styles.cameraContainer}>
+        <Camera
+          ref={cameraRef}
+          style={styles.camera}
+          cameraType={'back'}
+          flashMode={'auto'}
+          focusMode={'on'}
+          zoomMode={'on'}
+        />
+        <View style={styles.cameraOverlay}>
+          <TouchableOpacity onPress={() => setShowCamera(false)} style={styles.cameraBackBtn}>
+            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18l-6-6 6-6" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.cameraBottomBar}>
+          <TouchableOpacity onPress={handlePickFromGallery} style={styles.galleryBtn}>
+            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+              <Path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleCapture} style={styles.captureBtn}>
+            <View style={styles.captureBtnInner} />
+          </TouchableOpacity>
+          <View style={{ width: 56 }} />
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
+      <View style={styles.cardContent}>
+        <View style={styles.topRow}>
+          <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
+            <Text>{config.emoji}</Text>
+            <Text style={{ color: config.color, fontWeight: '600' }}>{config.label}</Text>
+          </View>
+          <Text style={styles.counterText}>{index + 1}/{totalCards}</Text>
+        </View>
+
+        <View style={styles.questionSection}>
+          <Text style={styles.questionText}>{task.taskstatement}</Text>
+        </View>
+
+        {previewUri ? (
+          <>
+            <View style={styles.photoPreviewContainer}>
+              <Image source={{ uri: previewUri }} style={styles.photoPreview} resizeMode="cover" />
+            </View>
+            <View style={styles.photoActionsRow}>
+              <TouchableOpacity onPress={handleRetake} style={[styles.photoActionBtn, { backgroundColor: colors.borderLight }]}>
+                <Text style={{ color: colors.text, fontWeight: '600' }}>Retake</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleUsePhoto}
+                style={[styles.photoActionBtn, { backgroundColor: config.color }]}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>Use Photo ✨</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
         ) : (
-          <Text style={styles.waitingText}>Waiting for {partnerName}...</Text>
+          <>
+            <View style={styles.photoOptionsRow}>
+              <TouchableOpacity onPress={handleOpenCamera} style={[styles.photoOptionBtn, { borderColor: config.color }]}>
+                <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                  <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z" stroke={config.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                  <Path d="M12 17a4 4 0 100-8 4 4 0 000 8z" stroke={config.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+                <Text style={[styles.photoOptionText, { color: config.color }]}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handlePickFromGallery} style={[styles.photoOptionBtn, { borderColor: config.color }]}>
+                <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                  <Path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke={config.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+                <Text style={[styles.photoOptionText, { color: config.color }]}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+
+            {!isLastCard && (
+              <TouchableOpacity onPress={onSkip} style={styles.skipButtonInCard}>
+                <Text style={styles.skipTextInCard}>Skip →</Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
     </LinearGradient>
@@ -390,7 +599,7 @@ const DeepCard = React.memo(({ task, index, totalCards, partnerName, userName, o
 
 /* ===================== TASK CARD ROUTER ===================== */
 
-const TaskCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit }) => {
+const TaskCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit, onSkip, isLastCard }) => {
   if (!task) return null;
 
   if (task.category === 'likelyto') {
@@ -402,6 +611,8 @@ const TaskCard = React.memo(({ task, index, totalCards, partnerName, userName, o
         partnerName={partnerName}
         userName={userName}
         onSubmit={onSubmit}
+        onSkip={onSkip}
+        isLastCard={isLastCard}
       />
     );
   }
@@ -415,6 +626,23 @@ const TaskCard = React.memo(({ task, index, totalCards, partnerName, userName, o
         partnerName={partnerName}
         userName={userName}
         onSubmit={onSubmit}
+        onSkip={onSkip}
+        isLastCard={isLastCard}
+      />
+    );
+  }
+
+  if (task.category === 'takephoto') {
+    return (
+      <TakePhotoCard
+        task={task}
+        index={index}
+        totalCards={totalCards}
+        partnerName={partnerName}
+        userName={userName}
+        onSubmit={onSubmit}
+        onSkip={onSkip}
+        isLastCard={isLastCard}
       />
     );
   }
@@ -427,13 +655,15 @@ const TaskCard = React.memo(({ task, index, totalCards, partnerName, userName, o
       partnerName={partnerName}
       userName={userName}
       onSubmit={onSubmit}
+      onSkip={onSkip}
+      isLastCard={isLastCard}
     />
   );
 });
 
 /* ===================== CARD WRAPPER (No swipe gesture) ===================== */
 
-const CardWrapper = ({ task, index, totalCards, partnerName, userName, onNext, isTop }) => {
+const CardWrapper = ({ task, index, totalCards, partnerName, userName, onNext, isTop, isLastCard }) => {
   const opacity = useRef(new Animated.Value(1)).current;
   const translateX = useRef(new Animated.Value(0)).current;
 
@@ -469,6 +699,8 @@ const CardWrapper = ({ task, index, totalCards, partnerName, userName, onNext, i
         partnerName={partnerName}
         userName={userName}
         onSubmit={triggerExit}
+        onSkip={triggerExit}
+        isLastCard={isLastCard}
       />
     </Animated.View>
   );
@@ -563,6 +795,8 @@ export default function DailyChallengeScreen({
               partnerName={partnerName}
               userName={userName}
               onSubmit={() => { }}
+              onSkip={() => { }}
+              isLastCard={currentIndex + 1 >= tasks.length - 1}
             />
           </View>
         )}
@@ -577,14 +811,8 @@ export default function DailyChallengeScreen({
           userName={userName}
           onNext={handleNext}
           isTop={true}
+          isLastCard={isLastCard}
         />
-
-        {/* Skip Button - absolutely positioned so it doesn't affect card height */}
-        {!isLastCard && (
-          <TouchableOpacity onPress={handleNext} style={styles.skipButton}>
-            <Text style={styles.skipText}>Skip →</Text>
-          </TouchableOpacity>
-        )}
       </View>
     </GestureHandlerRootView>
   );
@@ -744,16 +972,127 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Skip button - absolutely positioned at bottom of cardsContainer
-  skipButton: {
-    position: 'absolute',
-    bottom: 20,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+  // Skip button inside card
+  cardButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: spacing.md,
   },
-  skipText: {
+  skipButtonInCard: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+  },
+  skipTextInCard: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.textMuted,
+    color: "white",
+  },
+
+  // TakePhoto card styles
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  cameraBackBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraBottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  galleryBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  captureBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  captureBtnInner: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#fff',
+  },
+  photoOptionsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  photoOptionBtn: {
+    flex: 1,
+    paddingVertical: spacing.xl,
+    borderRadius: 20,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  photoOptionText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  photoPreviewContainer: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  photoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  photoActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  photoActionBtn: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

@@ -11,7 +11,6 @@ import QuestionsScreen from '../screens/QuestionsScreen';
 import LikelyToQuestionScreen from '../screens/LikelyToQuestionScreen';
 import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
-import DailyChallengeScreen from '../screens/DailyChallengeScreen';
 import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import MainTabNavigator from './MainTabNavigator';
@@ -287,15 +286,6 @@ export const AppNavigator = () => {
                             console.log('Sending scribble:', paths);
                             navigate('home');
                         }}
-                        onBack={() => navigate('home')}
-                    />
-                );
-
-            case 'dailyChallenge':
-                return (
-                    <DailyChallengeScreen
-                        partnerName={userData.partnerUsername || 'Your Love'}
-                        userName={userData.name || 'You'}
                         onBack={() => navigate('home')}
                     />
                 );

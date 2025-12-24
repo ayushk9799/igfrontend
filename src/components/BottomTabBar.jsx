@@ -197,12 +197,36 @@ const CanvasIcon = ({ color, size = 24 }) => (
     </Svg>
 );
 
+// Staggered Cards Icon for Daily Challenge
+const CardsIcon = ({ color, size = 24 }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        {/* Back card */}
+        <Path
+            d="M6 4h10a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        {/* Front card (offset) */}
+        <Path
+            d="M10 8h8a2 2 0 012 2v8a2 2 0 01-2 2h-8a2 2 0 01-2-2v-8a2 2 0 012-2z"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill={color + '20'}
+        />
+    </Svg>
+);
+
 export const BottomTabBar = ({ currentTab, onTabChange }) => {
     const insets = useSafeAreaInsets();
 
     const tabs = [
         { key: 'home', label: 'Home', icon: HomeIcon },
         { key: 'canvas', label: 'Canvas', icon: CanvasIcon },
+        { key: 'dailyChallenge', label: 'Today', icon: CardsIcon },
         { key: 'questions', label: 'Questions', icon: QuestionsIcon },
     ];
 

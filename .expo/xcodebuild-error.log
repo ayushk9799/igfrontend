@@ -1,0 +1,51 @@
+error: Clang dependency scanner failure: While building module 'Expo' imported from Expo-bc5f4299.input:1:
+In file included from <module-includes>:1:
+In file included from /Users/ayushkumar/ALLCODE/igfrontend/ios/Pods/Headers/Public/Expo/Expo-umbrella.h:14:
+/Users/ayushkumar/ALLCODE/igfrontend/ios/Pods/Headers/Public/Expo/Expo/EXAppDelegateWrapper.h:3:9: fatal error: 'ExpoModulesCore/Platform.h' file not found
+Expo-bc5f4299.input:1:1: fatal error: could not build module 'Expo'
+
+error: Unable to find module dependency: 'Expo'
+note: a dependency of main module 'Expo'
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/AppDelegates/AppDelegatesLoaderDelegate.swift:3:8: error: Unable to find module dependency: 'ExpoModulesCore'
+import ExpoModulesCore
+       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/AppDelegates/AppDelegatesLoaderDelegate.swift:3:8: note: a dependency of main module 'Expo'
+import ExpoModulesCore
+       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/Expo.swift:2:19: note: also imported here
+@_exported import ExpoModulesCore
+                  ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/AppDelegates/ExpoAppDelegate.swift:3:8: note: also imported here
+import ExpoModulesCore
+       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/Fetch/ExpoFetchModule.swift:3:24: note: also imported here
+@preconcurrency import ExpoModulesCore
+                       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/Fetch/ExpoURLSessionTask.swift:3:8: note: also imported here
+import ExpoModulesCore
+       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/Fetch/FetchExceptions.swift:3:8: note: also imported here
+import ExpoModulesCore
+       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/Fetch/NativeRequest.swift:3:8: note: also imported here
+import ExpoModulesCore
+       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/Fetch/NativeRequestCredentials.swift:3:8: note: also imported here
+import ExpoModulesCore
+       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/Fetch/NativeRequestInit.swift:3:8: note: also imported here
+import ExpoModulesCore
+       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/Fetch/NativeRequestRedirect.swift:1:8: note: also imported here
+import ExpoModulesCore
+       ^
+/Users/ayushkumar/ALLCODE/igfrontend/node_modules/expo/ios/Fetch/NativeResponse.swift:3:8: note: also imported here
+import ExpoModulesCore
+       ^
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftDriver Expo normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Expo' from project 'Pods')
+	Building workspace frontend with scheme frontend and configuration Debug
+(2 failures)

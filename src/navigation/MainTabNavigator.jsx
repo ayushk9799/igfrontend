@@ -5,6 +5,7 @@ import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
 import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
+import DailyChallengeScreen from '../screens/DailyChallengeScreen';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
 
@@ -51,12 +52,7 @@ export const MainTabNavigator = ({
                         pendingInvite={pendingInvite}
                         onMoodPress={onMoodPress}
                         onScribblePress={() => setCurrentTab('canvas')}
-                        onQuestionPress={() => {
-                            // Call parent's onQuestionPress to navigate to DailyChallengeScreen
-                            if (onQuestionPress) {
-                                onQuestionPress();
-                            }
-                        }}
+                        onQuestionPress={() => setCurrentTab('dailyChallenge')}
                         onFindPartner={onFindPartner}
                         onSettingsPress={() => setCurrentTab('account')}
                     />
@@ -65,6 +61,14 @@ export const MainTabNavigator = ({
                 return (
                     <ScribbleScreen
                         onSend={onScribbleSend}
+                        onBack={() => setCurrentTab('home')}
+                    />
+                );
+            case 'dailyChallenge':
+                return (
+                    <DailyChallengeScreen
+                        partnerName={partnerName}
+                        userName={userData?.name || 'You'}
                         onBack={() => setCurrentTab('home')}
                     />
                 );
