@@ -13,11 +13,14 @@ import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
 import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import JigsawCreateScreen from '../screens/JigsawCreateScreen';
+import JigsawPuzzleScreen from '../screens/JigsawPuzzleScreen';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
 import { getUser, saveUser, updateUser, isAuthenticated, isOnboarded, setOnboarded, clearAuth, isPaired, getPartnerCode } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { registerFCMToken } from '../utils/pushNotifications';
+import { API_BASE } from '../constants/Api';
 
 export const AppNavigator = () => {
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
@@ -25,6 +28,8 @@ export const AppNavigator = () => {
     const [userData, setUserData] = useState({ name: '', age: '', gender: 'male' });
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
+    const [selectedPuzzle, setSelectedPuzzle] = useState(null); // Track selected puzzle
+    const [pendingPuzzle, setPendingPuzzle] = useState(null); // Track pending puzzle to solve
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -61,6 +66,9 @@ export const AppNavigator = () => {
                         // Already paired - go to home
                         setOnboarded(true);
                         setCurrentScreen('home');
+
+                        // Fetch pending puzzles
+                        fetchPendingPuzzle(storedUser.id);
                     } else {
                         // Not paired - show partner code screen
                         setCurrentScreen('partnerCode');
@@ -78,10 +86,36 @@ export const AppNavigator = () => {
         checkAuthState();
     }, [connect]);
 
+    // Fetch pending puzzles for the user
+    const fetchPendingPuzzle = async (userId) => {
+        if (!userId) return;
+        try {
+            console.log('🧩 Fetching pending puzzles for user:', userId);
+            const response = await fetch(`${API_BASE}/api/puzzle/pending/${userId}`);
+            const data = await response.json();
+            console.log('🧩 Puzzle API response:', data);
+            if (data.success && data.data.length > 0) {
+                setPendingPuzzle(data.data[0]); // Show first pending puzzle
+                console.log('🧩 Pending puzzle found:', data.data[0]);
+            } else {
+                setPendingPuzzle(null);
+                console.log('🧩 No pending puzzles');
+            }
+        } catch (err) {
+            console.log('🧩 Error fetching puzzles:', err.message);
+            setPendingPuzzle(null);
+        }
+    };
+
     // Use startTransition for non-blocking navigation
     const navigate = (screen) => {
         startTransition(() => {
             setCurrentScreen(screen);
+
+            // Refresh pending puzzles when navigating to home
+            if (screen === 'home' && userData?.id) {
+                fetchPendingPuzzle(userData.id);
+            }
         });
     };
 
@@ -263,6 +297,13 @@ export const AppNavigator = () => {
                         }}
                         onEditProfile={() => navigate('editProfile')}
                         onFindPartner={() => navigate('partnerCode')}
+                        onJigsawCreate={() => navigate('jigsawCreate')}
+                        onJigsawPlay={(puzzleData) => {
+                            setSelectedPuzzle(puzzleData);
+                            navigate('jigsawPuzzle');
+                        }}
+                        pendingPuzzle={pendingPuzzle}
+                        onRefreshPuzzle={() => fetchPendingPuzzle(userData?.id)}
                         userData={userData}
                         onLogout={handleLogout}
                     />
@@ -389,6 +430,32 @@ export const AppNavigator = () => {
                             navigate('home');
                         }}
                         onBack={() => navigate('home')}
+                    />
+                );
+
+            case 'jigsawCreate':
+                return (
+                    <JigsawCreateScreen
+                        navigation={{ goBack: () => navigate('home') }}
+                        route={{
+                            params: {
+                                partnerId: userData.partnerId,
+                                partnerName: userData.partnerUsername || 'Partner',
+                            }
+                        }}
+                    />
+                );
+
+            case 'jigsawPuzzle':
+                return (
+                    <JigsawPuzzleScreen
+                        navigation={{ goBack: () => navigate('home') }}
+                        route={{
+                            params: {
+                                puzzleId: selectedPuzzle?._id,
+                                puzzleData: selectedPuzzle,
+                            }
+                        }}
                     />
                 );
 

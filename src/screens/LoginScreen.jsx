@@ -135,6 +135,26 @@ export const LoginScreen = ({
     const slideAnim = useRef(new Animated.Value(40)).current;
     const insets = useSafeAreaInsets();
 
+    // Test API connectivity on mount
+    useEffect(() => {
+        const testConnection = async () => {
+            console.log('🔄 [LOGIN] Testing API connection to:', API_BASE);
+            Alert.alert('Testing Connection', `Connecting to: ${API_BASE}`);
+            try {
+                const response = await fetch(`${API_BASE}/api/test`);
+                console.log('📥 [LOGIN] Test response status:', response.status);
+                const data = await response.json();
+                console.log('✅ [LOGIN] Backend connected successfully:', data);
+                Alert.alert('✅ Connection Success', `Backend responded: ${data.message}`);
+            } catch (error) {
+                console.error('❌ [LOGIN] Backend connection failed:', error.message);
+                console.error('❌ [LOGIN] Full error:', error);
+                Alert.alert('❌ Connection Failed', `Error: ${error.message}\n\nAPI_BASE: ${API_BASE}`);
+            }
+        };
+        testConnection();
+    }, []);
+
     useEffect(() => {
         Animated.parallel([
             Animated.timing(fadeAnim, {
@@ -174,6 +194,7 @@ export const LoginScreen = ({
             if (!idToken) {
                 throw new Error('No ID token received from Google');
             }
+            console.log("udbcuids");
 
             // Send token to backend for verification
             const response = await fetch(`${API_BASE}/api/login/google/loginSignUp`, {
@@ -184,10 +205,20 @@ export const LoginScreen = ({
                 body: JSON.stringify({
                     token: idToken,
                     platform: Platform.OS,
-                }),
+                })
             });
+            console.log("Response status:", response.status);
+            console.log("Response ok:", response.ok);
 
-            const data = await response.json();
+            const text = await response.text();
+            console.log("Raw response:", text);
+
+            if (!text) {
+                throw new Error('Empty response from server');
+            }
+
+            const data = JSON.parse(text);
+            console.log(data)
 
             if (data.success && data.user) {
                 console.log(data.user)

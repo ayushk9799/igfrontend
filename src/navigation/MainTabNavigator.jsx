@@ -34,6 +34,11 @@ export const MainTabNavigator = ({
     onSubmitAnswer,
     // Scribble props
     onScribbleSend,
+    // Puzzle props
+    onJigsawCreate,
+    onJigsawPlay,
+    pendingPuzzle,
+    onRefreshPuzzle,
 }) => {
     const [currentTab, setCurrentTab] = useState('home');
 
@@ -55,6 +60,10 @@ export const MainTabNavigator = ({
                         onQuestionPress={() => setCurrentTab('dailyChallenge')}
                         onFindPartner={onFindPartner}
                         onSettingsPress={() => setCurrentTab('account')}
+                        onJigsawCreate={onJigsawCreate}
+                        onJigsawPlay={onJigsawPlay}
+                        pendingPuzzle={pendingPuzzle}
+                        onRefreshPuzzle={onRefreshPuzzle}
                     />
                 );
             case 'canvas':
@@ -69,6 +78,7 @@ export const MainTabNavigator = ({
                     <DailyChallengeScreen
                         partnerName={partnerName}
                         userName={userData?.name || 'You'}
+                        userId={userData?._id || userData?.id}
                         onBack={() => setCurrentTab('home')}
                     />
                 );

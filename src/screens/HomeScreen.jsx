@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     View,
     Text,
@@ -23,12 +23,25 @@ const HomeScreen = ({
     partnerOnline = false,
     partnerScribble = null,
     pendingInvite = null,
+    pendingPuzzle = null,
+    // Daily Challenge props - NEW
+    todayChallenge = null,
+    challengeProgress = { completedCount: 0, totalTasks: 0, isComplete: false },
     onMoodPress,
     onScribblePress,
     onQuestionPress,
     onFindPartner,
     onSettingsPress,
+    onJigsawCreate,
+    onJigsawPlay,
+    onRefreshPuzzle,
 }) => {
+    // Refresh puzzles on mount
+    useEffect(() => {
+        if (onRefreshPuzzle) {
+            onRefreshPuzzle();
+        }
+    }, []);
     // Get current time of day
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -229,11 +242,23 @@ const HomeScreen = ({
                             </View>
 
                             <Text style={styles.cardTitle}>Today's Question</Text>
-                            <Text style={styles.questionText}>
-                                What's one small thing I did this week that made you feel loved?
+                            <Text style={styles.questionText} numberOfLines={2}>
+                                {todayChallenge?.tasks?.[0]?.taskstatement || "What's one small thing I did this week that made you feel loved?"}
                             </Text>
 
-                            {hasPartner ? (
+                            {/* Progress or Status Badge */}
+                            {challengeProgress.isComplete ? (
+                                <View style={[styles.answerBadge, styles.completeBadge]}>
+                                    <Text style={styles.completeText}>✅ Completed!</Text>
+                                </View>
+                            ) : challengeProgress.completedCount > 0 ? (
+                                <View style={styles.progressBadge}>
+                                    <View style={styles.answerDot} />
+                                    <Text style={styles.progressText}>
+                                        {challengeProgress.completedCount}/{challengeProgress.totalTasks} done
+                                    </Text>
+                                </View>
+                            ) : hasPartner ? (
                                 <View style={styles.answerBadge}>
                                     <View style={styles.answerDot} />
                                     <Text style={styles.answerText}>
@@ -286,6 +311,130 @@ const HomeScreen = ({
                             )}
                         </TouchableOpacity>
                     </View>
+
+                    {hasPartner && (
+                        <View style={styles.arcadeSection}>
+                            <View style={styles.arcadeHeader}>
+                                <Text style={styles.arcadeSectionTitle}>Arcade</Text>
+                                <TouchableOpacity style={styles.allGamesButton}>
+                                    <Text style={styles.allGamesText}>All games</Text>
+                                    <Text style={styles.allGamesArrow}>›</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Horizontal Scrollable Games */}
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.arcadeScrollContent}
+                            >
+                                {/* Jigsaw Puzzle Card */}
+                                <TouchableOpacity
+                                    style={[styles.arcadeCard, styles.arcadeCardOrange]}
+                                    onPress={pendingPuzzle ? () => onJigsawPlay?.(pendingPuzzle) : onJigsawCreate}
+                                    activeOpacity={0.9}
+                                >
+                                    {/* Status Badges */}
+                                    <View style={styles.arcadeBadgeRow}>
+                                        {pendingPuzzle ? (
+                                            <View style={styles.arcadeBadgePending}>
+                                                <Text style={styles.arcadeBadgePendingText}>🧩 Solve</Text>
+                                            </View>
+                                        ) : (
+                                            <View style={styles.arcadeBadgeNew}>
+                                                <Text style={styles.arcadeBadgeNewText}>New</Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {/* Game Icon */}
+                                    <View style={styles.arcadeIconContainer}>
+                                        <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M20 11V7a2 2 0 00-2-2h-3.5a2.5 2.5 0 110-5 2.5 2.5 0 110 5H11a2 2 0 00-2 2v3.5a2.5 2.5 0 11-5 0 2.5 2.5 0 115 0V14a2 2 0 002 2h3.5a2.5 2.5 0 110 5 2.5 2.5 0 110-5H18a2 2 0 002-2v-3z"
+                                                fill="#FFFFFF"
+                                            />
+                                        </Svg>
+                                    </View>
+
+                                    {/* Game Info */}
+                                    <Text style={styles.arcadeGameLabel}>jigsaw puzzle</Text>
+                                    <Text style={styles.arcadeGameTitle}>
+                                        {pendingPuzzle ? 'Puzzle waiting!' : 'Create & share.'}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* Coming Soon Card - Teal */}
+                                <TouchableOpacity
+                                    style={[styles.arcadeCard, styles.arcadeCardTeal]}
+                                    activeOpacity={0.9}
+                                    disabled={true}
+                                >
+                                    {/* Status Badges */}
+                                    <View style={styles.arcadeBadgeRow}>
+                                        <View style={styles.arcadeBadgeLocked}>
+                                            <Text style={styles.arcadeBadgeLockedText}>🔒</Text>
+                                        </View>
+                                        <View style={styles.arcadeBadgeSoon}>
+                                            <Text style={styles.arcadeBadgeSoonText}>Soon</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Game Icon */}
+                                    <View style={styles.arcadeIconContainer}>
+                                        <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                                                fill="#FFFFFF"
+                                            />
+                                        </Svg>
+                                    </View>
+
+                                    {/* Game Info */}
+                                    <Text style={styles.arcadeGameLabel}>perfect pair</Text>
+                                    <Text style={styles.arcadeGameTitle}>
+                                        Find the best{'\n'}word path.
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* Another Coming Soon Card - Purple */}
+                                <TouchableOpacity
+                                    style={[styles.arcadeCard, styles.arcadeCardPurple]}
+                                    activeOpacity={0.9}
+                                    disabled={true}
+                                >
+                                    {/* Status Badges */}
+                                    <View style={styles.arcadeBadgeRow}>
+                                        <View style={styles.arcadeBadgeLocked}>
+                                            <Text style={styles.arcadeBadgeLockedText}>🔒</Text>
+                                        </View>
+                                        <View style={styles.arcadeBadgeSoon}>
+                                            <Text style={styles.arcadeBadgeSoonText}>Soon</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Game Icon */}
+                                    <View style={styles.arcadeIconContainer}>
+                                        <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                                                stroke="#FFFFFF"
+                                                strokeWidth={2}
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </Svg>
+                                    </View>
+
+                                    {/* Game Info */}
+                                    <Text style={styles.arcadeGameLabel}>memory lane</Text>
+                                    <Text style={styles.arcadeGameTitle}>
+                                        Match your{'\n'}memories.
+                                    </Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </View>
+                    )}
 
                     {/* No Partner State */}
                     {!hasPartner && (
@@ -375,16 +524,16 @@ const styles = StyleSheet.create({
     },
     blobContainer: {
         width: '100%',
-        height:200,
+        height: 200,
         alignItems: 'center',
-      
+
         justifyContent: 'center',
         position: 'relative',
         overflow: 'visible',
     },
     splashLeft: {
         position: 'absolute',
-       
+
         left: 10,
         top: -5,
     },
@@ -688,6 +837,149 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: colors.surface,
+    },
+    // Challenge progress styles
+    progressBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'center',
+        backgroundColor: '#FFF3CD',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        gap: 6,
+    },
+    progressText: {
+        fontSize: 11,
+        color: '#856404',
+        fontWeight: '600',
+    },
+    completeBadge: {
+        backgroundColor: '#D4EDDA',
+        borderWidth: 0,
+    },
+    completeText: {
+        fontSize: 12,
+        color: '#155724',
+        fontWeight: '700',
+    },
+    // Arcade Section Styles
+    arcadeSection: {
+        marginBottom: 24,
+        marginHorizontal: -20, // Extend beyond container padding for full-width scroll
+    },
+    arcadeHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        marginBottom: 12,
+    },
+    arcadeSectionTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text,
+    },
+    allGamesButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    allGamesText: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        fontWeight: '500',
+    },
+    allGamesArrow: {
+        fontSize: 18,
+        color: colors.textSecondary,
+        marginLeft: 2,
+        fontWeight: '600',
+    },
+    arcadeScrollContent: {
+        paddingHorizontal: 20,
+        gap: 12,
+    },
+    arcadeCard: {
+        width: 160,
+        height: 180,
+        borderRadius: 20,
+        padding: 14,
+        justifyContent: 'space-between',
+    },
+    arcadeCardOrange: {
+        backgroundColor: '#D4714A', // Muted coral-orange
+    },
+    arcadeCardTeal: {
+        backgroundColor: '#3A9B8C', // Muted teal
+    },
+    arcadeCardPurple: {
+        backgroundColor: '#7B68A6', // Muted purple
+    },
+    arcadeBadgeRow: {
+        flexDirection: 'row',
+        gap: 6,
+    },
+    arcadeBadgeNew: {
+        backgroundColor: '#47A642',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    arcadeBadgeNewText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    arcadeBadgePending: {
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    arcadeBadgePendingText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    arcadeBadgeLocked: {
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    arcadeBadgeLockedText: {
+        fontSize: 11,
+    },
+    arcadeBadgeSoon: {
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    arcadeBadgeSoonText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    arcadeIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    arcadeGameLabel: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: 'rgba(255, 255, 255, 0.8)',
+        marginBottom: 2,
+    },
+    arcadeGameTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        lineHeight: 20,
     },
 });
 

@@ -1,7 +1,7 @@
 // Love App Theme - Main Export
 import colors from './colors';
 import typography, { fontSizes, fontWeights, letterSpacing } from './typography';
-import { spacing, borderRadius, shadows, screen, timing, parallax, zIndex, opacity } from './spacing';
+import { spacing, borderRadius, shadows, screen, cardDimensions, timing, parallax, zIndex, opacity } from './spacing';
 
 export const theme = {
     colors,
@@ -13,6 +13,7 @@ export const theme = {
     borderRadius,
     shadows,
     screen,
+    cardDimensions,
     timing,
     parallax,
     zIndex,
@@ -29,6 +30,7 @@ export {
     borderRadius,
     shadows,
     screen,
+    cardDimensions,
     timing,
     parallax,
     zIndex,

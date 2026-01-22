@@ -1,0 +1,289 @@
+import { StyleSheet, Dimensions } from 'react-native';
+import { colors, spacing, borderRadius } from '../../theme';
+
+const { width } = Dimensions.get('window');
+export const AVATAR_SIZE = 70;
+
+/**
+ * Shared styles for card components
+ */
+export const cardStyles = StyleSheet.create({
+    // Card layout
+    cardInner: {
+        flex: 1,
+        borderRadius: 28,
+        overflow: 'hidden',
+    },
+    cardContent: { flex: 1, padding: spacing.lg },
+
+    // Card header
+    topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+    categoryBadge: { flexDirection: 'row', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
+    counterText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+
+    // Question area
+    questionSection: { flex: 1, justifyContent: 'center', paddingVertical: spacing.lg },
+    prefixText: { fontSize: 16, fontWeight: '600', marginBottom: spacing.xs, textAlign: 'center' },
+    questionText: { fontSize: 22, fontWeight: '700', textAlign: 'center', lineHeight: 32, color: colors.text },
+
+    // Buttons
+    submitBtn: {
+        padding: 16,
+        borderRadius: 22,
+        alignItems: 'center',
+        marginTop: spacing.md,
+    },
+    waitingText: { textAlign: 'center', color: colors.textSecondary, marginTop: spacing.md, fontSize: 15 },
+    cardButtonsRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: spacing.md,
+    },
+    skipButtonInCard: {
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        alignSelf: 'center',
+        marginTop: spacing.sm,
+    },
+    skipTextInCard: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: "white",
+    },
+    selectedCheck: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+
+    // Likely To Card styles
+    dropZone: {
+        height: 70,
+        borderRadius: 20,
+        borderWidth: 2,
+        borderStyle: 'dashed',
+        borderColor: colors.borderLight,
+        overflow: 'hidden',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.md,
+    },
+    dropZoneGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+    emptyDropZone: { alignItems: 'center', gap: 4 },
+    dropHint: { fontSize: 14, fontWeight: '700' },
+    selectedText: { fontSize: 20, fontWeight: '800' },
+
+    avatarsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
+    avatarWrapper: { alignItems: 'center' },
+    avatarOuter: {
+        width: AVATAR_SIZE,
+        height: AVATAR_SIZE,
+        borderRadius: AVATAR_SIZE / 2,
+        overflow: 'hidden',
+        borderWidth: 3,
+        borderColor: colors.borderLight,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    avatarDragging: { shadowOpacity: 0.3, shadowRadius: 20 },
+    avatarGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+    avatarInner: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    avatarEmoji: { fontSize: 30 },
+    avatarName: { fontSize: 14, fontWeight: '700', color: colors.text, marginTop: spacing.xs },
+    selectedIndicator: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: colors.surface,
+    },
+    vsContainer: { width: 40, alignItems: 'center', marginHorizontal: spacing.sm },
+    vsText: { fontSize: 14, fontWeight: '800', color: colors.textMuted },
+
+    // Never Have I Ever styles
+    choicesRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
+    choiceCard: {
+        flex: 1,
+        borderRadius: 20,
+        padding: spacing.lg,
+        borderWidth: 2,
+        borderColor: colors.borderLight,
+        overflow: 'hidden',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: 80,
+    },
+    choiceCardSelected: { borderColor: 'transparent' },
+    choiceGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+    choiceText: { fontSize: 16, fontWeight: '700', color: colors.text },
+    choiceTextSelected: { color: '#FFFFFF' },
+    choiceSelectedBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    // TakePhoto card styles
+    cameraContainer: {
+        flex: 1,
+        backgroundColor: '#000',
+        borderRadius: 28,
+        overflow: 'hidden',
+    },
+    camera: {
+        flex: 1,
+    },
+    cameraOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        paddingTop: spacing.lg,
+        paddingHorizontal: spacing.md,
+    },
+    cameraBackBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cameraBottomBar: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.xl,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+    },
+    galleryBtn: {
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.4)',
+    },
+    captureBtn: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+        borderColor: '#fff',
+    },
+    captureBtnInner: {
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        backgroundColor: '#fff',
+    },
+    photoOptionsRow: {
+        flexDirection: 'row',
+        gap: spacing.md,
+        marginBottom: spacing.lg,
+    },
+    photoOptionBtn: {
+        flex: 1,
+        paddingVertical: spacing.xl,
+        borderRadius: 20,
+        borderWidth: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: spacing.sm,
+        backgroundColor: 'rgba(255,255,255,0.5)',
+    },
+    photoOptionText: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    photoPreviewContainer: {
+        flex: 1,
+        borderRadius: 16,
+        overflow: 'hidden',
+        marginBottom: spacing.md,
+    },
+    photoPreview: {
+        width: '100%',
+        height: '100%',
+    },
+    photoActionsRow: {
+        flexDirection: 'row',
+        gap: spacing.md,
+    },
+    photoActionBtn: {
+        flex: 1,
+        paddingVertical: spacing.md,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    // Already Answered Overlay styles
+    answeredOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 100,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.1)',
+    },
+    answeredBadge: {
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        paddingVertical: spacing.xl,
+        paddingHorizontal: spacing['2xl'],
+        borderRadius: 24,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 10,
+        maxWidth: '80%',
+    },
+    answeredEmoji: {
+        fontSize: 48,
+        marginBottom: spacing.sm,
+    },
+    answeredTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: colors.text,
+        marginBottom: spacing.xs,
+    },
+    answeredText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: colors.primary,
+        marginBottom: spacing.md,
+        textAlign: 'center',
+    },
+    answeredHint: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: colors.textSecondary,
+    },
+});

@@ -11,6 +11,13 @@ export const screen = {
     isLarge: width >= 428,
 };
 
+// Card dimensions - responsive to screen size
+export const cardDimensions = {
+    width: width - 32,
+    height: height * 0.7,
+    borderRadius: 28,
+};
+
 export const spacing = {
     xs: 4,
     sm: 8,
@@ -221,4 +228,4 @@ export const opacity = {
     opaque: 1,
 };
 
-export default { spacing, borderRadius, shadows, screen, timing, parallax, zIndex, opacity };
+export default { spacing, borderRadius, shadows, screen, cardDimensions, timing, parallax, zIndex, opacity };

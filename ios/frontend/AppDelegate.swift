@@ -3,7 +3,7 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import Firebase
-import FBSDKCoreKit
+
 import GoogleSignIn
 import WidgetKit
 

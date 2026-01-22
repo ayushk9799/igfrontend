@@ -1,5 +1,5 @@
 // Account Screen - User profile and settings
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -8,12 +8,16 @@ import {
     TouchableOpacity,
     Animated,
     Alert,
+    Image,
+    ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import * as ImagePicker from 'expo-image-picker';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
+import { useAvatarUpload } from '../hooks/useAvatarUpload';
 
 // Settings menu item
 const MenuItem = ({ icon, title, subtitle, onPress, danger = false }) => {
@@ -59,6 +63,12 @@ export const AccountScreen = ({
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const [localAvatar, setLocalAvatar] = useState(userData.avatar || null);
+    const { isUploading, uploadProgress, error, uploadAvatar, clearError } = useAvatarUpload();
+
+    useEffect(() => {
+        setLocalAvatar(userData.avatar || null);
+    }, [userData.avatar]);
 
     useEffect(() => {
         Animated.parallel([
@@ -74,6 +84,78 @@ export const AccountScreen = ({
             }),
         ]).start();
     }, []);
+
+    // Handle avatar selection and upload
+    const handleAvatarPress = async () => {
+        if (isUploading) return;
+
+        Alert.alert(
+            'Change Avatar',
+            'Choose how to update your profile picture',
+            [
+                {
+                    text: 'Take Photo',
+                    onPress: handleTakePhoto,
+                },
+                {
+                    text: 'Choose from Library',
+                    onPress: handlePickFromLibrary,
+                },
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+            ]
+        );
+    };
+
+    const handleTakePhoto = async () => {
+        const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permissionResult.granted) {
+            Alert.alert('Permission Required', 'Please allow camera access to take a photo.');
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            await processAndUploadAvatar(result.assets[0]);
+        }
+    };
+
+    const handlePickFromLibrary = async () => {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult.granted) {
+            Alert.alert('Permission Required', 'Please allow access to your photos to change your avatar.');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            await processAndUploadAvatar(result.assets[0]);
+        }
+    };
+
+    const processAndUploadAvatar = async (asset) => {
+        const uploadResult = await uploadAvatar(asset);
+
+        if (uploadResult.success) {
+            setLocalAvatar(uploadResult.avatarUrl);
+            Alert.alert('Success', 'Your avatar has been updated!');
+        } else {
+            Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload avatar. Please try again.');
+        }
+    };
 
     const handleLogout = () => {
         Alert.alert(
@@ -110,14 +192,44 @@ export const AccountScreen = ({
                         },
                     ]}
                 >
-                    <LinearGradient
-                        colors={[colors.primary + '30', colors.secondary + '20']}
-                        style={styles.avatarLarge}
+                    <TouchableOpacity
+                        style={styles.avatarContainer}
+                        onPress={handleAvatarPress}
+                        disabled={isUploading}
+                        activeOpacity={0.8}
                     >
-                        <Text style={styles.avatarEmoji}>
-                            {userData.gender === 'female' ? '👩' : '👨'}
-                        </Text>
-                    </LinearGradient>
+                        {localAvatar ? (
+                            <Image
+                                source={{ uri: localAvatar }}
+                                style={styles.avatarImage}
+                            />
+                        ) : (
+                            <LinearGradient
+                                colors={[colors.primary + '30', colors.secondary + '20']}
+                                style={styles.avatarLarge}
+                            >
+                                <Text style={styles.avatarEmoji}>
+                                    {userData.gender === 'female' ? '👩' : '👨'}
+                                </Text>
+                            </LinearGradient>
+                        )}
+                        {/* Camera/Edit overlay */}
+                        <View style={styles.avatarEditBadge}>
+                            {isUploading ? (
+                                <ActivityIndicator size="small" color={colors.surface} />
+                            ) : (
+                                <Text style={styles.avatarEditIcon}>📷</Text>
+                            )}
+                        </View>
+                        {/* Upload progress overlay */}
+                        {isUploading && (
+                            <View style={styles.uploadProgressOverlay}>
+                                <Text style={styles.uploadProgressText}>
+                                    {Math.round(uploadProgress)}%
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
                     <Text style={styles.profileName}>{userData.name || 'You'}</Text>
                     <Text style={styles.profileEmail}>{userData.email || ''}</Text>
 
@@ -249,6 +361,49 @@ const styles = StyleSheet.create({
     },
     avatarEmoji: {
         fontSize: 48,
+    },
+    avatarContainer: {
+        position: 'relative',
+        marginBottom: spacing.md,
+    },
+    avatarImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+    },
+    avatarEditBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: colors.surface,
+    },
+    avatarEditIcon: {
+        fontSize: 14,
+    },
+    uploadProgressOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    uploadProgressText: {
+        color: colors.surface,
+        fontSize: 16,
+        fontWeight: '700',
     },
     profileName: {
         fontSize: 24,
