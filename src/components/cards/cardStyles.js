@@ -2,7 +2,7 @@ import { StyleSheet, Dimensions } from 'react-native';
 import { colors, spacing, borderRadius } from '../../theme';
 
 const { width } = Dimensions.get('window');
-export const AVATAR_SIZE = 70;
+export const AVATAR_SIZE = 85;
 
 /**
  * Shared styles for card components
@@ -22,9 +22,9 @@ export const cardStyles = StyleSheet.create({
     counterText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
 
     // Question area
-    questionSection: { flex: 1, justifyContent: 'center', paddingVertical: spacing.lg },
+    questionSection: { flex: 1, justifyContent: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.md },
     prefixText: { fontSize: 16, fontWeight: '600', marginBottom: spacing.xs, textAlign: 'center' },
-    questionText: { fontSize: 22, fontWeight: '700', textAlign: 'center', lineHeight: 32, color: colors.text },
+    questionText: { fontSize: 24, fontWeight: '800', textAlign: 'center', lineHeight: 32, color: '#FFFFFF', fontStyle: 'italic' },
 
     // Buttons
     submitBtn: {
@@ -89,6 +89,7 @@ export const cardStyles = StyleSheet.create({
     avatarGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
     avatarInner: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     avatarEmoji: { fontSize: 30 },
+    avatarImage: { width: '100%', height: '100%', borderRadius: AVATAR_SIZE / 2 },
     avatarName: { fontSize: 14, fontWeight: '700', color: colors.text, marginTop: spacing.xs },
     selectedIndicator: {
         position: 'absolute',
@@ -103,7 +104,7 @@ export const cardStyles = StyleSheet.create({
         borderColor: colors.surface,
     },
     vsContainer: { width: 40, alignItems: 'center', marginHorizontal: spacing.sm },
-    vsText: { fontSize: 14, fontWeight: '800', color: colors.textMuted },
+    vsText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
 
     // Never Have I Ever styles
     choicesRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
@@ -285,5 +286,65 @@ export const cardStyles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
         color: colors.textSecondary,
+    },
+
+    // New DeepCard specific styles
+    deepCardContent: {
+        flex: 1,
+        padding: spacing.xl,
+        justifyContent: 'space-between',
+    },
+    deepTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    deepCategoryBadge: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+    },
+    deepCategoryText: {
+        color: '#FFFFFF',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    deepShareButton: {
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    deepInputContainer: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 24,
+        padding: spacing.lg,
+        minHeight: 120,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    deepInput: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: '500',
+        textAlignVertical: 'top',
+        flex: 1,
+    },
+    deepSubmitButton: {
+        position: 'absolute',
+        bottom: 12,
+        right: 12,
+        backgroundColor: '#FFFFFF',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
     },
 });

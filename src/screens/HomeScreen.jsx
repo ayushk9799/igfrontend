@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -6,13 +6,16 @@ import {
     TouchableOpacity,
     ScrollView,
     Image,
+    Animated,
+    Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, typography, spacing } from '../theme';
 import GradientBackground from '../components/GradientBackground';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
-import { SplashLeft, SplashRight } from '../components/SplashSvg';
+import { API_BASE } from '../constants/Api';
+import { TOPIC_CATEGORIES } from '../constants/Categories';
 
 const HomeScreen = ({
     partnerName = 'Partner',
@@ -24,6 +27,10 @@ const HomeScreen = ({
     partnerScribble = null,
     pendingInvite = null,
     pendingPuzzle = null,
+    pendingTicTacToe = null,
+    activeTicTacToe = null,
+    pendingWordle = null,
+    activeWordle = null,
     // Daily Challenge props - NEW
     todayChallenge = null,
     challengeProgress = { completedCount: 0, totalTasks: 0, isComplete: false },
@@ -34,14 +41,47 @@ const HomeScreen = ({
     onSettingsPress,
     onJigsawCreate,
     onJigsawPlay,
+    onTicTacToePress,
+    onWordlePress,
     onRefreshPuzzle,
 }) => {
+    // Topic-based categories - only questions come from backend
+    const categories = Object.values(TOPIC_CATEGORIES);
+
     // Refresh puzzles on mount
     useEffect(() => {
         if (onRefreshPuzzle) {
             onRefreshPuzzle();
         }
     }, []);
+
+    // Blinking dot animation for Tic Tac Toe "Your turn" indicator
+    const blinkAnim = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        if (pendingTicTacToe || pendingWordle) {
+            // Create blinking animation for the dot
+            const blinkAnimation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(blinkAnim, {
+                        toValue: 0.2,
+                        duration: 600,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(blinkAnim, {
+                        toValue: 1,
+                        duration: 600,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            blinkAnimation.start();
+
+            return () => blinkAnimation.stop();
+        } else {
+            blinkAnim.setValue(1);
+        }
+    }, [pendingTicTacToe, pendingWordle, blinkAnim]);
     // Get current time of day
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -121,76 +161,29 @@ const HomeScreen = ({
                         </TouchableOpacity>
                     </View>
 
-                    {/* Greeting */}
+                    {/* Names Section */}
                     <View style={styles.greetingSection}>
-                        <Text style={styles.greeting}>
-                            {getGreeting()},{'\n'}
-                            <Text style={styles.names}>
-                                {hasPartner ? `${getUserName()} & ${partnerName}.` : `${getUserName()}.`}
-                            </Text>
+                        <Text style={styles.names}>
+                            {hasPartner ? `${getUserName()} & ${partnerName}.` : `${getUserName()}.`}
                         </Text>
                     </View>
 
                     {/* Mood Blobs Section */}
                     {hasPartner && (
                         <View style={styles.moodSection}>
-                            {/* Blob Container - Paint Splatter */}
-                            <View style={styles.blobContainer}>
-                                {/* Left Splash - Your Mood */}
-                                <View style={styles.splashLeft}>
-                                    <SplashLeft
-                                        color={yourMoodColor}
-                                        width={180}
-                                        height={200}
-                                        opacity={0.75}
-                                    />
+                            {/* Mood Card */}
+                            <View style={styles.moodCard}>
+                                {/* Partner's large emoji in the center */}
+                                <View style={[styles.partnerEmojiContainer, { borderColor: partnerMoodColor }]}>
+                                    <Text style={styles.partnerEmojiLarge}>{partnerMood?.emoji || '😊'}</Text>
                                 </View>
 
-                                {/* Right Splash - Partner Mood */}
-                                <View style={styles.splashRight}>
-                                    <SplashRight
-                                        color={partnerMoodColor}
-                                        width={180}
-                                        height={200}
-                                        opacity={0.75}
-                                    />
+                                {/* Your emoji badge on the boundary of partner's circle */}
+                                <View style={[styles.yourEmojiBadge, { borderColor: yourMoodColor }]}>
+                                    <Text style={styles.yourEmojiSmall}>{yourMood?.emoji || '😊'}</Text>
                                 </View>
-
-                                {/* Center Merge Effect */}
-
-
-                                {/* Your Avatar */}
-                                <View style={[styles.avatar, styles.yourAvatar, { backgroundColor: "white", borderColor: yourMoodColor }]}>
-                                    <Text style={styles.avatarEmoji}>{yourMood?.emoji || '😊'}</Text>
-                                </View>
-
-                                {/* Partner Avatar */}
-                                <View style={[styles.avatar, styles.partnerAvatar, { backgroundColor: "white", borderColor: partnerMoodColor }]}>
-                                    <Text style={styles.avatarEmoji}>{partnerMood?.emoji || '😊'}</Text>
-                                </View>
-
-                                {/* Blob Labels */}
-                                <Text style={[styles.blobLabel, styles.yourLabel]}>You</Text>
-                                <Text style={[styles.blobLabel, styles.partnerLabel]}>
-                                    {partnerName}
-                                </Text>
                             </View>
 
-
-                            {/* Mood Description */}
-                            <Text style={styles.moodDescription}>
-                                You are feeling{' '}
-                                <Text style={styles.moodName}>
-                                    {yourMood?.label || 'Happy'}
-                                </Text>
-                                .
-                                {'\n'}
-                                {partnerName} is feeling{' '}
-                                <Text style={styles.moodName}>
-                                    {partnerMood?.label || 'Happy'}
-                                </Text>
-                                .
-                            </Text>
 
                             {/* Update Mood Button */}
                             <TouchableOpacity
@@ -208,7 +201,7 @@ const HomeScreen = ({
                         {/* Today's Question Card */}
                         <TouchableOpacity
                             style={[styles.card, styles.questionCard]}
-                            onPress={onQuestionPress}
+                            onPress={() => onQuestionPress?.()}
                             activeOpacity={0.9}
                         >
                             {/* Elegant Gradient Background */}
@@ -312,10 +305,11 @@ const HomeScreen = ({
                         </TouchableOpacity>
                     </View>
 
+                    {/* Duels Section - Games like Jigsaw, Tic Tac Toe, Wordle */}
                     {hasPartner && (
                         <View style={styles.arcadeSection}>
                             <View style={styles.arcadeHeader}>
-                                <Text style={styles.arcadeSectionTitle}>Arcade</Text>
+                                <Text style={styles.arcadeSectionTitle}>Duels</Text>
                                 <TouchableOpacity style={styles.allGamesButton}>
                                     <Text style={styles.allGamesText}>All games</Text>
                                     <Text style={styles.allGamesArrow}>›</Text>
@@ -334,19 +328,6 @@ const HomeScreen = ({
                                     onPress={pendingPuzzle ? () => onJigsawPlay?.(pendingPuzzle) : onJigsawCreate}
                                     activeOpacity={0.9}
                                 >
-                                    {/* Status Badges */}
-                                    <View style={styles.arcadeBadgeRow}>
-                                        {pendingPuzzle ? (
-                                            <View style={styles.arcadeBadgePending}>
-                                                <Text style={styles.arcadeBadgePendingText}>🧩 Solve</Text>
-                                            </View>
-                                        ) : (
-                                            <View style={styles.arcadeBadgeNew}>
-                                                <Text style={styles.arcadeBadgeNewText}>New</Text>
-                                            </View>
-                                        )}
-                                    </View>
-
                                     {/* Game Icon */}
                                     <View style={styles.arcadeIconContainer}>
                                         <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
@@ -360,40 +341,76 @@ const HomeScreen = ({
                                     {/* Game Info */}
                                     <Text style={styles.arcadeGameLabel}>jigsaw puzzle</Text>
                                     <Text style={styles.arcadeGameTitle}>
-                                        {pendingPuzzle ? 'Puzzle waiting!' : 'Create & share.'}
+                                        {pendingPuzzle ? 'Puzzle waiting!' : 'Create \n & share.'}
                                     </Text>
                                 </TouchableOpacity>
 
-                                {/* Coming Soon Card - Teal */}
+                                {/* Tic Tac Toe Card - Teal */}
                                 <TouchableOpacity
-                                    style={[styles.arcadeCard, styles.arcadeCardTeal]}
+                                    style={[
+                                        styles.arcadeCard,
+                                        styles.arcadeCardTeal,
+                                    ]}
+                                    onPress={() => onTicTacToePress?.(pendingTicTacToe || activeTicTacToe)}
                                     activeOpacity={0.9}
-                                    disabled={true}
                                 >
-                                    {/* Status Badges */}
-                                    <View style={styles.arcadeBadgeRow}>
-                                        <View style={styles.arcadeBadgeLocked}>
-                                            <Text style={styles.arcadeBadgeLockedText}>🔒</Text>
-                                        </View>
-                                        <View style={styles.arcadeBadgeSoon}>
-                                            <Text style={styles.arcadeBadgeSoonText}>Soon</Text>
-                                        </View>
-                                    </View>
+                                    {/* Blinking "Your Turn" Indicator Dot */}
+                                    {pendingTicTacToe && (
+                                        <Animated.View
+                                            style={[
+                                                styles.blinkingDot,
+                                                { opacity: blinkAnim },
+                                            ]}
+                                        />
+                                    )}
 
-                                    {/* Game Icon */}
+                                    {/* Game Icon - Tic Tac Toe grid */}
                                     <View style={styles.arcadeIconContainer}>
                                         <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                            {/* Grid lines */}
                                             <Path
-                                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                                                fill="#FFFFFF"
+                                                d="M8 4v16M16 4v16M4 8h16M4 16h16"
+                                                stroke="#FFFFFF"
+                                                strokeWidth={2}
+                                                strokeLinecap="round"
                                             />
                                         </Svg>
                                     </View>
 
                                     {/* Game Info */}
-                                    <Text style={styles.arcadeGameLabel}>perfect pair</Text>
+                                    <Text style={styles.arcadeGameLabel}>tic tac toe</Text>
                                     <Text style={styles.arcadeGameTitle}>
-                                        Find the best{'\n'}word path.
+                                        {pendingTicTacToe ? 'Your turn!' : activeTicTacToe ? `${partnerName}'s turn` : 'Challenge partner.'}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* Wordle Card - Green */}
+                                <TouchableOpacity
+                                    style={[
+                                        styles.arcadeCard,
+                                        styles.arcadeCardGreen,
+                                    ]}
+                                    onPress={() => onWordlePress?.(pendingWordle || activeWordle)}
+                                    activeOpacity={0.9}
+                                >
+                                    {/* Blinking indicator for pending */}
+                                    {pendingWordle && (
+                                        <Animated.View
+                                            style={[
+                                                styles.blinkingDot,
+                                                { opacity: blinkAnim },
+                                            ]}
+                                        />
+                                    )}
+
+                                    <View style={styles.arcadeIconContainer}>
+                                        <Text style={styles.wordleIconText}>W</Text>
+                                    </View>
+
+                                    {/* Game Info */}
+                                    <Text style={styles.arcadeGameLabel}>wordle</Text>
+                                    <Text style={styles.arcadeGameTitle}>
+                                        {pendingWordle ? 'Guess the word!' : activeWordle ? `${partnerName}'s turn` : 'Set a word.'}
                                     </Text>
                                 </TouchableOpacity>
 
@@ -403,16 +420,6 @@ const HomeScreen = ({
                                     activeOpacity={0.9}
                                     disabled={true}
                                 >
-                                    {/* Status Badges */}
-                                    <View style={styles.arcadeBadgeRow}>
-                                        <View style={styles.arcadeBadgeLocked}>
-                                            <Text style={styles.arcadeBadgeLockedText}>🔒</Text>
-                                        </View>
-                                        <View style={styles.arcadeBadgeSoon}>
-                                            <Text style={styles.arcadeBadgeSoonText}>Soon</Text>
-                                        </View>
-                                    </View>
-
                                     {/* Game Icon */}
                                     <View style={styles.arcadeIconContainer}>
                                         <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
@@ -435,6 +442,173 @@ const HomeScreen = ({
                             </ScrollView>
                         </View>
                     )}
+
+                    {/* Topic Question Sections - Each topic has its own arcade-style section */}
+                    {hasPartner && categories.map((cat) => (
+                        <View key={cat._id || cat.id} style={styles.arcadeSection}>
+                            {/* Topic Header */}
+                            <View style={styles.arcadeHeader}>
+                                <View style={styles.topicTitleRow}>
+                                    <Text style={styles.arcadeSectionTitle}>{cat.title}</Text>
+                                </View>
+                                <TouchableOpacity style={styles.allGamesButton} onPress={() => onQuestionPress?.(cat)}>
+                                    <Text style={styles.allGamesText}>Play all</Text>
+                                    <Text style={styles.allGamesArrow}>›</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Horizontal Scrollable Cards - matching Duels style */}
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.arcadeScrollContent}
+                            >
+                                {/* Main Topic Card */}
+                                <TouchableOpacity
+                                    style={[styles.topicQuestionCard, { backgroundColor: cat.color || colors.primary }]}
+                                    onPress={() => onQuestionPress?.(cat)}
+                                    activeOpacity={0.9}
+                                >
+                                    {/* Topic Icon */}
+                                    <View style={styles.arcadeIconContainer}>
+                                        {cat.id === 'future' && (
+                                            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                                <Circle cx="12" cy="12" r="6" fill="#FFFFFF" opacity={0.9} />
+                                                <Circle cx="12" cy="12" r="9" stroke="#FFFFFF" strokeWidth={2} opacity={0.5} />
+                                                <Path d="M12 6v1M12 17v1M6 12h1M17 12h1" stroke="#FFFFFF" strokeWidth={1.5} strokeLinecap="round" />
+                                                <Circle cx="10" cy="10" r="1.5" fill="#FFFFFF" opacity={0.6} />
+                                            </Svg>
+                                        )}
+                                        {cat.id === 'money' && (
+                                            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                                <Circle cx="12" cy="12" r="10" stroke="#FFFFFF" strokeWidth={2} />
+                                                <Path d="M12 6v12M9 9c0-1.1.9-2 2-2h2c1.1 0 2 .9 2 2s-.9 2-2 2h-2c-1.1 0-2 .9-2 2s.9 2 2 2h2c1.1 0 2-.9 2-2" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" />
+                                            </Svg>
+                                        )}
+                                        {cat.id === 'hotspicy' && (
+                                            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                                <Path
+                                                    d="M12 2c.3 3.5-1.5 5.5-3 7.5-1.5 2-2 4-2 5.5 0 3.5 2.5 6 6 6s6-2.5 6-6c0-4-3.5-7-4-10.5-.5 2.5-1 3.5-3 2.5z"
+                                                    fill="#FFFFFF"
+                                                />
+                                                <Path
+                                                    d="M12 22c-2 0-3.5-1.5-3.5-3.5 0-2 1.5-3 2.5-4 .5.5 1 1 1 2 .5-1.5 1-2.5 1-4 1 1.5 2.5 3 2.5 5.5 0 2-1.5 4-3.5 4z"
+                                                    fill="#FFFFFF"
+                                                    opacity={0.6}
+                                                />
+                                            </Svg>
+                                        )}
+                                        {cat.id === 'political' && (
+                                            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                                <Path d="M19 5l-7 4V5l-7 4v6l7 4v-4l7 4V5z" fill="#FFFFFF" />
+                                                <Rect x="3" y="9" width="3" height="6" rx="1" fill="#FFFFFF" opacity={0.8} />
+                                            </Svg>
+                                        )}
+                                        {cat.id === 'fitness' && (
+                                            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                                <Path d="M6 12h12" stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" />
+                                                <Rect x="2" y="8" width="4" height="8" rx="1" fill="#FFFFFF" />
+                                                <Rect x="18" y="8" width="4" height="8" rx="1" fill="#FFFFFF" />
+                                                <Rect x="4" y="6" width="2" height="12" rx="1" fill="#FFFFFF" opacity={0.7} />
+                                                <Rect x="18" y="6" width="2" height="12" rx="1" fill="#FFFFFF" opacity={0.7} />
+                                            </Svg>
+                                        )}
+                                        {cat.id === 'travel' && (
+                                            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                                <Path
+                                                    d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"
+                                                    fill="#FFFFFF"
+                                                />
+                                            </Svg>
+                                        )}
+                                        {cat.id === 'family' && (
+                                            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                                <Path
+                                                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                                                    fill="#FFFFFF"
+                                                />
+                                                <Circle cx="12" cy="10" r="2" fill="#FFFFFF" opacity={0.5} />
+                                            </Svg>
+                                        )}
+                                        {/* Fallback icon */}
+                                        {!['future', 'money', 'hotspicy', 'political', 'fitness', 'travel', 'family'].includes(cat.id) && (
+                                            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                                <Path
+                                                    d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
+                                                    fill="#FFFFFF"
+                                                />
+                                            </Svg>
+                                        )}
+                                    </View>
+
+                                    {/* Chilli image on right side for Hot & Spicy */}
+                                    {cat.id === 'hotspicy' && (
+                                        <Image
+                                            source={require('../../assets/chilli.png')}
+                                            style={styles.chilliImage}
+                                        />
+                                    )}
+
+                                    {/* Coins image on right side for Money */}
+                                    {cat.id === 'money' && (
+                                        <Image
+                                            source={require('../../assets/coins.png')}
+                                            style={styles.coinsImage}
+                                        />
+                                    )}
+
+                                    {/* Couple cutout image on right side for Future */}
+                                    {cat.id === 'future' && (
+                                        <Image
+                                            source={require('../../assets/couplecutout.png')}
+                                            style={styles.coupleCutoutImage}
+                                        />
+                                    )}
+
+                                    {/* Arrow SVG on right side for Political */}
+                                    {cat.id === 'political' && (
+                                        <View style={styles.politicalArrowContainer}>
+                                            <Svg width={120} height={120} viewBox="0 0 103.25286 104.92257" fill="none">
+                                                <Path
+                                                    d="M36.77 103.92l32.981-0.57435c-5.6142-39.509-1.4266-53.362 17.893-71.811l11.512 8.8387 3.1033-33.811-35.053 7.6966 7.8013 7.5953c-14.271 13.939-19.147 25.178-21.823 35.657-5.0418-15.582-15.332-26.701-25.578-34.315l9.1498-8.9947-32.569-8.4334 0.12983 4.9019 0.87533 33.05 11.094-10.56c27.286 25.007 20.854 36.016 20.485 70.76z"
+                                                    fill="rgba(255, 255, 255, 0.25)"
+                                                />
+                                            </Svg>
+                                        </View>
+                                    )}
+
+                                    {/* Couple running image on right side for Fitness */}
+                                    {cat.id === 'fitness' && (
+                                        <Image
+                                            source={require('../../assets/couplerunning.png')}
+                                            style={styles.fitnessImage}
+                                        />
+                                    )}
+
+                                    {/* Travel image on right side for Travel */}
+                                    {cat.id === 'travel' && (
+                                        <Image
+                                            source={require('../../assets/travel.png')}
+                                            style={styles.travelImage}
+                                        />
+                                    )}
+
+                                    {/* Family image on right side for Family */}
+                                    {cat.id === 'family' && (
+                                        <Image
+                                            source={require('../../assets/couplekids5.png')}
+                                            style={styles.familyImage}
+                                        />
+                                    )}
+
+                                    {/* Card Info */}
+                                    <Text style={styles.arcadeGameTitle} numberOfLines={2}>
+                                        {cat.subtitle || cat.title}
+                                    </Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </View>
+                    ))}
 
                     {/* No Partner State */}
                     {!hasPartner && (
@@ -515,6 +689,7 @@ const styles = StyleSheet.create({
         color: colors.text,
         letterSpacing: -0.5,
         fontFamily: 'System',
+        textAlign: 'center',
     },
     moodSection: {
         alignItems: 'center',
@@ -522,90 +697,62 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginBottom: 32,
     },
-    blobContainer: {
+    // Mood Card Styles
+    moodCard: {
         width: '100%',
-        height: 200,
+        backgroundColor: 'transparent',
+        padding: 0,
         alignItems: 'center',
-
         justifyContent: 'center',
         position: 'relative',
-        overflow: 'visible',
+        minHeight: 140,
     },
-    splashLeft: {
+    partnerEmojiContainer: {
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        backgroundColor: 'white',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    partnerEmojiLarge: {
+        fontSize: 130,
+    },
+    partnerNameLabel: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: colors.text,
+        marginTop: 12,
+        opacity: 0.9,
+    },
+    yourEmojiBadge: {
         position: 'absolute',
-
-        left: 10,
-        top: -5,
-    },
-    splashRight: {
-        position: 'absolute',
-        right: 10,
-        top: -5,
-    },
-    centerMerge: {
-        position: 'absolute',
-        left: '50%',
-        top: '50%',
-        marginLeft: -40,
-        marginTop: -40,
-    },
-    combinedBlobs: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-    },
-    yourBlob: {
-        position: 'absolute',
-        left: '5%',
-        top: 20,
-    },
-    partnerBlob: {
-        position: 'absolute',
-        right: '5%',
-        top: 20,
-    },
-    avatar: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
+        // Position on the bottom-right edge of partner's circle (180x180, radius 90)
+        // Offset to place center of emoji badge on the circle's edge
+        bottom: 5,
+        right: 35,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: 'white',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 3,
         borderColor: colors.surface,
-        position: 'absolute',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 5,
     },
-    yourAvatar: {
-        left: 75,
-        top: 105,
-        backgroundColor: '#8AB7A7',
-    },
-    partnerAvatar: {
-        right: 75,
-        top: 105,
-    },
-    avatarEmoji: {
+    yourEmojiSmall: {
         fontSize: 36,
-    },
-    blobLabel: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: colors.text,
-        position: 'absolute',
-        opacity: 0.9,
-    },
-    yourLabel: {
-        left: 50,
-        top: 165,
-    },
-    partnerLabel: {
-        right: 46,
-        top: 165,
     },
     moodDescription: {
         fontSize: 15,
@@ -624,6 +771,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         paddingVertical: 12,
         borderRadius: 24,
+        marginTop: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.3,
@@ -863,6 +1011,89 @@ const styles = StyleSheet.create({
         color: '#155724',
         fontWeight: '700',
     },
+    // Topic Section Styles (for individual topic headers and cards)
+    topicSection: {
+        marginBottom: 20,
+    },
+    topicHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    topicTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    topicEmoji: {
+        fontSize: 22,
+    },
+    topicSectionTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text,
+    },
+    topicPlayButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+    },
+    topicPlayText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    topicPlayArrow: {
+        fontSize: 16,
+        color: '#FFFFFF',
+        marginLeft: 4,
+        fontWeight: '600',
+    },
+    topicCard: {
+        width: '100%',
+        borderRadius: 20,
+        padding: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    topicIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    topicCardInfo: {
+        flex: 1,
+    },
+    topicCardSubtitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: 'rgba(255, 255, 255, 0.85)',
+        marginBottom: 4,
+    },
+    topicCardDescription: {
+        fontSize: 13,
+        color: 'rgba(255, 255, 255, 0.7)',
+        lineHeight: 18,
+        marginBottom: 8,
+    },
+    topicCardCount: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
     // Arcade Section Styles
     arcadeSection: {
         marginBottom: 24,
@@ -906,6 +1137,89 @@ const styles = StyleSheet.create({
         padding: 14,
         justifyContent: 'space-between',
     },
+    topicQuestionCard: {
+        width: Dimensions.get('window').width - 40,
+        height: 180,
+        borderRadius: 20,
+        padding: 14,
+        justifyContent: 'space-between',
+    },
+    chilliImage: {
+        position: 'absolute',
+        right: 0,
+        bottom: -20,
+        width: 180,
+        height: 180,
+        resizeMode: 'contain',
+        opacity: 0.9,
+    },
+    coinsImage: {
+        position: 'absolute',
+        right: 0,
+        bottom: -20,
+        width: 180,
+        height: 180,
+        resizeMode: 'contain',
+        opacity: 0.9,
+    },
+    coupleCutoutImage: {
+        position: 'absolute',
+        right: -15,
+        bottom: -10,
+        width: 180,
+        height: 180,
+        resizeMode: 'contain',
+        opacity: 0.9,
+    },
+    fitnessImage: {
+        position: 'absolute',
+        right: 0,
+        bottom: -20,
+        width: 180,
+        height: 180,
+        resizeMode: 'contain',
+        opacity: 0.9,
+    },
+    travelImage: {
+        position: 'absolute',
+        right: 0,
+        bottom: -20,
+        width: 180,
+        height: 180,
+        resizeMode: 'contain',
+        opacity: 0.9,
+    },
+    familyImage: {
+        position: 'absolute',
+        right: 0,
+        bottom: -20,
+        width: 180,
+        height: 180,
+        resizeMode: 'contain',
+        opacity: 0.9,
+    },
+    politicalArrowContainer: {
+        position: 'absolute',
+        right: 10,
+        bottom: 19,
+        width: 120,
+        height: 120,
+        opacity: 0.9,
+    },
+    blinkingDot: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        shadowColor: '#FFFFFF',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+        elevation: 3,
+    },
     arcadeCardOrange: {
         backgroundColor: '#D4714A', // Muted coral-orange
     },
@@ -914,6 +1228,24 @@ const styles = StyleSheet.create({
     },
     arcadeCardPurple: {
         backgroundColor: '#7B68A6', // Muted purple
+    },
+    arcadeCardGreen: {
+        backgroundColor: '#6AAA64', // Wordle green
+    },
+    wordleIconText: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 2,
+    },
+    arcadeCardYourTurn: {
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        shadowColor: '#3A9B8C',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 12,
+        elevation: 8,
     },
     arcadeBadgeRow: {
         flexDirection: 'row',
@@ -926,6 +1258,17 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
     arcadeBadgeNewText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    arcadeBadgeWaiting: {
+        backgroundColor: 'rgba(255, 193, 7, 0.9)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+    },
+    arcadeBadgeWaitingText: {
         fontSize: 11,
         fontWeight: '700',
         color: '#FFFFFF',

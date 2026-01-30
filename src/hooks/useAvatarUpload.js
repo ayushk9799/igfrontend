@@ -1,7 +1,10 @@
 // useAvatarUpload - Custom hook for managing avatar upload to S3
 import { useState, useCallback } from 'react';
+import { useDispatch } from 'react-redux';
 import { API_BASE } from '../constants/Api';
 import { getUser, updateUser } from '../utils/authStorage';
+import { updateUser as updateUserRedux } from '../store/slices/userSlice';
+import { createThumbnail } from '../utils/imageCompression';
 
 /**
  * Custom hook for uploading user avatar to S3
@@ -10,8 +13,9 @@ import { getUser, updateUser } from '../utils/authStorage';
 export const useAvatarUpload = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState(null);
+    const dispatch = useDispatch();
 
-  
+
     const uploadAvatar = useCallback(async (imageAsset) => {
         console.log('📸 [AVATAR] Starting upload...');
         console.log('📸 [AVATAR] Image asset:', JSON.stringify(imageAsset, null, 2));
@@ -110,13 +114,19 @@ export const useAvatarUpload = () => {
             }
             console.log('📸 [AVATAR] ✅ Profile updated');
 
-            // Step 4: Update local storage
-            console.log('📸 [AVATAR] Step 4: Updating local storage...');
-            updateUser({ avatar: publicUrl });
+            // Step 4: Create compressed thumbnail for local storage
+            console.log('📸 [AVATAR] Step 4: Creating compressed thumbnail...');
+            const thumbnail = await createThumbnail(uri);
+            console.log('📸 [AVATAR] ✅ Thumbnail created:', thumbnail ? 'success' : 'failed');
+
+            // Step 5: Update local storage with URL and thumbnail
+            console.log('📸 [AVATAR] Step 5: Updating local storage...');
+            updateUser({ avatar: publicUrl, avatarThumbnail: thumbnail });
+            dispatch(updateUserRedux({ avatar: publicUrl, avatarThumbnail: thumbnail }));
             console.log('📸 [AVATAR] ✅ Upload complete!');
 
             setIsUploading(false);
-            return { success: true, avatarUrl: publicUrl };
+            return { success: true, avatarUrl: publicUrl, avatarThumbnail: thumbnail };
 
         } catch (err) {
             console.error('📸 [AVATAR] ❌ Avatar upload error:', err);

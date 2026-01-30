@@ -26,11 +26,19 @@ const categoryConfig = {
     gratitude: { color: '#30D158', emoji: '🙏', gradient: ['#30D15830', '#30D15810'] },
     fun: { color: '#FFD60A', emoji: '🎉', gradient: ['#FFD60A30', '#FFD60A10'] },
     deep: { color: '#FF2D78', emoji: '💭', gradient: ['#FF2D7830', '#7C3AED20'] },
-    // New category types
+    // Old category types
     comparison: { color: '#FF6B9D', emoji: '⚖️', gradient: ['#FF6B9D30', '#FF6B9D10'] },
     knowledge: { color: '#5BB5A6', emoji: '🧠', gradient: ['#5BB5A630', '#5BB5A610'] },
     agreement: { color: '#BF5AF2', emoji: '🎯', gradient: ['#BF5AF230', '#BF5AF210'] },
     neverhaveiever: { color: '#F4A261', emoji: '🤫', gradient: ['#F4A26130', '#F4A26110'] },
+    // New topic-based categories
+    future: { color: '#7C3AED', emoji: '🔮', gradient: ['#7C3AED30', '#7C3AED10'] },
+    money: { color: '#F59E0B', emoji: '💰', gradient: ['#F59E0B30', '#F59E0B10'] },
+    hotspicy: { color: '#EF4444', emoji: '🔥', gradient: ['#EF444430', '#EF444410'] },
+    political: { color: '#3B82F6', emoji: '🗳️', gradient: ['#3B82F630', '#3B82F610'] },
+    fitness: { color: '#10B981', emoji: '💪', gradient: ['#10B98130', '#10B98110'] },
+    travel: { color: '#0EA5E9', emoji: '✈️', gradient: ['#0EA5E930', '#0EA5E910'] },
+    family: { color: '#EC4899', emoji: '👨‍👩‍👧‍👦', gradient: ['#EC489930', '#EC489910'] },
 };
 
 // Typewriter Text Component
@@ -188,7 +196,9 @@ export const QuestionsScreen = ({
     };
 
     const canViewPartnerAnswer = !isLocked && !!yourAnswer;
-    const config = categoryConfig[currentQuestion.category];
+    // Support both old 'category' and new 'topic' fields
+    const categoryKey = currentQuestion.category || currentQuestion.topic || 'deep';
+    const config = categoryConfig[categoryKey] || { color: '#7C3AED', emoji: '💬', gradient: ['#7C3AED30', '#7C3AED10'] };
 
     return (
         <GradientBackground variant="warm">

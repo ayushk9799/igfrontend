@@ -63,12 +63,13 @@ export const AccountScreen = ({
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.9)).current;
-    const [localAvatar, setLocalAvatar] = useState(userData.avatar || null);
+    const [localAvatar, setLocalAvatar] = useState(userData.avatarThumbnail || userData.avatar || null);
     const { isUploading, uploadProgress, error, uploadAvatar, clearError } = useAvatarUpload();
 
     useEffect(() => {
-        setLocalAvatar(userData.avatar || null);
-    }, [userData.avatar]);
+        // Prefer thumbnail for fast loading, fallback to full avatar URL
+        setLocalAvatar(userData.avatarThumbnail || userData.avatar || null);
+    }, [userData.avatarThumbnail, userData.avatar]);
 
     useEffect(() => {
         Animated.parallel([
@@ -150,7 +151,8 @@ export const AccountScreen = ({
         const uploadResult = await uploadAvatar(asset);
 
         if (uploadResult.success) {
-            setLocalAvatar(uploadResult.avatarUrl);
+            // Use thumbnail for instant display, fallback to full URL
+            setLocalAvatar(uploadResult.avatarThumbnail || uploadResult.avatarUrl);
             Alert.alert('Success', 'Your avatar has been updated!');
         } else {
             Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload avatar. Please try again.');

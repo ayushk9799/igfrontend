@@ -47,6 +47,8 @@ const NeverHaveIEverCard = React.memo(({
     totalCards,
     partnerName,
     userName,
+    userAvatar,
+    partnerAvatar,
     onSubmit,
     onSkip,
     isLastCard,
@@ -107,10 +109,9 @@ const NeverHaveIEverCard = React.memo(({
             <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
                 <View style={styles.topRow}>
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
-                        <Text>{config.emoji}</Text>
                         <Text style={{ color: config.color, fontWeight: '600' }}>{config.label}</Text>
                     </View>
-                    <Text style={styles.counterText}>{index + 1}/{totalCards}</Text>
+                    <Text style={[styles.counterText, { color: "white" }]}>{index + 1}/{totalCards}</Text>
                 </View>
 
                 <View style={styles.questionSection}>

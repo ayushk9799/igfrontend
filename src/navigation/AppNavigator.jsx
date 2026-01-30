@@ -1,6 +1,7 @@
 // Updated Navigator with premium theme and auth persistence
 import React, { useState, useEffect, startTransition } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useSelector, useDispatch } from 'react-redux';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import PartnerCodeScreen from '../screens/PartnerCodeScreen';
@@ -10,26 +11,39 @@ import ScribbleScreen from '../screens/ScribbleScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
 import LikelyToQuestionScreen from '../screens/LikelyToQuestionScreen';
 import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
-import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
+import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
+import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
+
+import { TOPIC_CATEGORIES } from '../constants/Categories';
 import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import JigsawCreateScreen from '../screens/JigsawCreateScreen';
 import JigsawPuzzleScreen from '../screens/JigsawPuzzleScreen';
+import TicTacToeScreen from '../screens/TicTacToeScreen';
+import WordleScreen from '../screens/WordleScreen';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
-import { getUser, saveUser, updateUser, isAuthenticated, isOnboarded, setOnboarded, clearAuth, isPaired, getPartnerCode } from '../utils/authStorage';
+import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { registerFCMToken } from '../utils/pushNotifications';
 import { API_BASE } from '../constants/Api';
+// Redux actions
+import { setUser, updateUser, setPartner, setOnboarded, logout } from '../store/slices/userSlice';
+import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
 
 export const AppNavigator = () => {
+    const dispatch = useDispatch();
+
+    // Redux state
+    const userData = useSelector(state => state.user);
+    const games = useSelector(state => state.games);
+    const { pendingPuzzle, selectedPuzzle, pendingTicTacToe, activeTicTacToe, selectedTicTacToe, pendingWordle, activeWordle, selectedWordle } = games;
+
+    // Local state (navigation & UI only)
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
     const [yourMood, setYourMood] = useState({ emoji: '😊', label: 'Happy' });
-    const [userData, setUserData] = useState({ name: '', age: '', gender: 'male' });
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
-    const [selectedPuzzle, setSelectedPuzzle] = useState(null); // Track selected puzzle
-    const [pendingPuzzle, setPendingPuzzle] = useState(null); // Track pending puzzle to solve
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -41,20 +55,42 @@ export const AppNavigator = () => {
         }
     }, [userMood]);
 
+    // Listen for Wordle socket events for real-time updates
+    useEffect(() => {
+        if (!socket || !userData?.id) return;
+
+        const handleWordleInvite = (data) => {
+            console.log('🎯 Received wordle:invite', data);
+            fetchPendingWordle(userData.id);
+        };
+
+        const handleWordleUpdate = (data) => {
+            console.log('🎯 Received wordle:update', data);
+            fetchPendingWordle(userData.id);
+        };
+
+        socket.on('wordle:invite', handleWordleInvite);
+        socket.on('wordle:update', handleWordleUpdate);
+
+        return () => {
+            socket.off('wordle:invite', handleWordleInvite);
+            socket.off('wordle:update', handleWordleUpdate);
+        };
+    }, [socket, userData?.id]);
+
     // Check auth state on mount
     useEffect(() => {
-        const checkAuthState = () => {
+        const checkAuthState = async () => {
             try {
                 const authenticated = isAuthenticated();
-                const onboarded = isOnboarded();
                 const storedUser = getUser();
 
-                console.log('Auth state:', { authenticated, onboarded, storedUser });
+                console.log('Auth state:', { authenticated, storedUser });
                 console.log(storedUser)
 
                 if (authenticated && storedUser) {
-                    // User is authenticated - check if paired
-                    setUserData(prev => ({ ...prev, ...storedUser }));
+                    // User is authenticated - dispatch to Redux
+                    dispatch(setUser(storedUser));
 
                     // Connect to socket for real-time sync
                     connect();
@@ -62,20 +98,58 @@ export const AppNavigator = () => {
                     // Register FCM token for push notifications
                     registerFCMToken();
 
+                    // IMPORTANT: Fetch latest partner status from server
+                    // This handles the case where another user paired with us
+                    try {
+                        const response = await fetch(`${API_BASE}/api/partner/status/${storedUser.id}`);
+                        const statusData = await response.json();
+                        console.log('Partner status from server:', statusData);
+
+                        if (statusData.success && statusData.isPaired && !storedUser.partnerId) {
+                            // We were paired by someone else! Update local storage and Redux
+                            console.log('User was paired by partner - updating local storage');
+                            const partnerData = {
+                                partnerId: statusData.partner.id,
+                                partnerUsername: statusData.partner.name,
+                                partnerAvatar: statusData.partner.avatar || null,
+                                connectionDate: statusData.connectionDate,
+                            };
+                            updateUserStorage(partnerData);
+                            dispatch(updateUser({ ...partnerData, isOnboarded: true }));
+                            setOnboardedStorage(true);
+                            setCurrentScreen('home');
+                            fetchPendingPuzzle(storedUser.id);
+                            fetchPendingTicTacToe(storedUser.id);
+                            fetchPendingWordle(storedUser.id);
+                            return; // Exit early - we're now on home
+                        }
+                    } catch (err) {
+                        console.log('Could not fetch partner status:', err.message);
+                        // Continue with local data if server check fails
+                    }
+
                     if (storedUser.partnerId) {
                         // Already paired - go to home
-                        setOnboarded(true);
+                        dispatch(setOnboarded(true));
+                        setOnboardedStorage(true);
                         setCurrentScreen('home');
 
-                        // Fetch pending puzzles
+                        // Fetch pending puzzles and TicTacToe games
                         fetchPendingPuzzle(storedUser.id);
+                        fetchPendingTicTacToe(storedUser.id);
+                        fetchPendingWordle(storedUser.id);
                     } else {
                         // Not paired - show partner code screen
                         setCurrentScreen('partnerCode');
                     }
                 } else {
-                    // Not authenticated - show welcome
-                    setCurrentScreen('welcome');
+                    // Not authenticated - check if first launch
+                    // TODO: Remove this override after testing
+                    // if (!hasSeenOnboarding()) {
+                    setCurrentScreen('onboarding'); // Force show for testing
+                    // } else {
+                    //     setCurrentScreen('welcome');
+                    // }
                 }
             } catch (error) {
                 console.error('Error checking auth state:', error);
@@ -84,7 +158,7 @@ export const AppNavigator = () => {
         };
 
         checkAuthState();
-    }, [connect]);
+    }, [connect, dispatch]);
 
     // Fetch pending puzzles for the user
     const fetchPendingPuzzle = async (userId) => {
@@ -95,15 +169,15 @@ export const AppNavigator = () => {
             const data = await response.json();
             console.log('🧩 Puzzle API response:', data);
             if (data.success && data.data.length > 0) {
-                setPendingPuzzle(data.data[0]); // Show first pending puzzle
+                dispatch(setPendingPuzzle(data.data[0])); // Show first pending puzzle
                 console.log('🧩 Pending puzzle found:', data.data[0]);
             } else {
-                setPendingPuzzle(null);
+                dispatch(setPendingPuzzle(null));
                 console.log('🧩 No pending puzzles');
             }
         } catch (err) {
             console.log('🧩 Error fetching puzzles:', err.message);
-            setPendingPuzzle(null);
+            dispatch(setPendingPuzzle(null));
         }
     };
 
@@ -112,11 +186,79 @@ export const AppNavigator = () => {
         startTransition(() => {
             setCurrentScreen(screen);
 
-            // Refresh pending puzzles when navigating to home
+            // Refresh pending puzzles, TicTacToe, and Wordle when navigating to home
             if (screen === 'home' && userData?.id) {
                 fetchPendingPuzzle(userData.id);
+                fetchPendingTicTacToe(userData.id);
+                fetchPendingWordle(userData.id);
             }
         });
+    };
+
+    // Fetch pending TicTacToe games for the user
+    const fetchPendingTicTacToe = async (userId) => {
+        if (!userId) return;
+        try {
+            console.log('🎮 Fetching pending TicTacToe for user:', userId);
+            const response = await fetch(`${API_BASE}/api/tictactoe/pending/${userId}`);
+            const data = await response.json();
+            console.log('🎮 TicTacToe API response:', data);
+            if (data.success && data.data.length > 0) {
+                // Store any active game (for showing "Partner's turn" when applicable)
+                dispatch(setActiveTicTacToe(data.data[0]));
+
+                // Find a game where it's my turn
+                const myTurnGame = data.data.find(game => {
+                    const isCreator = game.creatorId?._id === userId || game.creatorId === userId;
+                    return (isCreator && game.currentTurn === 'creator') || (!isCreator && game.currentTurn === 'partner');
+                });
+                // Only show "Your turn" when it's actually your turn
+                dispatch(setPendingTicTacToe(myTurnGame || null));
+                console.log('🎮 Active TicTacToe:', data.data[0]._id, '| My turn:', myTurnGame ? 'yes' : 'no');
+            } else {
+                dispatch(setActiveTicTacToe(null));
+                dispatch(setPendingTicTacToe(null));
+                console.log('🎮 No pending TicTacToe games');
+            }
+        } catch (err) {
+            console.log('🎮 Error fetching TicTacToe:', err.message);
+            dispatch(setActiveTicTacToe(null));
+            dispatch(setPendingTicTacToe(null));
+        }
+    };
+
+    // Fetch pending Wordle games for the user
+    const fetchPendingWordle = async (userId) => {
+        if (!userId) return;
+        try {
+            console.log('🎯 Fetching pending Wordle for user:', userId);
+            const response = await fetch(`${API_BASE}/api/wordle/pending/${userId}`);
+            const data = await response.json();
+            console.log('🎯 Wordle API response:', data);
+            if (data.success && data.data.length > 0) {
+                // User is the guesser (partner) - show pending
+                dispatch(setPendingWordle(data.data[0]));
+                dispatch(setActiveWordle(null));
+                console.log('🎯 Pending Wordle to guess:', data.data[0]._id);
+            } else {
+                // Check if user has an active game as creator
+                const activeResponse = await fetch(`${API_BASE}/api/wordle/active/${userId}`);
+                const activeData = await activeResponse.json();
+                if (activeData.success && activeData.data && activeData.isCreator) {
+                    dispatch(setActiveWordle(activeData.data));
+                    dispatch(setPendingWordle(null));
+                    console.log('🎯 Active Wordle (waiting for partner):', activeData.data._id);
+                } else {
+                    dispatch(setActiveWordle(null));
+                    dispatch(setPendingWordle(null));
+                    console.log('🎯 No pending Wordle games');
+                }
+            }
+        } catch (err) {
+            console.log('🎯 Error fetching Wordle:', err.message);
+            dispatch(setActiveWordle(null));
+            dispatch(setPendingWordle(null));
+        }
     };
 
     // Handle login - save user and navigate based on pairing status
@@ -125,18 +267,16 @@ export const AppNavigator = () => {
             // Save user to MMKV storage
             saveUser(user);
 
-            // Set initial data from login (name from Google/Apple)
-            setUserData({
-                ...userData,
-                ...user
-            });
+            // Dispatch to Redux
+            dispatch(setUser(user));
 
             // Connect to socket for real-time sync
             connect();
 
             // Check if user is already paired
             if (user.partnerId) {
-                setOnboarded(true);
+                dispatch(setOnboarded(true));
+                setOnboardedStorage(true);
                 setCurrentScreen('home');
             } else {
                 // Not paired - show partner code screen
@@ -149,15 +289,15 @@ export const AppNavigator = () => {
     const handlePartnerPaired = (partner) => {
         startTransition(() => {
             // Update stored user with partner info
-            const updatedUser = updateUser({
+            const partnerData = {
                 partnerId: partner.id,
                 partnerUsername: partner.name,
+                partnerAvatar: partner.avatar || null,
                 connectionDate: partner.connectionDate,
-            });
-            if (updatedUser) {
-                setUserData(prev => ({ ...prev, ...updatedUser }));
-            }
-            setOnboarded(true);
+            };
+            updateUserStorage(partnerData);
+            dispatch(setPartner(partner));
+            setOnboardedStorage(true);
             setCurrentScreen('home');
         });
     };
@@ -165,7 +305,8 @@ export const AppNavigator = () => {
     // Handle skip partner pairing
     const handleSkipPartner = () => {
         startTransition(() => {
-            setOnboarded(true);
+            dispatch(setOnboarded(true));
+            setOnboardedStorage(true);
             setCurrentScreen('home');
         });
     };
@@ -187,12 +328,13 @@ export const AppNavigator = () => {
     // Handle explore app from waiting screen (pending invite)
     const handleExploreApp = (data) => {
         startTransition(() => {
-            setUserData(prev => ({ ...prev, ...data }));
+            dispatch(updateUser(data));
             setPendingInvite({
                 partnerUsername: data.partnerUsername,
                 sentAt: new Date().toISOString(),
             });
-            setOnboarded(true); // Mark as onboarded
+            dispatch(setOnboarded(true));
+            setOnboardedStorage(true);
             setCurrentScreen('home');
         });
     };
@@ -201,7 +343,8 @@ export const AppNavigator = () => {
     const handleInviteAccepted = () => {
         startTransition(() => {
             setPendingInvite(null); // Clear pending invite
-            setOnboarded(true); // Mark as onboarded
+            dispatch(setOnboarded(true));
+            setOnboardedStorage(true);
             setCurrentScreen('home');
         });
     };
@@ -210,8 +353,16 @@ export const AppNavigator = () => {
     const handleLogout = () => {
         startTransition(() => {
             clearAuth();
-            setUserData({ name: '', age: '', gender: 'male' });
+            dispatch(logout());
             setPendingInvite(null);
+            setCurrentScreen('welcome');
+        });
+    };
+
+    // Handle onboarding completion
+    const handleOnboardingComplete = () => {
+        startTransition(() => {
+            setSeenOnboarding(true);
             setCurrentScreen('welcome');
         });
     };
@@ -229,6 +380,13 @@ export const AppNavigator = () => {
         }
 
         switch (currentScreen) {
+            case 'onboarding':
+                return (
+                    <AnimatedOnboardingScreen
+                        onComplete={handleOnboardingComplete}
+                    />
+                );
+
             case 'welcome':
                 return (
                     <WelcomeScreen
@@ -250,6 +408,7 @@ export const AppNavigator = () => {
                     <PartnerCodeScreen
                         partnerCode={userData.partnerCode || getPartnerCode() || 'XXXXXX'}
                         userId={userData.id}
+                        partnerId={userData.partnerId}
                         onPaired={handlePartnerPaired}
                         onSkip={handleSkipPartner}
                     />
@@ -266,25 +425,11 @@ export const AppNavigator = () => {
                 );
 
             case 'home':
-                // Compute partner status from actual user data
-                const hasPartner = !!userData.partnerId;
-                const partnerDisplayName = userData.partnerUsername || null;
-                const daysCount = userData.connectionDate
-                    ? Math.floor((new Date() - new Date(userData.connectionDate)) / (1000 * 60 * 60 * 24))
-                    : 0;
-
                 return (
                     <MainTabNavigator
-                        partnerName={partnerDisplayName}
-                        daysTogether={daysCount}
-                        hasPartner={hasPartner}
                         yourMood={yourMood}
-                        partnerMood={partnerMood}
-                        partnerOnline={partnerOnline}
-                        partnerScribble={partnerScribble}
                         pendingInvite={pendingInvite}
                         onMoodPress={() => navigate('mood')}
-                        onScribblePress={() => navigate('scribble')}
                         onQuestionPress={(category) => {
                             if (category) {
                                 console.log("category", category);
@@ -299,12 +444,18 @@ export const AppNavigator = () => {
                         onFindPartner={() => navigate('partnerCode')}
                         onJigsawCreate={() => navigate('jigsawCreate')}
                         onJigsawPlay={(puzzleData) => {
-                            setSelectedPuzzle(puzzleData);
+                            dispatch(setSelectedPuzzle(puzzleData));
                             navigate('jigsawPuzzle');
                         }}
-                        pendingPuzzle={pendingPuzzle}
                         onRefreshPuzzle={() => fetchPendingPuzzle(userData?.id)}
-                        userData={userData}
+                        onTicTacToePress={(gameData) => {
+                            dispatch(setSelectedTicTacToe(gameData));
+                            navigate('ticTacToe');
+                        }}
+                        onWordlePress={(gameData) => {
+                            dispatch(setSelectedWordle(gameData));
+                            navigate('wordle');
+                        }}
                         onLogout={handleLogout}
                     />
                 );
@@ -331,22 +482,7 @@ export const AppNavigator = () => {
                     />
                 );
 
-            case 'questionCategories':
-                // Calculate streak for question categories
-                const qcDaysCount = userData.connectionDate
-                    ? Math.floor((new Date() - new Date(userData.connectionDate)) / (1000 * 60 * 60 * 24))
-                    : 0;
-                return (
-                    <QuestionCategoriesScreen
-                        partnerName={userData.partnerUsername || 'Your Love'}
-                        streak={qcDaysCount || 1}
-                        onSelectCategory={(category) => {
-                            setSelectedCategory(category);
-                            navigate('questions');
-                        }}
-                        onBack={() => navigate('home')}
-                    />
-                );
+
 
             case 'questions':
                 // Determine back destination based on source
@@ -396,28 +532,40 @@ export const AppNavigator = () => {
                         />
                     );
                 }
+
+                // For topic-based categories (future, money, hotspicy, etc.), use TopicQuestionsScreen
+                const topicConfig = TOPIC_CATEGORIES[selectedCategory?.id];
+                if (topicConfig) {
+                    return (
+                        <TopicQuestionsScreen
+                            topic={selectedCategory.id}
+                            topicTitle={topicConfig.title}
+                            topicEmoji={topicConfig.emoji}
+                            partnerName={userData.partnerUsername || 'Your Love'}
+                            userName={userData.name || 'You'}
+                            userAvatar={userData.avatar}
+                            partnerAvatar={userData.partnerAvatar}
+                            userId={userData.id}
+                            onBack={() => navigate('home')}
+                        />
+                    );
+                }
+
+                // Fallback for unknown categories
                 return (
                     <QuestionsScreen
                         currentQuestion={{
                             id: selectedCategory?.task?._id || '1',
-                            text: selectedCategory?.task?.taskstatement || (
-                                selectedCategory?.id === 'knowledge'
-                                    ? "What's my biggest pet peeve?"
-                                    : selectedCategory?.id === 'agreement'
-                                        ? "What's the perfect vacation destination?"
-                                        : selectedCategory?.id === 'neverhaveiever'
-                                            ? "Never have I ever... forgotten to reply to a message for days"
-                                            : "What's something you've never told me that you appreciate about us?"
-                            ),
+                            text: selectedCategory?.task?.taskstatement || "What's something you appreciate about us?",
                             category: selectedCategory?.id || 'deep',
                         }}
                         partnerName={userData.partnerUsername || null}
                         isLocked={true}
                         onSubmitAnswer={(answer) => {
                             console.log('Submitted answer:', answer);
-                            navigate(backDestination);
+                            navigate('home');
                         }}
-                        onBack={() => navigate(backDestination)}
+                        onBack={() => navigate('home')}
                     />
                 );
 
@@ -426,7 +574,8 @@ export const AppNavigator = () => {
                     <EditProfileScreen
                         userData={userData}
                         onSave={(updatedUser) => {
-                            setUserData(prev => ({ ...prev, ...updatedUser }));
+                            updateUserStorage(updatedUser);
+                            dispatch(updateUser(updatedUser));
                             navigate('home');
                         }}
                         onBack={() => navigate('home')}
@@ -454,6 +603,36 @@ export const AppNavigator = () => {
                             params: {
                                 puzzleId: selectedPuzzle?._id,
                                 puzzleData: selectedPuzzle,
+                            }
+                        }}
+                    />
+                );
+
+            case 'ticTacToe':
+                return (
+                    <TicTacToeScreen
+                        navigation={{ goBack: () => navigate('home') }}
+                        route={{
+                            params: {
+                                gameId: selectedTicTacToe?._id,
+                                gameData: selectedTicTacToe,
+                                partnerId: userData.partnerId,
+                                partnerName: userData.partnerUsername || 'Partner',
+                            }
+                        }}
+                    />
+                );
+
+            case 'wordle':
+                return (
+                    <WordleScreen
+                        navigation={{ goBack: () => navigate('home') }}
+                        route={{
+                            params: {
+                                gameId: selectedWordle?._id,
+                                gameData: selectedWordle,
+                                partnerId: userData.partnerId,
+                                partnerName: userData.partnerUsername || 'Partner',
                             }
                         }}
                     />

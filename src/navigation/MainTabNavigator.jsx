@@ -1,46 +1,48 @@
 // Main Tab Navigator - Home with Bottom Tabs
+// Now uses Redux for global state instead of prop drilling
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
-import QuestionCategoriesScreen from '../screens/QuestionCategoriesScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import DailyChallengeScreen from '../screens/DailyChallengeScreen';
+import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
+import { useSocketContext } from '../context/SocketContext';
+import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether } from '../store/slices/userSlice';
+import { selectGames } from '../store/slices/gamesSlice';
+import { TOPIC_CATEGORIES } from '../constants/Categories';
 
 export const MainTabNavigator = ({
-    // Home screen props
-    partnerName,
-    daysTogether,
-    hasPartner = false,
+    // Only keep essential callbacks that navigate outside this component
     yourMood,
-    partnerMood,
-    partnerOnline = false,
-    partnerScribble = null,
     pendingInvite,
     onMoodPress,
-    onScribblePress,
     onQuestionPress,
-    onFindPartner,
-    // Account props
-    userData,
-    onLogout,
     onEditProfile,
-    // Questions props
-    currentQuestion,
-    yourAnswer,
-    partnerAnswer,
-    onSubmitAnswer,
-    // Scribble props
-    onScribbleSend,
-    // Puzzle props
+    onFindPartner,
     onJigsawCreate,
     onJigsawPlay,
-    pendingPuzzle,
     onRefreshPuzzle,
+    onTicTacToePress,
+    onWordlePress,
+    onLogout,
 }) => {
     const [currentTab, setCurrentTab] = useState('home');
+    const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
+
+    // Redux state
+    const userData = useSelector(selectUser);
+    const hasPartner = useSelector(selectHasPartner);
+    const partnerName = useSelector(selectPartnerName);
+    const daysTogether = useSelector(selectDaysTogether);
+    const games = useSelector(selectGames);
+    const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle } = games;
+
+    // Socket context for real-time data
+    const { partnerMood, partnerOnline, partnerScribble } = useSocketContext();
 
     const renderScreen = () => {
         switch (currentTab) {
@@ -57,19 +59,39 @@ export const MainTabNavigator = ({
                         pendingInvite={pendingInvite}
                         onMoodPress={onMoodPress}
                         onScribblePress={() => setCurrentTab('canvas')}
-                        onQuestionPress={() => setCurrentTab('dailyChallenge')}
+                        onQuestionPress={(category) => {
+                            if (category) {
+                                // Check if it's a topic-based category (future, money, hotspicy, etc.)
+                                const topicConfig = TOPIC_CATEGORIES[category.id || category];
+                                if (topicConfig) {
+                                    // Handle topic categories within MainTabNavigator
+                                    setSelectedTopic(category.id || category);
+                                    setCurrentTab('topicQuestions');
+                                } else {
+                                    // For other categories (likelyto, neverhaveiever), use AppNavigator
+                                    onQuestionPress(category);
+                                }
+                            } else {
+                                setCurrentTab('dailyChallenge');
+                            }
+                        }}
                         onFindPartner={onFindPartner}
                         onSettingsPress={() => setCurrentTab('account')}
                         onJigsawCreate={onJigsawCreate}
                         onJigsawPlay={onJigsawPlay}
                         pendingPuzzle={pendingPuzzle}
                         onRefreshPuzzle={onRefreshPuzzle}
+                        pendingTicTacToe={pendingTicTacToe}
+                        activeTicTacToe={activeTicTacToe}
+                        onTicTacToePress={onTicTacToePress}
+                        pendingWordle={pendingWordle}
+                        activeWordle={activeWordle}
+                        onWordlePress={onWordlePress}
                     />
                 );
             case 'canvas':
                 return (
                     <ScribbleScreen
-                        onSend={onScribbleSend}
                         onBack={() => setCurrentTab('home')}
                     />
                 );
@@ -78,21 +100,28 @@ export const MainTabNavigator = ({
                     <DailyChallengeScreen
                         partnerName={partnerName}
                         userName={userData?.name || 'You'}
+                        userAvatar={userData?.avatar || null}
+                        partnerAvatar={userData?.partnerAvatar || null}
                         userId={userData?._id || userData?.id}
                         onBack={() => setCurrentTab('home')}
                     />
                 );
-            case 'questions':
+            case 'topicQuestions':
+                const topicConfig = TOPIC_CATEGORIES[selectedTopic];
+                if (!topicConfig) {
+                    setCurrentTab('home');
+                    return null;
+                }
                 return (
-                    <QuestionCategoriesScreen
-                        partnerName={partnerName}
-                        streak={daysTogether || 1}
-                        onSelectCategory={(category) => {
-                            // Navigate to the full question flow via AppNavigator
-                            if (onQuestionPress) {
-                                onQuestionPress(category);
-                            }
-                        }}
+                    <TopicQuestionsScreen
+                        topic={selectedTopic}
+                        topicTitle={topicConfig.title}
+                        topicEmoji={topicConfig.emoji}
+                        partnerName={partnerName || 'Your Love'}
+                        userName={userData?.name || 'You'}
+                        userAvatar={userData?.avatar}
+                        partnerAvatar={userData?.partnerAvatar}
+                        userId={userData?.id}
                         onBack={() => setCurrentTab('home')}
                     />
                 );
@@ -133,3 +162,4 @@ const styles = StyleSheet.create({
 });
 
 export default MainTabNavigator;
+

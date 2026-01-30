@@ -16,8 +16,10 @@ import { colors, spacing, borderRadius } from '../theme';
 
 const { width } = Dimensions.get('window');
 
-// Tab icons as SVG components
-const HomeIcon = ({ color, size = 24 }) => (
+// Tab icons as SVG components with filled/outlined states
+
+// Home icon - house with door
+const HomeIcon = ({ color, size = 24, filled = false }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path
             d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
@@ -25,63 +27,59 @@ const HomeIcon = ({ color, size = 24 }) => (
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
+            fill={filled ? color : 'none'}
         />
-        <Path
-            d="M9 22V12h6v10"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
+        {!filled && (
+            <Path
+                d="M9 22V12h6v10"
+                stroke={color}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        )}
+        {filled && (
+            <Path
+                d="M9 22V12h6v10"
+                stroke={colors.surface}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill={colors.surface}
+            />
+        )}
     </Svg>
 );
 
-
-
-const UserIcon = ({ color, size = 24 }) => (
+// Pencil icon for Canvas - cleaner than palette
+const PencilIcon = ({ color, size = 24, filled = false }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path
-            d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"
+            d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"
             stroke={color}
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
-        />
-        <Path
-            d="M12 11a4 4 0 100-8 4 4 0 000 8z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            fill={filled ? color : 'none'}
         />
     </Svg>
 );
 
-const QuestionsIcon = ({ color, size = 24 }) => (
+// Spark/Flame icon for Today - represents daily streak/challenge
+const SparkIcon = ({ color, size = 24, filled = false }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path
-            d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"
+            d="M12 2L9 9l-7 1 5 5-1 7 6-3 6 3-1-7 5-5-7-1-3-7z"
             stroke={color}
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
-        />
-        <Path
-            d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-        <Path
-            d="M12 17h.01"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            fill={filled ? color : 'none'}
         />
     </Svg>
 );
+
+
 
 const TabItem = ({ icon: Icon, label, isActive, onPress }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -137,19 +135,10 @@ const TabItem = ({ icon: Icon, label, isActive, onPress }) => {
                     },
                 ]}
             >
-                {isActive && (
-                    <View style={styles.activeIndicator}>
-                        <LinearGradient
-                            colors={[colors.primary, colors.secondary]}
-                            style={StyleSheet.absoluteFill}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                        />
-                    </View>
-                )}
                 <Icon
                     color={isActive ? colors.primary : colors.textMuted}
                     size={24}
+                    filled={isActive}
                 />
                 <Text
                     style={[
@@ -164,70 +153,13 @@ const TabItem = ({ icon: Icon, label, isActive, onPress }) => {
     );
 };
 
-const CanvasIcon = ({ color, size = 24 }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-            d="M12 19l7-7 3 3-7 7-3-3z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-        <Path
-            d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-        <Path
-            d="M2 2l7.586 7.586"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-        <Path
-            d="M11 11a2 2 0 100-4 2 2 0 000 4z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-    </Svg>
-);
-
-// Staggered Cards Icon for Daily Challenge
-const CardsIcon = ({ color, size = 24 }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        {/* Back card */}
-        <Path
-            d="M6 4h10a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-        {/* Front card (offset) */}
-        <Path
-            d="M10 8h8a2 2 0 012 2v8a2 2 0 01-2 2h-8a2 2 0 01-2-2v-8a2 2 0 012-2z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill={color + '20'}
-        />
-    </Svg>
-);
-
 export const BottomTabBar = ({ currentTab, onTabChange }) => {
     const insets = useSafeAreaInsets();
 
     const tabs = [
         { key: 'home', label: 'Home', icon: HomeIcon },
-        { key: 'canvas', label: 'Canvas', icon: CanvasIcon },
-        { key: 'dailyChallenge', label: 'Today', icon: CardsIcon },
-        { key: 'questions', label: 'Questions', icon: QuestionsIcon },
+        { key: 'canvas', label: 'Canvas', icon: PencilIcon },
+        { key: 'dailyChallenge', label: 'Today', icon: SparkIcon },
     ];
 
     return (

@@ -4,6 +4,7 @@ import LikelyToCard from './LikelyToCard';
 import NeverHaveIEverCard from './NeverHaveIEverCard';
 import TakePhotoCard from './TakePhotoCard';
 import DeepCard from './DeepCard';
+import SliderCard from './SliderCard';
 
 /**
  * TaskCard - Routes to the appropriate card component based on task category
@@ -14,6 +15,8 @@ const TaskCard = React.memo(({
     totalCards,
     partnerName,
     userName,
+    userAvatar,
+    partnerAvatar,
     onSubmit,
     onSkip,
     isLastCard,
@@ -29,6 +32,8 @@ const TaskCard = React.memo(({
         totalCards,
         partnerName,
         userName,
+        userAvatar,
+        partnerAvatar,
         onSubmit,
         onSkip,
         isLastCard,
@@ -49,7 +54,12 @@ const TaskCard = React.memo(({
         return <TakePhotoCard {...commonProps} />;
     }
 
+    if (task.category === 'slider') {
+        return <SliderCard {...commonProps} />;
+    }
+
     return <DeepCard {...commonProps} />;
 });
 
 export default TaskCard;
+

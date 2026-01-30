@@ -9,6 +9,7 @@ const KEYS = {
     USER: 'auth_user',
     IS_AUTHENTICATED: 'auth_is_authenticated',
     IS_ONBOARDED: 'auth_is_onboarded',
+    HAS_SEEN_ONBOARDING: 'has_seen_onboarding', // First-launch intro screens
 };
 
 /**
@@ -123,6 +124,30 @@ export const getPartnerCode = () => {
     return user?.partnerCode || null;
 };
 
+/**
+ * Check if user has seen the intro onboarding screens (first launch)
+ * @returns {boolean}
+ */
+export const hasSeenOnboarding = () => {
+    try {
+        return storage.getBoolean(KEYS.HAS_SEEN_ONBOARDING) === true;
+    } catch (error) {
+        return false;
+    }
+};
+
+/**
+ * Mark that user has seen the intro onboarding screens
+ * @param {boolean} value
+ */
+export const setSeenOnboarding = (value = true) => {
+    try {
+        storage.set(KEYS.HAS_SEEN_ONBOARDING, value);
+    } catch (error) {
+        console.error('Error setting seen onboarding status:', error);
+    }
+};
+
 export default {
     storage,
     getUser,
@@ -134,4 +159,7 @@ export default {
     clearAuth,
     isPaired,
     getPartnerCode,
+    hasSeenOnboarding,
+    setSeenOnboarding,
 };
+

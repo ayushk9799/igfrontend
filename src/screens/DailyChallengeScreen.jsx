@@ -6,6 +6,10 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -42,6 +46,8 @@ const ProgressDots = ({ current, total }) => (
 export default function DailyChallengeScreen({
   partnerName = 'Your Love',
   userName = 'You',
+  userAvatar = null,
+  partnerAvatar = null,
   userId,
   onBack = () => { },
   onCompareWithPartner = () => { }, // New callback for partner comparison
@@ -199,46 +205,40 @@ export default function DailyChallengeScreen({
       />
     );
   }
-
   return (
     <GestureHandlerRootView style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <TouchableOpacity onPress={onBack} style={styles.headerBackBtn}>
-          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-            <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Today's Challenge</Text>
-          <Text style={styles.headerSubtitle}>{currentIndex + 1} of {tasks.length} questions</Text>
-          {/* Progress Dots */}
-          <ProgressDots current={currentIndex} total={tasks.length} />
-        </View>
-        {/* View Answers Button */}
-        {answeredCount > 0 && (
-          <TouchableOpacity
-            onPress={() => setShowAnswers(true)}
-            style={styles.viewAnswersBtn}
-          >
-            <Text style={styles.viewAnswersBtnText}>📝 View Answers</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1 }}>
+          {/* Header */}
+          <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
+            <TouchableOpacity onPress={onBack} style={styles.headerBackBtn}>
+              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </TouchableOpacity>
+            <View style={styles.headerContent}>
+              <Text style={styles.headerTitle}>Today's Challenge</Text>
+            </View>
+            <View style={{ width: 48 }} />
+          </View>
 
-      {/* Cards Stack - Using AnimatedCardStack for smooth transitions */}
-      <View style={styles.cardsContainer}>
-        <AnimatedCardStack
-          tasks={tasks}
-          currentIndex={currentIndex}
-          partnerName={partnerName}
-          userName={userName}
-          onIndexChange={handleIndexChange}
-          onAnswerSubmit={handleAnswerSubmit}
-          challengeId={challenge._id}
-          userAnswers={userAnswers}
-        />
-      </View>
+          {/* Cards Stack - Using AnimatedCardStack for smooth transitions */}
+          <View style={[styles.cardsContainer, { paddingBottom: insets.bottom + 80 }]}>
+            <AnimatedCardStack
+              tasks={tasks}
+              currentIndex={currentIndex}
+              partnerName={partnerName}
+              userName={userName}
+              userAvatar={userAvatar}
+              partnerAvatar={partnerAvatar}
+              onIndexChange={handleIndexChange}
+              onAnswerSubmit={handleAnswerSubmit}
+              challengeId={challenge._id}
+              userAnswers={userAnswers}
+            />
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
     </GestureHandlerRootView>
   );
 }
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   viewAnswersBtnText: { fontSize: 12, fontWeight: '600', color: colors.primary },
 
-  cardsContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 20 },
+  cardsContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: spacing.sm, paddingHorizontal: spacing.md },
 
   // Progress Dots
   progressDotsContainer: {

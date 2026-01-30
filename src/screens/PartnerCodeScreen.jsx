@@ -120,6 +120,7 @@ const PulsingCircle = ({ size }) => {
 export const PartnerCodeScreen = ({
     partnerCode = 'XXXXXX',
     userId,
+    partnerId = null, // Check if already paired
     onPaired = () => { },
     onSkip = () => { },
 }) => {
@@ -127,16 +128,44 @@ export const PartnerCodeScreen = ({
     const [isPairing, setIsPairing] = useState(false);
     const [pairingStatus, setPairingStatus] = useState('');
     const [copied, setCopied] = useState(false);
+    const [isAlreadyPaired, setIsAlreadyPaired] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const insets = useSafeAreaInsets();
 
+    // Check if user is already paired on mount - redirect immediately
     useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-            Animated.spring(slideAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
-        ]).start();
-    }, [fadeAnim, slideAnim]);
+        console.log('PartnerCodeScreen: partnerId =', partnerId);
+        if (partnerId) {
+            setIsAlreadyPaired(true);
+            Alert.alert(
+                'Already Paired! 💕',
+                'You are already connected with your partner.',
+                [{ text: 'Go Back', onPress: () => onSkip() }],
+                { cancelable: false }
+            );
+        }
+    }, [partnerId, onSkip]);
+
+    useEffect(() => {
+        if (!isAlreadyPaired) {
+            Animated.parallel([
+                Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+                Animated.spring(slideAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
+            ]).start();
+        }
+    }, [fadeAnim, slideAnim, isAlreadyPaired]);
+
+    // If already paired, don't render the pairing UI
+    if (isAlreadyPaired) {
+        return (
+            <GradientBackground variant="warm">
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 48 }}>💕</Text>
+                </View>
+            </GradientBackground>
+        );
+    }
 
     const handleCopyCode = () => {
         Clipboard.setString(partnerCode);

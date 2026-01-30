@@ -1,81 +1,25 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, Animated, PanResponder, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import Svg, { Path } from 'react-native-svg';
 
 import { categoryConfig } from './categoryConfig';
 import { cardStyles as styles } from './cardStyles';
 import { colors } from '../../theme';
 
 /**
- * Draggable avatar for the "Most Likely To" card
+ * SelectableAvatar - Simple tap-to-select avatar with real image support
  */
-const DraggableAvatar = ({ name, isYou, isSelected, onDrop, disabled, categoryColor }) => {
-    const pan = useRef(new Animated.ValueXY()).current;
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const [isDragging, setIsDragging] = useState(false);
-
-    useEffect(() => {
-        if (!isSelected) {
-            Animated.spring(pan, {
-                toValue: { x: 0, y: 0 },
-                friction: 5,
-                useNativeDriver: false,
-            }).start();
-        }
-    }, [isSelected, pan]);
-
-    const panResponder = useMemo(() => PanResponder.create({
-        onStartShouldSetPanResponder: () => !disabled,
-        onMoveShouldSetPanResponder: () => !disabled,
-        onPanResponderGrant: () => {
-            setIsDragging(true);
-            pan.setOffset({ x: pan.x._value, y: pan.y._value });
-            pan.setValue({ x: 0, y: 0 });
-            Animated.spring(scaleAnim, {
-                toValue: 1.15,
-                friction: 5,
-                useNativeDriver: false,
-            }).start();
-        },
-        onPanResponderMove: Animated.event(
-            [null, { dx: pan.x, dy: pan.y }],
-            { useNativeDriver: false }
-        ),
-        onPanResponderRelease: (_, gestureState) => {
-            pan.flattenOffset();
-            setIsDragging(false);
-
-            if (gestureState.dy < -60) {
-                onDrop();
-                Animated.parallel([
-                    Animated.spring(pan, { toValue: { x: 0, y: -80 }, friction: 6, useNativeDriver: false }),
-                    Animated.spring(scaleAnim, { toValue: 1.1, friction: 5, useNativeDriver: false }),
-                ]).start();
-            } else {
-                Animated.parallel([
-                    Animated.spring(pan, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }),
-                    Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: false }),
-                ]).start();
-            }
-        },
-    }), [disabled, onDrop, pan, scaleAnim]);
-
+const SelectableAvatar = ({ name, isYou, isSelected, onSelect, disabled, categoryColor, avatarUrl }) => {
     return (
-        <Animated.View
-            style={[
-                styles.avatarWrapper,
-                {
-                    transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale: scaleAnim }],
-                    zIndex: isDragging ? 100 : 1,
-                },
-            ]}
-            {...panResponder.panHandlers}
+        <TouchableOpacity
+            style={styles.avatarWrapper}
+            onPress={onSelect}
+            disabled={disabled}
+            activeOpacity={0.7}
         >
             <View style={[
                 styles.avatarOuter,
                 isSelected && { borderColor: categoryColor, shadowColor: categoryColor, shadowOpacity: 0.4 },
-                isDragging && styles.avatarDragging,
             ]}>
                 <LinearGradient
                     colors={isSelected ? [categoryColor, categoryColor + 'CC'] : [colors.surface, colors.backgroundAlt]}
@@ -84,45 +28,28 @@ const DraggableAvatar = ({ name, isYou, isSelected, onDrop, disabled, categoryCo
                     style={styles.avatarGradient}
                 />
                 <View style={styles.avatarInner}>
-                    <Text style={styles.avatarEmoji}>{isYou ? '🙋' : '💕'}</Text>
+                    {avatarUrl ? (
+                        <Image
+                            source={{ uri: avatarUrl }}
+                            style={styles.avatarImage}
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <Text style={styles.avatarEmoji}>{isYou ? '🙋' : '💕'}</Text>
+                    )}
                 </View>
             </View>
-            <Text style={[styles.avatarName, isSelected && { color: categoryColor }]}>{name}</Text>
             {isSelected && (
                 <View style={[styles.selectedIndicator, { backgroundColor: categoryColor }]}>
                     <Text style={styles.selectedCheck}>✓</Text>
                 </View>
             )}
-        </Animated.View>
+        </TouchableOpacity>
     );
 };
 
 /**
- * Drop zone for dragging avatars
- */
-const DropZone = ({ hasSelection, selectedName, categoryColor }) => (
-    <View style={[styles.dropZone, hasSelection && { borderColor: categoryColor, borderStyle: 'solid' }]}>
-        <LinearGradient
-            colors={hasSelection ? [categoryColor + '20', categoryColor + '10'] : [colors.backgroundAlt + '80', colors.surface + '80']}
-            style={styles.dropZoneGradient}
-        />
-        {hasSelection ? (
-            <Text style={[styles.selectedText, { color: categoryColor }]}>
-                {selectedName === 'you' ? '🙋 You!' : `💕 ${selectedName}!`}
-            </Text>
-        ) : (
-            <View style={styles.emptyDropZone}>
-                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path d="M12 19V5M5 12l7-7 7 7" stroke={categoryColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                </Svg>
-                <Text style={[styles.dropHint, { color: categoryColor }]}>Drag here</Text>
-            </View>
-        )}
-    </View>
-);
-
-/**
- * LikelyToCard - "Who is more likely to..." card with draggable avatars
+ * LikelyToCard - "Who is more likely to..." card with selectable avatars
  */
 const LikelyToCard = React.memo(({
     task,
@@ -130,6 +57,8 @@ const LikelyToCard = React.memo(({
     totalCards,
     partnerName,
     userName,
+    userAvatar,
+    partnerAvatar,
     onSubmit,
     onSkip,
     isLastCard,
@@ -139,20 +68,17 @@ const LikelyToCard = React.memo(({
 }) => {
     const config = categoryConfig.likelyto;
     const [selectedAnswer, setSelectedAnswer] = useState(null);
-    const [locked, setLocked] = useState(isAnswered); // Lock if already answered
+    const [locked, setLocked] = useState(isAnswered);
 
     useEffect(() => {
         setSelectedAnswer(isAnswered ? previousAnswer : null);
         setLocked(isAnswered);
     }, [task._id, isAnswered, previousAnswer]);
 
-    const handleDrop = (who) => {
-        if (locked || isAnswered) return; // Block if already answered
-        if (who === selectedAnswer) {
-            setSelectedAnswer(null);
-            return;
-        }
-        console.log('🎯 [LikelyToCard] Drop detected, submitting:', who);
+    const handleSelect = (who) => {
+        if (locked || isAnswered) return;
+
+        console.log('🎯 [LikelyToCard] Selection:', who);
         setSelectedAnswer(who);
         setLocked(true);
 
@@ -164,7 +90,7 @@ const LikelyToCard = React.memo(({
                 onSubmit(who);
             }
         } catch (err) {
-            console.error('handleDrop error:', err);
+            console.error('handleSelect error:', err);
             onSubmit(who);
         }
     };
@@ -188,54 +114,70 @@ const LikelyToCard = React.memo(({
             <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
                 <View style={styles.topRow}>
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
-                        <Text>{config.emoji}</Text>
                         <Text style={{ color: config.color, fontWeight: '600' }}>{config.label}</Text>
                     </View>
-                    <Text style={styles.counterText}>{index + 1}/{totalCards}</Text>
+                    <Text style={[styles.counterText, { color: "white" }]}>{index + 1}/{totalCards}</Text>
                 </View>
 
                 <View style={styles.questionSection}>
                     <Text style={styles.questionText}>"{task.taskstatement}"</Text>
                 </View>
 
-                <DropZone
-                    hasSelection={!!selectedAnswer}
-                    selectedName={selectedAnswer === 'you' ? 'you' : partnerName}
-                    categoryColor={config.color}
-                />
-
-                <View style={styles.avatarsContainer}>
-                    <DraggableAvatar
+                {/* Bottom Bar - Avatar Left, Skip Center, Avatar Right */}
+                <View style={likelyStyles.bottomBar}>
+                    {/* User Avatar - Left */}
+                    <SelectableAvatar
                         name={userName}
                         isYou={true}
                         isSelected={selectedAnswer === 'you'}
-                        onDrop={() => handleDrop('you')}
+                        onSelect={() => handleSelect('you')}
                         disabled={locked || isAnswered}
                         categoryColor={config.color}
+                        avatarUrl={userAvatar}
                     />
-                    <View style={styles.vsContainer}>
-                        <Text style={styles.vsText}>VS</Text>
-                    </View>
-                    <DraggableAvatar
+
+                    {/* Skip - Center */}
+                    <TouchableOpacity onPress={onSkip} style={likelyStyles.skipButton} disabled={locked}>
+                        <Text style={likelyStyles.skipText}>Skip</Text>
+                    </TouchableOpacity>
+
+                    {/* Partner Avatar - Right */}
+                    <SelectableAvatar
                         name={partnerName}
                         isYou={false}
                         isSelected={selectedAnswer === 'partner'}
-                        onDrop={() => handleDrop('partner')}
+                        onSelect={() => handleSelect('partner')}
                         disabled={locked || isAnswered}
                         categoryColor={config.color}
+                        avatarUrl={partnerAvatar}
                     />
                 </View>
-
-                {!isLastCard && (
-                    <View style={[styles.cardButtonsRow, locked && { opacity: 0 }]}>
-                        <TouchableOpacity onPress={onSkip} style={styles.skipButtonInCard} disabled={locked}>
-                            <Text style={styles.skipTextInCard}>Skip →</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
             </View>
         </LinearGradient>
     );
+});
+
+import { StyleSheet } from 'react-native';
+import { spacing } from '../../theme';
+
+const likelyStyles = StyleSheet.create({
+    bottomBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        marginTop: 'auto',
+    },
+    skipButton: {
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.lg,
+    },
+    skipText: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 16,
+        fontWeight: '500',
+    },
 });
 
 export default LikelyToCard;
