@@ -26,9 +26,9 @@ const FEATURES = [
         assetType: 'emoji',
         emoji: '😊',
         secondaryEmojis: ['❤️', '😴', '🥰', '✨'],
-        gradient: ['#F4A261', '#FFF9F5'],
-        iconBg: 'rgba(249, 110, 103, 0.15)',
-        nodeColor: '#F4A261',
+        gradient: ['#D4763B', '#8B4513'],
+        iconBg: 'rgba(249, 145, 87, 0.25)',
+        nodeColor: '#E88A4C',
     },
     {
         id: 'scribble',
@@ -37,18 +37,18 @@ const FEATURES = [
         assetType: 'image',
         image: require('../../assets/pencilicon.png'),
         secondaryEmojis: ['💕', '🎨', '✨', '💌'],
-        gradient: ['#FDF8F3', '#F8EDE3'],
-        iconBg: 'rgba(244, 162, 97, 0.15)',
-        nodeColor: '#C4A77D',
+        gradient: ['#A67C52', '#6B4423'],
+        iconBg: 'rgba(200, 150, 100, 0.3)',
+        nodeColor: '#C8965A',
     },
     {
         id: 'games',
         title: 'Play Together',
         subtitle: 'Challenge your partner in fun duels',
         assetType: 'svg',
-        gradient: ['#E55B5B', '#d44747'],
-        iconBg: 'rgba(255, 107, 107, 0.2)',
-        nodeColor: '#E55B5B',
+        gradient: ['#C92A2A', '#A61C1C'],
+        iconBg: 'rgba(220, 80, 80, 0.3)',
+        nodeColor: '#DC4040',
     },
     {
         id: 'topics',
@@ -61,9 +61,9 @@ const FEATURES = [
             { source: require('../../assets/travel.png'), position: { bottom: -10, left: -15 } },
             { source: require('../../assets/dreamsfuture.png'), position: { bottom: -5, right: -20 } },
         ],
-        gradient: ['#FFF9F5', '#FFE4E4'],
-        iconBg: 'rgba(255, 45, 85, 0.15)',
-        nodeColor: '#FF6B9D',
+        gradient: ['#8B2252', '#5C1637'],
+        iconBg: 'rgba(255, 80, 120, 0.3)',
+        nodeColor: '#E84580',
     },
 ];
 
@@ -392,12 +392,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         <Text style={[styles.nodeEmoji, { fontSize: isActive ? 50 : 35 }]}>🔥</Text>
                     )}
 
-                    {/* Completed checkmark */}
-                    {isCompleted && (
-                        <View style={styles.checkmarkBadge}>
-                            <Text style={styles.checkmark}>✓</Text>
-                        </View>
-                    )}
+                  
                 </View>
 
                 {/* Secondary floating elements for active node */}
@@ -454,9 +449,9 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         style={[
                             styles.nodeLabelContainer,
                             {
-                                // Position on the opposite side of the node
-                                left: index % 2 === 0 ? NODE_SIZE + 15 : undefined,
-                                right: index % 2 === 0 ? undefined : NODE_SIZE + 15,
+                                // Position on the opposite side of the node - farther for active nodes
+                                left: index % 2 === 0 ? (isActive ? ACTIVE_NODE_SIZE + 25 : NODE_SIZE + 15) : undefined,
+                                right: index % 2 === 0 ? undefined : (isActive ? ACTIVE_NODE_SIZE + 25 : NODE_SIZE + 15),
                             },
                         ]}
                     >
@@ -582,31 +577,8 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
             {FEATURES.map((feature, index) => renderNode(feature, index))}
 
 
-            {/* Bottom Section */}
             <View style={[styles.bottomSection, { paddingBottom: insets.bottom + 24 }]}>
-                {/* Progress Dots */}
-                <View style={styles.dotsContainer}>
-                    {FEATURES.map((feature, index) => (
-                        <View key={index} style={styles.dotWrapper}>
-                            <View
-                                style={[
-                                    styles.dot,
-                                    { backgroundColor: index <= currentIndex ? feature.nodeColor : 'rgba(0,0,0,0.1)' },
-                                ]}
-                            />
-                            {index === currentIndex && (
-                                <Animated.View
-                                    style={[
-                                        styles.dotProgress,
-                                        { width: progressWidth, backgroundColor: feature.nodeColor },
-                                    ]}
-                                />
-                            )}
-                        </View>
-                    ))}
-                </View>
-
-                {/* Get Started Button */}
+                
                 <TouchableOpacity
                     style={styles.ctaButton}
                     onPress={handleGetStarted}
@@ -616,15 +588,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                     <Text style={styles.arrowIcon}>→</Text>
                 </TouchableOpacity>
 
-                {/* Social Proof */}
-                <View style={styles.socialProof}>
-                    <View style={styles.avatarStack}>
-                        <View style={[styles.avatar, { backgroundColor: '#FF6B9D' }]} />
-                        <View style={[styles.avatar, { backgroundColor: '#5BB5A6', marginLeft: -8 }]} />
-                        <View style={[styles.avatar, { backgroundColor: '#F4A261', marginLeft: -8 }]} />
-                    </View>
-                    <Text style={styles.socialText}>Join 10,000+ couples</Text>
-                </View>
+
             </View>
         </View>
     );
@@ -690,22 +654,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.15,
         shadowRadius: 4,
         elevation: 3,
-    },
-    checkmarkBadge: {
-        position: 'absolute',
-        bottom: -5,
-        right: -5,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#22C55E',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    checkmark: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '700',
     },
     nodeLabelContainer: {
         position: 'absolute',
