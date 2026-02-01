@@ -135,26 +135,6 @@ export const LoginScreen = ({
     const slideAnim = useRef(new Animated.Value(40)).current;
     const insets = useSafeAreaInsets();
 
-    // Test API connectivity on mount
-    useEffect(() => {
-        const testConnection = async () => {
-            console.log('🔄 [LOGIN] Testing API connection to:', API_BASE);
-            Alert.alert('Testing Connection', `Connecting to: ${API_BASE}`);
-            try {
-                const response = await fetch(`${API_BASE}/api/test`);
-                console.log('📥 [LOGIN] Test response status:', response.status);
-                const data = await response.json();
-                console.log('✅ [LOGIN] Backend connected successfully:', data);
-                Alert.alert('✅ Connection Success', `Backend responded: ${data.message}`);
-            } catch (error) {
-                console.error('❌ [LOGIN] Backend connection failed:', error.message);
-                console.error('❌ [LOGIN] Full error:', error);
-                Alert.alert('❌ Connection Failed', `Error: ${error.message}\n\nAPI_BASE: ${API_BASE}`);
-            }
-        };
-        testConnection();
-    }, []);
-
     useEffect(() => {
         Animated.parallel([
             Animated.timing(fadeAnim, {
@@ -277,65 +257,78 @@ export const LoginScreen = ({
 
     return (
         <GradientBackground variant="warm">
-            <KeyboardAvoidingView
-                style={styles.container}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-                <ScrollView
-                    contentContainerStyle={[
-                        styles.scrollContent,
-                        { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.xl }
+            <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
+                {/* App Name - Top Left */}
+                <Animated.View style={[styles.brandContainer, { opacity: fadeAnim }]}>
+                    <Text style={styles.brandName}>penguin.</Text>
+                </Animated.View>
+
+                {/* Spacer to push content down */}
+                <View style={styles.spacer} />
+
+                {/* Sign Up Section - Lower on screen */}
+                <Animated.View
+                    style={[
+                        styles.signUpSection,
+                        {
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                        }
                     ]}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
                 >
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                            <Text style={styles.backIcon}>←</Text>
+                    <Text style={styles.title}>Sign up</Text>
+                    <Text style={styles.subtitle}>Select an option to get started</Text>
+                </Animated.View>
+
+                {/* Social Login Buttons */}
+                <Animated.View style={[styles.socialButtons, { opacity: fadeAnim }]}>
+                    {/* Google Sign-In - First */}
+                    <SocialButton
+                        icon={<GoogleIcon />}
+                        label="Continue with Google"
+                        onPress={handleGoogleSignIn}
+                        loading={isGoogleLoading}
+                        delay={200}
+                    />
+
+                    {/* Apple Sign-In - iOS only */}
+                    {Platform.OS === 'ios' && (
+                        <SocialButton
+                            icon={<AppleIcon />}
+                            label="Continue with Apple"
+                            onPress={handleAppleSignIn}
+                            loading={isAppleLoading}
+                            delay={300}
+                            variant="apple"
+                        />
+                    )}
+                </Animated.View>
+
+                {/* Footer */}
+                <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
+                    <View style={styles.signInRow}>
+                        <Text style={styles.footerText}>Already have an account? </Text>
+                        <TouchableOpacity>
+                            <Text style={styles.signInLink}>Sign in</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {/* Hero Section */}
-                    <Animated.View
-                        style={[
-                            styles.heroSection,
-                            {
-                                opacity: fadeAnim,
-                                transform: [{ translateY: slideAnim }],
-                            }
-                        ]}
-                    >
-                        <AnimatedHeart size={80} pulse={false} />
-                        <Text style={styles.title}>Welcome</Text>
-                        <Text style={styles.subtitle}>Sign in to reconnect with your love</Text>
-                    </Animated.View>
-
-                    {/* Social Login Buttons - Bottom */}
-                    <Animated.View style={[styles.socialButtons, { opacity: fadeAnim }]}>
-                        {/* Apple Sign-In - iOS only */}
-                        {Platform.OS === 'ios' && (
-                            <SocialButton
-                                icon={<AppleIcon />}
-                                label="Continue with Apple"
-                                onPress={handleAppleSignIn}
-                                loading={isAppleLoading}
-                                delay={200}
-                                variant="apple"
-                            />
-                        )}
-
-                        {/* Google Sign-In */}
-                        <SocialButton
-                            icon={<GoogleIcon />}
-                            label="Continue with Google"
-                            onPress={handleGoogleSignIn}
-                            loading={isGoogleLoading}
-                            delay={300}
-                        />
-                    </Animated.View>
-                </ScrollView>
-            </KeyboardAvoidingView>
+                    <View style={styles.termsContainer}>
+                        <Text style={styles.termsText}>
+                            By signing up for Penguin, you agree to our
+                        </Text>
+                        <View style={styles.termsLinks}>
+                            <TouchableOpacity>
+                                <Text style={styles.termsLink}>Terms of Service</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.termsText}> and </Text>
+                            <TouchableOpacity>
+                                <Text style={styles.termsLink}>Privacy Policy</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Animated.View>
+            </View>
         </GradientBackground>
     );
 };
@@ -343,62 +336,44 @@ export const LoginScreen = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
         paddingHorizontal: spacing.xl,
     },
-    header: {
-        marginBottom: spacing.lg,
+    brandContainer: {
+        alignSelf: 'flex-start',
     },
-    backButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: colors.surface,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: colors.borderLight,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
-    },
-    backIcon: {
-        fontSize: 22,
+    brandName: {
+        fontSize: 28,
+        fontWeight: '600',
         color: colors.text,
+        letterSpacing: -0.5,
     },
-    heroSection: {
-        alignItems: 'center',
-        marginBottom: spacing['2xl'],
-        marginTop: spacing.xl,
+    spacer: {
+        flex: 1,
+    },
+    signUpSection: {
+        alignSelf: 'flex-start',
+        marginBottom: spacing.xl,
     },
     title: {
         fontSize: 34,
         fontWeight: '800',
         color: colors.text,
-        marginTop: spacing.lg,
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
         color: colors.textSecondary,
-        marginTop: spacing.sm,
-        textAlign: 'center',
+        marginTop: spacing.xs,
     },
     socialButtons: {
         gap: spacing.md,
-        marginTop: 'auto',
-        marginBottom: spacing['2xl'],
+        marginBottom: spacing.xl,
     },
     socialButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
         paddingVertical: 16,
-        paddingHorizontal: 24,
+        paddingHorizontal: 20,
         borderRadius: borderRadius.xl,
         backgroundColor: colors.surface,
         borderWidth: 1,
@@ -416,31 +391,55 @@ const styles = StyleSheet.create({
     socialButtonContent: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     socialIconContainer: {
-        marginRight: spacing.md,
+        width: 40,
+        alignItems: 'flex-start',
     },
     socialButtonText: {
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: '600',
         color: colors.text,
     },
     appleButtonText: {
         color: '#FFFFFF',
     },
     footer: {
+        alignItems: 'center',
+        paddingBottom: spacing.lg,
+    },
+    signInRow: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: 'auto',
+        marginBottom: spacing.xl,
     },
     footerText: {
         fontSize: 15,
         color: colors.textSecondary,
     },
-    signUpLink: {
+    signInLink: {
         fontSize: 15,
-        color: colors.primary,
+        color: colors.text,
         fontWeight: '700',
+    },
+    termsContainer: {
+        alignItems: 'center',
+    },
+    termsText: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        textAlign: 'center',
+    },
+    termsLinks: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 2,
+    },
+    termsLink: {
+        fontSize: 12,
+        color: colors.text,
+        fontWeight: '600',
     },
 });
 

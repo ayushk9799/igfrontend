@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -69,10 +69,14 @@ const LikelyToCard = React.memo(({
     const config = categoryConfig.likelyto;
     const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [locked, setLocked] = useState(isAnswered);
+    const lastTaskIdRef = useRef(task._id);
 
     useEffect(() => {
-        setSelectedAnswer(isAnswered ? previousAnswer : null);
-        setLocked(isAnswered);
+        if (lastTaskIdRef.current !== task._id) {
+            lastTaskIdRef.current = task._id;
+            setSelectedAnswer(isAnswered ? previousAnswer : null);
+            setLocked(isAnswered);
+        }
     }, [task._id, isAnswered, previousAnswer]);
 
     const handleSelect = (who) => {

@@ -7,14 +7,15 @@ import { API_BASE } from '../constants/Api';
  * @param {string} challengeId - The daily challenge ID
  * @param {number} taskIndex - The task index (0-based, matches tasks array)
  * @param {string} answer - The answer value
+ * @param {string} answerType - The answer type: 'text', 'photo', or 'video'
  */
-export const submitAnswer = async (userId, challengeId, taskIndex, answer) => {
+export const submitAnswer = async (userId, challengeId, taskIndex, answer, answerType = 'text') => {
     console.log('📤 [SUBMIT] Starting answer submission...');
-    console.log('📤 [SUBMIT] Params:', { userId, challengeId, taskIndex, answer });
+    console.log('📤 [SUBMIT] Params:', { userId, challengeId, taskIndex, answer, answerType });
 
     try {
         const url = `${API_BASE}/api/answers/submit`;
-        const body = { userId, challengeId, taskIndex, answer };
+        const body = { userId, challengeId, taskIndex, answer, answerType };
 
         console.log('📤 [SUBMIT] URL:', url);
         console.log('📤 [SUBMIT] Body:', JSON.stringify(body));

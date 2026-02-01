@@ -79,9 +79,23 @@ const SparkIcon = ({ color, size = 24, filled = false }) => (
     </Svg>
 );
 
+// Chat/Message icon for Chats
+const ChatIcon = ({ color, size = 24, filled = false }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill={filled ? color : 'none'}
+        />
+    </Svg>
+);
 
 
-const TabItem = ({ icon: Icon, label, isActive, onPress }) => {
+
+const TabItem = ({ icon: Icon, label, isActive, onPress, badge = 0 }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const translateY = useRef(new Animated.Value(0)).current;
 
@@ -135,11 +149,20 @@ const TabItem = ({ icon: Icon, label, isActive, onPress }) => {
                     },
                 ]}
             >
-                <Icon
-                    color={isActive ? colors.primary : colors.textMuted}
-                    size={24}
-                    filled={isActive}
-                />
+                <View style={styles.iconWrapper}>
+                    <Icon
+                        color={isActive ? colors.primary : colors.textMuted}
+                        size={24}
+                        filled={isActive}
+                    />
+                    {badge > 0 && (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>
+                                {badge > 99 ? '99+' : badge}
+                            </Text>
+                        </View>
+                    )}
+                </View>
                 <Text
                     style={[
                         styles.tabLabel,
@@ -153,12 +176,13 @@ const TabItem = ({ icon: Icon, label, isActive, onPress }) => {
     );
 };
 
-export const BottomTabBar = ({ currentTab, onTabChange }) => {
+export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
     const insets = useSafeAreaInsets();
 
     const tabs = [
         { key: 'home', label: 'Home', icon: HomeIcon },
         { key: 'canvas', label: 'Canvas', icon: PencilIcon },
+        { key: 'chats', label: 'Chats', icon: ChatIcon, badge: chatBadge },
         { key: 'dailyChallenge', label: 'Today', icon: SparkIcon },
     ];
 
@@ -172,6 +196,7 @@ export const BottomTabBar = ({ currentTab, onTabChange }) => {
                         label={tab.label}
                         isActive={currentTab === tab.key}
                         onPress={() => onTabChange(tab.key)}
+                        badge={tab.badge || 0}
                     />
                 ))}
             </View>
@@ -231,6 +256,26 @@ const styles = StyleSheet.create({
     tabLabelActive: {
         color: colors.primary,
         fontWeight: '700',
+    },
+    iconWrapper: {
+        position: 'relative',
+    },
+    badge: {
+        position: 'absolute',
+        top: -6,
+        right: -10,
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: colors.error,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+    },
+    badgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
 });
 

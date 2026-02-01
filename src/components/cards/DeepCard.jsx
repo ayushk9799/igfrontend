@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Keyboard, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -13,10 +13,14 @@ import { spacing } from '../../theme';
 const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit, onSkip, isAnswered = false, previousAnswer = null }) => {
     const [answer, setAnswer] = useState(previousAnswer || '');
     const config = categoryConfig[task.category] || defaultConfig;
+    const lastTaskIdRef = useRef(task._id);
 
-    // Reset answer when task changes (critical for card transitions)
+    // Reset answer only when task ID actually changes (not during swipe gestures)
     useEffect(() => {
-        setAnswer(isAnswered ? previousAnswer || '' : '');
+        if (lastTaskIdRef.current !== task._id) {
+            lastTaskIdRef.current = task._id;
+            setAnswer(isAnswered ? previousAnswer || '' : '');
+        }
     }, [task._id, isAnswered, previousAnswer]);
 
     const handleSubmit = () => {

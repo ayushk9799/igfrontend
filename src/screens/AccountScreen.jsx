@@ -57,7 +57,9 @@ export const AccountScreen = ({
     hasPartner = false,
     daysTogether = 0,
     onLogout,
+
     onEditProfile,
+    onAvatarPress,
     onFindPartner,
 }) => {
     const insets = useSafeAreaInsets();
@@ -86,76 +88,10 @@ export const AccountScreen = ({
         ]).start();
     }, []);
 
-    // Handle avatar selection and upload
-    const handleAvatarPress = async () => {
-        if (isUploading) return;
-
-        Alert.alert(
-            'Change Avatar',
-            'Choose how to update your profile picture',
-            [
-                {
-                    text: 'Take Photo',
-                    onPress: handleTakePhoto,
-                },
-                {
-                    text: 'Choose from Library',
-                    onPress: handlePickFromLibrary,
-                },
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
-            ]
-        );
-    };
-
-    const handleTakePhoto = async () => {
-        const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permissionResult.granted) {
-            Alert.alert('Permission Required', 'Please allow camera access to take a photo.');
-            return;
-        }
-
-        const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-        });
-
-        if (!result.canceled && result.assets[0]) {
-            await processAndUploadAvatar(result.assets[0]);
-        }
-    };
-
-    const handlePickFromLibrary = async () => {
-        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permissionResult.granted) {
-            Alert.alert('Permission Required', 'Please allow access to your photos to change your avatar.');
-            return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-        });
-
-        if (!result.canceled && result.assets[0]) {
-            await processAndUploadAvatar(result.assets[0]);
-        }
-    };
-
-    const processAndUploadAvatar = async (asset) => {
-        const uploadResult = await uploadAvatar(asset);
-
-        if (uploadResult.success) {
-            // Use thumbnail for instant display, fallback to full URL
-            setLocalAvatar(uploadResult.avatarThumbnail || uploadResult.avatarUrl);
-            Alert.alert('Success', 'Your avatar has been updated!');
-        } else {
-            Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload avatar. Please try again.');
+    // Handle avatar selection via parent navigation
+    const handleAvatarPress = () => {
+        if (onAvatarPress) {
+            onAvatarPress();
         }
     };
 
@@ -233,6 +169,9 @@ export const AccountScreen = ({
                         )}
                     </TouchableOpacity>
                     <Text style={styles.profileName}>{userData.name || 'You'}</Text>
+                    {userData.nickname && (
+                        <Text style={styles.profileNickname}>"{userData.nickname}"</Text>
+                    )}
                     <Text style={styles.profileEmail}>{userData.email || ''}</Text>
 
                     {/* Connection Stats - Only show when paired */}
@@ -411,6 +350,13 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '800',
         color: colors.text,
+        marginBottom: 4,
+    },
+    profileNickname: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: colors.textSecondary,
+        fontStyle: 'italic',
         marginBottom: 4,
     },
     profileEmail: {

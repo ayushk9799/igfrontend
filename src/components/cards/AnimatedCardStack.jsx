@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { StyleSheet, Dimensions, View } from 'react-native';
+import { StyleSheet, Dimensions, View, Platform } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     useSharedValue,
@@ -29,7 +29,7 @@ const SPRING_CONFIG = {
 
 /**
  * AnimatedCardStack - Manages card transitions with smooth Reanimated animations
- * Supports swipe gestures for navigation
+ * Uses Double Buffering (Slot A / Slot B) to prevent Android flicker on reset
  */
 const AnimatedCardStack = ({
     tasks,
@@ -43,10 +43,23 @@ const AnimatedCardStack = ({
     challengeId,
     userAnswers = [],
 }) => {
-    // Shared values for animations
-    const translateX = useSharedValue(0);
-    const translateY = useSharedValue(0);
-    const cardRotation = useSharedValue(0);
+    // Current active slot (0 or 1)
+    const activeSlotIndex = currentIndex % 2;
+
+    // Shared values for Slot 0
+    const val0 = {
+        x: useSharedValue(0),
+        y: useSharedValue(0),
+        rot: useSharedValue(0),
+    };
+
+    // Shared values for Slot 1
+    const val1 = {
+        x: useSharedValue(0),
+        y: useSharedValue(0),
+        rot: useSharedValue(0),
+    };
+
     const isGestureActive = useSharedValue(false);
     const isTransitioning = useSharedValue(false);
 
@@ -54,63 +67,82 @@ const AnimatedCardStack = ({
     const canGoNext = currentIndex < tasks.length - 1;
     const canGoPrev = currentIndex > 0;
 
-    // Reset animation values when currentIndex changes (AFTER React re-renders)
-    // This is the key fix - values reset AFTER the new card is rendered
+    // Reset the INACTIVE slot when index changes
     useEffect(() => {
-        translateX.value = 0;
-        translateY.value = 0;
-        cardRotation.value = 0;
-        isTransitioning.value = false;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentIndex]); // Shared values are stable refs, only trigger on currentIndex change
+        // When index changes, the NEW active slot (passed in props) is already at 0,0 (visually).
+        // The OLD active slot (now inactive) needs to be reset to 0,0 so it's ready for *next* time.
 
-    // Haptic feedback wrapper
+        isTransitioning.value = false;
+
+        if (activeSlotIndex === 0) {
+            // Logic: We just switched TO Slot 0. Slot 1 was swiped away or previous.
+            // Reset Slot 1 so it can be the "Next" card behind Slot 0.
+            val1.x.value = 0;
+            val1.y.value = 0;
+            val1.rot.value = 0;
+        } else {
+            // Logic: We just switched TO Slot 1. Slot 0 was swiped away.
+            // Reset Slot 0.
+            val0.x.value = 0;
+            val0.y.value = 0;
+            val0.rot.value = 0;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentIndex]); // Only run on index change
+
     const triggerHaptic = useCallback(() => {
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         } catch (e) {
-            // Haptics not available
+            // Ignore
         }
     }, []);
 
-    // Navigate to next card - just update state, useEffect handles reset
     const goToNextCard = useCallback(() => {
         if (canGoNext) {
             onIndexChange(currentIndex + 1);
         }
     }, [canGoNext, currentIndex, onIndexChange]);
 
-    // Navigate to previous card - just update state, useEffect handles reset
     const goToPrevCard = useCallback(() => {
         if (canGoPrev) {
             onIndexChange(currentIndex - 1);
         }
     }, [canGoPrev, currentIndex, onIndexChange]);
 
-    // Handle programmatic transition (from answer submit)
+    // Programmatic transition (Skip/Submit)
     const triggerTransition = useCallback(() => {
         if (!canGoNext || isTransitioning.value) return;
 
         isTransitioning.value = true;
+        const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
+        const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
 
-        // Animate card out to the left, then update state
-        translateX.value = withTiming(-width * 1.2, { duration: 200 }, (finished) => {
+        // Add rotation to match swipe feel
+        activeRot.value = withTiming(-10, { duration: 200 });
+
+        activeX.value = withTiming(-width * 1.2, { duration: 200 }, (finished) => {
             if (finished) {
                 runOnJS(goToNextCard)();
             }
         });
-    }, [canGoNext, goToNextCard, translateX, isTransitioning]);
+    }, [canGoNext, activeSlotIndex, goToNextCard, isTransitioning, val0.x, val1.x, val0.rot, val1.rot]);
 
-    // Pan gesture for swiping
     const panGesture = Gesture.Pan()
         .onStart(() => {
             isGestureActive.value = true;
         })
         .onUpdate((event) => {
-            if (isTransitioning.value) return; // Prevent updates during transition
-            translateX.value = event.translationX;
-            translateY.value = event.translationY * 0.3; // Dampened vertical movement
-            cardRotation.value = interpolate(
+            if (isTransitioning.value) return;
+
+            // Drive the ACTIVE slot
+            const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
+            const activeY = activeSlotIndex === 0 ? val0.y : val1.y;
+            const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
+
+            activeX.value = event.translationX;
+            activeY.value = event.translationY * 0.3;
+            activeRot.value = interpolate(
                 event.translationX,
                 [-width / 2, 0, width / 2],
                 [-10, 0, 10],
@@ -119,143 +151,165 @@ const AnimatedCardStack = ({
         })
         .onEnd((event) => {
             isGestureActive.value = false;
-            if (isTransitioning.value) return; // Prevent double transitions
+            if (isTransitioning.value) return;
 
             const shouldSwipeLeft =
                 (event.translationX < -SWIPE_THRESHOLD || event.velocityX < -SWIPE_VELOCITY_THRESHOLD) && canGoNext;
             const shouldSwipeRight =
                 (event.translationX > SWIPE_THRESHOLD || event.velocityX > SWIPE_VELOCITY_THRESHOLD) && canGoPrev;
 
+            const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
+            const activeY = activeSlotIndex === 0 ? val0.y : val1.y;
+            const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
+
             if (shouldSwipeLeft) {
-                // Swipe left - go to next card
                 isTransitioning.value = true;
                 runOnJS(triggerHaptic)();
-                translateX.value = withTiming(-width * 1.2, { duration: 200 }, (finished) => {
-                    if (finished) {
-                        runOnJS(goToNextCard)();
-                    }
+                activeX.value = withTiming(-width * 1.2, { duration: 200 }, (finished) => {
+                    if (finished) runOnJS(goToNextCard)();
                 });
             } else if (shouldSwipeRight) {
-                // Swipe right - go to previous card
                 isTransitioning.value = true;
                 runOnJS(triggerHaptic)();
-                translateX.value = withTiming(width * 1.2, { duration: 200 }, (finished) => {
-                    if (finished) {
-                        runOnJS(goToPrevCard)();
-                    }
+                activeX.value = withTiming(width * 1.2, { duration: 200 }, (finished) => {
+                    if (finished) runOnJS(goToPrevCard)();
                 });
             } else {
-                // Spring back to center
-                translateX.value = withSpring(0, SPRING_CONFIG);
-                translateY.value = withSpring(0, SPRING_CONFIG);
-                cardRotation.value = withSpring(0, SPRING_CONFIG);
+                activeX.value = withSpring(0, SPRING_CONFIG);
+                activeY.value = withSpring(0, SPRING_CONFIG);
+                activeRot.value = withSpring(0, SPRING_CONFIG);
             }
         });
 
-    // Animated styles for current card
-    const animatedCardStyle = useAnimatedStyle(() => ({
-        transform: [
-            { translateX: translateX.value },
-            { translateY: translateY.value },
-            { rotate: `${cardRotation.value}deg` },
-        ],
-    }));
+    // Helper to separate rendering logic
+    const renderSlot = (slotIndex) => {
+        // Determine if this slot is the Active Request (front) or the Next/Prev (back)
+        const isActive = slotIndex === activeSlotIndex;
 
-    // Animated styles for next card (peek effect)
-    const animatedNextCardStyle = useAnimatedStyle(() => ({
-        transform: [
-            {
-                scale: interpolate(
-                    Math.abs(translateX.value),
+        // Calculate which task index sits in this slot
+        // If this slot is Active, it holds 'currentIndex'
+        // If this slot is Inactive, it holds 'currentIndex + 1' (Next Card)
+        // Note: For 'Prev' card history, we typically don't render it in the stack until we swipe back, 
+        // effectively 'currentIndex - 1' becomes Active. 
+        // So the "Inactive" slot is always the "Next" card in the waiting line.
+        const taskIndex = isActive ? currentIndex : currentIndex + 1;
+        const task = tasks[taskIndex];
+
+        // Animated Styles
+        const slotStyle = useAnimatedStyle(() => {
+            const myVals = slotIndex === 0 ? val0 : val1;
+            const otherVals = slotIndex === 0 ? val1 : val0; // The active card if I am inactive
+
+            if (isActive) {
+                // I am the Front Card -> use my own values directly
+                return {
+                    transform: [
+                        { translateX: myVals.x.value },
+                        { translateY: myVals.y.value },
+                        { rotate: `${myVals.rot.value}deg` },
+                    ],
+                    zIndex: 2, // Highlight: Front
+                    opacity: 1,
+                };
+            } else {
+                // I am the Back Card (Next) -> animate purely based on the OTHER (Active) card's movement
+                // We create a "Peek" effect.
+                const activeCardX = otherVals.x.value;
+
+                // Scale 0.94 -> 1.0 as active card moves away
+                const scale = interpolate(
+                    Math.abs(activeCardX),
                     [0, SWIPE_THRESHOLD],
                     [0.94, 1],
                     Extrapolate.CLAMP
-                ),
-            },
-            {
-                translateY: interpolate(
-                    Math.abs(translateX.value),
+                );
+
+                const translateY = interpolate(
+                    Math.abs(activeCardX),
                     [0, SWIPE_THRESHOLD],
                     [-20, 0],
                     Extrapolate.CLAMP
-                ),
-            },
-        ],
-        opacity: interpolate(
-            Math.abs(translateX.value),
-            [0, SWIPE_THRESHOLD],
-            [0.5, 1],
-            Extrapolate.CLAMP
-        ),
-    }));
+                );
 
-    // Animated styles for swipe hints (moved outside conditionals to avoid hook rules violation)
-    const leftHintStyle = useAnimatedStyle(() => ({
-        opacity: interpolate(
-            translateX.value,
-            [0, SWIPE_THRESHOLD],
-            [0, 1],
-            Extrapolate.CLAMP
-        ),
-    }));
+                const opacity = interpolate(
+                    Math.abs(activeCardX),
+                    [0, SWIPE_THRESHOLD],
+                    [0.5, 1],
+                    Extrapolate.CLAMP
+                );
 
-    const rightHintStyle = useAnimatedStyle(() => ({
-        opacity: interpolate(
-            translateX.value,
-            [0, -SWIPE_THRESHOLD],
-            [0, 1],
-            Extrapolate.CLAMP
-        ),
-    }));
+                return {
+                    transform: [{ scale }, { translateY }],
+                    zIndex: 1, // Behind
+                    opacity,
+                };
+            }
+        });
 
-    const currentTask = tasks[currentIndex];
-    const nextTask = tasks[currentIndex + 1];
+        if (!task) return null; // End of stack
 
-    if (!currentTask) return null;
+        const getCardProps = (t, i) => ({
+            task: t,
+            index: i,
+            totalCards: tasks.length,
+            partnerName,
+            userName,
+            userAvatar,
+            partnerAvatar,
+            onSubmit: triggerTransition,
+            onSkip: triggerTransition,
+            isLastCard: i >= tasks.length - 1,
+            onAnswerSubmit,
+            isAnswered: !!(userAnswers[i]?.answer),
+            previousAnswer: userAnswers[i]?.answer,
+        });
 
-    // Common props for cards
-    const getCardProps = (task, idx) => ({
-        task,
-        index: idx,
-        totalCards: tasks.length,
-        partnerName,
-        userName,
-        userAvatar,
-        partnerAvatar,
-        onSubmit: triggerTransition,
-        onSkip: triggerTransition,
-        isLastCard: idx >= tasks.length - 1,
-        onAnswerSubmit,
-        isAnswered: !!(userAnswers[idx]?.answer),
-        previousAnswer: userAnswers[idx]?.answer,
+        return (
+            <Animated.View
+                key={`slot-${slotIndex}`}
+                style={[styles.fullCard, slotStyle]}
+                needsOffscreenAlphaCompositing={Platform.OS === 'android'}
+            >
+                <TaskCard {...getCardProps(task, taskIndex)} />
+            </Animated.View>
+        );
+    };
+
+    // Hints need to check the ACTIVE card's position
+    const leftHintStyle = useAnimatedStyle(() => {
+        const activeX = activeSlotIndex === 0 ? val0.x.value : val1.x.value;
+        return {
+            opacity: interpolate(activeX, [0, SWIPE_THRESHOLD], [0, 1], Extrapolate.CLAMP),
+        };
+    });
+
+    const rightHintStyle = useAnimatedStyle(() => {
+        const activeX = activeSlotIndex === 0 ? val0.x.value : val1.x.value;
+        return {
+            opacity: interpolate(activeX, [0, -SWIPE_THRESHOLD], [0, 1], Extrapolate.CLAMP),
+        };
     });
 
     return (
         <View style={styles.container}>
-            {/* NEXT CARD (Behind) - Animated peek effect */}
-            {nextTask && (
-                <Animated.View style={[styles.fullCard, styles.backCard, animatedNextCardStyle]}>
-                    <TaskCard {...getCardProps(nextTask, currentIndex + 1)} />
-                </Animated.View>
-            )}
-
-            {/* CURRENT CARD (Front) - Swipeable */}
             <GestureDetector gesture={panGesture}>
-                <Animated.View style={[styles.fullCard, animatedCardStyle]}>
-                    <TaskCard {...getCardProps(currentTask, currentIndex)} />
-                </Animated.View>
+                <View style={styles.cardWrapper}>
+                    {/* Render Both Slots */}
+                    {renderSlot(0)}
+                    {renderSlot(1)}
+                </View>
             </GestureDetector>
 
             {/* Swipe hint indicators */}
             {canGoPrev && (
-                <View style={[styles.swipeHint, styles.swipeHintLeft]}>
+                <View style={[styles.swipeHint, styles.swipeHintLeft]} pointerEvents="none">
                     <Animated.View style={leftHintStyle}>
                         <View style={styles.swipeHintDot} />
                     </Animated.View>
                 </View>
             )}
             {canGoNext && (
-                <View style={[styles.swipeHint, styles.swipeHintRight]}>
+                <View style={[styles.swipeHint, styles.swipeHintRight]} pointerEvents="none">
                     <Animated.View style={rightHintStyle}>
                         <View style={styles.swipeHintDot} />
                     </Animated.View>
@@ -272,21 +326,33 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    fullCard: {
+    cardWrapper: {
         width: width - 32,
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        // Important: this wrapper shouldn't clip if we want swipe out to be visible
+        // but often we want the stack contained.
+    },
+    fullCard: {
+        width: '100%', // defined by wrapper
         height: '100%',
         borderRadius: 28,
         position: 'absolute',
         top: 0,
         overflow: 'hidden',
-        elevation: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.25,
-        shadowRadius: 24,
-    },
-    backCard: {
-        zIndex: 0,
+        backgroundColor: '#FFFFFF', // Prevent transparency flicker
+        ...Platform.select({
+            android: {
+                elevation: 0,
+            },
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 12 },
+                shadowOpacity: 0.25,
+                shadowRadius: 24,
+            },
+        }),
     },
     swipeHint: {
         position: 'absolute',
@@ -296,6 +362,7 @@ const styles = StyleSheet.create({
         height: 40,
         justifyContent: 'center',
         alignItems: 'center',
+        zIndex: 10,
     },
     swipeHintLeft: {
         left: 5,

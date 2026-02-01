@@ -18,6 +18,8 @@ import Svg, { Path } from 'react-native-svg';
 import { AnimatedCardStack } from '../components/cards';
 import { colors, spacing, borderRadius } from '../theme';
 import { API_BASE } from '../constants/Api';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../store/slices/userSlice';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,6 +39,7 @@ export default function TopicQuestionsScreen({
     onBack = () => { },
 }) {
     const insets = useSafeAreaInsets();
+    const userData = useSelector(selectUser);
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -81,20 +84,48 @@ export default function TopicQuestionsScreen({
     const handleAnswerSubmit = useCallback(async (taskIndex, answer) => {
         console.log('🎯 [ANSWER] Submitting:', { taskIndex, answer });
 
+        const question = questions[taskIndex];
+
         // Save locally
         setUserAnswers(prev => {
             const updated = [...prev];
             updated[taskIndex] = {
                 taskIndex,
                 answer,
-                question: questions[taskIndex],
+                question,
                 answeredAt: new Date().toISOString()
             };
             return updated;
         });
 
-        // TODO: Submit to backend if needed
-    }, [questions]);
+        // Submit to chat API to create/update chat thread
+        if (userId && question) {
+            try {
+                const response = await fetch(`${API_BASE}/api/chat/answer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        questionSource: topic, // 'future', 'money', 'hotspicy', etc.
+                        questionId: question._id,
+                        questionText: question.taskstatement || question.question,
+                        questionCategory: question.category, // 'likelyto', 'neverhaveiever', 'deep'
+                        answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
+                    }),
+                });
+                const json = await response.json();
+
+                if (json.success) {
+                    console.log('💬 [CHAT] Thread created/updated:', json.data.chatId);
+                } else {
+                    console.log('⚠️ [CHAT] Could not create thread:', json.message);
+                }
+            } catch (err) {
+                console.log('⚠️ [CHAT] API error:', err.message);
+                // Don't block answer flow if chat creation fails
+            }
+        }
+    }, [questions, userId, topic]);
 
     // Transform questions to tasks format for AnimatedCardStack
     const tasks = useMemo(() => {
@@ -173,8 +204,8 @@ export default function TopicQuestionsScreen({
                             currentIndex={currentIndex}
                             partnerName={partnerName}
                             userName={userName}
-                            userAvatar={userAvatar}
-                            partnerAvatar={partnerAvatar}
+                            userAvatar={userData.avatarThumbnail || userData.avatar || userAvatar}
+                            partnerAvatar={userData.partnerAvatarThumbnail || userData.partnerAvatar || partnerAvatar}
                             onIndexChange={handleIndexChange}
                             onAnswerSubmit={handleAnswerSubmit}
                             userAnswers={userAnswers}

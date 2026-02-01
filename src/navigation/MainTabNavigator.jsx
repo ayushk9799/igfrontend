@@ -1,6 +1,6 @@
 // Main Tab Navigator - Home with Bottom Tabs
 // Now uses Redux for global state instead of prop drilling
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
@@ -8,12 +8,14 @@ import AccountScreen from '../screens/AccountScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import DailyChallengeScreen from '../screens/DailyChallengeScreen';
 import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
+import ChatListScreen from '../screens/ChatListScreen';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether } from '../store/slices/userSlice';
 import { selectGames } from '../store/slices/gamesSlice';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
+import { API_BASE } from '../constants/Api';
 
 export const MainTabNavigator = ({
     // Only keep essential callbacks that navigate outside this component
@@ -22,6 +24,7 @@ export const MainTabNavigator = ({
     onMoodPress,
     onQuestionPress,
     onEditProfile,
+    onAvatarPress,
     onFindPartner,
     onJigsawCreate,
     onJigsawPlay,
@@ -32,6 +35,8 @@ export const MainTabNavigator = ({
 }) => {
     const [currentTab, setCurrentTab] = useState('home');
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
+    const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
+    const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
 
     // Redux state
     const userData = useSelector(selectUser);
@@ -42,7 +47,53 @@ export const MainTabNavigator = ({
     const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle } = games;
 
     // Socket context for real-time data
-    const { partnerMood, partnerOnline, partnerScribble } = useSocketContext();
+    const { socket, partnerMood, partnerOnline, partnerScribble } = useSocketContext();
+
+    // Fetch unread chat count
+    const fetchChatBadge = useCallback(async () => {
+        const userId = userData?._id || userData?.id;
+        if (!userId) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/api/chat/unread/${userId}`);
+            const json = await response.json();
+            if (json.success) {
+                setChatBadge(json.data.unreadCount || 0);
+            }
+        } catch (err) {
+            console.log('Could not fetch chat badge:', err.message);
+        }
+    }, [userData]);
+
+    // Fetch badge on mount and when tab changes to home
+    useEffect(() => {
+        fetchChatBadge();
+    }, [fetchChatBadge]);
+
+    // Listen for new chat messages to update badge
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleChatNotification = () => {
+            // Increment badge when notification received (unless on chats tab)
+            if (currentTab !== 'chats') {
+                setChatBadge(prev => prev + 1);
+            }
+        };
+
+        socket.on('chat:notification', handleChatNotification);
+
+        return () => {
+            socket.off('chat:notification', handleChatNotification);
+        };
+    }, [socket, currentTab]);
+
+    // Clear badge when entering chats tab
+    useEffect(() => {
+        if (currentTab === 'chats') {
+            setChatBadge(0);
+        }
+    }, [currentTab]);
 
     const renderScreen = () => {
         switch (currentTab) {
@@ -134,7 +185,23 @@ export const MainTabNavigator = ({
                         daysTogether={daysTogether}
                         onLogout={onLogout}
                         onEditProfile={onEditProfile}
+                        onAvatarPress={onAvatarPress}
                         onFindPartner={onFindPartner}
+                        onBack={() => setCurrentTab('home')}
+                    />
+                );
+            case 'chats':
+                return (
+                    <ChatListScreen
+                        userId={userData?._id || userData?.id}
+                        partnerName={partnerName || 'Partner'}
+                        onSelectChat={(chat) => {
+                            // Navigate to ChatScreen - handled by AppNavigator
+                            // For now, we'll use a callback if available, or log
+                            if (onQuestionPress) {
+                                onQuestionPress({ type: 'chat', chat });
+                            }
+                        }}
                         onBack={() => setCurrentTab('home')}
                     />
                 );
@@ -149,6 +216,7 @@ export const MainTabNavigator = ({
             <BottomTabBar
                 currentTab={currentTab}
                 onTabChange={setCurrentTab}
+                chatBadge={chatBadge}
             />
         </View>
     );

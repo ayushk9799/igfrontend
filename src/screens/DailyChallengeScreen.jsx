@@ -21,6 +21,8 @@ import DailyChallengeDoneScreen from './DailyChallengeDoneScreen';
 import { colors, spacing, borderRadius } from '../theme';
 import { API_BASE } from '../constants/Api';
 import { submitAnswer, getUserAnswers } from '../utils/answerApi';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../store/slices/userSlice';
 
 const { width, height } = Dimensions.get('window');
 const CARD_HEIGHT = height * 0.7;
@@ -53,6 +55,7 @@ export default function DailyChallengeScreen({
   onCompareWithPartner = () => { }, // New callback for partner comparison
 }) {
   const insets = useSafeAreaInsets();
+  const userData = useSelector(selectUser);
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -123,8 +126,10 @@ export default function DailyChallengeScreen({
   }, []);
 
   // Callback to submit answer to backend
-  const handleAnswerSubmit = useCallback(async (taskIndex, answer) => {
-    console.log('🎯 [ANSWER] Submitting:', { taskIndex, answer });
+  const handleAnswerSubmit = useCallback(async (taskIndex, answer, answerType = 'text') => {
+    console.log('🎯 [ANSWER] Submitting:', { taskIndex, answer, answerType });
+
+    const task = tasks[taskIndex];
 
     // Save locally first
     setUserAnswers(prev => {
@@ -132,7 +137,8 @@ export default function DailyChallengeScreen({
       updated[taskIndex] = {
         taskIndex,
         answer,
-        task: tasks[taskIndex],
+        answerType,
+        task,
         answeredAt: new Date().toISOString()
       };
 
@@ -154,12 +160,42 @@ export default function DailyChallengeScreen({
     }
 
     try {
-      const result = await submitAnswer(userId, challenge._id, taskIndex, answer);
+      const result = await submitAnswer(userId, challenge._id, taskIndex, answer, answerType);
       if (result.success) {
         console.log('✅ Server saved:', result.data);
       }
     } catch (error) {
       console.error('❌ Submit error:', error);
+    }
+
+    // Create/update chat thread for this question
+    if (task) {
+      try {
+        const response = await fetch(`${API_BASE}/api/chat/answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            questionSource: 'dailychallenge',
+            challengeId: challenge._id,
+            taskIndex,
+            questionText: task.taskstatement,
+            questionCategory: task.category, // 'likelyto', 'neverhaveiever', 'deep', etc.
+            answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
+            answerType,
+          }),
+        });
+        const json = await response.json();
+
+        if (json.success) {
+          console.log('💬 [CHAT] Thread created/updated:', json.data.chatId);
+        } else {
+          console.log('⚠️ [CHAT] Could not create thread:', json.message);
+        }
+      } catch (err) {
+        console.log('⚠️ [CHAT] API error:', err.message);
+        // Don't block answer flow if chat creation fails
+      }
     }
   }, [userId, challenge?._id, tasks]);
 
@@ -229,8 +265,8 @@ export default function DailyChallengeScreen({
               currentIndex={currentIndex}
               partnerName={partnerName}
               userName={userName}
-              userAvatar={userAvatar}
-              partnerAvatar={partnerAvatar}
+              userAvatar={userData.avatarThumbnail || userData.avatar || userAvatar}
+              partnerAvatar={userData.partnerAvatarThumbnail || userData.partnerAvatar || partnerAvatar}
               onIndexChange={handleIndexChange}
               onAnswerSubmit={handleAnswerSubmit}
               challengeId={challenge._id}

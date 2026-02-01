@@ -13,6 +13,8 @@ import {
     onMessage,
     registerDeviceForRemoteMessages,
     AuthorizationStatus,
+    onNotificationOpenedApp,
+    getInitialNotification,
 } from '@react-native-firebase/messaging';
 import { getUser } from './authStorage';
 import { API_BASE } from '../constants/Api';
@@ -57,14 +59,15 @@ export const registerFCMToken = async () => {
 
     try {
         // Only needed on Android - iOS auto-registers for remote messages
-        if (Platform.OS === 'android') {
-            try {
-                console.log('📱 Registering device for remote messages...');
+        // UPDATE: iOS also needs this for full APNs integration with Firebase
+        try {
+            console.log('📱 Registering device for remote messages...');
+            if (!getMessaging().isDeviceRegisteredForRemoteMessages) {
                 await registerDeviceForRemoteMessages(getMessaging(getApp()));
-                console.log('✅ Device registered for remote messages');
-            } catch (e) {
-                console.warn('⚠️ Failed to register device for remote messages:', e.message);
             }
+            console.log('✅ Device registered for remote messages');
+        } catch (e) {
+            console.warn('⚠️ Failed to register device for remote messages:', e.message);
         }
 
         // Request permission first
@@ -137,10 +140,13 @@ export const setupTokenRefreshListener = () => {
 /**
  * Handle foreground messages
  */
-export const setupForegroundMessageHandler = () => {
+export const setupForegroundMessageHandler = (onMessageReceived) => {
     try {
         return onMessage(getMessaging(getApp()), async (remoteMessage) => {
             console.log('📩 FCM Message received in foreground:', remoteMessage);
+            if (onMessageReceived) {
+                onMessageReceived(remoteMessage);
+            }
         });
     } catch (error) {
         console.log('⚠️ Foreground message handler failed:', error.message);
@@ -148,9 +154,18 @@ export const setupForegroundMessageHandler = () => {
     }
 };
 
+export {
+    onMessage,
+    onNotificationOpenedApp,
+    getInitialNotification,
+    getMessaging
+};
+
 export default {
     requestNotificationPermission,
     registerFCMToken,
     setupTokenRefreshListener,
     setupForegroundMessageHandler,
+    onNotificationOpenedApp,
+    getInitialNotification
 };

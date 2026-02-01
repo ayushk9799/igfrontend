@@ -71,6 +71,32 @@ const ANIMATION_DURATION = 3000;
 const NODE_SIZE = 70;
 const ACTIVE_NODE_SIZE = 100;
 
+// 3D Depth perspective helpers
+// Top nodes (index 0) are "farther" away, bottom nodes are "closer"
+const getDepthScale = (index) => {
+    const totalNodes = FEATURES.length;
+    const depthFactor = index / (totalNodes - 1); // 0 to 1
+    // Scale from 0.85 (top/far) to 1.15 (bottom/close)
+    return 0.85 + (depthFactor * 0.3);
+};
+
+const getDepthOpacity = (index) => {
+    const totalNodes = FEATURES.length;
+    const depthFactor = index / (totalNodes - 1); // 0 to 1
+    // Opacity from 0.7 (far) to 1.0 (close)
+    return 0.7 + (depthFactor * 0.3);
+};
+
+const getDepthShadow = (index) => {
+    const depthFactor = index / (FEATURES.length - 1);
+    return {
+        shadowOffset: { width: 0, height: 4 + (index * 3) },
+        shadowOpacity: 0.12 + (depthFactor * 0.15),
+        shadowRadius: 8 + (index * 5),
+        elevation: 4 + (index * 2),
+    };
+};
+
 const AnimatedOnboardingScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -298,6 +324,11 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
         const anim = nodeAnims[index];
         const nodeSize = isActive ? ACTIVE_NODE_SIZE : NODE_SIZE;
 
+        // 3D Depth effects
+        const depthScale = getDepthScale(index);
+        const depthShadow = getDepthShadow(index);
+        const zIndexDepth = index + 1; // Higher index = closer = higher z-index
+
         return (
             <Animated.View
                 key={feature.id}
@@ -310,7 +341,11 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         width: nodeSize,
                         height: nodeSize,
                         opacity: anim.opacity,
-                        transform: [{ scale: anim.scale }],
+                        // Combine animation scale with depth scale
+                        transform: [
+                            { scale: Animated.multiply(anim.scale, depthScale) },
+                        ],
+                        zIndex: zIndexDepth,
                     },
                 ]}
             >
@@ -330,17 +365,20 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                     />
                 )}
 
-                {/* Node circle */}
+                {/* Node circle with depth-based shadow */}
                 <View
                     style={[
                         styles.nodeCircle,
                         {
-                            backgroundColor: feature.iconBg,
+                            // Completed nodes get white bg, active/upcoming keep iconBg
+                            backgroundColor: isCompleted ? '#FFFFFF' : feature.iconBg,
                             borderColor: feature.nodeColor,
                             borderWidth: isActive ? 3 : 2,
                             width: nodeSize,
                             height: nodeSize,
                             borderRadius: nodeSize / 2,
+                            // Depth-based shadows for 3D effect
+                            ...depthShadow,
                         },
                     ]}
                 >
@@ -392,7 +430,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         <Text style={[styles.nodeEmoji, { fontSize: isActive ? 50 : 35 }]}>🔥</Text>
                     )}
 
-                  
+
                 </View>
 
                 {/* Secondary floating elements for active node */}
@@ -477,7 +515,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
         );
     };
 
-    // S-curve path SVG
+    // S-curve path SVG with 3D depth gradient
     const renderPath = () => {
         const points = FEATURES.map((_, i) => getNodePosition(i));
 
@@ -498,20 +536,34 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
         }
 
         return (
-            <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-                {/* Background path (gray) */}
+            <Svg style={[StyleSheet.absoluteFill, { zIndex: 0 }]} pointerEvents="none">
+                {/* Gradient definition for 3D depth effect */}
+                <Defs>
+                    <SvgGradient id="pathDepthGradient" x1="0" y1="0" x2="0" y2="1">
+                        <Stop offset="0%" stopColor="rgba(0,0,0,0.05)" />
+                        <Stop offset="50%" stopColor="rgba(0,0,0,0.12)" />
+                        <Stop offset="100%" stopColor="rgba(0,0,0,0.2)" />
+                    </SvgGradient>
+                    <SvgGradient id="progressDepthGradient" x1="0" y1="0" x2="0" y2="1">
+                        <Stop offset="0%" stopColor={FEATURES[0].nodeColor} stopOpacity="0.4" />
+                        <Stop offset="50%" stopColor={FEATURES[Math.floor(FEATURES.length / 2)].nodeColor} stopOpacity="0.7" />
+                        <Stop offset="100%" stopColor={FEATURES[FEATURES.length - 1].nodeColor} stopOpacity="1" />
+                    </SvgGradient>
+                </Defs>
+
+                {/* Background path with depth gradient (fades from light to darker) */}
                 <Path
                     d={pathD}
-                    stroke="rgba(0,0,0,0.1)"
+                    stroke="url(#pathDepthGradient)"
                     strokeWidth={3}
                     fill="none"
                     strokeLinecap="round"
                 />
-                {/* Animated progress path */}
+                {/* Animated progress path with depth gradient */}
                 <AnimatedPath
                     d={pathD}
-                    stroke={currentFeature.nodeColor}
-                    strokeWidth={3}
+                    stroke="url(#progressDepthGradient)"
+                    strokeWidth={4}
                     fill="none"
                     strokeLinecap="round"
                     pathProgress={pathProgress}
@@ -562,13 +614,20 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                 style={styles.gradient}
             />
 
-            {/* Skip Button */}
-            <TouchableOpacity
-                style={[styles.skipButton, { top: insets.top + 16 }]}
-                onPress={handleSkip}
-            >
-                <Text style={styles.skipText}>Skip</Text>
-            </TouchableOpacity>
+            {/* 3D Perspective depth overlay - subtle gradient reinforces depth (lighter top, slightly darker bottom) */}
+            <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.08)']}
+                style={styles.depthOverlay}
+                pointerEvents="none"
+            />
+
+            {/* Header */}
+            <View style={[styles.header, { top: insets.top + 16 }]}>
+                <Text style={styles.headerTitle}>penguin : connecting couples</Text>
+            </View>
+
+          
+        
 
             {/* S-Curve Path */}
             {renderPath()}
@@ -578,7 +637,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
 
 
             <View style={[styles.bottomSection, { paddingBottom: insets.bottom + 24 }]}>
-                
+
                 <TouchableOpacity
                     style={styles.ctaButton}
                     onPress={handleGetStarted}
@@ -601,6 +660,10 @@ const styles = StyleSheet.create({
     gradient: {
         ...StyleSheet.absoluteFillObject,
     },
+    // Subtle overlay to reinforce 3D depth
+    depthOverlay: {
+        ...StyleSheet.absoluteFillObject,
+    },
     skipButton: {
         position: 'absolute',
         right: 24,
@@ -612,6 +675,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: colors.textSecondary,
+    },
+    header: {
+        position: 'absolute',
+        left: 24,
+        zIndex: 100,
+    },
+    headerTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#C45C3A',
+        letterSpacing: -0.5,
     },
     // Node styles
     nodeContainer: {

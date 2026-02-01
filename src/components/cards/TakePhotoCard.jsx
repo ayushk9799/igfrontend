@@ -18,6 +18,7 @@ import { Camera } from 'react-native-camera-kit';
 import { categoryConfig } from './categoryConfig';
 import { cardStyles as styles } from './cardStyles';
 import { colors } from '../../theme';
+import { uploadImageToS3 } from '../../utils/uploadApi';
 
 /**
  * TakePhotoCard - Card for capturing or selecting photos
@@ -26,15 +27,19 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
     const config = categoryConfig.takephoto;
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
+    const lastTaskIdRef = useRef(task._id);
     const [hasPermission, setHasPermission] = useState(Platform.OS === 'ios');
     const [previewUri, setPreviewUri] = useState(isAnswered ? previousAnswer : null);
     const [showCamera, setShowCamera] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        // Reset state when task changes, but preserve if already answered
-        setPreviewUri(isAnswered ? previousAnswer : null);
-        setShowCamera(false);
+        // Reset state only when task ID actually changes
+        if (lastTaskIdRef.current !== task._id) {
+            lastTaskIdRef.current = task._id;
+            setPreviewUri(isAnswered ? previousAnswer : null);
+            setShowCamera(false);
+        }
     }, [task._id, isAnswered, previousAnswer]);
 
     const requestCameraPermission = async () => {
@@ -137,10 +142,22 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
 
     const handleUsePhoto = async () => {
         if (!previewUri || isSubmitting) return;
-        console.log('🎯 [TakePhotoCard] Using photo, submitting:', previewUri);
+        console.log('🎯 [TakePhotoCard] Using photo, uploading to S3...');
         setIsSubmitting(true);
-        await onAnswerSubmit(index, previewUri);
-        onSubmit(previewUri);
+
+        try {
+            // Upload to S3 first
+            const s3Url = await uploadImageToS3(previewUri, 'daily-photos');
+            console.log('🎯 [TakePhotoCard] S3 upload complete:', s3Url);
+
+            // Submit S3 URL instead of local path with answerType='photo'
+            await onAnswerSubmit(index, s3Url, 'photo');
+            onSubmit(s3Url);
+        } catch (error) {
+            console.error('🎯 [TakePhotoCard] Upload failed:', error);
+            Alert.alert('Upload Failed', 'Could not upload photo. Please try again.');
+            setIsSubmitting(false);
+        }
     };
 
     // Camera View

@@ -1,9 +1,9 @@
 // Updated Navigator with premium theme and auth persistence
 import React, { useState, useEffect, startTransition } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
+import NicknameScreen from '../screens/NicknameScreen';
 import PartnerCodeScreen from '../screens/PartnerCodeScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MoodScreen from '../screens/MoodScreen';
@@ -12,6 +12,7 @@ import QuestionsScreen from '../screens/QuestionsScreen';
 import LikelyToQuestionScreen from '../screens/LikelyToQuestionScreen';
 import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
+import ChatScreen from '../screens/ChatScreen';
 import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
 
 import { TOPIC_CATEGORIES } from '../constants/Categories';
@@ -21,11 +22,13 @@ import JigsawCreateScreen from '../screens/JigsawCreateScreen';
 import JigsawPuzzleScreen from '../screens/JigsawPuzzleScreen';
 import TicTacToeScreen from '../screens/TicTacToeScreen';
 import WordleScreen from '../screens/WordleScreen';
+import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
 import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
-import { registerFCMToken } from '../utils/pushNotifications';
+import { getApp } from '@react-native-firebase/app';
+import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging } from '../utils/pushNotifications';
 import { API_BASE } from '../constants/Api';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, logout } from '../store/slices/userSlice';
@@ -44,6 +47,7 @@ export const AppNavigator = () => {
     const [yourMood, setYourMood] = useState({ emoji: '😊', label: 'Happy' });
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
+    const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -77,6 +81,40 @@ export const AppNavigator = () => {
             socket.off('wordle:update', handleWordleUpdate);
         };
     }, [socket, userData?.id]);
+
+    // Setup Notification Listeners
+    useEffect(() => {
+        // 1. Initial Notification (App opened from quit state)
+        getInitialNotification(getMessaging(getApp())).then(remoteMessage => {
+            if (remoteMessage) {
+                console.log('🔔 App opened from quit state via notification:', remoteMessage.notification);
+                // Handle navigation here if needed, e.g. navigate('chat')
+            }
+        });
+
+        // 2. Notification Opened App (App opened from background state)
+        const unsubscribeOpenedApp = onNotificationOpenedApp(getMessaging(getApp()), remoteMessage => {
+            console.log('🔔 App opened from background via notification:', remoteMessage.notification);
+            // Handle navigation here if needed
+        });
+
+        // 3. Foreground Message Handler
+        const unsubscribeForeground = setupForegroundMessageHandler((remoteMessage) => {
+            console.log('🔔 Foreground notification received:', remoteMessage);
+            Alert.alert(
+                remoteMessage.notification?.title || 'New Notification',
+                remoteMessage.notification?.body || 'You have a new message',
+                [
+                    { text: 'OK', onPress: () => console.log('OK Pressed') }
+                ]
+            );
+        });
+
+        return () => {
+            unsubscribeOpenedApp();
+            if (unsubscribeForeground) unsubscribeForeground();
+        };
+    }, []);
 
     // Check auth state on mount
     useEffect(() => {
@@ -128,8 +166,12 @@ export const AppNavigator = () => {
                         // Continue with local data if server check fails
                     }
 
-                    if (storedUser.partnerId) {
-                        // Already paired - go to home
+                    // FIRST check if user has a nickname - required before anything else
+                    if (!storedUser.nickname) {
+                        // No nickname yet - show nickname screen first
+                        setCurrentScreen('nickname');
+                    } else if (storedUser.partnerId) {
+                        // Has nickname and is paired - go to home
                         dispatch(setOnboarded(true));
                         setOnboardedStorage(true);
                         setCurrentScreen('home');
@@ -139,7 +181,7 @@ export const AppNavigator = () => {
                         fetchPendingTicTacToe(storedUser.id);
                         fetchPendingWordle(storedUser.id);
                     } else {
-                        // Not paired - show partner code screen
+                        // Has nickname but not paired - show partner code screen
                         setCurrentScreen('partnerCode');
                     }
                 } else {
@@ -153,7 +195,7 @@ export const AppNavigator = () => {
                 }
             } catch (error) {
                 console.error('Error checking auth state:', error);
-                setCurrentScreen('welcome');
+                setCurrentScreen('login');
             }
         };
 
@@ -273,13 +315,67 @@ export const AppNavigator = () => {
             // Connect to socket for real-time sync
             connect();
 
-            // Check if user is already paired
-            if (user.partnerId) {
+            // FIRST check if user has a nickname - required before anything else
+            if (!user.nickname) {
+                // No nickname yet - show nickname screen first
+                setCurrentScreen('nickname');
+            } else if (user.partnerId) {
+                // Has nickname and is paired - go to home
                 dispatch(setOnboarded(true));
                 setOnboardedStorage(true);
                 setCurrentScreen('home');
             } else {
-                // Not paired - show partner code screen
+                // Has nickname but not paired - show partner code screen
+                setCurrentScreen('partnerCode');
+            }
+        });
+    };
+
+    // Handle nickname completion
+    const handleNicknameComplete = async (nickname) => {
+        if (nickname) {
+            // Update local storage and Redux immediately
+            updateUserStorage({ nickname });
+            dispatch(updateUser({ nickname }));
+
+            // Save nickname to backend via profile update
+            try {
+                await fetch(`${API_BASE}/api/user/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userData.id, nickname }),
+                });
+            } catch (err) {
+                console.error('Failed to save nickname to server:', err);
+            }
+        }
+
+        startTransition(() => {
+            // Check if already paired
+            if (userData.partnerId) {
+                // Already paired - go to home
+                dispatch(setOnboarded(true));
+                setOnboardedStorage(true);
+                setCurrentScreen('home');
+            } else {
+                // Not paired - navigate to partner code screen
+                setCurrentScreen('partnerCode');
+            }
+        });
+    };
+
+    // Handle avatar completion
+    const handleAvatarComplete = () => {
+        startTransition(() => {
+            // Check if already paired
+            console.log('userData', userData);
+            if (userData.partnerId) {
+                // Already paired - go to home
+                dispatch(setOnboarded(true));
+                setOnboardedStorage(true);
+                setCurrentScreen('home');
+            } else {
+                // Not paired - navigate to partner code screen
                 setCurrentScreen('partnerCode');
             }
         });
@@ -349,13 +445,13 @@ export const AppNavigator = () => {
         });
     };
 
-    // Handle logout - clear auth and go to welcome
+    // Handle logout - clear auth and go to login
     const handleLogout = () => {
         startTransition(() => {
             clearAuth();
             dispatch(logout());
             setPendingInvite(null);
-            setCurrentScreen('welcome');
+            setCurrentScreen('login');
         });
     };
 
@@ -363,7 +459,7 @@ export const AppNavigator = () => {
     const handleOnboardingComplete = () => {
         startTransition(() => {
             setSeenOnboarding(true);
-            setCurrentScreen('welcome');
+            setCurrentScreen('login');
         });
     };
 
@@ -387,19 +483,28 @@ export const AppNavigator = () => {
                     />
                 );
 
-            case 'welcome':
-                return (
-                    <WelcomeScreen
-                        onGetStarted={() => navigate('login')}
-                    />
-                );
-
             case 'login':
                 return (
                     <LoginScreen
                         onLogin={handleLogin}
-                        onBack={() => navigate('welcome')}
+                        onBack={() => navigate('onboarding')}
                         onSignUp={() => navigate('login')}
+                    />
+                );
+
+            case 'nickname':
+                return (
+                    <NicknameScreen
+                        onComplete={handleNicknameComplete}
+                        onBack={() => navigate('login')}
+                    />
+                );
+
+            case 'avatarSelection':
+                return (
+                    <AvatarSelectionScreen
+                        onComplete={handleAvatarComplete}
+                        onBack={() => navigate('home')}
                     />
                 );
 
@@ -432,6 +537,12 @@ export const AppNavigator = () => {
                         onMoodPress={() => navigate('mood')}
                         onQuestionPress={(category) => {
                             if (category) {
+                                // Handle chat navigation from ChatListScreen
+                                if (category.type === 'chat' && category.chat) {
+                                    setSelectedChat(category.chat);
+                                    navigate('chat');
+                                    return;
+                                }
                                 console.log("category", category);
                                 setSelectedCategory(category);
                                 navigate('questions');
@@ -441,6 +552,7 @@ export const AppNavigator = () => {
                             }
                         }}
                         onEditProfile={() => navigate('editProfile')}
+                        onAvatarPress={() => navigate('avatarSelection')}
                         onFindPartner={() => navigate('partnerCode')}
                         onJigsawCreate={() => navigate('jigsawCreate')}
                         onJigsawPlay={(puzzleData) => {
@@ -635,6 +747,18 @@ export const AppNavigator = () => {
                                 partnerName: userData.partnerUsername || 'Partner',
                             }
                         }}
+                    />
+                );
+
+            case 'chat':
+                return (
+                    <ChatScreen
+                        chatId={selectedChat?._id}
+                        chat={selectedChat}
+                        userId={userData?.id}
+                        userName={userData?.name || 'You'}
+                        partnerName={userData?.partnerUsername || 'Partner'}
+                        onBack={() => navigate('home')}
                     />
                 );
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Animated, {
@@ -54,6 +54,7 @@ const SliderCard = React.memo(({
     );
     const [locked, setLocked] = useState(isAnswered);
     const [hasInteracted, setHasInteracted] = useState(false);
+    const lastTaskIdRef = useRef(task._id);
 
     // Animated values
     const translateX = useSharedValue(
@@ -62,13 +63,16 @@ const SliderCard = React.memo(({
             : ((SLIDER_WIDTH - KNOB_SIZE) / 2)
     );
 
-    // Reset when task changes
+    // Reset only when task ID actually changes
     useEffect(() => {
-        const initialValue = isAnswered ? previousAnswer : Math.floor((minValue + maxValue) / 2);
-        setCurrentValue(initialValue);
-        setLocked(isAnswered);
-        setHasInteracted(isAnswered);
-        translateX.value = ((initialValue - minValue) / (maxValue - minValue)) * (SLIDER_WIDTH - KNOB_SIZE);
+        if (lastTaskIdRef.current !== task._id) {
+            lastTaskIdRef.current = task._id;
+            const initialValue = isAnswered ? previousAnswer : Math.floor((minValue + maxValue) / 2);
+            setCurrentValue(initialValue);
+            setLocked(isAnswered);
+            setHasInteracted(isAnswered);
+            translateX.value = ((initialValue - minValue) / (maxValue - minValue)) * (SLIDER_WIDTH - KNOB_SIZE);
+        }
     }, [task._id, isAnswered, previousAnswer, minValue, maxValue]);
 
     // Haptic feedback

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -59,12 +59,16 @@ const NeverHaveIEverCard = React.memo(({
     const config = categoryConfig.neverhaveiever;
     const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [locked, setLocked] = useState(isAnswered);
+    const lastTaskIdRef = useRef(task._id);
 
     const options = task.options?.length > 0 ? task.options : ['I have', 'Never'];
 
     useEffect(() => {
-        setSelectedAnswer(isAnswered ? previousAnswer : null);
-        setLocked(isAnswered);
+        if (lastTaskIdRef.current !== task._id) {
+            lastTaskIdRef.current = task._id;
+            setSelectedAnswer(isAnswered ? previousAnswer : null);
+            setLocked(isAnswered);
+        }
     }, [task._id, isAnswered, previousAnswer]);
 
     const handleChoiceSelect = (choice) => {
