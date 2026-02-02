@@ -18,22 +18,32 @@ import {
 import Svg, { Path, Circle } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import ExpoImageCropTool from 'expo-image-crop-tool';
+import { ImageManipulator, FlipType, SaveFormat } from 'expo-image-manipulator';
 import { Camera } from 'react-native-camera-kit';
+import { useSelector } from 'react-redux';
 
 import { colors, spacing, borderRadius } from '../theme';
 import useAvatarUpload from '../hooks/useAvatarUpload';
+import { selectUser } from '../store/slices/userSlice';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const AvatarSelectionScreen = ({ onComplete, onBack }) => {
     const { uploadAvatar, isUploading } = useAvatarUpload();
+    const userData = useSelector(selectUser);
+
+    // Get existing avatar from store
+    const existingAvatar = userData?.avatarThumbnail || userData?.avatar || null;
 
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
 
     const [hasPermission, setHasPermission] = useState(Platform.OS === 'ios');
-    const [previewUri, setPreviewUri] = useState(null); // { uri, isFrontCamera }
-    const [showCamera, setShowCamera] = useState(true);
+    // Initialize with existing avatar if available
+    const [previewUri, setPreviewUri] = useState(
+        existingAvatar ? { uri: existingAvatar, isFrontCamera: false } : null
+    );
+    const [showCamera, setShowCamera] = useState(!existingAvatar); // Hide camera if avatar exists
     const [cameraType, setCameraType] = useState('front');
     const [isCameraInitialized, setIsCameraInitialized] = useState(false);
 
@@ -77,7 +87,7 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
             const source = data?.uri || (data?.path ? `file://${data.path}` : null);
             if (!source) throw new Error('No image captured');
 
-            const finalUri = source.startsWith('file://') ? source : `file://${source}`;
+            let finalUri = source.startsWith('file://') ? source : `file://${source}`;
 
             setPreviewUri({
                 uri: finalUri,
@@ -87,7 +97,7 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
             setShowCamera(false);
         } catch (e) {
             console.log('Capture error:', e);
-            Alert.alert('Error', 'Could not capture photo');
+            Alert.alert('Error', e.message);
         } finally {
             isProcessingRef.current = false;
         }
@@ -157,9 +167,26 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
         if (!previewUri || isUploading) return;
 
         try {
+            let finalUploadUri = previewUri.uri;
+
+            // If it was a front camera capture, flip it now before uploading
+            if (previewUri.isFrontCamera) {
+                try {
+                    const context = ImageManipulator.manipulate(finalUploadUri);
+                    context.flip(FlipType.Horizontal);
+                    const result = await context.renderAsync();
+                    const saved = await result.saveAsync({ format: SaveFormat.JPEG });
+                    finalUploadUri = saved.uri;
+                } catch (err) {
+                    console.error('Failed to flip image before upload:', err);
+                    // Decide if we should return or proceed with unflipped image. 
+                    // Proceeding might be safer ensuring the user doesn't get stuck.
+                }
+            }
+
             // Upload directly
             const result = await uploadAvatar({
-                uri: previewUri.uri,
+                uri: finalUploadUri,
                 fileName: `avatar_${Date.now()}.jpg`,
                 mimeType: 'image/jpeg',
             });
@@ -183,13 +210,13 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#000" />
+            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
                     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                        <Path d="M15 18l-6-6 6-6" stroke="#555" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                        <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                     </Svg>
                 </TouchableOpacity>
 
@@ -199,8 +226,8 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
                     <View style={styles.progressBarTrack} />
                 </View>
 
-                {/* Placeholder for right side to balance header */}
-                <View style={{ width: 40 }} />
+                {/* Placeholder */}
+                <View style={{ width: 44 }} />
             </View>
 
             <View style={styles.content}>
@@ -215,7 +242,9 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
                         isCameraInitialized ? (
                             <Camera
                                 ref={cameraRef}
-                                style={styles.camera}
+                                style={[
+                                    styles.camera
+                                ]}
                                 cameraType={cameraType}
                                 flashMode={cameraType === 'front' ? 'off' : 'auto'}
                             />
@@ -229,7 +258,7 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
                             source={{ uri: previewUri?.uri }}
                             style={[
                                 styles.previewImage,
-                                (previewUri?.isFrontCamera) && { transform: [{ scaleX: -1 }] }
+                                previewUri?.isFrontCamera && { transform: [{ scaleX: -1 }] }
                             ]}
                             resizeMode="cover"
                         />
@@ -242,28 +271,25 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
                         <>
                             <TouchableOpacity onPress={handlePickFromGallery} style={styles.controlBtnSecondary}>
                                 <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                    <Path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                                 </Svg>
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={handleCapture} style={styles.controlBtnPrimary}>
-                                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                                    <Circle cx="12" cy="13" r="4" stroke="#fff" strokeWidth={2} />
-                                </Svg>
+                                <View style={styles.captureInner} />
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={toggleCamera} style={styles.controlBtnSecondary}>
-                                {/* Flip Icon */}
+                                {/* Flipping Icon */}
                                 <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M1 4v6h6" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                                    <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                    <Path d="M1 4v6h6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                    <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                                 </Svg>
                             </TouchableOpacity>
                         </>
                     ) : (
-                        <TouchableOpacity onPress={handleRetake} style={styles.controlBtnSecondary}>
-                            <Text style={{ color: '#fff', fontWeight: '600' }}>Retake</Text>
+                        <TouchableOpacity onPress={handleRetake} style={styles.controlBtnText}>
+                            <Text style={styles.retakeText}>Retake Photo</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -292,7 +318,7 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: colors.background, // Light theme background
     },
     header: {
         flexDirection: 'row',
@@ -303,25 +329,30 @@ const styles = StyleSheet.create({
         height: 60,
     },
     backButton: {
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#1A1A1A',
-        borderRadius: 20,
+        backgroundColor: colors.surface,
+        borderRadius: 22,
+        shadowColor: colors.shadowLight,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     progressBarContainer: {
         flex: 1,
         height: 6,
-        backgroundColor: '#333',
+        backgroundColor: colors.borderLight,
         borderRadius: 3,
         marginHorizontal: spacing.xl,
         overflow: 'hidden',
         flexDirection: 'row',
     },
     progressBarFill: {
-        flex: 0.6, // 60% progress example
-        backgroundColor: '#fff', // White or Green
+        flex: 0.6,
+        backgroundColor: colors.primary,
         borderRadius: 3,
     },
     progressBarTrack: {
@@ -333,26 +364,36 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.lg,
     },
     title: {
-        color: '#fff',
+        color: colors.text,
         fontSize: 28,
-        fontWeight: '600',
+        fontWeight: '700',
         textAlign: 'center',
         marginTop: spacing.lg,
         marginBottom: spacing.xl,
         lineHeight: 36,
     },
     cameraBoxContainer: {
-        width: SCREEN_WIDTH - 48, // Padding on sides
-        height: SCREEN_WIDTH - 48, // Square aspect ratio
+        width: '100%',
+        aspectRatio: 1, // Square aspect ratio
         borderRadius: 32,
         overflow: 'hidden',
-        backgroundColor: '#1A1A1A',
+        backgroundColor: colors.surface,
         marginBottom: spacing.xl,
         borderWidth: 1,
-        borderColor: '#333',
+        borderColor: colors.border,
+        shadowColor: colors.shadowMedium,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
     },
     camera: {
-        flex: 1,
+        // Make camera taller than container and center it to fill width
+        position: 'absolute',
+        top: '-38.5%', // Center the 16:9 camera in the 1:1 box
+        left: 0,
+        width: '100%',
+        height: '177%', // 16:9 Aspect Ratio within the square
     },
     previewImage: {
         flex: 1,
@@ -373,19 +414,45 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 28,
-        backgroundColor: '#1A1A1A',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    controlBtnPrimary: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        backgroundColor: '#1A1A1A', // Dark container
+        backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#333',
+        borderColor: colors.border,
+        shadowColor: colors.shadowLight,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    controlBtnPrimary: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 4,
+        borderColor: colors.borderLight,
+    },
+    captureInner: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: colors.primary,
+    },
+    controlBtnText: {
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.xl,
+        backgroundColor: colors.surface,
+        borderRadius: borderRadius.full,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    retakeText: {
+        color: colors.textSecondary,
+        fontWeight: '600',
+        fontSize: 16,
     },
     footer: {
         paddingHorizontal: spacing.lg,
@@ -394,18 +461,24 @@ const styles = StyleSheet.create({
     },
     nextButton: {
         height: 56,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: colors.primary,
         borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 6,
     },
     nextButtonDisabled: {
-        opacity: 0.5,
+        opacity: 0.6,
+        shadowOpacity: 0.1,
     },
     nextButtonText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '600',
     },
 });
