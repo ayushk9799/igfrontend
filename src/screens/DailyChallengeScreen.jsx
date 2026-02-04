@@ -267,6 +267,8 @@ export default function DailyChallengeScreen({
               userName={userName}
               userAvatar={userData.avatarThumbnail || userData.avatar || userAvatar}
               partnerAvatar={userData.partnerAvatarThumbnail || userData.partnerAvatar || partnerAvatar}
+              userId={userId}
+              partnerId={userData.partnerId}
               onIndexChange={handleIndexChange}
               onAnswerSubmit={handleAnswerSubmit}
               challengeId={challenge._id}

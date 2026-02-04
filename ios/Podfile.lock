@@ -18,7 +18,7 @@ PODS:
   - EXImageLoader (6.0.0):
     - ExpoModulesCore
     - React-Core
-  - Expo (54.0.32):
+  - Expo (54.0.33):
     - boost
     - DoubleConversion
     - ExpoModulesCore
@@ -2703,6 +2703,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - RNAudioRecorderPlayer (3.6.14):
+    - React-Core
   - RNCClipboard (1.16.3):
     - boost
     - DoubleConversion
@@ -2731,7 +2733,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNFBApp (23.8.3):
+  - RNFBApp (23.8.5):
     - boost
     - DoubleConversion
     - fast_float
@@ -2760,7 +2762,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNFBMessaging (23.8.3):
+  - RNFBMessaging (23.8.5):
     - boost
     - DoubleConversion
     - fast_float
@@ -3159,6 +3161,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeCameraKit (from `../node_modules/react-native-camera-kit`)
+  - RNAudioRecorderPlayer (from `../node_modules/react-native-audio-recorder-player`)
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
@@ -3372,6 +3375,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   ReactNativeCameraKit:
     :path: "../node_modules/react-native-camera-kit"
+  RNAudioRecorderPlayer:
+    :path: "../node_modules/react-native-audio-recorder-player"
   RNCClipboard:
     :path: "../node_modules/@react-native-clipboard/clipboard"
   RNFBApp:
@@ -3397,7 +3402,7 @@ SPEC CHECKSUMS:
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   EXConstants: fce59a631a06c4151602843667f7cfe35f81e271
   EXImageLoader: 189e3476581efe3ad4d1d3fb4735b7179eb26f05
-  Expo: e74d268db4bae0220e5ffb72a391233d1984c314
+  Expo: ffcd2fb31776b663b84501a2568cab7dd7c0f9cb
   ExpoAsset: f867e55ceb428aab99e1e8c082b5aee7c159ea18
   ExpoFileSystem: 858a44267a3e6e9057e0888ad7c7cfbf55d52063
   ExpoFont: f543ce20a228dd702813668b1a07b46f51878d47
@@ -3496,9 +3501,10 @@ SPEC CHECKSUMS:
   ReactCodegen: 6c26f8c25d0b5ae66f86a1cce1777076ac8bcbd8
   ReactCommon: 5f0e5c09a64a2717215dd84380e1a747810406f2
   ReactNativeCameraKit: 8bf3988eb86ba253fafca7c14286aa7855a1c9e1
+  RNAudioRecorderPlayer: b5ed41ccfe72a211a870bfe09ab36c046eb27d2a
   RNCClipboard: 4b58c780f63676367640f23c8e114e9bd0cf86ac
-  RNFBApp: b094e527070715680bf25d019ac853d1f22d92df
-  RNFBMessaging: 853b4e8f0a07240e25fea4acc53b600967925b8a
+  RNFBApp: 3504f3fd9217321ad7bb85cb0243e5c547d98e8c
+  RNFBMessaging: d467b8f85ff4a2c2eda11e6c12aa1262e26ce883
   RNGestureHandler: 3a73f098d74712952870e948b3d9cf7b6cae9961
   RNReanimated: 0a42c1fc618e8f510b7b1724164308e49220dbe2
   RNSVG: 6f39605a4c4d200b11435c35bd077553c6b5963a

@@ -200,6 +200,7 @@ export default function ChatScreen({
     const [sending, setSending] = useState(false);
     const [partnerTyping, setPartnerTyping] = useState(false);
     const [showQuestionCard, setShowQuestionCard] = useState(true);
+    const [questionExpanded, setQuestionExpanded] = useState(false);
 
     // Get category config
     const categoryConfig = CATEGORY_CONFIG[chat?.questionSource] || CATEGORY_CONFIG.deep;
@@ -406,6 +407,7 @@ export default function ChatScreen({
                 senderName={isSent ? userName : partnerName}
                 senderAvatar={avatarSource}
                 isRead={item.isRead}
+                questionCategory={chat?.questionCategory}
             />
         );
     };
@@ -416,25 +418,23 @@ export default function ChatScreen({
         return (
             <TouchableOpacity
                 style={styles.questionCard}
-                onPress={() => setShowQuestionCard(false)}
-                activeOpacity={0.95}
+                onPress={() => setQuestionExpanded(!questionExpanded)}
+                activeOpacity={0.9}
             >
-                {/* Light cyan to light purple gradient matching design */}
-                <LinearGradient
-                    colors={['#E0F2FE', '#F3E8FF']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.questionCardGradient}
-                >
-
-                    {/* Question text */}
-                    <Text style={styles.questionText}>{chat.questionText}</Text>
-
-                    {/* Tap to minimize hint */}
-                    <View style={styles.collapseHintContainer}>
-                        <Text style={styles.collapseHint}>Tap to minimize</Text>
-                    </View>
-                </LinearGradient>
+                <View style={[
+                    styles.questionCardGradient,
+                    !questionExpanded && styles.questionCardCollapsed
+                ]}>
+                    <Text
+                        style={styles.questionText}
+                        numberOfLines={questionExpanded ? undefined : 2}
+                    >
+                        {chat.questionText}
+                    </Text>
+                    <Text style={styles.tapHint}>
+                        {questionExpanded ? 'Tap to collapse' : 'Tap to expand'}
+                    </Text>
+                </View>
             </TouchableOpacity>
         );
     };
@@ -486,7 +486,12 @@ export default function ChatScreen({
                             {partnerName?.charAt(0)?.toUpperCase() || '?'}
                         </Text>
                     </View>
-                    <Text style={styles.headerName}>{partnerName}</Text>
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerName}>{partnerName}</Text>
+                        {partnerTyping && (
+                            <Text style={styles.headerTypingText}>typing...</Text>
+                        )}
+                    </View>
                 </View>
 
                 {/* Spacer for centering */}
@@ -598,14 +603,21 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1A1A2E',
     },
+    headerTextContainer: {
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+    },
+    headerTypingText: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontStyle: 'italic',
+    },
     headerSpacer: {
         minWidth: 70,
 
     },
     questionCard: {
-
-        borderRadius: 24,
-
+        borderRadius: 12,
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -614,10 +626,14 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     questionCardGradient: {
-        paddingHorizontal: 24,
-        paddingTop: 24,
-        paddingBottom: 20,
-        borderRadius: 24,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 8,
+        backgroundColor: '#F0F4FF',
+        borderRadius: 12,
+    },
+    questionCardCollapsed: {
+        maxHeight: 80,
     },
     questionLabel: {
         fontSize: 12,
@@ -626,11 +642,17 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     questionText: {
-        fontSize: 20,
-        fontWeight: '700',
+        fontSize: 16,
+        fontWeight: '600',
         color: '#111827',
-        lineHeight: 28,
-        marginBottom: 24,
+        lineHeight: 22,
+        marginBottom: 6,
+    },
+    tapHint: {
+        fontSize: 11,
+        color: '#9CA3AF',
+        textAlign: 'center',
+        marginTop: 4,
     },
     collapseHintContainer: {
         alignItems: 'center',

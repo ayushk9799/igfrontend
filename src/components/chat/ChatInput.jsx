@@ -7,6 +7,7 @@ import {
     StyleSheet,
     Animated,
     Platform,
+    Keyboard,
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { colors, spacing } from '../../theme';
@@ -77,10 +78,25 @@ const ChatInput = ({
 }) => {
     const [message, setMessage] = useState('');
     const [inputHeight, setInputHeight] = useState(44);
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
     const sendButtonScale = useRef(new Animated.Value(1)).current;
     const typingTimeout = useRef(null);
 
     const canSend = message.trim().length > 0 && !disabled;
+
+    // Track keyboard visibility
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+        const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     useEffect(() => {
         return () => {
@@ -144,15 +160,13 @@ const ChatInput = ({
     };
 
     return (
-        <View style={styles.wrapper}>
+        <View style={[styles.wrapper, keyboardVisible && Platform.OS === 'ios' && styles.wrapperKeyboardActive]}>
             <View style={styles.container}>
                 {/* Plus button */}
-                <TouchableOpacity style={styles.plusButton} activeOpacity={0.6}>
-                    <PlusIcon size={22} color="#6B7280" />
-                </TouchableOpacity>
+
 
                 {/* Microphone button */}
-               
+
 
                 {/* Input field */}
                 <View style={styles.inputContainer}>
@@ -196,8 +210,12 @@ const ChatInput = ({
 const styles = StyleSheet.create({
     wrapper: {
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 0,
         backgroundColor: 'transparent',
+        marginBottom: Platform.OS === 'android' ? 8 : 0,
+    },
+    wrapperKeyboardActive: {
+        marginBottom: -20,
     },
     container: {
         flexDirection: 'row',
@@ -232,12 +250,15 @@ const styles = StyleSheet.create({
     inputContainer: {
         flex: 1,
         marginHorizontal: 8,
+
+
     },
     input: {
         fontSize: 16,
         color: '#374151',
-        paddingVertical: Platform.OS === 'ios' ? 10 : 6,
+        paddingVertical: Platform.OS === 'ios' ? 6 : 6,
         lineHeight: 20,
+
     },
     sendButtonWrapper: {
         marginLeft: 4,

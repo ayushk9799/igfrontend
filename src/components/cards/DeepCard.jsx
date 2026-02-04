@@ -67,7 +67,6 @@ const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit
                                 {config.label}
                             </Text>
                         </View>
-                        <Text style={styles.counterText}>{index + 1}/{totalCards}</Text>
                     </View>
 
                     {/* Question Area */}

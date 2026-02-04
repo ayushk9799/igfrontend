@@ -100,6 +100,12 @@ export const categoryConfig = {
         bgGradient: ['#AD1457', '#C2185B', '#E91E63'],
         label: 'Creative Prompt',
     },
+    voicerecord: {
+        emoji: '🎙️',
+        color: '#E91E63',
+        bgGradient: ['#C2185B', '#E91E63', '#F06292'],
+        label: 'Voice Message',
+    },
 };
 
 export const defaultConfig = categoryConfig.deep;

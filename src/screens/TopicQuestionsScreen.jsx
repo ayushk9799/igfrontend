@@ -28,9 +28,9 @@ const { width, height } = Dimensions.get('window');
  * Uses AnimatedCardStack + TaskCard for visual display
  */
 export default function TopicQuestionsScreen({
-    topic,           // Topic ID: 'future', 'money', 'hotspicy', etc.
-    topicTitle,      // Display title: 'Future', 'Money', etc.
-    topicEmoji,      // Display emoji: '🔮', '💰', etc.
+    topic,
+    topicTitle,
+    topicEmoji,
     partnerName = 'Your Love',
     userName = 'You',
     userAvatar = null,
@@ -40,51 +40,205 @@ export default function TopicQuestionsScreen({
 }) {
     const insets = useSafeAreaInsets();
     const userData = useSelector(selectUser);
+
+    // Use prop userId if provided, otherwise fallback to Redux store
+    const effectiveUserId = userId || userData?.id;
+    console.log('👤 [TopicScreen] Effective User ID:', effectiveUserId, 'Provided:', userId, 'Redux:', userData?.id);
+
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userAnswers, setUserAnswers] = useState([]);
     const [error, setError] = useState(null);
 
-    // Fetch questions for this topic
+    // Progress Tracking Refs
+    const maxSeenOrderRef = React.useRef(0);
+    const lastSyncedOrderRef = React.useRef(0);
+    const isFetchingRef = React.useRef(false);
+    const userIdRef = React.useRef(effectiveUserId);
+
+    // Keep userIdRef updated
     useEffect(() => {
-        fetchQuestions();
-    }, [topic]);
+        userIdRef.current = effectiveUserId;
+    }, [effectiveUserId]);
 
-    const fetchQuestions = async () => {
+    // Initial load - Refetch when user ID becomes available to ensure we respect progress
+    useEffect(() => {
+        if (effectiveUserId) {
+            fetchQuestions(true);
+        } else {
+            // Optional: Fetch guest questions if no user, but better to wait?
+            // Existing logic allows undefined userId, so we can fetch.
+            fetchQuestions(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [topic, effectiveUserId]);
+
+    // Sync progress on unmount
+    useEffect(() => {
+        return () => {
+            syncProgress();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const syncProgress = async () => {
+        const maxSeen = maxSeenOrderRef.current;
+        const lastSynced = lastSyncedOrderRef.current;
+        const currentUserId = userIdRef.current;
+
+        console.log(`💾 [SYNC CHECK] MaxSeen: ${maxSeen}, LastSynced: ${lastSynced}, UserID: ${currentUserId}`);
+
+        if (maxSeen > lastSynced && currentUserId) {
+            console.log(`💾 [SYNC] Syncing progress on unmount: ${maxSeen}`);
+            try {
+                // Using fetch with keepalive: true if supported, or just standard fetch
+                // React Native doesn't support keepalive flag standardly but standard fetch usually initiates
+                await fetch(`${API_BASE}/api/questions/progress`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUserId,
+                        topicId: topic,
+                        lastOrder: maxSeen
+                    }),
+                });
+            } catch (err) {
+                console.error('❌ [SYNC] Failed to sync progress:', err);
+            }
+        }
+    };
+
+    const fetchQuestions = async (isInitial = false) => {
+        if (isFetchingRef.current) return;
+        isFetchingRef.current = true;
+
         try {
-            setLoading(true);
-            setError(null);
-            console.log(`📡 Fetching questions for topic: ${topic}`);
+            if (isInitial) {
+                setLoading(true);
+                setError(null);
+            }
 
-            const res = await fetch(`${API_BASE}/api/questions/topic/${topic}?limit=20&shuffle=true`);
+            console.log(`📡 Fetching questions for topic: ${topic} (Initial: ${isInitial})`);
+
+            // If it's not initial, we want to fetch *after* the last question we have
+            // But the API uses user's progress. 
+            // If we have questions loaded [Q1..Q20], asking API again might return Q21..Q40 if we call with correct params?
+            // Actually the API fetches based on DB User progress. 
+            // PROBLEM: If user hasn't synced progress yet (local browsing), API will return Q1..Q20 again?
+            // SOLUTION: We should pass a `minOrder` param to API if we have local questions?
+            // OR checks against `questions` state last element.
+            // Let's modify the API call or trust the flow?
+            // Current API: `GET /topic?userId=...` -> fetches > user.topicProgress.
+            // If user swiped 5 cards locally but didn't sync, API returns card 1 again?
+            // Yes.
+            // WE NEED TO SYNC PROGRESS BEFORE FETCHING MORE?
+            // OR allow API to accept `afterOrder` param.
+            // I didn't add `afterOrder` to backend.
+            // Hack for now: We assume we sync progress on Answer.
+            // For Infinite Scroll to work without answering, we might need to rely on what's loaded.
+            // Actually, if we just append, we are fine locally.
+            // But if we run out of buffer and need more...
+            // Use the `lastSeenOrder` from the *server's perspective*?
+            // If I just pass `userId`, it uses server state.
+            // If I don't answer, server state is old.
+            // I should passes `startingOrder` if I can?
+            // But I didn't implement that in backend.
+            // Wait, I can just rely on the initial batch being large enough (20)?
+            // If user swipes 15, we fetch more.
+            // Ideally we'd sync the 15 skips then fetch.
+            // I will implement "Sync before Fetch" strategy for infinite scroll.
+
+            if (!isInitial) {
+                await syncProgress(); // Sync any pending skips
+                lastSyncedOrderRef.current = maxSeenOrderRef.current; // Update ref to avoid double sync
+            }
+
+            const url = `${API_BASE}/api/questions/topic/${topic}?userId=${effectiveUserId || ''}&limit=20`;
+            console.log(`🔗 [API] Calling: ${url}`);
+            const res = await fetch(url);
             const json = await res.json();
 
             if (json.success && json.data?.questions) {
-                console.log(`✅ Fetched ${json.data.questions.length} questions for topic: ${topic}`);
-                setQuestions(json.data.questions);
+                const newQuestions = json.data.questions;
+                console.log(`✅ Fetched ${newQuestions.length} questions for topic: ${topic}`);
+
+                if (isInitial) {
+                    setQuestions(newQuestions);
+                    // Initialize maxSeen based on loaded questions? 
+                    // No, maxSeen tracks *user action*. 
+                    // But we should start maxSeen at the first question's order - 1?
+                    // Actually, if we load Q10, Q11... maxSeen starts at whatever user had.
+                    // We only update maxSeen when user SWIPES.
+                } else {
+                    // Filter duplicates just in case
+                    setQuestions(prev => {
+                        const existingIds = new Set(prev.map(q => q._id));
+                        const uniqueNew = newQuestions.filter(q => !existingIds.has(q._id));
+                        return [...prev, ...uniqueNew];
+                    });
+                }
             } else {
                 console.error('❌ Failed to fetch questions:', json.message);
-                setError(json.message || 'Failed to load questions');
+                if (isInitial) setError(json.message || 'Failed to load questions');
             }
         } catch (err) {
             console.error('❌ Fetch error:', err);
-            setError('Could not connect to server');
+            if (isInitial) setError('Could not connect to server');
         } finally {
-            setLoading(false);
+            if (isInitial) setLoading(false);
+            isFetchingRef.current = false;
         }
     };
 
     // Callback for AnimatedCardStack to update the index
     const handleIndexChange = useCallback((newIndex) => {
         setCurrentIndex(newIndex);
-    }, []);
+
+        // Update Max Seen Order
+        // If we moved from index 0 -> 1, we have "seen"/passed question at index 0.
+        // So maxSeen = questions[newIndex - 1].order
+        if (newIndex > 0 && questions[newIndex - 1]) {
+            const passedQuestion = questions[newIndex - 1];
+            if (passedQuestion.order > maxSeenOrderRef.current) {
+                maxSeenOrderRef.current = passedQuestion.order;
+
+                // ⚡️ SAFE SYNC: Sync immediately on swipe to ensure persistence
+                // We don't wait for unmount because it can be unreliable
+                if (effectiveUserId) {
+                    fetch(`${API_BASE}/api/questions/progress`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: effectiveUserId,
+                            topicId: topic,
+                            lastOrder: passedQuestion.order
+                        }),
+                    }).then(() => {
+                        lastSyncedOrderRef.current = passedQuestion.order;
+                        console.log(`✅ [SYNC] Auto-synced order ${passedQuestion.order}`);
+                    }).catch(err => console.error('❌ [SYNC] Auto-sync failed:', err));
+                }
+            }
+        }
+
+        // Infinite Scroll Trigger
+        // If we are close to the end (e.g. 5 cards left), fetch more
+        if (questions.length - newIndex < 5) {
+            fetchQuestions(false);
+        }
+    }, [questions, effectiveUserId, topic]);
 
     // Callback to handle answer submission
-    const handleAnswerSubmit = useCallback(async (taskIndex, answer) => {
-        console.log('🎯 [ANSWER] Submitting:', { taskIndex, answer });
+    const handleAnswerSubmit = useCallback(async (taskIndex, answer, answerType = 'text') => {
+        console.log('🎯 [ANSWER] Submitting:', { taskIndex, answer, answerType });
 
         const question = questions[taskIndex];
+
+        // Update Progress Refs immediately
+        if (question && question.order > maxSeenOrderRef.current) {
+            maxSeenOrderRef.current = question.order;
+        }
 
         // Save locally
         setUserAnswers(prev => {
@@ -92,49 +246,62 @@ export default function TopicQuestionsScreen({
             updated[taskIndex] = {
                 taskIndex,
                 answer,
+                answerType,
                 question,
                 answeredAt: new Date().toISOString()
             };
             return updated;
         });
 
-        // Submit to chat API to create/update chat thread
-        if (userId && question) {
+        if (effectiveUserId && question) {
+            // 1. Sync Progress (Answered = Seen)
+            try {
+                await fetch(`${API_BASE}/api/questions/progress`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: effectiveUserId,
+                        topicId: topic,
+                        lastOrder: question.order
+                    }),
+                });
+                lastSyncedOrderRef.current = question.order; // Mark as synced
+            } catch (pErr) {
+                console.error('Failed to sync progress on answer:', pErr);
+            }
+
+            // 2. Submit Chat
             try {
                 const response = await fetch(`${API_BASE}/api/chat/answer`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        userId,
-                        questionSource: topic, // 'future', 'money', 'hotspicy', etc.
+                        userId: effectiveUserId,
+                        questionSource: topic,
                         questionId: question._id,
                         questionText: question.taskstatement || question.question,
-                        questionCategory: question.category, // 'likelyto', 'neverhaveiever', 'deep'
+                        questionCategory: question.category,
                         answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
+                        answerType: answerType,
                     }),
                 });
-                const json = await response.json();
-
-                if (json.success) {
-                    console.log('💬 [CHAT] Thread created/updated:', json.data.chatId);
-                } else {
-                    console.log('⚠️ [CHAT] Could not create thread:', json.message);
-                }
+                // ... logging
             } catch (err) {
-                console.log('⚠️ [CHAT] API error:', err.message);
-                // Don't block answer flow if chat creation fails
+                // ... logging
             }
         }
-    }, [questions, userId, topic]);
+    }, [questions, effectiveUserId, topic]);
 
     // Transform questions to tasks format for AnimatedCardStack
     const tasks = useMemo(() => {
+        console.log('🔍 [TopicScreen] First question data:', questions[0]);
         return questions.map(q => ({
             _id: q._id,
             taskstatement: q.taskstatement || q.question,
-            category: q.category,  // Visual type: 'likelyto', 'neverhaveiever', 'deep'
+            category: q.category || q.visualType,  // Fallback to visualType if category not set
             options: q.options || [],
             topic: q.topic,
+            visualType: q.visualType,  // Keep original for debugging
         }));
     }, [questions]);
 
@@ -154,7 +321,7 @@ export default function TopicQuestionsScreen({
             <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
                 <Text style={styles.errorEmoji}>😕</Text>
                 <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity style={styles.retryBtn} onPress={fetchQuestions}>
+                <TouchableOpacity style={styles.retryBtn} onPress={() => fetchQuestions(true)}>
                     <Text style={styles.retryBtnText}>Try Again</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack}>
@@ -191,7 +358,7 @@ export default function TopicQuestionsScreen({
                         <View style={styles.headerContent}>
                             <Text style={styles.headerTitle}>{topicEmoji} {topicTitle}</Text>
                             <Text style={styles.headerSubtitle}>
-                                {currentIndex + 1} of {tasks.length} questions
+                                {questions.length} loaded
                             </Text>
                         </View>
                         <View style={{ width: 48 }} />

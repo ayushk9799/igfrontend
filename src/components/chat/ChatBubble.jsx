@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import VoiceBubble from './VoiceBubble';
 
 // Double check icon for read receipts
 const DoubleCheck = ({ color = '#007AFF', size = 12 }) => (
@@ -40,6 +41,7 @@ const ChatBubble = ({
     senderAvatar = null,
     showTimestamp = true,
     isRead = false,
+    questionCategory = null,
 }) => {
     const formatTime = (dateString) => {
         if (!dateString) return '';
@@ -52,10 +54,21 @@ const ChatBubble = ({
     };
 
     // Get the message content
-    const messageContent = message?.content || message?.text || '';
+    let messageContent = message?.content || message?.text || '';
 
-    // Don't render if there's no content
-    if (!messageContent && message?.answerType !== 'photo') {
+    // For likelyto answers, transform userId to "Me" or "You"
+    // Logic: if stored userId === senderId, display "Me", else "You"
+    if (message?.messageType === 'answer' && questionCategory === 'likelyto' && messageContent) {
+        const senderId = message.senderId?._id || message.senderId;
+        if (messageContent === senderId) {
+            messageContent = 'Me';
+        } else {
+            messageContent = 'You';
+        }
+    }
+
+    // Don't render if there's no content (but allow photo and voice which use content as URI)
+    if (!messageContent && !['photo', 'voice'].includes(message?.answerType)) {
         return null;
     }
 
@@ -84,7 +97,9 @@ const ChatBubble = ({
                             {isSent ? 'YOUR ANSWER' : `${senderName.toUpperCase()}'S ANSWER`}
                         </Text>
                     )}
-                    {message.answerType === 'photo' ? (
+                    {message.answerType === 'voice' ? (
+                        <VoiceBubble audioUri={messageContent} isSent={isSent} />
+                    ) : message.answerType === 'photo' ? (
                         <Image
                             source={{ uri: messageContent }}
                             style={styles.messageImage}

@@ -5,6 +5,7 @@ import NeverHaveIEverCard from './NeverHaveIEverCard';
 import TakePhotoCard from './TakePhotoCard';
 import DeepCard from './DeepCard';
 import SliderCard from './SliderCard';
+import VoiceRecordCard from './VoiceRecordCard';
 
 /**
  * TaskCard - Routes to the appropriate card component based on task category
@@ -17,6 +18,8 @@ const TaskCard = React.memo(({
     userName,
     userAvatar,
     partnerAvatar,
+    userId,
+    partnerId,
     onSubmit,
     onSkip,
     isLastCard,
@@ -26,6 +29,9 @@ const TaskCard = React.memo(({
 }) => {
     if (!task) return null;
 
+    // Debug: Log the category being received
+    console.log('🎴 [TaskCard] Rendering task:', task._id, 'category:', task.category, 'visualType:', task.visualType);
+
     const commonProps = {
         task,
         index,
@@ -34,6 +40,8 @@ const TaskCard = React.memo(({
         userName,
         userAvatar,
         partnerAvatar,
+        userId,
+        partnerId,
         onSubmit,
         onSkip,
         isLastCard,
@@ -56,6 +64,10 @@ const TaskCard = React.memo(({
 
     if (task.category === 'slider') {
         return <SliderCard {...commonProps} />;
+    }
+
+    if (task.category === 'voicerecord') {
+        return <VoiceRecordCard {...commonProps} />;
     }
 
     return <DeepCard {...commonProps} />;

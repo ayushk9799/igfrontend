@@ -4,6 +4,7 @@ export { default as NeverHaveIEverCard } from './NeverHaveIEverCard';
 export { default as TakePhotoCard } from './TakePhotoCard';
 export { default as DeepCard } from './DeepCard';
 export { default as TaskCard } from './TaskCard';
+export { default as VoiceRecordCard } from './VoiceRecordCard';
 export { default as AnimatedCardStack } from './AnimatedCardStack';
 
 // Config and Styles

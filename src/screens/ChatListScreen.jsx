@@ -207,12 +207,14 @@ export default function ChatListScreen({
 
             {/* Chat list */}
             <FlatList
+                style={{ flex: 1 }}
                 data={chats}
                 renderItem={renderChatItem}
                 keyExtractor={(item) => item._id}
                 contentContainerStyle={[
                     styles.listContent,
-                    chats.length === 0 && styles.listEmpty
+                    chats.length === 0 && styles.listEmpty,
+                    { paddingBottom: insets.bottom + 80 }
                 ]}
                 ListEmptyComponent={renderEmpty}
                 refreshControl={

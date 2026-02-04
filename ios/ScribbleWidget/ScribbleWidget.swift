@@ -316,7 +316,7 @@ struct ScribbleWidget: Widget {
                     .padding(-16)
             }
         }
-        .configurationDisplayName("Partner's Scribble")
+        .configurationDisplayName("Penguin")
         .description("See doodles from your loved one")
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()

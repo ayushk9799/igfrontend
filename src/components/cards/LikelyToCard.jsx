@@ -59,6 +59,8 @@ const LikelyToCard = React.memo(({
     userName,
     userAvatar,
     partnerAvatar,
+    userId,
+    partnerId,
     onSubmit,
     onSkip,
     isLastCard,
@@ -120,7 +122,6 @@ const LikelyToCard = React.memo(({
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
                         <Text style={{ color: config.color, fontWeight: '600' }}>{config.label}</Text>
                     </View>
-                    <Text style={[styles.counterText, { color: "white" }]}>{index + 1}/{totalCards}</Text>
                 </View>
 
                 <View style={styles.questionSection}>
@@ -133,8 +134,8 @@ const LikelyToCard = React.memo(({
                     <SelectableAvatar
                         name={userName}
                         isYou={true}
-                        isSelected={selectedAnswer === 'you'}
-                        onSelect={() => handleSelect('you')}
+                        isSelected={selectedAnswer === userId}
+                        onSelect={() => handleSelect(userId)}
                         disabled={locked || isAnswered}
                         categoryColor={config.color}
                         avatarUrl={userAvatar}
@@ -149,8 +150,8 @@ const LikelyToCard = React.memo(({
                     <SelectableAvatar
                         name={partnerName}
                         isYou={false}
-                        isSelected={selectedAnswer === 'partner'}
-                        onSelect={() => handleSelect('partner')}
+                        isSelected={selectedAnswer === partnerId}
+                        onSelect={() => handleSelect(partnerId)}
                         disabled={locked || isAnswered}
                         categoryColor={config.color}
                         avatarUrl={partnerAvatar}
