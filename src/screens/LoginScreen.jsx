@@ -7,7 +7,6 @@ import {
     TouchableOpacity,
     KeyboardAvoidingView,
     Platform,
-    Animated,
     Dimensions,
     ScrollView,
     ActivityIndicator,
@@ -31,55 +30,17 @@ const { GoogleSignInModule } = NativeModules;
 const GOOGLE_CLIENT_ID_ANDROID = '971652730552-1g49usqdnhu2dc1rh5lh6p9i7cocov9m.apps.googleusercontent.com';
 
 // Animated Social Button with hover effect
-const SocialButton = ({ icon, label, onPress, loading, delay = 0, variant = 'default' }) => {
-    const scaleAnim = useRef(new Animated.Value(0)).current;
-    const pressAnim = useRef(new Animated.Value(1)).current;
-
-    useEffect(() => {
-        Animated.sequence([
-            Animated.delay(delay),
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                ...timing.springBouncy,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [scaleAnim, delay]);
-
-    const handlePressIn = () => {
-        Animated.spring(pressAnim, {
-            toValue: 0.95,
-            ...timing.springSnappy,
-            useNativeDriver: true,
-        }).start();
-    };
-
-    const handlePressOut = () => {
-        Animated.spring(pressAnim, {
-            toValue: 1,
-            ...timing.springBouncy,
-            useNativeDriver: true,
-        }).start();
-    };
+const SocialButton = ({ icon, label, onPress, loading, variant = 'default' }) => {
 
     const isApple = variant === 'apple';
 
     return (
-        <Animated.View
-            style={{
-                transform: [
-                    { scale: Animated.multiply(scaleAnim, pressAnim) },
-                ],
-                width: '100%',
-            }}
-        >
+        <View style={{ width: '100%' }}>
             <TouchableOpacity
                 style={[
                     styles.socialButton,
                     isApple && styles.appleButton,
                 ]}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
                 onPress={onPress}
                 activeOpacity={0.9}
                 disabled={loading}
@@ -100,7 +61,7 @@ const SocialButton = ({ icon, label, onPress, loading, delay = 0, variant = 'def
                     </View>
                 )}
             </TouchableOpacity>
-        </Animated.View>
+        </View>
     );
 };
 
@@ -131,24 +92,9 @@ export const LoginScreen = ({
 }) => {
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [isAppleLoading, setIsAppleLoading] = useState(false);
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(40)).current;
     const insets = useSafeAreaInsets();
 
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 600,
-                useNativeDriver: true,
-            }),
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                ...timing.springGentle,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [fadeAnim, slideAnim]);
+
 
     const handleGoogleSignIn = async () => {
         try {
@@ -259,36 +205,29 @@ export const LoginScreen = ({
         <GradientBackground variant="warm">
             <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
                 {/* App Name - Top Left */}
-                <Animated.View style={[styles.brandContainer, { opacity: fadeAnim }]}>
+                <View style={styles.brandContainer}>
                     <Text style={styles.brandName}>penguin.</Text>
-                </Animated.View>
+                </View>
 
                 {/* Spacer to push content down */}
                 <View style={styles.spacer} />
 
                 {/* Sign Up Section - Lower on screen */}
-                <Animated.View
-                    style={[
-                        styles.signUpSection,
-                        {
-                            opacity: fadeAnim,
-                            transform: [{ translateY: slideAnim }],
-                        }
-                    ]}
+                <View
+                    style={styles.signUpSection}
                 >
                     <Text style={styles.title}>Sign up</Text>
                     <Text style={styles.subtitle}>Select an option to get started</Text>
-                </Animated.View>
+                </View>
 
                 {/* Social Login Buttons */}
-                <Animated.View style={[styles.socialButtons, { opacity: fadeAnim }]}>
+                <View style={styles.socialButtons}>
                     {/* Google Sign-In - First */}
                     <SocialButton
                         icon={<GoogleIcon />}
                         label="Continue with Google"
                         onPress={handleGoogleSignIn}
                         loading={isGoogleLoading}
-                        delay={200}
                     />
 
                     {/* Apple Sign-In - iOS only */}
@@ -298,14 +237,13 @@ export const LoginScreen = ({
                             label="Continue with Apple"
                             onPress={handleAppleSignIn}
                             loading={isAppleLoading}
-                            delay={300}
                             variant="apple"
                         />
                     )}
-                </Animated.View>
+                </View>
 
                 {/* Footer */}
-                <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
+                <View style={styles.footer}>
                     <View style={styles.signInRow}>
                         <Text style={styles.footerText}>Already have an account? </Text>
                         <TouchableOpacity>
@@ -327,7 +265,7 @@ export const LoginScreen = ({
                             </TouchableOpacity>
                         </View>
                     </View>
-                </Animated.View>
+                </View>
             </View>
         </GradientBackground>
     );
@@ -378,11 +316,6 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.borderLight,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
     },
     appleButton: {
         backgroundColor: '#000000',

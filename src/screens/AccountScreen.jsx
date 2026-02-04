@@ -6,9 +6,6 @@ import {
     View,
     ScrollView,
     TouchableOpacity,
-    Animated,
-    Alert,
-    Image,
     ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -63,8 +60,7 @@ export const AccountScreen = ({
     onFindPartner,
 }) => {
     const insets = useSafeAreaInsets();
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
     const [localAvatar, setLocalAvatar] = useState(userData.avatarThumbnail || userData.avatar || null);
     const { isUploading, uploadProgress, error, uploadAvatar, clearError } = useAvatarUpload();
 
@@ -73,20 +69,7 @@ export const AccountScreen = ({
         setLocalAvatar(userData.avatarThumbnail || userData.avatar || null);
     }, [userData.avatarThumbnail, userData.avatar]);
 
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 400,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                friction: 8,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, []);
+
 
     // Handle avatar selection via parent navigation
     const handleAvatarPress = () => {
@@ -121,14 +104,8 @@ export const AccountScreen = ({
                 showsVerticalScrollIndicator={false}
             >
                 {/* Profile Header */}
-                <Animated.View
-                    style={[
-                        styles.profileSection,
-                        {
-                            opacity: fadeAnim,
-                            transform: [{ scale: scaleAnim }],
-                        },
-                    ]}
+                <View
+                    style={styles.profileSection}
                 >
                     <TouchableOpacity
                         style={styles.avatarContainer}
@@ -205,7 +182,7 @@ export const AccountScreen = ({
                             <Text style={styles.soloModeArrow}>→</Text>
                         </TouchableOpacity>
                     )}
-                </Animated.View>
+                </View>
 
                 {/* Menu Items */}
                 <View style={styles.menuSection}>
@@ -372,11 +349,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.borderLight,
         width: '100%',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
     },
     statItem: {
         flex: 1,
@@ -451,11 +423,9 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
         borderWidth: 1,
         borderColor: colors.borderLight,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        marginBottom: spacing.sm,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
     },
     menuIcon: {
         width: 40,

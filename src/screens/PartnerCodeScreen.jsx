@@ -22,7 +22,7 @@ import Button from '../components/Button';
 import { colors, spacing, borderRadius, shadows } from '../theme';
 import { API_BASE } from '../constants/Api';
 import { updateUser } from '../utils/authStorage';
-import girlImage from '../../assets/girl.png';
+import penguinImage from '../../assets/splashscreen.png';
 
 const { width, height } = Dimensions.get('window');
 const IMAGE_SIZE = Math.min(width * 0.45, 180);
@@ -251,18 +251,18 @@ export const PartnerCodeScreen = ({
                     <View style={styles.imageContainer}>
                         <PulsingCircle size={IMAGE_SIZE} />
                         <View style={styles.imageWrapper}>
-                            <Image source={girlImage} style={styles.girlImage} resizeMode="contain" />
+                            <Image source={penguinImage} style={styles.girlImage} resizeMode="contain" />
                         </View>
                     </View>
 
-                    <Text style={styles.title}>Connect with Your Love 💕</Text>
+                    <Text style={styles.title}>connect with your Love </Text>
                     <Text style={styles.subtitle}>Share your code or enter theirs to pair</Text>
                 </Animated.View>
 
                 {/* Your Code Section */}
                 <Animated.View style={[styles.codeSection, { opacity: fadeAnim }]}>
                     <View style={styles.yourCodeCard}>
-                        <Text style={styles.cardLabel}>Your Partner Code</Text>
+                        <Text style={styles.cardLabel}>Share this Code</Text>
                         <View style={styles.codeRow}>
                             <Text style={styles.codeText}>{partnerCode}</Text>
                             <TouchableOpacity
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 28,
-        fontWeight: '800',
+        fontWeight: '600',
         color: colors.text,
         textAlign: 'center',
         letterSpacing: -0.5,

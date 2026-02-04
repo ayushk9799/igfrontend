@@ -8,39 +8,18 @@ import {
     TouchableOpacity,
     KeyboardAvoidingView,
     Platform,
-    Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GradientBackground from '../components/GradientBackground';
-import { colors, spacing, borderRadius, timing } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
 
 const NicknameScreen = ({ onComplete, onBack }) => {
     const [nickname, setNickname] = useState('');
     const [isFocused, setIsFocused] = useState(false);
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(40)).current;
-    const inputScale = useRef(new Animated.Value(0.95)).current;
+
     const insets = useSafeAreaInsets();
 
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 600,
-                useNativeDriver: true,
-            }),
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                ...timing.springGentle,
-                useNativeDriver: true,
-            }),
-            Animated.spring(inputScale, {
-                toValue: 1,
-                ...timing.springBouncy,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [fadeAnim, slideAnim, inputScale]);
+
 
     const handleContinue = () => {
         if (nickname.trim().length > 0) {
@@ -58,33 +37,24 @@ const NicknameScreen = ({ onComplete, onBack }) => {
             >
                 <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
                     {/* App Name - Top Left */}
-                    <Animated.View style={[styles.brandContainer, { opacity: fadeAnim }]}>
+                    <View style={styles.brandContainer}>
                         <Text style={styles.brandName}>penguin.</Text>
-                    </Animated.View>
+                    </View>
 
                     {/* Spacer to push content down */}
                     <View style={styles.spacer} />
 
                     {/* Nickname Section - Lower on screen */}
-                    <Animated.View
-                        style={[
-                            styles.nicknameSection,
-                            {
-                                opacity: fadeAnim,
-                                transform: [{ translateY: slideAnim }],
-                            }
-                        ]}
+                    <View
+                        style={styles.nicknameSection}
                     >
                         <Text style={styles.title}>choose a nickname</Text>
                         <Text style={styles.subtitle}>What should your partner call you?</Text>
-                    </Animated.View>
+                    </View>
 
                     {/* Input Field */}
-                    <Animated.View
-                        style={[
-                            styles.inputWrapper,
-                            { opacity: fadeAnim, transform: [{ scale: inputScale }] }
-                        ]}
+                    <View
+                        style={styles.inputWrapper}
                     >
                         <View style={[
                             styles.inputContainer,
@@ -107,10 +77,10 @@ const NicknameScreen = ({ onComplete, onBack }) => {
                         </View>
 
                         {/* Character count */}
-                    </Animated.View>
+                    </View>
 
                     {/* Continue Button */}
-                    <Animated.View style={[styles.buttonContainer, { opacity: fadeAnim }]}>
+                    <View style={styles.buttonContainer}>
                         <TouchableOpacity
                             style={[
                                 styles.continueButton,
@@ -127,7 +97,7 @@ const NicknameScreen = ({ onComplete, onBack }) => {
                                 Continue →
                             </Text>
                         </TouchableOpacity>
-                    </Animated.View>
+                    </View>
 
                     {/* Footer */}
 
@@ -218,15 +188,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#000000',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 4,
     },
     continueButtonDisabled: {
         backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        shadowOpacity: 0.05,
     },
     continueButtonText: {
         fontSize: 16,
