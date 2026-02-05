@@ -56,13 +56,11 @@ const ChatBubble = ({
     // Get the message content
     let messageContent = message?.content || message?.text || '';
 
-    // For likelyto answers, transform userId to "Me" or "You"
-    // Logic: if stored userId === senderId, display "Me", else "You"
+    // For likelyto answers, transform "you"/"partner" to "Me" or "You" for display
     if (message?.messageType === 'answer' && questionCategory === 'likelyto' && messageContent) {
-        const senderId = message.senderId?._id || message.senderId;
-        if (messageContent === senderId) {
+        if (messageContent === 'you') {
             messageContent = 'Me';
-        } else {
+        } else if (messageContent === 'partner') {
             messageContent = 'You';
         }
     }

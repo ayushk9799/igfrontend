@@ -19,6 +19,7 @@ export const cardStyles = StyleSheet.create({
     // Card header
     topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
     categoryBadge: { flexDirection: 'row', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
+    categoryText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
     counterText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
 
     // Question area

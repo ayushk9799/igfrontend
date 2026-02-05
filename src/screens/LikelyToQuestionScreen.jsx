@@ -9,6 +9,7 @@ import {
     Animated,
     Dimensions,
     PanResponder,
+    Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -33,7 +34,7 @@ const AVATAR_SIZE = 80;
 const DROP_ZONE_Y = 280; // Approximate Y position of drop zone
 
 // Draggable Avatar Component with PanResponder
-const DraggableAvatar = ({ name, isYou, isSelected, onDrop, disabled }) => {
+const DraggableAvatar = ({ name, isYou, isSelected, onDrop, disabled, avatarUrl }) => {
     const pan = useRef(new Animated.ValueXY()).current;
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const [isDragging, setIsDragging] = useState(false);
@@ -135,7 +136,15 @@ const DraggableAvatar = ({ name, isYou, isSelected, onDrop, disabled }) => {
                     style={styles.avatarGradient}
                 />
                 <View style={styles.avatarInner}>
-                    <Text style={styles.avatarEmoji}>{isYou ? '🙋' : '💕'}</Text>
+                    {avatarUrl ? (
+                        <Image
+                            source={{ uri: avatarUrl }}
+                            style={styles.avatarImage}
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <Text style={styles.avatarEmoji}>{isYou ? '🙋' : '💕'}</Text>
+                    )}
                 </View>
             </View>
             <Text style={[styles.avatarName, isSelected && styles.avatarNameSelected]}>
@@ -198,7 +207,7 @@ const DropZone = ({ hasSelection, selectedName }) => {
             {hasSelection ? (
                 <View style={styles.selectedDisplay}>
                     <Text style={styles.selectedText}>
-                        {selectedName === 'you' ? '🙋 You!' : `💕 ${selectedName}!`}
+                        {selectedName === 'you' ? '🙋 Me!' : '💕 You!'}
                     </Text>
                 </View>
             ) : (
@@ -229,6 +238,8 @@ export const ComparisonQuestionScreen = ({
     },
     partnerName = 'Your Love',
     userName = 'You',
+    userAvatar = null,
+    partnerAvatar = null,
     onSubmitAnswer = () => { },
     onBack = () => { },
 }) => {
@@ -342,6 +353,7 @@ export const ComparisonQuestionScreen = ({
                             isSelected={selectedAnswer === 'you'}
                             onDrop={() => handleDrop('you')}
                             disabled={hasSubmitted}
+                            avatarUrl={userAvatar}
                         />
                         <View style={styles.vsContainer}>
                             <Text style={styles.vsText}>VS</Text>
@@ -352,6 +364,7 @@ export const ComparisonQuestionScreen = ({
                             isSelected={selectedAnswer === 'partner'}
                             onDrop={() => handleDrop('partner')}
                             disabled={hasSubmitted}
+                            avatarUrl={partnerAvatar}
                         />
                     </View>
 

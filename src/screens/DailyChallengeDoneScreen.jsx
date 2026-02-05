@@ -156,7 +156,13 @@ export default function DailyChallengeDoneScreen({
                                             <Text style={styles.answerQuestion} numberOfLines={2}>
                                                 {item.task?.taskstatement || `Question ${idx + 1}`}
                                             </Text>
-                                            <Text style={styles.answerValue}>Your answer: {item.answer}</Text>
+                                            <Text style={styles.answerValue}>
+                                                Your answer: {
+                                                    item.task?.category === 'likelyto'
+                                                        ? (item.answer === 'you' ? 'Me' : 'You')
+                                                        : item.answer
+                                                }
+                                            </Text>
                                         </View>
                                     </View>
                                 );

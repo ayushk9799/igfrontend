@@ -57,7 +57,7 @@ const NeverHaveIEverCard = React.memo(({
     previousAnswer = null
 }) => {
     const config = categoryConfig.neverhaveiever;
-    const [selectedAnswer, setSelectedAnswer] = useState(null);
+    const [selectedAnswer, setSelectedAnswer] = useState(isAnswered ? previousAnswer : null);
     const [locked, setLocked] = useState(isAnswered);
     const lastTaskIdRef = useRef(task._id);
 
@@ -113,13 +113,11 @@ const NeverHaveIEverCard = React.memo(({
             <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
                 <View style={styles.topRow}>
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
-                        <Text style={{ color: config.color, fontWeight: '600' }}>{config.label}</Text>
+                        <Text style={styles.categoryText}>{config.label}</Text>
                     </View>
-                    <Text style={[styles.counterText, { color: "white" }]}>{index + 1}/{totalCards}</Text>
                 </View>
 
                 <View style={styles.questionSection}>
-                    <Text style={[styles.prefixText, { color: config.color }]}>Never have I ever...</Text>
                     <Text style={styles.questionText}>"{task.taskstatement}"</Text>
                 </View>
 

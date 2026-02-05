@@ -200,6 +200,7 @@ export const PartnerCodeScreen = ({
                 updateUser({
                     partnerId: data.partner.id,
                     partnerUsername: data.partner.name,
+                    partnerAvatar: data.partner.avatar || null,
                     connectionDate: data.partner.connectionDate,
                 });
 

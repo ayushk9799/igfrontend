@@ -69,7 +69,7 @@ const LikelyToCard = React.memo(({
     previousAnswer = null
 }) => {
     const config = categoryConfig.likelyto;
-    const [selectedAnswer, setSelectedAnswer] = useState(null);
+    const [selectedAnswer, setSelectedAnswer] = useState(isAnswered ? previousAnswer : null);
     const [locked, setLocked] = useState(isAnswered);
     const lastTaskIdRef = useRef(task._id);
 
@@ -110,7 +110,7 @@ const LikelyToCard = React.memo(({
                         <Text style={styles.answeredEmoji}>✅</Text>
                         <Text style={styles.answeredTitle}>Already Answered</Text>
                         <Text style={styles.answeredText}>
-                            You chose: {previousAnswer === 'you' ? userName : partnerName}
+                            You chose: {previousAnswer === 'you' ? 'Me' : 'You'}
                         </Text>
                         <Text style={styles.answeredHint}>Swipe to continue →</Text>
                     </View>
@@ -120,7 +120,7 @@ const LikelyToCard = React.memo(({
             <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
                 <View style={styles.topRow}>
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
-                        <Text style={{ color: config.color, fontWeight: '600' }}>{config.label}</Text>
+                        <Text style={styles.categoryText}>{config.label}</Text>
                     </View>
                 </View>
 
@@ -130,15 +130,15 @@ const LikelyToCard = React.memo(({
 
                 {/* Bottom Bar - Avatar Left, Skip Center, Avatar Right */}
                 <View style={likelyStyles.bottomBar}>
-                    {/* User Avatar - Left */}
+                    {/* Partner Avatar - Left */}
                     <SelectableAvatar
-                        name={userName}
-                        isYou={true}
-                        isSelected={selectedAnswer === userId}
-                        onSelect={() => handleSelect(userId)}
+                        name={partnerName}
+                        isYou={false}
+                        isSelected={selectedAnswer === 'partner'}
+                        onSelect={() => handleSelect('partner')}
                         disabled={locked || isAnswered}
                         categoryColor={config.color}
-                        avatarUrl={userAvatar}
+                        avatarUrl={partnerAvatar}
                     />
 
                     {/* Skip - Center */}
@@ -146,15 +146,15 @@ const LikelyToCard = React.memo(({
                         <Text style={likelyStyles.skipText}>Skip</Text>
                     </TouchableOpacity>
 
-                    {/* Partner Avatar - Right */}
+                    {/* User Avatar - Right */}
                     <SelectableAvatar
-                        name={partnerName}
-                        isYou={false}
-                        isSelected={selectedAnswer === partnerId}
-                        onSelect={() => handleSelect(partnerId)}
+                        name={userName}
+                        isYou={true}
+                        isSelected={selectedAnswer === 'you'}
+                        onSelect={() => handleSelect('you')}
                         disabled={locked || isAnswered}
                         categoryColor={config.color}
-                        avatarUrl={partnerAvatar}
+                        avatarUrl={userAvatar}
                     />
                 </View>
             </View>

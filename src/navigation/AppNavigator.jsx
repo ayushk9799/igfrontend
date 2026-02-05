@@ -147,9 +147,9 @@ export const AppNavigator = () => {
                         const statusData = await response.json();
                         console.log('Partner status from server:', statusData);
 
-                        if (statusData.success && statusData.isPaired && !storedUser.partnerId) {
-                            // We were paired by someone else! Update local storage and Redux
-                            console.log('User was paired by partner - updating local storage');
+                        if (statusData.success && statusData.isPaired) {
+                            // Sync latest partner data from server
+                            console.log('Syncing partner data from server');
                             const partnerData = {
                                 partnerId: statusData.partner.id,
                                 partnerUsername: statusData.partner.name,
@@ -158,12 +158,16 @@ export const AppNavigator = () => {
                             };
                             updateUserStorage(partnerData);
                             dispatch(updateUser({ ...partnerData, isOnboarded: true }));
-                            setOnboardedStorage(true);
-                            setCurrentScreen('home');
-                            fetchPendingPuzzle(storedUser.id);
-                            fetchPendingTicTacToe(storedUser.id);
-                            fetchPendingWordle(storedUser.id);
-                            return; // Exit early - we're now on home
+
+                            if (!storedUser.partnerId) {
+                                // We were just paired by someone else!
+                                setOnboardedStorage(true);
+                                setCurrentScreen('home');
+                                fetchPendingPuzzle(storedUser.id);
+                                fetchPendingTicTacToe(storedUser.id);
+                                fetchPendingWordle(storedUser.id);
+                                return;
+                            }
                         }
                     } catch (err) {
                         console.log('Could not fetch partner status:', err.message);
@@ -621,6 +625,8 @@ export const AppNavigator = () => {
                             }}
                             partnerName={userData.partnerUsername || 'Your Love'}
                             userName={userData.name || 'You'}
+                            userAvatar={userData.avatar}
+                            partnerAvatar={userData.partnerAvatar}
                             onSubmitAnswer={(answer) => {
                                 console.log('LikelyTo answer:', answer);
                                 navigate(backDestination);

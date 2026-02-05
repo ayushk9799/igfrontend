@@ -165,7 +165,7 @@ const SliderCard = React.memo(({
                 {/* Header */}
                 <View style={styles.topRow}>
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
-                        <Text style={{ color: config.color, fontWeight: '600' }}>📊 Rate It</Text>
+                        <Text style={cardStyles.categoryText}>Rate It</Text>
                     </View>
                     <Text style={styles.counterText}>{index + 1}/{totalCards}</Text>
                 </View>

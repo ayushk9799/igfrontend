@@ -304,21 +304,7 @@ const AnimatedCardStack = ({
                 </View>
             </GestureDetector>
 
-            {/* Swipe hint indicators */}
-            {canGoPrev && (
-                <View style={[styles.swipeHint, styles.swipeHintLeft]} pointerEvents="none">
-                    <Animated.View style={leftHintStyle}>
-                        <View style={styles.swipeHintDot} />
-                    </Animated.View>
-                </View>
-            )}
-            {canGoNext && (
-                <View style={[styles.swipeHint, styles.swipeHintRight]} pointerEvents="none">
-                    <Animated.View style={rightHintStyle}>
-                        <View style={styles.swipeHintDot} />
-                    </Animated.View>
-                </View>
-            )}
+          
         </View>
     );
 };

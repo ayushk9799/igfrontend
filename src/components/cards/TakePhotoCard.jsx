@@ -216,10 +216,8 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
             <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
                 <View style={styles.topRow}>
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
-                        <Text>{config.emoji}</Text>
-                        <Text style={{ color: config.color, fontWeight: '600' }}>{config.label}</Text>
+                        <Text style={styles.categoryText}>{config.label}</Text>
                     </View>
-                    <Text style={[styles.counterText, { color: 'white' }]}>{index + 1}/{totalCards}</Text>
                 </View>
 
                 <View style={styles.questionSection}>
