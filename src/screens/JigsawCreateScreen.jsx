@@ -11,13 +11,14 @@ import {
     ActivityIndicator,
     Animated,
     Dimensions,
-    InteractionManager, // <--- 1. Import this
+    InteractionManager,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
-import ExpoImageCropTool from 'expo-image-crop-tool';
+
 import { Camera } from 'react-native-camera-kit';
+import { ImageManipulator, FlipType, SaveFormat } from 'expo-image-manipulator';
 
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
@@ -37,7 +38,7 @@ const JigsawCreateScreen = ({ navigation, route }) => {
     const [showCamera, setShowCamera] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [cameraType, setCameraType] = useState('back');
-    
+
     // 2. Add state to track if navigation transition is done
     const [isCameraInitialized, setIsCameraInitialized] = useState(false);
 
@@ -90,7 +91,7 @@ const JigsawCreateScreen = ({ navigation, route }) => {
 
     const handleOpenCamera = async () => {
         // If coming from gallery back to camera, ensure perms
-        const granted = await requestCameraPermission(); 
+        const granted = await requestCameraPermission();
         setShowCamera(true);
     };
 
@@ -153,20 +154,28 @@ const JigsawCreateScreen = ({ navigation, route }) => {
         if (!uri) return null;
 
         try {
-            const cropResult = await ExpoImageCropTool.openCropperAsync({
-                imageUri: uri,
-                shape: 'rectangle',
-                format: 'jpeg',
-                compressImageQuality: 0.9,
+            // Get image dimensions to perform center crop
+            const { width, height } = await new Promise((resolve, reject) => {
+                Image.getSize(uri, (w, h) => resolve({ width: w, height: h }), (err) => reject(err));
             });
 
-            const out = typeof cropResult === 'string' ? cropResult : cropResult?.uri || cropResult?.path;
-            if (!out) return null;
-            const finalUri = out.startsWith('file://') ? out : `file://${out}`;
+            const size = Math.min(width, height);
+            const originX = (width - size) / 2;
+            const originY = (height - size) / 2;
+
+            const cropResult = await ImageManipulator.manipulateAsync(
+                uri,
+                [{ crop: { originX, originY, width: size, height: size } }],
+                { compress: 0.9, format: SaveFormat.JPEG }
+            );
+
+            const finalUri = cropResult.uri.startsWith('file://') ? cropResult.uri : `file://${cropResult.uri}`;
             setPreviewUri({ uri: finalUri, isFrontCamera: previewUri?.isFrontCamera || false });
             return finalUri;
         } catch (e) {
-            return null;
+            console.log('Auto-crop error:', e);
+            // If crop fails, return the original URI as a fallback
+            return uri.startsWith('file://') ? uri : `file://${uri}`;
         }
     };
 
@@ -199,56 +208,6 @@ const JigsawCreateScreen = ({ navigation, route }) => {
         setIsSending(false);
     };
 
-    // Camera View
-    if (showCamera && !previewUri) {
-        return (
-            <View style={styles.cameraContainer}>
-                {/* 4. Only render Camera if initialized, otherwise show black loading screen */}
-                {isCameraInitialized ? (
-                    <Camera
-                        ref={cameraRef}
-                        style={styles.camera}
-                        cameraType={cameraType}
-                        flashMode={cameraType === 'front' ? 'off' : 'auto'}
-                    />
-                ) : (
-                    <View style={styles.loadingCamera}>
-                         <ActivityIndicator size="large" color={colors.primary} />
-                    </View>
-                )}
-
-                <View style={styles.cameraOverlay}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.cameraBackBtn}>
-                        <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-                            <Path d="M15 18l-6-6 6-6" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                        </Svg>
-                    </TouchableOpacity>
-                </View>
-                
-                {/* Only show bottom controls if camera is ready */}
-                {isCameraInitialized && (
-                    <View style={styles.cameraBottomBar}>
-                        <TouchableOpacity onPress={handlePickFromGallery} style={styles.galleryBtn}>
-                            <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-                                <Path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                            </Svg>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={handleCapture} style={styles.captureBtn}>
-                            <View style={styles.captureBtnInner} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={toggleCamera} style={styles.flipCameraBtn}>
-                            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-                                <Path d="M1 4v6h6" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                                <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                                <Circle cx="12" cy="12" r="3" stroke="#fff" strokeWidth={2} />
-                            </Svg>
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </View>
-        );
-    }
-
     const piece1Spin = piece1Rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
     const piece2Spin = piece2Rotate.interpolate({ inputRange: [-1, 0], outputRange: ['-360deg', '0deg'] });
     const piece3Spin = piece3Rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
@@ -277,83 +236,90 @@ const JigsawCreateScreen = ({ navigation, route }) => {
                 </Animated.View>
 
                 <View style={styles.content}>
-                    {previewUri ? (
-                        <View style={styles.previewSection}>
-                            <Text style={styles.previewTitle}>Your puzzle preview 🧩</Text>
-                            <View style={styles.previewContainer}>
-                                <Image
-                                    source={{ uri: typeof previewUri === 'string' ? previewUri : previewUri?.uri }}
-                                    style={[
-                                        styles.previewImage,
-                                        (previewUri?.isFrontCamera) && { transform: [{ scaleX: -1 }] }
-                                    ]}
-                                    resizeMode="cover"
+                    <Text style={styles.title}>Send a Puzzle!</Text>
+                    <Text style={styles.subtitle}>
+                        {previewUri ? 'Your puzzle preview 🧩' : `Pick a photo and challenge ${partnerName || 'your partner'} to solve it`}
+                    </Text>
+
+                    {/* Camera / Preview Box */}
+                    <View style={styles.cameraBoxContainer}>
+                        {showCamera && !previewUri ? (
+                            isCameraInitialized ? (
+                                <Camera
+                                    ref={cameraRef}
+                                    style={styles.camera}
+                                    cameraType={cameraType}
+                                    flashMode={cameraType === 'front' ? 'off' : 'auto'}
                                 />
-                                <View style={styles.gridOverlay}>
-                                    {[...Array(9)].map((_, i) => (
-                                        <View key={i} style={styles.gridCell} />
-                                    ))}
+                            ) : (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color={colors.primary} />
                                 </View>
+                            )
+                        ) : (
+                            <Image
+                                source={{ uri: typeof previewUri === 'string' ? previewUri : previewUri?.uri }}
+                                style={[
+                                    styles.previewImage,
+                                    (previewUri?.isFrontCamera) && { transform: [{ scaleX: -1 }] }
+                                ]}
+                                resizeMode="cover"
+                            />
+                        )}
+                        {/* Grid Overlay on Preview */}
+                        {previewUri && (
+                            <View style={styles.gridOverlay}>
+                                {[...Array(9)].map((_, i) => (
+                                    <View key={i} style={styles.gridCell} />
+                                ))}
                             </View>
-                            <Text style={styles.previewHint}>3x3 puzzle pieces</Text>
+                        )}
+                    </View>
 
-                            <View style={styles.previewActions}>
-                                <TouchableOpacity
-                                    onPress={() => setPreviewUri(null)}
-                                    style={styles.retakeBtn}
-                                >
-                                    <Text style={styles.retakeBtnText}>Choose Different</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={handleSendPuzzle}
-                                    style={styles.sendBtn}
-                                    disabled={isSending}
-                                >
-                                    {isSending ? (
-                                        <ActivityIndicator color="#fff" size="small" />
-                                    ) : (
-                                        <Text style={styles.sendBtnText}>Send to {partnerName || 'Partner'} 🧩</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ) : (
-                        <View style={styles.uploadSection}>
-                            <Animated.View style={{ transform: [{ translateY: puzzleFloat }] }}>
-                                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                    <BigPuzzleIcon />
-                                </Animated.View>
-                            </Animated.View>
-
-                            <Text style={styles.title}>Send a Puzzle!</Text>
-                            <Text style={styles.subtitle}>
-                                Pick a photo and challenge {partnerName || 'your partner'} to solve it
-                            </Text>
-
-                            <View style={styles.optionsRow}>
-                                <TouchableOpacity onPress={handleOpenCamera} style={styles.optionBtn}>
-                                    <LinearGradient colors={colors.gradientPrimary} style={styles.optionGradient}>
-                                        <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
-                                            <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                                            <Circle cx="12" cy="13" r="4" stroke="#fff" strokeWidth={2} />
-                                        </Svg>
-                                        <Text style={styles.optionText}>Camera</Text>
-                                    </LinearGradient>
+                    {/* Controls Row */}
+                    <View style={styles.controlsRow}>
+                        {!previewUri ? (
+                            <>
+                                <TouchableOpacity onPress={handlePickFromGallery} style={styles.controlBtnSecondary}>
+                                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                        <Rect x="3" y="3" width="18" height="18" rx="2" stroke={colors.text} strokeWidth={2} />
+                                        <Path d="M3 15l5-5 4 4 3-3 6 6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                        <Circle cx="8.5" cy="8.5" r="1.5" fill={colors.text} />
+                                    </Svg>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity onPress={handlePickFromGallery} style={styles.optionBtn}>
-                                    <LinearGradient colors={colors.gradientSecondary} style={styles.optionGradient}>
-                                        <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
-                                            <Rect x="3" y="3" width="18" height="18" rx="2" stroke="#fff" strokeWidth={2} />
-                                            <Path d="M3 15l5-5 4 4 3-3 6 6" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                                            <Circle cx="8.5" cy="8.5" r="1.5" fill="#fff" />
-                                        </Svg>
-                                        <Text style={styles.optionText}>Gallery</Text>
-                                    </LinearGradient>
+                                <TouchableOpacity onPress={handleCapture} style={styles.controlBtnPrimary}>
+                                    <View style={styles.captureInner} />
                                 </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
+
+                                <TouchableOpacity onPress={toggleCamera} style={styles.controlBtnSecondary}>
+                                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                        <Path d="M1 4v6h6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                        <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                    </Svg>
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <TouchableOpacity onPress={() => { setPreviewUri(null); setShowCamera(true); }} style={styles.controlBtnText}>
+                                <Text style={styles.retakeText}>Retake Photo</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+
+                {/* Footer with Send Button */}
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        onPress={handleSendPuzzle}
+                        style={[styles.nextButton, (!previewUri && !isSending) && styles.nextButtonDisabled]}
+                        disabled={!previewUri || isSending}
+                    >
+                        {isSending ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                            <Text style={styles.nextButtonText}>Send to {partnerName || 'Partner'} 🧩</Text>
+                        )}
+                    </TouchableOpacity>
                 </View>
             </View>
         </GradientBackground>
@@ -376,20 +342,126 @@ const BigPuzzleIcon = () => (
 );
 
 const styles = StyleSheet.create({
-    // ... existing styles
     container: { flex: 1 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: Platform.OS === 'ios' ? 60 : 20, paddingBottom: spacing.md },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.glass, alignItems: 'center', justifyContent: 'center' },
     headerTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
-    content: { flex: 1, paddingHorizontal: spacing.lg },
+    content: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+    title: { color: colors.text, fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: spacing.xs },
+    subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.sm },
+
+    // Camera Box
+    cameraBoxContainer: {
+        width: '100%',
+        aspectRatio: 1, // Square
+        borderRadius: 32,
+        overflow: 'hidden',
+        backgroundColor: colors.surface,
+        marginBottom: spacing.xl,
+        borderWidth: 1,
+        borderColor: colors.border,
+        shadowColor: colors.shadowMedium,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
+    },
+    camera: {
+        position: 'absolute',
+        top: '-38.5%', // Center 16:9 camera in 1:1 box
+        left: 0,
+        width: '100%',
+        height: '177%',
+    },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    previewImage: { flex: 1 },
+
+    // Controls
+    controlsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xl,
+        marginTop: spacing.sm,
+        marginBottom: spacing.lg,
+    },
+    controlBtnSecondary: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
+        shadowColor: colors.shadowLight,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    controlBtnPrimary: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 4,
+        borderColor: colors.borderLight,
+    },
+    captureInner: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: colors.primary,
+    },
+    controlBtnText: {
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.xl,
+        backgroundColor: colors.surface,
+        borderRadius: borderRadius.full,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    retakeText: {
+        color: colors.textSecondary,
+        fontWeight: '600',
+        fontSize: 16,
+    },
+
+    // Footer / Send
+    footer: {
+        width: '100%',
+        paddingVertical: spacing.md,
+    },
+    nextButton: {
+        height: 56,
+        backgroundColor: colors.primary,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 6,
+    },
+    nextButtonDisabled: { opacity: 0.6 },
+    nextButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+
+    // Grid Overlay
+    gridOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flexDirection: 'row', flexWrap: 'wrap' },
+    gridCell: { width: '33.33%', height: '33.33%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+
+    // Floating pieces
     floatingPiece: { position: 'absolute', opacity: 0.3 },
     piece1: { top: 120, left: 20 },
     piece2: { top: 200, right: 30 },
     piece3: { bottom: 150, left: 50 },
     uploadSection: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 },
     bigPuzzleContainer: { marginBottom: spacing.xl },
-    title: { fontSize: 28, fontWeight: '800', color: colors.text, marginBottom: spacing.sm },
-    subtitle: { fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.lg },
     optionsRow: { flexDirection: 'row', gap: spacing.lg },
     optionBtn: { borderRadius: borderRadius.xl, overflow: 'hidden', shadowColor: colors.shadowDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 },
     optionGradient: { width: 130, height: 130, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
@@ -397,25 +469,12 @@ const styles = StyleSheet.create({
     previewSection: { flex: 1, alignItems: 'center', paddingTop: spacing.xl },
     previewTitle: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
     previewContainer: { width: SCREEN_WIDTH - 80, height: SCREEN_WIDTH - 80, borderRadius: borderRadius.lg, overflow: 'hidden', position: 'relative' },
-    previewImage: { width: '100%', height: '100%' },
-    gridOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flexDirection: 'row', flexWrap: 'wrap' },
-    gridCell: { width: '33.33%', height: '33.33%', borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' },
-    previewHint: { fontSize: 14, color: colors.textSecondary, marginTop: spacing.md },
     previewActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl },
     retakeBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.borderLight, borderRadius: borderRadius.lg },
     retakeBtnText: { fontSize: 16, fontWeight: '600', color: colors.text },
     sendBtn: { paddingHorizontal: spacing.xl, paddingVertical: spacing.md, backgroundColor: colors.primary, borderRadius: borderRadius.lg, minWidth: 160, alignItems: 'center' },
     sendBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
-    cameraContainer: { flex: 1, backgroundColor: '#000' },
-    camera: { flex: 1 },
-    loadingCamera: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
-    cameraOverlay: { position: 'absolute', top: Platform.OS === 'ios' ? 50 : 20, left: 20 },
-    cameraBackBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
-    cameraBottomBar: { position: 'absolute', bottom: 40, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 40 },
-    galleryBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-    flipCameraBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-    captureBtn: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-    captureBtnInner: { width: 68, height: 68, borderRadius: 34, backgroundColor: colors.primary },
+    previewHint: { fontSize: 14, color: colors.textSecondary, marginTop: spacing.md },
 });
 
 export default JigsawCreateScreen;

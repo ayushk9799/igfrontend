@@ -121,14 +121,17 @@ const ColorBubble = ({ item, isSelected, onSelect, index }) => {
 export const ScribbleScreen = ({
     onSend = () => { },
     onBack = () => { },
+    hasPartner = false,
+    onLinkPartner = () => { },
 }) => {
     const [paths, setPaths] = useState([]);
     const [currentPath, setCurrentPath] = useState('');
     const [selectedColor, setSelectedColor] = useState(colors.primary);
     const [selectedSize, setSelectedSize] = useState(8);
     const [inkSplash, setInkSplash] = useState(null);
+    const [sentScribble, setSentScribble] = useState(null); // Store sent scribble for preview
     const insets = useSafeAreaInsets();
-    const { socket, isConnected } = useSocketContext();
+    const { socket, isConnected, clearPartnerScribble } = useSocketContext();
     const canvasOpacity = useRef(new Animated.Value(0)).current;
 
     // Use refs to avoid stale closures in PanResponder
@@ -204,15 +207,29 @@ export const ScribbleScreen = ({
 
         // Send via socket
         if (socket && isConnected) {
-            socket.emit('scribble:send', {
-                paths: paths.map(p => ({
-                    d: p.d,
-                    color: p.color,
-                    strokeWidth: p.strokeWidth,
-                })),
+            const pathsToSend = paths.map(p => ({
+                d: p.d,
+                color: p.color,
+                strokeWidth: p.strokeWidth,
+            }));
+
+            socket.emit('scribble:send', { paths: pathsToSend });
+
+            // Clear partner scribble from sender's view to prevent showing stale data
+            // This ensures the sender's HomeScreen canvas card shows empty/Lottie animation
+            // instead of any previously received scribble or their own sent scribble
+            clearPartnerScribble();
+
+            // Save sent scribble for preview and clear canvas
+            setSentScribble({
+                paths: [...paths],
+                sentAt: new Date(),
             });
+            setPaths([]);
+            setCurrentPath('');
+
             // Call parent's onSend if provided
-            onSend(paths);
+            onSend(pathsToSend);
         } else {
             Alert.alert('Connection Error', 'Not connected to server. Please try again.');
         }
@@ -322,12 +339,57 @@ export const ScribbleScreen = ({
                             </Svg>
 
                             {/* Empty State */}
-                            {paths.length === 0 && !currentPath && (
+                            {paths.length === 0 && !currentPath && !sentScribble && (
                                 <View style={styles.emptyState}>
                                     <Text style={styles.emptyEmoji}>💕</Text>
                                     <Text style={styles.emptyText}>Draw with your finger</Text>
                                     <Text style={styles.emptyHint}>Express your love through art</Text>
                                 </View>
+                            )}
+
+                            {/* Sent State - Shows inside canvas */}
+                            {sentScribble && paths.length === 0 && (
+                                <TouchableOpacity
+                                    style={styles.sentState}
+                                    onPress={() => setSentScribble(null)}
+                                    activeOpacity={0.9}
+                                >
+                                    {/* Success Badge */}
+                                    <View style={styles.sentSuccessBadge}>
+                                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M20 6L9 17l-5-5"
+                                                stroke="#FFFFFF"
+                                                strokeWidth={3}
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </Svg>
+                                    </View>
+
+                                    {/* Sent Text */}
+                                    <Text style={styles.sentTitle}>Sent with love! 💕</Text>
+
+                                    {/* Preview of sent scribble */}
+                                    <View style={styles.sentPreviewInCanvas}>
+                                        <Svg width={140} height={140} viewBox={`0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}`}>
+                                            {sentScribble.paths.map((path) => (
+                                                <Path
+                                                    key={path.id}
+                                                    d={path.d}
+                                                    stroke={path.color}
+                                                    strokeWidth={path.strokeWidth}
+                                                    fill="none"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            ))}
+                                        </Svg>
+                                    </View>
+
+                                    {/* Hint */}
+                                    <Text style={styles.sentHint}>Tap anywhere to draw another</Text>
+                                </TouchableOpacity>
                             )}
 
                             {/* Paper texture overlay */}
@@ -382,14 +444,24 @@ export const ScribbleScreen = ({
 
                 {/* Send Button */}
                 <View style={styles.sendContainer}>
-                    <Button
-                        title="Send to Your Love 💌"
-                        onPress={handleSend}
-                        variant="glow"
-                        size="xl"
-                        fullWidth
-                        disabled={paths.length === 0}
-                    />
+                    {hasPartner ? (
+                        <Button
+                            title="Send to Your Love"
+                            onPress={handleSend}
+                            variant="glow"
+                            size="xl"
+                            fullWidth
+                            disabled={paths.length === 0}
+                        />
+                    ) : (
+                        <Button
+                            title="Link Partner to Send 🔗"
+                            onPress={onLinkPartner}
+                            variant="primary"
+                            size="xl"
+                            fullWidth
+                        />
+                    )}
                 </View>
             </View>
         </GradientBackground>
@@ -479,7 +551,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         pointerEvents: 'none',
     },
-    
+
     emptyEmoji: {
         fontSize: 56,
         marginBottom: spacing.md,
@@ -556,6 +628,54 @@ const styles = StyleSheet.create({
     sendContainer: {
         marginTop: '0',
         paddingBottom: spacing['2xl'],
+    },
+    // Sent state - displays inside the canvas
+    sentState: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.97)',
+        borderRadius: borderRadius['2xl'] - 3,
+    },
+    sentSuccessBadge: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#22C55E',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.md,
+        shadowColor: '#22C55E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    sentTitle: {
+        fontSize: 20,
+        color: colors.text,
+        fontWeight: '700',
+        marginBottom: spacing.lg,
+    },
+    sentPreviewInCanvas: {
+        width: 140,
+        height: 140,
+        backgroundColor: colors.surface,
+        borderRadius: borderRadius.xl,
+        overflow: 'hidden',
+        marginBottom: spacing.lg,
+        borderWidth: 2,
+        borderColor: colors.borderLight,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    sentHint: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        fontWeight: '500',
     },
 });
 

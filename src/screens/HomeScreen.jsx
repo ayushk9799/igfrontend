@@ -10,6 +10,7 @@ import {
     Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import LottieView from 'lottie-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, typography, spacing } from '../theme';
 import GradientBackground from '../components/GradientBackground';
@@ -124,21 +125,11 @@ const HomeScreen = ({
                     {/* Header */}
                     <View style={styles.header}>
                         {/* Logo - Two interlocking circles */}
-                        <View style={styles.logo}>
-                            <Svg width={40} height={40} viewBox="0 0 40 40">
-                                <Circle cx="15" cy="20" r="12" fill={colors.primary} opacity={0.8} />
-                                <Circle cx="25" cy="20" r="12" fill={colors.secondary} opacity={0.8} />
-                            </Svg>
+                        <View style={styles.brandContainer}>
+                            <Text style={styles.brandName}>penguin.</Text>
                         </View>
 
-                        {/* Connection Badge */}
-                        {hasPartner && daysTogether > 0 && (
-                            <View style={styles.connectionBadge}>
-                                <Text style={styles.connectionText}>
-                                    Connected: {daysTogether} days 🔥
-                                </Text>
-                            </View>
-                        )}
+
 
                         {/* Settings Icon */}
                         <TouchableOpacity style={styles.settingsButton} onPress={onSettingsPress}>
@@ -161,31 +152,26 @@ const HomeScreen = ({
                         </TouchableOpacity>
                     </View>
 
-                    {/* Names Section */}
-                    <View style={styles.greetingSection}>
-                        <Text style={styles.names}>
-                            {hasPartner ? `${getUserName()} & ${partnerName}.` : `${getUserName()}.`}
-                        </Text>
-                    </View>
+                    {/* Names Section - Removed names, keeping Link Partner if needed */}
 
                     {/* Mood Blobs Section */}
-                    {hasPartner && (
-                        <View style={styles.moodSection}>
-                            {/* Mood Card */}
-                            <View style={styles.moodCard}>
-                                {/* Partner's large emoji in the center */}
-                                <View style={[styles.partnerEmojiContainer, { borderColor: partnerMoodColor }]}>
-                                    <Text style={styles.partnerEmojiLarge}>{partnerMood?.emoji || '😊'}</Text>
-                                </View>
-
-                                {/* Your emoji badge on the boundary of partner's circle */}
-                                <View style={[styles.yourEmojiBadge, { borderColor: yourMoodColor }]}>
-                                    <Text style={styles.yourEmojiSmall}>{yourMood?.emoji || '😊'}</Text>
-                                </View>
+                    <View style={styles.moodSection}>
+                        {/* Mood Card */}
+                        <View style={styles.moodCard}>
+                            {/* Partner's large emoji in the center */}
+                            <View style={[styles.partnerEmojiContainer, { borderColor: partnerMoodColor }]}>
+                                <Text style={styles.partnerEmojiLarge}>{partnerMood?.emoji || '😊'}</Text>
                             </View>
 
+                            {/* Your emoji badge on the boundary of partner's circle */}
+                            <View style={[styles.yourEmojiBadge, { borderColor: yourMoodColor }]}>
+                                <Text style={styles.yourEmojiSmall}>{yourMood?.emoji || '😊'}</Text>
+                            </View>
+                        </View>
 
-                            {/* Update Mood Button */}
+
+                        {/* Conditional Button based on hasPartner */}
+                        {hasPartner ? (
                             <TouchableOpacity
                                 style={styles.updateMoodButton}
                                 onPress={onMoodPress}
@@ -193,8 +179,93 @@ const HomeScreen = ({
                             >
                                 <Text style={styles.updateMoodText}>Update my Mood</Text>
                             </TouchableOpacity>
-                        </View>
-                    )}
+                        ) : (
+                            <TouchableOpacity
+                                style={[styles.updateMoodButton, { backgroundColor: '#000000', overflow: 'hidden' }]}
+                                onPress={onFindPartner}
+                                activeOpacity={0.8}
+                            >
+                                {/* Background Stars */}
+                                <View style={StyleSheet.absoluteFill}>
+                                    <Svg height="100%" width="100%">
+                                        {/* Background Glows - subtle and offset */}
+                                        <Circle cx="35%" cy="45%" r="22" fill="white" opacity="0.04" />
+                                        <Circle cx="80%" cy="20%" r="18" fill="white" opacity="0.03" />
+                                        <Circle cx="10%" cy="80%" r="15" fill="white" opacity="0.02" />
+
+                                        {/* Little dot stars (varied distant background) */}
+                                        <Circle cx="12%" cy="25%" r="0.5" fill="white" opacity="0.6" />
+                                        <Circle cx="92%" cy="15%" r="0.7" fill="white" opacity="0.4" />
+                                        <Circle cx="45%" cy="12%" r="0.4" fill="white" opacity="0.7" />
+                                        <Circle cx="28%" cy="78%" r="0.6" fill="white" opacity="0.5" />
+                                        <Circle cx="65%" cy="82%" r="0.5" fill="white" opacity="0.3" />
+                                        <Circle cx="88%" cy="65%" r="0.7" fill="white" opacity="0.6" />
+                                        <Circle cx="5%" cy="55%" r="0.4" fill="white" opacity="0.5" />
+                                        <Circle cx="55%" cy="60%" r="0.6" fill="white" opacity="0.4" />
+                                        <Circle cx="35%" cy="30%" r="0.5" fill="white" opacity="0.6" />
+                                        <Circle cx="75%" cy="35%" r="0.4" fill="white" opacity="0.5" />
+
+                                        {/* 5-pointed stars (randomized positions and sizes) */}
+                                        <Path
+                                            d="M3.5 0L4.3 2.1L6.6 2.1L4.8 3.5L5.4 5.6L3.5 4.3L1.6 5.6L2.3 3.5L0.4 2.1L2.7 2.1L3.5 0Z"
+                                            fill="white"
+                                            transform="translate(42, 12) scale(1.1)"
+                                            opacity="0.9"
+                                        />
+                                        <Path
+                                            d="M3.5 0L4.3 2.1L6.6 2.1L4.8 3.5L5.4 5.6L3.5 4.3L1.6 5.6L2.3 3.5L0.4 2.1L2.7 2.1L3.5 0Z"
+                                            fill="white"
+                                            transform="translate(265, 32) scale(0.7)"
+                                            opacity="0.6"
+                                        />
+                                        <Path
+                                            d="M3.5 0L4.3 2.1L6.6 2.1L4.8 3.5L5.4 5.6L3.5 4.3L1.6 5.6L2.3 3.5L0.4 2.1L2.7 2.1L3.5 0Z"
+                                            fill="white"
+                                            transform="translate(135, 18) scale(0.9)"
+                                            opacity="0.8"
+                                        />
+                                        <Path
+                                            d="M3.5 0L4.3 2.1L6.6 2.1L4.8 3.5L5.4 5.6L3.5 4.3L1.6 5.6L2.3 3.5L0.4 2.1L2.7 2.1L3.5 0Z"
+                                            fill="white"
+                                            transform="translate(205, 40) scale(0.6)"
+                                            opacity="0.5"
+                                        />
+
+                                        {/* Sparkles (spread out more) */}
+                                        <Path
+                                            d="M4 0V8M0 4H8"
+                                            stroke="white"
+                                            strokeWidth="0.5"
+                                            transform="translate(195, 8)"
+                                            opacity="0.5"
+                                        />
+                                        <Path
+                                            d="M3 0V6M0 3H6"
+                                            stroke="white"
+                                            strokeWidth="0.4"
+                                            transform="translate(22, 38)"
+                                            opacity="0.4"
+                                        />
+                                        <Path
+                                            d="M3 0V6M0 3H6"
+                                            stroke="white"
+                                            strokeWidth="0.4"
+                                            transform="translate(315, 25)"
+                                            opacity="0.5"
+                                        />
+                                        <Path
+                                            d="M2 0V4M0 2H4"
+                                            stroke="white"
+                                            strokeWidth="0.3"
+                                            transform="translate(110, 45)"
+                                            opacity="0.4"
+                                        />
+                                    </Svg>
+                                </View>
+                                <Text style={styles.updateMoodText}>Link Partner </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
 
                     {/* Action Cards */}
                     <View style={styles.cardsContainer}>
@@ -271,190 +342,158 @@ const HomeScreen = ({
                             onPress={onScribblePress}
                             activeOpacity={0.9}
                         >
-                            {/* Warm Canvas Gradient */}
-                            <LinearGradient
-                                colors={['#FDF8F3', '#F8EDE3', '#F3E4D7']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.cardGradient}
-                            />
-
-                            {/* Pencil Icon */}
-                            <View style={styles.canvasIconContainer}>
-                                <Image
-                                    source={require('../../assets/pencilicon.png')}
-                                    style={styles.pencilIcon}
-                                    resizeMode="contain"
-                                />
-                            </View>
-
-                            <Text style={styles.cardTitle}>Our Canvas</Text>
-                            <Text style={styles.canvasText}>
-                                Leave a doodle, a love note, or a mess.
-                            </Text>
-
-                            {partnerScribble ? (
-                                <View style={styles.newDrawingBadge}>
-                                    <Text style={styles.newDrawingText}>✏️ New Drawing!</Text>
+                            {partnerScribble && partnerScribble.paths && partnerScribble.paths.length > 0 ? (
+                                <View style={styles.canvasPreviewContainer}>
+                                    <Svg
+                                        width="100%"
+                                        height="100%"
+                                        viewBox="0 0 320 320"
+                                        preserveAspectRatio="xMidYMid meet"
+                                    >
+                                        {partnerScribble.paths.map((path, index) => (
+                                            <Path
+                                                key={index}
+                                                d={path.d}
+                                                stroke={path.color}
+                                                strokeWidth={path.strokeWidth}
+                                                fill="none"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        ))}
+                                    </Svg>
                                 </View>
                             ) : (
-                                <View style={styles.drawNowBadge}>
-                                    <Text style={styles.drawNowText}>✏️ Draw Now</Text>
+                                <View style={styles.canvasLottieContainer}>
+                                    <LottieView
+                                        source={require('../../assets/canvas.lottie')}
+                                        autoPlay
+
+                                        style={styles.canvasLottie}
+                                    />
                                 </View>
                             )}
                         </TouchableOpacity>
                     </View>
 
                     {/* Duels Section - Games like Jigsaw, Tic Tac Toe, Wordle */}
-                    {hasPartner && (
-                        <View style={styles.arcadeSection}>
-                            <View style={styles.arcadeHeader}>
-                                <Text style={styles.arcadeSectionTitle}>Duels</Text>
-                                <TouchableOpacity style={styles.allGamesButton}>
-                                    <Text style={styles.allGamesText}>All games</Text>
-                                    <Text style={styles.allGamesArrow}>›</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Horizontal Scrollable Games */}
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.arcadeScrollContent}
-                            >
-                                {/* Jigsaw Puzzle Card */}
-                                <TouchableOpacity
-                                    style={[styles.arcadeCard, styles.arcadeCardOrange]}
-                                    onPress={pendingPuzzle ? () => onJigsawPlay?.(pendingPuzzle) : onJigsawCreate}
-                                    activeOpacity={0.9}
-                                >
-                                    {/* Game Icon */}
-                                    <View style={styles.arcadeIconContainer}>
-                                        <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
-                                            <Path
-                                                d="M20 11V7a2 2 0 00-2-2h-3.5a2.5 2.5 0 110-5 2.5 2.5 0 110 5H11a2 2 0 00-2 2v3.5a2.5 2.5 0 11-5 0 2.5 2.5 0 115 0V14a2 2 0 002 2h3.5a2.5 2.5 0 110 5 2.5 2.5 0 110-5H18a2 2 0 002-2v-3z"
-                                                fill="#FFFFFF"
-                                            />
-                                        </Svg>
-                                    </View>
-
-                                    {/* Game Info */}
-                                    <Text style={styles.arcadeGameLabel}>jigsaw puzzle</Text>
-                                    <Text style={styles.arcadeGameTitle}>
-                                        {pendingPuzzle ? 'Puzzle waiting!' : 'Create \n & share.'}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {/* Tic Tac Toe Card - Teal */}
-                                <TouchableOpacity
-                                    style={[
-                                        styles.arcadeCard,
-                                        styles.arcadeCardTeal,
-                                    ]}
-                                    onPress={() => onTicTacToePress?.(pendingTicTacToe || activeTicTacToe)}
-                                    activeOpacity={0.9}
-                                >
-                                    {/* Blinking "Your Turn" Indicator Dot */}
-                                    {pendingTicTacToe && (
-                                        <Animated.View
-                                            style={[
-                                                styles.blinkingDot,
-                                                { opacity: blinkAnim },
-                                            ]}
-                                        />
-                                    )}
-
-                                    {/* Game Icon - Tic Tac Toe grid */}
-                                    <View style={styles.arcadeIconContainer}>
-                                        <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
-                                            {/* Grid lines */}
-                                            <Path
-                                                d="M8 4v16M16 4v16M4 8h16M4 16h16"
-                                                stroke="#FFFFFF"
-                                                strokeWidth={2}
-                                                strokeLinecap="round"
-                                            />
-                                        </Svg>
-                                    </View>
-
-                                    {/* Game Info */}
-                                    <Text style={styles.arcadeGameLabel}>tic tac toe</Text>
-                                    <Text style={styles.arcadeGameTitle}>
-                                        {pendingTicTacToe ? 'Your turn!' : activeTicTacToe ? `${partnerName}'s turn` : 'Challenge partner.'}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {/* Wordle Card - Green */}
-                                <TouchableOpacity
-                                    style={[
-                                        styles.arcadeCard,
-                                        styles.arcadeCardGreen,
-                                    ]}
-                                    onPress={() => onWordlePress?.(pendingWordle || activeWordle)}
-                                    activeOpacity={0.9}
-                                >
-                                    {/* Blinking indicator for pending */}
-                                    {pendingWordle && (
-                                        <Animated.View
-                                            style={[
-                                                styles.blinkingDot,
-                                                { opacity: blinkAnim },
-                                            ]}
-                                        />
-                                    )}
-
-                                    <View style={styles.arcadeIconContainer}>
-                                        <Text style={styles.wordleIconText}>W</Text>
-                                    </View>
-
-                                    {/* Game Info */}
-                                    <Text style={styles.arcadeGameLabel}>wordle</Text>
-                                    <Text style={styles.arcadeGameTitle}>
-                                        {pendingWordle ? 'Guess the word!' : activeWordle ? `${partnerName}'s turn` : 'Set a word.'}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {/* Another Coming Soon Card - Purple */}
-                                <TouchableOpacity
-                                    style={[styles.arcadeCard, styles.arcadeCardPurple]}
-                                    activeOpacity={0.9}
-                                    disabled={true}
-                                >
-                                    {/* Game Icon */}
-                                    <View style={styles.arcadeIconContainer}>
-                                        <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
-                                            <Path
-                                                d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                                                stroke="#FFFFFF"
-                                                strokeWidth={2}
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            />
-                                        </Svg>
-                                    </View>
-
-                                    {/* Game Info */}
-                                    <Text style={styles.arcadeGameLabel}>memory lane</Text>
-                                    <Text style={styles.arcadeGameTitle}>
-                                        Match your{'\n'}memories.
-                                    </Text>
-                                </TouchableOpacity>
-                            </ScrollView>
+                    <View style={styles.arcadeSection}>
+                        <View style={styles.arcadeHeader}>
+                            <Text style={styles.arcadeSectionTitle}>Duels</Text>
+                          
                         </View>
-                    )}
+
+                        {/* Horizontal Scrollable Games */}
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.arcadeScrollContent}
+                        >
+                            {/* Jigsaw Puzzle Card */}
+                            <TouchableOpacity
+                                style={[styles.arcadeCard, styles.arcadeCardOrange]}
+                                onPress={pendingPuzzle ? () => onJigsawPlay?.(pendingPuzzle) : onJigsawCreate}
+                                activeOpacity={0.9}
+                            >
+                                {/* Game Icon */}
+                                <View style={styles.arcadeIconContainer}>
+                                    <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                        <Path
+                                            d="M20 11V7a2 2 0 00-2-2h-3.5a2.5 2.5 0 110-5 2.5 2.5 0 110 5H11a2 2 0 00-2 2v3.5a2.5 2.5 0 11-5 0 2.5 2.5 0 115 0V14a2 2 0 002 2h3.5a2.5 2.5 0 110 5 2.5 2.5 0 110-5H18a2 2 0 002-2v-3z"
+                                            fill="#FFFFFF"
+                                        />
+                                    </Svg>
+                                </View>
+
+                                {/* Game Info */}
+                                <Text style={styles.arcadeGameLabel}>jigsaw puzzle</Text>
+                                <Text style={styles.arcadeGameTitle}>
+                                    {pendingPuzzle ? 'Puzzle waiting!' : 'Create \n & share.'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* Tic Tac Toe Card - Teal */}
+                            <TouchableOpacity
+                                style={[
+                                    styles.arcadeCard,
+                                    styles.arcadeCardTeal,
+                                ]}
+                                onPress={() => onTicTacToePress?.(pendingTicTacToe || activeTicTacToe)}
+                                activeOpacity={0.9}
+                            >
+                                {/* Blinking "Your Turn" Indicator Dot */}
+                                {!!pendingTicTacToe && (
+                                    <Animated.View
+                                        style={[
+                                            styles.blinkingDot,
+                                            { opacity: blinkAnim },
+                                        ]}
+                                    />
+                                )}
+
+                                {/* Game Icon - Tic Tac Toe grid */}
+                                <View style={styles.arcadeIconContainer}>
+                                    <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                                        {/* Grid lines */}
+                                        <Path
+                                            d="M8 4v16M16 4v16M4 8h16M4 16h16"
+                                            stroke="#FFFFFF"
+                                            strokeWidth={2}
+                                            strokeLinecap="round"
+                                        />
+                                    </Svg>
+                                </View>
+
+                                {/* Game Info */}
+                                <Text style={styles.arcadeGameLabel}>tic tac toe</Text>
+                                <Text style={styles.arcadeGameTitle}>
+                                    {pendingTicTacToe ? 'Your \n turn!' : activeTicTacToe ? `${partnerName}'s \n turn` : 'Challenge partner.'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* Wordle Card - Green */}
+                            <TouchableOpacity
+                                style={[
+                                    styles.arcadeCard,
+                                    styles.arcadeCardGreen,
+                                ]}
+                                onPress={() => onWordlePress?.(pendingWordle || activeWordle)}
+                                activeOpacity={0.9}
+                            >
+                                {/* Blinking indicator for pending */}
+                                {!!pendingWordle && (
+                                    <Animated.View
+                                        style={[
+                                            styles.blinkingDot,
+                                            { opacity: blinkAnim },
+                                        ]}
+                                    />
+                                )}
+
+                                <View style={styles.arcadeIconContainer}>
+                                    <Text style={styles.wordleIconText}>W</Text>
+                                </View>
+
+                                {/* Game Info */}
+                                <Text style={styles.arcadeGameLabel}>wordle</Text>
+                                <Text style={styles.arcadeGameTitle}>
+                                    {pendingWordle ? 'Guess the word!' : activeWordle ? `${partnerName}'s \n turn` : 'Set a word.'}
+                                </Text>
+                            </TouchableOpacity>
+
+
+                        </ScrollView>
+                    </View>
 
                     {/* Topic Question Sections - Each topic has its own arcade-style section */}
-                    {hasPartner && categories.map((cat) => (
+                    {categories.map((cat) => (
                         <View key={cat._id || cat.id} style={styles.arcadeSection}>
                             {/* Topic Header */}
                             <View style={styles.arcadeHeader}>
                                 <View style={styles.topicTitleRow}>
                                     <Text style={styles.arcadeSectionTitle}>{cat.title}</Text>
                                 </View>
-                                <TouchableOpacity style={styles.allGamesButton} onPress={() => onQuestionPress?.(cat)}>
-                                    <Text style={styles.allGamesText}>Play all</Text>
-                                    <Text style={styles.allGamesArrow}>›</Text>
-                                </TouchableOpacity>
+                               
                             </View>
 
                             {/* Horizontal Scrollable Cards - matching Duels style */}
@@ -609,8 +648,6 @@ const HomeScreen = ({
                             </ScrollView>
                         </View>
                     ))}
-
-                    {/* No Partner State */}
                     {!hasPartner && (
                         <View style={styles.noPartnerContainer}>
                             <Text style={styles.noPartnerTitle}>Find Your Partner</Text>
@@ -649,9 +686,14 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 8,
     },
-    logo: {
-        width: 40,
-        height: 40,
+    brandContainer: {
+        justifyContent: 'center',
+    },
+    brandName: {
+        fontSize: 28,
+        fontWeight: '600',
+        color: colors.text,
+        letterSpacing: -0.5,
     },
     connectionBadge: {
         backgroundColor: colors.surface,
@@ -671,25 +713,6 @@ const styles = StyleSheet.create({
     },
     settingsButton: {
         padding: 8,
-    },
-    greetingSection: {
-        marginBottom: 0,
-    },
-    greeting: {
-        fontSize: 24,
-        fontWeight: '300',
-        color: colors.text,
-        textAlign: 'center',
-        lineHeight: 44,
-        letterSpacing: 0.3,
-    },
-    names: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: colors.text,
-        letterSpacing: -0.5,
-        fontFamily: 'System',
-        textAlign: 'center',
     },
     moodSection: {
         alignItems: 'center',
@@ -787,9 +810,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         marginBottom: 24,
+        alignItems: 'stretch',
     },
     card: {
-        flex: 1,
+        width: (Dimensions.get('window').width - 40 - 12) / 2, // 40 = horizontal padding (20*2), 12 = gap
         backgroundColor: colors.surface,
         borderRadius: 20,
         padding: 14,
@@ -816,9 +840,10 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     canvasCard: {
-        backgroundColor: 'transparent',
+        backgroundColor: '#FFFFFF',
         overflow: 'hidden',
         position: 'relative',
+        padding: 0,
         borderWidth: 1,
         borderColor: 'rgba(229, 168, 95, 0.2)',
     },
@@ -900,6 +925,23 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: "black",
         fontWeight: '600',
+    },
+    canvasPreviewContainer: {
+        flex: 1,
+        width: '100%',
+        backgroundColor: '#FFFFFF',
+        overflow: 'hidden',
+    },
+    canvasLottieContainer: {
+        flex: 1,
+        width: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+    },
+    canvasLottie: {
+        width: '100%',
+        height: '100%',
     },
     newDrawingBadge: {
         alignSelf: 'center',
@@ -1315,7 +1357,7 @@ const styles = StyleSheet.create({
     arcadeGameLabel: {
         fontSize: 12,
         fontWeight: '500',
-        color: 'rgba(255, 255, 255, 0.8)',
+        color: 'white',
         marginBottom: 2,
     },
     arcadeGameTitle: {

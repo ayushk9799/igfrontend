@@ -232,6 +232,11 @@ export const SocketProvider = ({ children }) => {
         onMoodUpdatedRef.current = callback;
     }, []);
 
+    // Function to clear partner scribble (used after sending your own scribble)
+    const clearPartnerScribble = useCallback(() => {
+        setPartnerScribble(null);
+    }, []);
+
     // Context value
     const value = {
         socket,
@@ -244,6 +249,7 @@ export const SocketProvider = ({ children }) => {
         connect,
         disconnect,
         setOnMoodUpdated,
+        clearPartnerScribble, // New: allows clearing scribble after sending
     };
 
     return (
@@ -271,6 +277,7 @@ export const useSocketContext = () => {
             connect: () => { },
             disconnect: () => { },
             setOnMoodUpdated: () => { },
+            clearPartnerScribble: () => { },
         };
     }
     return context;

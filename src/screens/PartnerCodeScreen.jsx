@@ -130,7 +130,6 @@ export const PartnerCodeScreen = ({
     const [copied, setCopied] = useState(false);
     const [isAlreadyPaired, setIsAlreadyPaired] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(30)).current;
     const insets = useSafeAreaInsets();
 
     // Check if user is already paired on mount - redirect immediately
@@ -149,12 +148,13 @@ export const PartnerCodeScreen = ({
 
     useEffect(() => {
         if (!isAlreadyPaired) {
-            Animated.parallel([
-                Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-                Animated.spring(slideAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
-            ]).start();
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true
+            }).start();
         }
-    }, [fadeAnim, slideAnim, isAlreadyPaired]);
+    }, [fadeAnim, isAlreadyPaired]);
 
     // If already paired, don't render the pairing UI
     if (isAlreadyPaired) {
@@ -245,7 +245,7 @@ export const PartnerCodeScreen = ({
                 <Animated.View
                     style={[
                         styles.heroSection,
-                        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+                        { opacity: fadeAnim },
                     ]}
                 >
                     <View style={styles.imageContainer}>
@@ -260,7 +260,12 @@ export const PartnerCodeScreen = ({
                 </Animated.View>
 
                 {/* Your Code Section */}
-                <Animated.View style={[styles.codeSection, { opacity: fadeAnim }]}>
+                <Animated.View
+                    style={[
+                        styles.codeSection,
+                        { opacity: fadeAnim }
+                    ]}
+                >
                     <View style={styles.yourCodeCard}>
                         <Text style={styles.cardLabel}>Share this Code</Text>
                         <View style={styles.codeRow}>
@@ -393,7 +398,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: colors.borderLight,
-        ...shadows.sm,
     },
     cardLabel: {
         fontSize: 13,
@@ -453,7 +457,6 @@ const styles = StyleSheet.create({
         padding: spacing.xl,
         borderWidth: 1,
         borderColor: colors.borderLight,
-        ...shadows.sm,
     },
     codeInput: {
         backgroundColor: colors.backgroundAlt,

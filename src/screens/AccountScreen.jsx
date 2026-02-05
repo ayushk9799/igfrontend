@@ -7,6 +7,7 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
+    Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';

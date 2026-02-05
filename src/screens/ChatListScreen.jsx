@@ -13,35 +13,30 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, borderRadius } from '../theme';
 import { API_BASE } from '../constants/Api';
+import { TOPIC_CATEGORIES } from '../constants/Categories';
 
-// Category emoji mapping
+// Topic image mapping - matches HomeScreen topic images
+const TOPIC_IMAGES = {
+    hotspicy: require('../../assets/chilli.png'),
+    money: require('../../assets/coins.png'),
+    future: require('../../assets/couplecutout.png'),
+    fitness: require('../../assets/couplerunning.png'),
+    travel: require('../../assets/travel.png'),
+    family: require('../../assets/couplekids5.png'),
+};
+
+// Fallback emoji for topics without images
 const CATEGORY_EMOJI = {
-    future: '🔮',
-    money: '💰',
-    hotspicy: '🌶️',
     political: '⚖️',
-    fitness: '💪',
-    travel: '✈️',
-    family: '👨‍👩‍👧‍👦',
     dailychallenge: '⭐',
     likelyto: '🎯',
     neverhaveiever: '🤫',
     deep: '💭',
 };
 
-// Category colors
-const CATEGORY_COLORS = {
-    future: '#9333EA',
-    money: '#F59E0B',
-    hotspicy: '#EF4444',
-    political: '#6366F1',
-    fitness: '#10B981',
-    travel: '#0EA5E9',
-    family: '#EC4899',
-    dailychallenge: '#F97068',
-    likelyto: '#8B5CF6',
-    neverhaveiever: '#F4A261',
-    deep: '#5BB5A6',
+// Helper to get topic color from TOPIC_CATEGORIES (same as HomeScreen)
+const getTopicColor = (topicId) => {
+    return TOPIC_CATEGORIES[topicId]?.color || colors.primary;
 };
 
 /**
@@ -105,8 +100,9 @@ export default function ChatListScreen({
     };
 
     const renderChatItem = ({ item }) => {
+        const topicImage = TOPIC_IMAGES[item.questionSource];
         const emoji = CATEGORY_EMOJI[item.questionSource] || '💬';
-        const categoryColor = CATEGORY_COLORS[item.questionSource] || colors.primary;
+        const categoryColor = getTopicColor(item.questionSource);
         const hasUnread = item.unreadCount > 0;
 
         return (
@@ -117,7 +113,11 @@ export default function ChatListScreen({
             >
                 {/* Category indicator */}
                 <View style={[styles.categoryIndicator, { backgroundColor: categoryColor }]}>
-                    <Text style={styles.categoryEmoji}>{emoji}</Text>
+                    {topicImage ? (
+                        <Image source={topicImage} style={styles.categoryImage} resizeMode="contain" />
+                    ) : (
+                        <Text style={styles.categoryEmoji}>{emoji}</Text>
+                    )}
                 </View>
 
                 {/* Chat content */}
@@ -191,7 +191,7 @@ export default function ChatListScreen({
                         />
                     </Svg>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>💬 Chats</Text>
+                <Text style={styles.headerTitle}> Chats</Text>
                 <View style={{ width: 44 }} />
             </View>
 
@@ -259,8 +259,9 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 20,
-        fontWeight: '700',
+        fontWeight: '600',
         color: colors.text,
+        letterSpacing: 0.5,
     },
     loadingText: {
         marginTop: spacing.md,
@@ -308,15 +309,24 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
     },
     categoryIndicator: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: spacing.md,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
     },
     categoryEmoji: {
-        fontSize: 22,
+        fontSize: 24,
+    },
+    categoryImage: {
+        width: 34,
+        height: 34,
     },
     chatContent: {
         flex: 1,

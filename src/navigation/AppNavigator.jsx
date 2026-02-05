@@ -28,7 +28,7 @@ import { colors } from '../theme';
 import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
-import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging } from '../utils/pushNotifications';
+import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener } from '../utils/pushNotifications';
 import { API_BASE } from '../constants/Api';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, logout } from '../store/slices/userSlice';
@@ -110,9 +110,13 @@ export const AppNavigator = () => {
             );
         });
 
+        // 4. Token Refresh Listener - handles token rotation by Firebase
+        const unsubscribeTokenRefresh = setupTokenRefreshListener();
+
         return () => {
             unsubscribeOpenedApp();
             if (unsubscribeForeground) unsubscribeForeground();
+            if (unsubscribeTokenRefresh) unsubscribeTokenRefresh();
         };
     }, []);
 
@@ -314,6 +318,9 @@ export const AppNavigator = () => {
 
             // Connect to socket for real-time sync
             connect();
+
+            // Register FCM token for push notifications (critical for reinstalls!)
+            registerFCMToken();
 
             // FIRST check if user has a nickname - required before anything else
             if (!user.nickname) {
@@ -591,6 +598,8 @@ export const AppNavigator = () => {
                             navigate('home');
                         }}
                         onBack={() => navigate('home')}
+                        hasPartner={!!userData?.partnerId}
+                        onLinkPartner={() => navigate('partnerCode')}
                     />
                 );
 

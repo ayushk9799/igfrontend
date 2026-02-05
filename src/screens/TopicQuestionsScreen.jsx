@@ -10,7 +10,18 @@ import {
     Platform,
     TouchableWithoutFeedback,
     Keyboard,
+    Image,
 } from 'react-native';
+
+// Topic image mapping - matches HomeScreen topic images
+const TOPIC_IMAGES = {
+    hotspicy: require('../../assets/chilli.png'),
+    money: require('../../assets/coins.png'),
+    future: require('../../assets/couplecutout.png'),
+    fitness: require('../../assets/couplerunning.png'),
+    travel: require('../../assets/travel.png'),
+    family: require('../../assets/couplekids5.png'),
+};
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Svg, { Path } from 'react-native-svg';
@@ -335,7 +346,15 @@ export default function TopicQuestionsScreen({
     if (tasks.length === 0) {
         return (
             <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-                <Text style={styles.emptyEmoji}>{topicEmoji || '📝'}</Text>
+                {TOPIC_IMAGES[topic] ? (
+                    <Image
+                        source={TOPIC_IMAGES[topic]}
+                        style={styles.emptyImage}
+                        resizeMode="contain"
+                    />
+                ) : (
+                    <Text style={styles.emptyEmoji}>{topicEmoji || '📝'}</Text>
+                )}
                 <Text style={styles.emptyText}>No questions available for {topicTitle}</Text>
                 <TouchableOpacity style={styles.backBtn} onPress={onBack}>
                     <Text style={styles.backBtnText}>← Go Back</Text>
@@ -356,10 +375,18 @@ export default function TopicQuestionsScreen({
                             </Svg>
                         </TouchableOpacity>
                         <View style={styles.headerContent}>
-                            <Text style={styles.headerTitle}>{topicEmoji} {topicTitle}</Text>
-                            <Text style={styles.headerSubtitle}>
-                                {questions.length} loaded
-                            </Text>
+                            <View style={styles.headerTitleRow}>
+                                {TOPIC_IMAGES[topic] ? (
+                                    <Image
+                                        source={TOPIC_IMAGES[topic]}
+                                        style={styles.headerTopicImage}
+                                        resizeMode="contain"
+                                    />
+                                ) : (
+                                    <Text style={styles.headerEmoji}>{topicEmoji}</Text>
+                                )}
+                                <Text style={styles.headerTitle}>{topicTitle}</Text>
+                            </View>
                         </View>
                         <View style={{ width: 48 }} />
                     </View>
@@ -411,6 +438,11 @@ const styles = StyleSheet.create({
     retryBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
 
     emptyEmoji: { fontSize: 48, marginBottom: spacing.md },
+    emptyImage: {
+        width: 80,
+        height: 80,
+        marginBottom: spacing.md
+    },
     emptyText: {
         fontSize: 18,
         fontWeight: '600',
@@ -442,7 +474,20 @@ const styles = StyleSheet.create({
         borderColor: colors.borderLight,
     },
     headerContent: { marginLeft: spacing.md, flex: 1 },
-    headerTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    headerTopicImage: {
+        width: 32,
+        height: 32,
+        marginRight: 8,
+    },
+    headerEmoji: {
+        fontSize: 24,
+        marginRight: 8,
+    },
+    headerTitle: { fontSize: 22, fontWeight: '600', color: colors.text, letterSpacing: -0.5 },
     headerSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
 
     cardsContainer: {

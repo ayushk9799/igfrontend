@@ -144,6 +144,8 @@ export const MainTabNavigator = ({
                 return (
                     <ScribbleScreen
                         onBack={() => setCurrentTab('home')}
+                        hasPartner={hasPartner}
+                        onLinkPartner={onFindPartner}
                     />
                 );
             case 'dailyChallenge':
@@ -171,7 +173,7 @@ export const MainTabNavigator = ({
                         partnerName={partnerName || 'Your Love'}
                         userName={userData?.name || 'You'}
                         userAvatar={userData?.avatar}
-                        partnerAvatar={userData?.partnerAvatar} 
+                        partnerAvatar={userData?.partnerAvatar}
                         userId={userData?.id}
                         onBack={() => setCurrentTab('home')}
                     />
