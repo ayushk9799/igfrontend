@@ -23,11 +23,15 @@ const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit
         }
     }, [task._id, isAnswered, previousAnswer]);
 
+    // Track if this card was just submitted
+    const [justSubmitted, setJustSubmitted] = useState(false);
+
     const handleSubmit = () => {
         if (answer.trim()) {
             console.log('🎯 [DeepCard] Submitting answer:', answer.trim());
             onAnswerSubmit(index, answer.trim());
             Keyboard.dismiss();
+            setJustSubmitted(true);
             // Trigger card transition after submission
             if (onSubmit) {
                 onSubmit(answer.trim());
@@ -40,26 +44,12 @@ const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit
             colors={config.bgGradient}
             style={styles.cardContainer}
         >
-            {/* Already Answered Overlay */}
-            {isAnswered && (
-                <View style={cardStyles.answeredOverlay}>
-                    <View style={cardStyles.answeredBadge}>
-                        <Text style={cardStyles.answeredEmoji}>✅</Text>
-                        <Text style={cardStyles.answeredTitle}>Already Answered</Text>
-                        <Text style={cardStyles.answeredText}>
-                            Your response: "{previousAnswer}"
-                        </Text>
-                        <Text style={cardStyles.answeredHint}>Swipe to continue →</Text>
-                    </View>
-                </View>
-            )}
-
             <KeyboardAvoidingView
                 style={styles.keyboardAvoid}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
             >
-                <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
+                <View style={styles.cardContent}>
                     {/* Top Header */}
                     <View style={styles.topRow}>
                         <View style={styles.categoryBadge}>
@@ -71,6 +61,7 @@ const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit
 
                     {/* Question Area */}
                     <View style={styles.questionSection}>
+                        {(isAnswered || justSubmitted) && <Text style={cardStyles.submittedText}>Submitted ✓</Text>}
                         <Text style={styles.questionText}>
                             {task.taskstatement}
                         </Text>

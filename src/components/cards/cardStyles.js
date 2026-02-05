@@ -143,7 +143,28 @@ export const cardStyles = StyleSheet.create({
         borderRadius: 28,
         overflow: 'hidden',
     },
+    cameraBoxContainer: {
+        width: '100%',
+        aspectRatio: 1, // Square aspect ratio
+        borderRadius: 24,
+        overflow: 'hidden',
+        backgroundColor: colors.surface,
+        marginBottom: spacing.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
     camera: {
+        // Position 16:9 camera centered in 1:1 box
+        position: 'absolute',
+        top: '-38.5%',
+        left: 0,
+        width: '100%',
+        height: '177%',
+    },
+    cameraFullScreen: {
+        flex: 1,
+    },
+    previewInCameraBox: {
         flex: 1,
     },
     cameraOverlay: {
@@ -347,5 +368,20 @@ export const cardStyles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 4,
         elevation: 3,
+    },
+
+    // Submitted text indicator (shown above question)
+    submittedText: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        fontSize: 14,
+        fontWeight: '700',
+        color: 'rgba(255, 255, 255, 0.85)',
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+        paddingVertical: spacing.xs,
     },
 });

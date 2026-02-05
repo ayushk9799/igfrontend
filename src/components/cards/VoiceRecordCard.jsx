@@ -327,7 +327,6 @@ const VoiceRecordCard = React.memo(({
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
                         <Text style={styles.categoryText}>{config.label}</Text>
                     </View>
-                    <Text style={[styles.counterText, { color: 'white' }]}>{index + 1}/{totalCards}</Text>
                 </View>
 
                 {/* Question */}

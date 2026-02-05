@@ -18,16 +18,13 @@ import { colors, spacing, borderRadius } from '../theme';
 import { useAvatarUpload } from '../hooks/useAvatarUpload';
 
 // Settings menu item
-const MenuItem = ({ icon, title, subtitle, onPress, danger = false }) => {
+const MenuItem = ({ title, subtitle, onPress, danger = false }) => {
     return (
         <TouchableOpacity
             style={styles.menuItem}
             onPress={onPress}
             activeOpacity={0.7}
         >
-            <View style={[styles.menuIcon, danger && styles.menuIconDanger]}>
-                <Text style={styles.menuIconText}>{icon}</Text>
-            </View>
             <View style={styles.menuContent}>
                 <Text style={[styles.menuTitle, danger && styles.menuTitleDanger]}>
                     {title}
@@ -52,8 +49,8 @@ const MenuItem = ({ icon, title, subtitle, onPress, danger = false }) => {
 export const AccountScreen = ({
     userData = {},
     partnerName = null,
+    partnerNickname = null,
     hasPartner = false,
-    daysTogether = 0,
     onLogout,
 
     onEditProfile,
@@ -125,7 +122,7 @@ export const AccountScreen = ({
                                 style={styles.avatarLarge}
                             >
                                 <Text style={styles.avatarEmoji}>
-                                    {userData.gender === 'female' ? '👩' : '👨'}
+                                    {userData.gender === 'female' ? 'F' : 'M'}
                                 </Text>
                             </LinearGradient>
                         )}
@@ -134,7 +131,7 @@ export const AccountScreen = ({
                             {isUploading ? (
                                 <ActivityIndicator size="small" color={colors.surface} />
                             ) : (
-                                <Text style={styles.avatarEditIcon}>📷</Text>
+                                <Text style={styles.avatarEditIcon}>+</Text>
                             )}
                         </View>
                         {/* Upload progress overlay */}
@@ -146,42 +143,16 @@ export const AccountScreen = ({
                             </View>
                         )}
                     </TouchableOpacity>
-                    <Text style={styles.profileName}>{userData.name || 'You'}</Text>
                     {userData.nickname && (
-                        <Text style={styles.profileNickname}>"{userData.nickname}"</Text>
+                        <Text style={styles.profileNickname}>{userData.nickname}</Text>
                     )}
                     <Text style={styles.profileEmail}>{userData.email || ''}</Text>
 
-                    {/* Connection Stats - Only show when paired */}
-                    {hasPartner ? (
-                        <View style={styles.statsCard}>
-                            <View style={styles.statItem}>
-                                <Text style={styles.statValue}>{daysTogether}</Text>
-                                <Text style={styles.statLabel}>Days Together</Text>
-                            </View>
-                            <View style={styles.statDivider} />
-                            <View style={styles.statItem}>
-                                <Text style={styles.statValue}>💕</Text>
-                                <Text style={styles.statLabel}>With {partnerName}</Text>
-                            </View>
-                        </View>
-                    ) : (
-                        <TouchableOpacity
-                            style={styles.soloModeCard}
-                            onPress={onFindPartner}
-                            activeOpacity={0.8}
-                        >
-                            <LinearGradient
-                                colors={[colors.primary + '20', colors.secondary + '15']}
-                                style={StyleSheet.absoluteFill}
-                            />
-                            <Text style={styles.soloModeEmoji}>💝</Text>
-                            <View style={styles.soloModeText}>
-                                <Text style={styles.soloModeTitle}>Solo Mode</Text>
-                                <Text style={styles.soloModeSubtitle}>Tap to find your partner</Text>
-                            </View>
-                            <Text style={styles.soloModeArrow}>→</Text>
-                        </TouchableOpacity>
+                    {/* Partner Info - Only show when paired */}
+                    {hasPartner && (
+                        <Text style={styles.partnerText}>
+                            With {partnerNickname || partnerName}
+                        </Text>
                     )}
                 </View>
 
@@ -189,71 +160,38 @@ export const AccountScreen = ({
                 <View style={styles.menuSection}>
                     <Text style={styles.sectionTitle}>Settings</Text>
                     <MenuItem
-                        icon="👤"
                         title="Edit Profile"
                         subtitle="Change your name and photo"
                         onPress={onEditProfile}
                     />
                     <MenuItem
-                        icon="🔔"
                         title="Notifications"
                         subtitle="Manage push notifications"
                         onPress={() => { }}
                     />
-                    <MenuItem
-                        icon="🎨"
-                        title="Appearance"
-                        subtitle="Theme and display settings"
-                        onPress={() => { }}
-                    />
+
                 </View>
 
-                <View style={styles.menuSection}>
-                    <Text style={styles.sectionTitle}>Connection</Text>
-                    {hasPartner ? (
-                        <MenuItem
-                            icon="💑"
-                            title="Partner Settings"
-                            subtitle={`Connected with ${partnerName}`}
-                            onPress={() => { }}
-                        />
-                    ) : (
-                        <MenuItem
-                            icon="💝"
-                            title="Find a Partner"
-                            subtitle="Connect with your special someone"
-                            onPress={onFindPartner}
-                        />
-                    )}
-                    <MenuItem
-                        icon="🔗"
-                        title="Invite Link"
-                        subtitle="Share your connection link"
-                        onPress={() => { }}
-                    />
-                </View>
+
 
                 <View style={styles.menuSection}>
                     <Text style={styles.sectionTitle}>Support</Text>
                     <MenuItem
-                        icon="❓"
                         title="Help & FAQ"
                         onPress={() => { }}
                     />
                     <MenuItem
-                        icon="📝"
                         title="Privacy Policy"
                         onPress={() => { }}
                     />
                     <MenuItem
-                        icon="🚪"
                         title="Log Out"
                         onPress={handleLogout}
                         danger
                     />
                 </View>
 
-                <Text style={styles.versionText}>LoveNest v1.0.0</Text>
+                <Text style={styles.versionText}>penguin</Text>
             </ScrollView>
         </GradientBackground>
     );
@@ -336,72 +274,17 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         fontStyle: 'italic',
         marginBottom: 4,
+        letterSpacing: -0.5
     },
     profileEmail: {
         fontSize: 14,
         color: colors.textSecondary,
         marginBottom: spacing.lg,
     },
-    statsCard: {
-        flexDirection: 'row',
-        backgroundColor: colors.surface,
-        borderRadius: borderRadius.xl,
-        padding: spacing.lg,
-        borderWidth: 1,
-        borderColor: colors.borderLight,
-        width: '100%',
-    },
-    statItem: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    statValue: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: colors.primary,
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 12,
+    partnerText: {
+        fontSize: 14,
         color: colors.textSecondary,
-        fontWeight: '600',
-    },
-    statDivider: {
-        width: 1,
-        backgroundColor: colors.glassBorder,
-        marginHorizontal: spacing.md,
-    },
-    soloModeCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        width: '100%',
-        borderRadius: borderRadius.xl,
-        padding: spacing.lg,
-        borderWidth: 1,
-        borderColor: colors.primary + '30',
-        overflow: 'hidden',
-    },
-    soloModeEmoji: {
-        fontSize: 32,
-        marginRight: spacing.md,
-    },
-    soloModeText: {
-        flex: 1,
-    },
-    soloModeTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: colors.text,
-    },
-    soloModeSubtitle: {
-        fontSize: 13,
-        color: colors.textSecondary,
-        marginTop: 2,
-    },
-    soloModeArrow: {
-        fontSize: 20,
-        color: colors.primary,
-        fontWeight: '600',
+        marginBottom: spacing.md,
     },
     menuSection: {
         marginBottom: spacing.xl,
@@ -428,20 +311,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.borderLight,
     },
-    menuIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: colors.primarySoft,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    menuIconDanger: {
-        backgroundColor: colors.error + '20',
-    },
-    menuIconText: {
-        fontSize: 20,
-    },
+
     menuContent: {
         flex: 1,
         marginLeft: spacing.md,

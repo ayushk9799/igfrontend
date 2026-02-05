@@ -32,6 +32,8 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
     const [previewUri, setPreviewUri] = useState(isAnswered ? previousAnswer : null);
     const [showCamera, setShowCamera] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [cameraType, setCameraType] = useState('back');
+    const [justSubmitted, setJustSubmitted] = useState(false);
 
     useEffect(() => {
         // Reset state only when task ID actually changes
@@ -70,6 +72,10 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
         }
     };
 
+    const toggleCamera = () => {
+        setCameraType(prev => prev === 'back' ? 'front' : 'back');
+    };
+
     const handleCapture = async () => {
         try {
             if (isProcessingRef.current) return;
@@ -81,18 +87,13 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                 throw new Error('No image captured');
             }
 
-            const cropResult = await ExpoImageCropTool.openCropperAsync({
-                imageUri: source,
-                shape: 'rectangle',
-                format: 'jpeg',
-                compressImageQuality: 0.9,
+            const finalUri = source.startsWith('file://') ? source : `file://${source}`;
+
+            // No cropper for camera - store with front camera flag for display mirroring
+            setPreviewUri({
+                uri: finalUri,
+                isFrontCamera: cameraType === 'front'
             });
-
-            const out = typeof cropResult === 'string' ? cropResult : cropResult?.uri || cropResult?.path;
-            if (!out) throw new Error('Cropping cancelled');
-            const finalUri = out.startsWith('file://') ? out : `file://${out}`;
-
-            setPreviewUri(finalUri);
             setShowCamera(false);
         } catch (e) {
             // ignore
@@ -130,7 +131,7 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
             if (!out) return;
             const finalUri = out.startsWith('file://') ? out : `file://${out}`;
 
-            setPreviewUri(finalUri);
+            setPreviewUri({ uri: finalUri, isFrontCamera: false });
         } catch (e) {
             // ignore
         }
@@ -142,16 +143,22 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
 
     const handleUsePhoto = async () => {
         if (!previewUri || isSubmitting) return;
+
+        // Extract URI from object or string
+        const imageUri = typeof previewUri === 'string' ? previewUri : previewUri?.uri;
+        if (!imageUri) return;
+
         console.log('🎯 [TakePhotoCard] Using photo, uploading to S3...');
         setIsSubmitting(true);
 
         try {
             // Upload to S3 first
-            const s3Url = await uploadImageToS3(previewUri, 'daily-photos');
+            const s3Url = await uploadImageToS3(imageUri, 'daily-photos');
             console.log('🎯 [TakePhotoCard] S3 upload complete:', s3Url);
 
             // Submit S3 URL instead of local path with answerType='photo'
             await onAnswerSubmit(index, s3Url, 'photo');
+            setJustSubmitted(true);
             onSubmit(s3Url);
         } catch (error) {
             console.error('🎯 [TakePhotoCard] Upload failed:', error);
@@ -164,14 +171,7 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
     if (showCamera && !previewUri) {
         return (
             <View style={styles.cameraContainer}>
-                <Camera
-                    ref={cameraRef}
-                    style={styles.camera}
-                    cameraType={'back'}
-                    flashMode={'auto'}
-                    focusMode={'on'}
-                    zoomMode={'on'}
-                />
+                {/* Header with back button */}
                 <View style={styles.cameraOverlay}>
                     <TouchableOpacity onPress={() => setShowCamera(false)} style={styles.cameraBackBtn}>
                         <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -179,6 +179,22 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                         </Svg>
                     </TouchableOpacity>
                 </View>
+
+                {/* Camera Box - Square with centered 16:9 camera */}
+                <View style={photoStyles.cameraContentArea}>
+                    <View style={styles.cameraBoxContainer}>
+                        <Camera
+                            ref={cameraRef}
+                            style={styles.camera}
+                            cameraType={cameraType}
+                            flashMode={cameraType === 'front' ? 'off' : 'auto'}
+                            focusMode={'on'}
+                            zoomMode={'on'}
+                        />
+                    </View>
+                </View>
+
+                {/* Bottom Controls */}
                 <View style={styles.cameraBottomBar}>
                     <TouchableOpacity onPress={handlePickFromGallery} style={styles.galleryBtn}>
                         <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -188,32 +204,22 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                     <TouchableOpacity onPress={handleCapture} style={styles.captureBtn}>
                         <View style={styles.captureBtnInner} />
                     </TouchableOpacity>
-                    <View style={{ width: 56 }} />
+                    <TouchableOpacity onPress={toggleCamera} style={styles.galleryBtn}>
+                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                            <Path d="M1 4v6h6" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                            <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                        </Svg>
+                    </TouchableOpacity>
                 </View>
             </View>
         );
     }
 
+
+
     return (
         <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
-            {/* Already Answered Overlay */}
-            {isAnswered && (
-                <View style={styles.answeredOverlay}>
-                    <View style={styles.answeredBadge}>
-                        <Text style={styles.answeredEmoji}>📸</Text>
-                        <Text style={styles.answeredTitle}>Photo Submitted</Text>
-                        {previousAnswer && (
-                            <Image
-                                source={{ uri: previousAnswer }}
-                                style={{ width: 120, height: 120, borderRadius: 12, marginVertical: 8 }}
-                                resizeMode="cover"
-                            />
-                        )}
-                        <Text style={styles.answeredHint}>Swipe to continue →</Text>
-                    </View>
-                </View>
-            )}
-            <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
+            <View style={styles.cardContent}>
                 <View style={styles.topRow}>
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
                         <Text style={styles.categoryText}>{config.label}</Text>
@@ -221,13 +227,21 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                 </View>
 
                 <View style={styles.questionSection}>
+                    {(isAnswered || justSubmitted) && <Text style={styles.submittedText}>Submitted ✓</Text>}
                     <Text style={styles.questionText}>{task.taskstatement}</Text>
                 </View>
 
                 {previewUri ? (
                     <>
-                        <View style={styles.photoPreviewContainer}>
-                            <Image source={{ uri: previewUri }} style={styles.photoPreview} resizeMode="cover" />
+                        <View style={styles.cameraBoxContainer}>
+                            <Image
+                                source={{ uri: typeof previewUri === 'string' ? previewUri : previewUri?.uri }}
+                                style={[
+                                    styles.previewInCameraBox,
+                                    previewUri?.isFrontCamera && { transform: [{ scaleX: -1 }] }
+                                ]}
+                                resizeMode="cover"
+                            />
                         </View>
                         <View style={styles.photoActionsRow}>
                             <TouchableOpacity onPress={handleRetake} style={[styles.photoActionBtn, { backgroundColor: colors.borderLight }]}>
@@ -302,6 +316,12 @@ const photoStyles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 16,
         fontWeight: '500',
+    },
+    cameraContentArea: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
     },
 });
 

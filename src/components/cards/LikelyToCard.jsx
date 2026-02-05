@@ -103,21 +103,7 @@ const LikelyToCard = React.memo(({
 
     return (
         <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
-            {/* Already Answered Overlay */}
-            {isAnswered && (
-                <View style={styles.answeredOverlay}>
-                    <View style={styles.answeredBadge}>
-                        <Text style={styles.answeredEmoji}>✅</Text>
-                        <Text style={styles.answeredTitle}>Already Answered</Text>
-                        <Text style={styles.answeredText}>
-                            You chose: {previousAnswer === 'you' ? 'Me' : 'You'}
-                        </Text>
-                        <Text style={styles.answeredHint}>Swipe to continue →</Text>
-                    </View>
-                </View>
-            )}
-
-            <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
+            <View style={styles.cardContent}>
                 <View style={styles.topRow}>
                     <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
                         <Text style={styles.categoryText}>{config.label}</Text>
@@ -125,6 +111,7 @@ const LikelyToCard = React.memo(({
                 </View>
 
                 <View style={styles.questionSection}>
+                    {locked && <Text style={styles.submittedText}>Submitted ✓</Text>}
                     <Text style={styles.questionText}>"{task.taskstatement}"</Text>
                 </View>
 

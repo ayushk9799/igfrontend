@@ -89,9 +89,15 @@ const ChatBubble = ({
                     style={[StyleSheet.absoluteFill, bubbleStyle]}
                 />
                 {/* Content overlay */}
-                <View style={styles.bubbleContent}>
+                <View style={[
+                    styles.bubbleContent,
+                    message.answerType === 'photo' && styles.bubbleContentPhoto
+                ]}>
                     {message.messageType === 'answer' && (
-                        <Text style={styles.answerLabel}>
+                        <Text style={[
+                            styles.answerLabel,
+                            message.answerType === 'photo' && styles.answerLabelPhoto
+                        ]}>
                             {isSent ? 'YOUR ANSWER' : `${senderName.toUpperCase()}'S ANSWER`}
                         </Text>
                     )}
@@ -198,9 +204,16 @@ const styles = StyleSheet.create({
         color: '#6B7280',
     },
     messageImage: {
-        width: 200,
-        height: 200,
+        width: 220,
+        height: 220,
         borderRadius: 12,
+    },
+    bubbleContentPhoto: {
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+    },
+    answerLabelPhoto: {
+        marginLeft: 4,
     },
 });
 
