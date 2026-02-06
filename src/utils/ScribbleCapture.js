@@ -1,5 +1,5 @@
 // Scribble Capture Utility
-// Captures scribble view as image and saves to App Group for widget access
+// Captures scribble view as image and saves to widget storage (iOS App Group / Android SharedPreferences)
 import { captureRef } from 'react-native-view-shot';
 import { NativeModules, Platform } from 'react-native';
 
@@ -27,13 +27,13 @@ export const captureAndSaveScribble = async (viewRef, metadata = {}) => {
 
         console.log('📸 Scribble captured:', uri);
 
-        // Save to App Group (iOS) or shared storage (Android)
-        if (Platform.OS === 'ios' && ScribbleWidgetBridge) {
+        // Save to widget storage (iOS App Group / Android SharedPreferences)
+        if (ScribbleWidgetBridge) {
             await ScribbleWidgetBridge.saveScribbleImage(uri, {
                 senderName: metadata.fromUserName || 'Your Love',
                 timestamp: metadata.timestamp || new Date().toISOString(),
             });
-            console.log('✅ Scribble saved to App Group');
+            console.log(`✅ Scribble saved to ${Platform.OS} widget storage`);
 
             // Trigger widget refresh
             await ScribbleWidgetBridge.refreshWidget();
@@ -54,7 +54,7 @@ export const captureAndSaveScribble = async (viewRef, metadata = {}) => {
  * Refresh the widget without capturing new image
  */
 export const refreshScribbleWidget = async () => {
-    if (Platform.OS === 'ios' && ScribbleWidgetBridge) {
+    if (ScribbleWidgetBridge) {
         try {
             await ScribbleWidgetBridge.refreshWidget();
             return true;

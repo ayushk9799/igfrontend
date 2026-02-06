@@ -44,6 +44,10 @@ const AnimatedCardStack = ({
     onAnswerSubmit,
     challengeId,
     userAnswers = [],
+    // When true (default), cards will auto-swipe to the next card after answer submission.
+    // Set to false for screens that filter out answered tasks (like DailyChallenge) 
+    // to prevent double-advance (filtering already removes the card, so no swipe needed).
+    autoAdvanceOnSubmit = true,
 }) => {
     // Current active slot (0 or 1)
     const activeSlotIndex = currentIndex % 2;
@@ -250,23 +254,28 @@ const AnimatedCardStack = ({
 
         if (!task) return null; // End of stack
 
-        const getCardProps = (t, i) => ({
-            task: t,
-            index: i,
-            totalCards: tasks.length,
-            partnerName,
-            userName,
-            userAvatar,
-            partnerAvatar,
-            userId,
-            partnerId,
-            onSubmit: triggerTransition,
-            onSkip: triggerTransition,
-            isLastCard: i >= tasks.length - 1,
-            onAnswerSubmit,
-            isAnswered: !!(userAnswers[i]?.answer),
-            previousAnswer: userAnswers[i]?.answer,
-        });
+        const getCardProps = (t, i) => {
+            // Use originalIndex if available (from filtered unansweredTasks), fallback to i
+            const answerIndex = t.originalIndex ?? i;
+            return {
+                task: t,
+                index: i,
+                totalCards: tasks.length,
+                partnerName,
+                userName,
+                userAvatar,
+                partnerAvatar,
+                userId,
+                partnerId,
+                onSubmit: triggerTransition,
+                onSkip: triggerTransition,
+                isLastCard: i >= tasks.length - 1,
+                onAnswerSubmit,
+                isAnswered: !!(userAnswers[answerIndex]?.answer),
+                previousAnswer: userAnswers[answerIndex]?.answer,
+                autoAdvanceOnSubmit,
+            };
+        };
 
         return (
             <Animated.View
@@ -304,7 +313,7 @@ const AnimatedCardStack = ({
                 </View>
             </GestureDetector>
 
-          
+
         </View>
     );
 };

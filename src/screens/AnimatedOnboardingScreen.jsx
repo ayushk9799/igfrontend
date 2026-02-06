@@ -9,6 +9,7 @@ import {
     Animated,
     Easing,
     Image,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -27,7 +28,7 @@ const FEATURES = [
         emoji: '😊',
         secondaryEmojis: ['❤️', '😴', '🥰', '✨'],
         gradient: ['#D4763B', '#8B4513'],
-        iconBg: 'rgba(249, 145, 87, 0.25)',
+        iconBg: Platform.OS === 'android' ? '#FDE8DA' : 'rgba(249, 145, 87, 0.25)',
         nodeColor: '#E88A4C',
     },
     {
@@ -38,7 +39,7 @@ const FEATURES = [
         image: require('../../assets/pencilicon.png'),
         secondaryEmojis: ['💕', '🎨', '✨', '💌'],
         gradient: ['#A67C52', '#6B4423'],
-        iconBg: 'rgba(200, 150, 100, 0.3)',
+        iconBg: Platform.OS === 'android' ? '#E8D9C8' : 'rgba(200, 150, 100, 0.3)',
         nodeColor: '#C8965A',
     },
     {
@@ -47,7 +48,7 @@ const FEATURES = [
         subtitle: 'Challenge your partner in fun duels',
         assetType: 'svg',
         gradient: ['#C92A2A', '#A61C1C'],
-        iconBg: 'rgba(220, 80, 80, 0.3)',
+        iconBg: Platform.OS === 'android' ? '#F5CECE' : 'rgba(220, 80, 80, 0.3)',
         nodeColor: '#DC4040',
     },
     {
@@ -62,7 +63,7 @@ const FEATURES = [
             { source: require('../../assets/dreamsfuture.png'), position: { bottom: -5, right: -20 } },
         ],
         gradient: ['#8B2252', '#5C1637'],
-        iconBg: 'rgba(255, 80, 120, 0.3)',
+        iconBg: Platform.OS === 'android' ? '#FFCFD9' : 'rgba(255, 80, 120, 0.3)',
         nodeColor: '#E84580',
     },
 ];
@@ -93,7 +94,8 @@ const getDepthShadow = (index) => {
         shadowOffset: { width: 0, height: 4 + (index * 3) },
         shadowOpacity: 0.12 + (depthFactor * 0.15),
         shadowRadius: 8 + (index * 5),
-        elevation: 4 + (index * 2),
+        // Disable elevation on Android to prevent hexagonal banding artifacts
+        elevation: Platform.OS === 'android' ? 0 : 4 + (index * 2),
     };
 };
 
@@ -427,7 +429,11 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         </View>
                     )}
                     {feature.assetType === 'images' && (
-                        <Text style={[styles.nodeEmoji, { fontSize: isActive ? 50 : 35 }]}>🔥</Text>
+                        <Image
+                            source={require('../../assets/fire.png')}
+                            style={{ width: isActive ? 50 : 35, height: isActive ? 50 : 35 }}
+                            resizeMode="contain"
+                        />
                     )}
 
 
@@ -615,19 +621,22 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
             />
 
             {/* 3D Perspective depth overlay - subtle gradient reinforces depth (lighter top, slightly darker bottom) */}
-            <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.08)']}
-                style={styles.depthOverlay}
-                pointerEvents="none"
-            />
+            {/* Disabled on Android due to transparency rendering issues */}
+            {Platform.OS !== 'android' && (
+                <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.08)']}
+                    style={styles.depthOverlay}
+                    pointerEvents="none"
+                />
+            )}
 
             {/* Header */}
             <View style={[styles.header, { top: insets.top + 16 }]}>
                 <Text style={styles.headerTitle}>penguin : connecting couples</Text>
             </View>
 
-          
-        
+
+
 
             {/* S-Curve Path */}
             {renderPath()}
@@ -683,8 +692,8 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 22,
-        fontWeight: '700',
-        color: '#C45C3A',
+        fontWeight: '600',
+        color: 'black',
         letterSpacing: -0.5,
     },
     // Node styles
@@ -708,7 +717,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
-        elevation: 6,
+        // Disable elevation on Android to prevent hexagonal banding artifacts
+        elevation: Platform.OS === 'android' ? 0 : 6,
     },
     nodeEmoji: {
         // fontSize set dynamically
@@ -749,7 +759,7 @@ const styles = StyleSheet.create({
     },
     floatingEmoji: {
         position: 'absolute',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.95)',
         borderRadius: 16,
         padding: 6,
         shadowColor: '#000',
@@ -765,7 +775,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: 40,
         height: 40,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.95)',
         borderRadius: 20,
         padding: 4,
         justifyContent: 'center',
@@ -822,7 +832,7 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: 2,
         overflow: 'hidden',
-        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        backgroundColor: Platform.OS === 'android' ? '#E5E5E5' : 'rgba(0, 0, 0, 0.1)',
     },
     dot: {
         ...StyleSheet.absoluteFillObject,

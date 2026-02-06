@@ -23,7 +23,7 @@ import { uploadImageToS3 } from '../../utils/uploadApi';
 /**
  * TakePhotoCard - Card for capturing or selecting photos
  */
-const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit, onSkip, isLastCard, onAnswerSubmit, isAnswered = false, previousAnswer = null }) => {
+const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit, onSkip, isLastCard, onAnswerSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true }) => {
     const config = categoryConfig.takephoto;
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
@@ -156,10 +156,13 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
             const s3Url = await uploadImageToS3(imageUri, 'daily-photos');
             console.log('🎯 [TakePhotoCard] S3 upload complete:', s3Url);
 
-            // Submit S3 URL instead of local path with answerType='photo'
-            await onAnswerSubmit(index, s3Url, 'photo');
+            await onAnswerSubmit(task.originalIndex ?? index, s3Url, 'photo');
             setJustSubmitted(true);
-            onSubmit(s3Url);
+            // Only auto-advance if the parent screen doesn't filter answered tasks
+            if (autoAdvanceOnSubmit && onSubmit) {
+                // Delay swipe to show "Submitted" text first
+                setTimeout(() => onSubmit(s3Url), 600);
+            }
         } catch (error) {
             console.error('🎯 [TakePhotoCard] Upload failed:', error);
             Alert.alert('Upload Failed', 'Could not upload photo. Please try again.');

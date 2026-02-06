@@ -9,6 +9,7 @@ import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.runtime.hermes.HermesInstance
+import com.thousandways.love.widget.ScribbleWidgetPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -16,6 +17,7 @@ class MainApplication : Application(), ReactApplication {
     object : DefaultReactNativeHost(this) {
       override fun getPackages() = PackageList(this@MainApplication).packages.apply {
         // Packages that cannot be autolinked yet can be added manually here
+        add(ScribbleWidgetPackage())
       }
       override fun getJSMainModuleName() = "index"
       override fun getUseDeveloperSupport() = BuildConfig.DEBUG
@@ -29,6 +31,7 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList = PackageList(this).packages.apply {
         // Packages that cannot be autolinked yet can be added manually here
+        add(ScribbleWidgetPackage())
       },
       jsRuntimeFactory = HermesInstance(),
     )

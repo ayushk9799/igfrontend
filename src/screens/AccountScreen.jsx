@@ -77,18 +77,10 @@ export const AccountScreen = ({
     };
 
     const handleLogout = () => {
-        Alert.alert(
-            'Log Out',
-            'Are you sure you want to log out?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Log Out',
-                    style: 'destructive',
-                    onPress: onLogout,
-                },
-            ]
-        );
+        // Directly logout without confirmation
+        if (onLogout) {
+            onLogout();
+        }
     };
 
     return (

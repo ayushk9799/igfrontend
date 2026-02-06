@@ -20,10 +20,11 @@ export const CONNECTION_STATE = {
 const { ScribbleWidgetBridge } = NativeModules;
 
 /**
- * Save scribble paths to App Group for widget display
+ * Save scribble paths to widget storage for display
+ * Works on both iOS (App Group) and Android (SharedPreferences)
  */
 const savePathsToWidget = async (paths, fromUserName, timestamp) => {
-    if (Platform.OS !== 'ios' || !ScribbleWidgetBridge) {
+    if (!ScribbleWidgetBridge) {
         console.log('⚠️ Widget bridge not available');
         return;
     }
@@ -32,7 +33,7 @@ const savePathsToWidget = async (paths, fromUserName, timestamp) => {
             senderName: fromUserName || 'Your Love',
             timestamp: timestamp || new Date().toISOString(),
         });
-        console.log('✅ Paths saved to widget');
+        console.log(`✅ Paths saved to ${Platform.OS} widget`);
     } catch (error) {
         console.error('❌ Failed to save paths to widget:', error);
     }

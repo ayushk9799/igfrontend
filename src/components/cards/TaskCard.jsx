@@ -25,7 +25,8 @@ const TaskCard = React.memo(({
     isLastCard,
     onAnswerSubmit,
     isAnswered = false,
-    previousAnswer = null
+    previousAnswer = null,
+    autoAdvanceOnSubmit = true
 }) => {
     if (!task) return null;
 
@@ -47,7 +48,8 @@ const TaskCard = React.memo(({
         isLastCard,
         onAnswerSubmit,
         isAnswered,
-        previousAnswer
+        previousAnswer,
+        autoAdvanceOnSubmit
     };
 
     if (task.category === 'likelyto') {

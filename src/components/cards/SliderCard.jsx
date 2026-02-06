@@ -39,7 +39,8 @@ const SliderCard = React.memo(({
     isLastCard,
     onAnswerSubmit,
     isAnswered = false,
-    previousAnswer = null
+    previousAnswer = null,
+    autoAdvanceOnSubmit = true
 }) => {
     const config = categoryConfig[task.category] || categoryConfig.slider || defaultConfig;
 
@@ -127,15 +128,14 @@ const SliderCard = React.memo(({
         setLocked(true);
 
         try {
-            const result = onAnswerSubmit?.(index, currentValue);
-            if (result && typeof result.then === 'function') {
-                result.then(() => onSubmit?.(currentValue)).catch(err => console.error('Submit error:', err));
-            } else {
-                onSubmit?.(currentValue);
+            onAnswerSubmit?.(task.originalIndex ?? index, currentValue);
+            // Only auto-advance if the parent screen doesn't filter answered tasks
+            if (autoAdvanceOnSubmit && onSubmit) {
+                // Delay swipe to show "Submitted" text first
+                setTimeout(() => onSubmit(currentValue), 600);
             }
         } catch (err) {
             console.error('handleSubmit error:', err);
-            onSubmit?.(currentValue);
         }
     };
 

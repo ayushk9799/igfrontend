@@ -269,71 +269,61 @@ const HomeScreen = ({
 
                     {/* Action Cards */}
                     <View style={styles.cardsContainer}>
-                        {/* Today's Question Card */}
+                        {/* Today's Question Card - Premium Design */}
                         <TouchableOpacity
                             style={[styles.card, styles.questionCard]}
                             onPress={() => onQuestionPress?.()}
                             activeOpacity={0.9}
                         >
-                            {/* Elegant Gradient Background */}
+                            {/* Rich Gradient Background */}
                             <LinearGradient
-                                colors={['#FFFFFF', '#F0F9F7', '#E8F4F1']}
+                                colors={['#4A2C6A', '#6B3FA0', '#8B5FBF']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 style={styles.cardGradient}
                             />
 
-                            {/* Calendar Icon - Exotic Design */}
-                            <View style={styles.iconContainer}>
-                                <Svg width={48} height={48} viewBox="0 0 48 48" fill="none">
-                                    {/* Background circle */}
-                                    <Circle cx="24" cy="24" r="22" fill="#E8F4F8" opacity="0.6" />
-                                    {/* Calendar body */}
-                                    <Rect x="14" y="16" width="20" height="20" rx="3" stroke="#5BB5A6" strokeWidth="2.5" fill="#FFFFFF" />
-                                    {/* Top tabs */}
-                                    <Path d="M20 14v4M28 14v4" stroke="#5BB5A6" strokeWidth="2.5" strokeLinecap="round" />
-                                    {/* Header line */}
-                                    <Path d="M14 22h20" stroke="#5BB5A6" strokeWidth="2" />
-                                    {/* Decorative dots */}
-                                    <Circle cx="19" cy="26" r="1.5" fill="#5BB5A6" />
-                                    <Circle cx="24" cy="26" r="1.5" fill="#5BB5A6" />
-                                    <Circle cx="29" cy="26" r="1.5" fill="#5BB5A6" />
-                                    <Circle cx="19" cy="30" r="1.5" fill="#5BB5A6" opacity="0.5" />
-                                    <Circle cx="24" cy="30" r="1.5" fill="#5BB5A6" opacity="0.5" />
-                                    {/* Heart highlight */}
-                                    <Path d="M29 29c0 1.5-1.5 3-2.5 3.5-1-0.5-2.5-2-2.5-3.5 0-1 0.7-1.5 1.5-1.5 0.4 0 0.8 0.2 1 0.5 0.2-0.3 0.6-0.5 1-0.5 0.8 0 1.5 0.5 1.5 1.5z" fill="#FF6B9D" opacity="0.8" />
-                                </Svg>
+                            {/* Decorative floating circles */}
+                            <View style={styles.questionDecorCircle1} />
+                            <View style={styles.questionDecorCircle2} />
+                            <View style={styles.questionDecorCircle3} />
+
+                            {/* Content Container */}
+                            <View style={styles.questionCardContent}>
+                                {/* Top Row: Label + Icon */}
+                                <View style={styles.questionTopRow}>
+                                    <Text style={styles.questionLabel}>DAILY</Text>
+                                    <View style={styles.questionIconBadge}>
+                                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M12 2L14.4 8.2L21 9L16 13.5L17.5 20L12 16.8L6.5 20L8 13.5L3 9L9.6 8.2L12 2Z"
+                                                fill="#FFFFFF"
+                                            />
+                                        </Svg>
+                                    </View>
+                                </View>
+
+                                {/* Main Title */}
+                                <Text style={styles.questionCardTitle}>Today's Question</Text>
+
+                                {/* Question Preview */}
+                                <Text style={styles.questionPreviewText} numberOfLines={2}>
+                                    {todayChallenge?.tasks?.[0]?.taskstatement || "What's one small thing I did this week that made you feel loved?"}
+                                </Text>
+
+                                {/* Bottom Arrow Indicator */}
+                                <View style={styles.questionArrowContainer}>
+                                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                        <Path
+                                            d="M5 12h14M12 5l7 7-7 7"
+                                            stroke="#FFFFFF"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    </Svg>
+                                </View>
                             </View>
-
-                            <Text style={styles.cardTitle}>Today's Question</Text>
-                            <Text style={styles.questionText} numberOfLines={2}>
-                                {todayChallenge?.tasks?.[0]?.taskstatement || "What's one small thing I did this week that made you feel loved?"}
-                            </Text>
-
-                            {/* Progress or Status Badge */}
-                            {challengeProgress.isComplete ? (
-                                <View style={[styles.answerBadge, styles.completeBadge]}>
-                                    <Text style={styles.completeText}>✅ Completed!</Text>
-                                </View>
-                            ) : challengeProgress.completedCount > 0 ? (
-                                <View style={styles.progressBadge}>
-                                    <View style={styles.answerDot} />
-                                    <Text style={styles.progressText}>
-                                        {challengeProgress.completedCount}/{challengeProgress.totalTasks} done
-                                    </Text>
-                                </View>
-                            ) : hasPartner ? (
-                                <View style={styles.answerBadge}>
-                                    <View style={styles.answerDot} />
-                                    <Text style={styles.answerText}>
-                                        {partnerName} answered!
-                                    </Text>
-                                </View>
-                            ) : (
-                                <View style={styles.actionBadge}>
-                                    <Text style={styles.actionBadgeText}>Answer Now</Text>
-                                </View>
-                            )}
                         </TouchableOpacity>
 
                         {/* Our Canvas Card */}
@@ -380,7 +370,7 @@ const HomeScreen = ({
                     <View style={styles.arcadeSection}>
                         <View style={styles.arcadeHeader}>
                             <Text style={styles.arcadeSectionTitle}>Duels</Text>
-                          
+
                         </View>
 
                         {/* Horizontal Scrollable Games */}
@@ -493,7 +483,7 @@ const HomeScreen = ({
                                 <View style={styles.topicTitleRow}>
                                     <Text style={styles.arcadeSectionTitle}>{cat.title}</Text>
                                 </View>
-                               
+
                             </View>
 
                             {/* Horizontal Scrollable Cards - matching Duels style */}
@@ -826,10 +816,85 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(0, 0, 0, 0.04)',
     },
     questionCard: {
-        backgroundColor: 'transparent',
+        backgroundColor: '#4A2C6A',
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(91, 181, 166, 0.15)',
+        borderWidth: 0,
+        minHeight: 200,
+        position: 'relative',
+    },
+    questionDecorCircle1: {
+        position: 'absolute',
+        top: -20,
+        right: -20,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    questionDecorCircle2: {
+        position: 'absolute',
+        bottom: 30,
+        left: -30,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    },
+    questionDecorCircle3: {
+        position: 'absolute',
+        top: 60,
+        right: 40,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    },
+    questionCardContent: {
+        flex: 1,
+        zIndex: 1,
+        justifyContent: 'space-between',
+    },
+    questionTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    questionLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: 'rgba(255, 255, 255, 0.7)',
+        letterSpacing: 1.5,
+    },
+    questionIconBadge: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    questionCardTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 8,
+    },
+    questionPreviewText: {
+        fontSize: 13,
+        color: 'rgba(255, 255, 255, 0.85)',
+        lineHeight: 18,
+        flex: 1,
+    },
+    questionArrowContainer: {
+        alignSelf: 'flex-end',
+        marginTop: 12,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     cardGradient: {
         position: 'absolute',
@@ -846,6 +911,7 @@ const styles = StyleSheet.create({
         padding: 0,
         borderWidth: 1,
         borderColor: 'rgba(229, 168, 95, 0.2)',
+        minHeight: 200,
     },
     canvasIconContainer: {
         alignSelf: 'center',

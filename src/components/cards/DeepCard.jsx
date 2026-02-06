@@ -10,7 +10,7 @@ import { spacing } from '../../theme';
 /**
  * DeepCard - High-impact text-based card for deep questions and sharing
  */
-const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit, onSkip, isAnswered = false, previousAnswer = null }) => {
+const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit, onSkip, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true }) => {
     const [answer, setAnswer] = useState(previousAnswer || '');
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
@@ -29,12 +29,13 @@ const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit
     const handleSubmit = () => {
         if (answer.trim()) {
             console.log('🎯 [DeepCard] Submitting answer:', answer.trim());
-            onAnswerSubmit(index, answer.trim());
+            onAnswerSubmit(task.originalIndex ?? index, answer.trim());
             Keyboard.dismiss();
             setJustSubmitted(true);
-            // Trigger card transition after submission
-            if (onSubmit) {
-                onSubmit(answer.trim());
+            // Only auto-advance if the parent screen doesn't filter answered tasks
+            if (autoAdvanceOnSubmit && onSubmit) {
+                // Delay swipe to show "Submitted" text first
+                setTimeout(() => onSubmit(answer.trim()), 600);
             }
         }
     };

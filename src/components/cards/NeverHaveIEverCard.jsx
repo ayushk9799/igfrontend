@@ -54,7 +54,8 @@ const NeverHaveIEverCard = React.memo(({
     isLastCard,
     onAnswerSubmit,
     isAnswered = false,
-    previousAnswer = null
+    previousAnswer = null,
+    autoAdvanceOnSubmit = true
 }) => {
     const config = categoryConfig.neverhaveiever;
     const [selectedAnswer, setSelectedAnswer] = useState(isAnswered ? previousAnswer : null);
@@ -82,15 +83,14 @@ const NeverHaveIEverCard = React.memo(({
         setLocked(true);
 
         try {
-            const result = onAnswerSubmit?.(index, choice);
-            if (result && typeof result.then === 'function') {
-                result.then(() => onSubmit(choice)).catch(err => console.error('Submit error:', err));
-            } else {
-                onSubmit(choice);
+            onAnswerSubmit?.(task.originalIndex ?? index, choice);
+            // Only auto-advance if the parent screen doesn't filter answered tasks
+            if (autoAdvanceOnSubmit && onSubmit) {
+                // Delay swipe to show "Submitted" text first
+                setTimeout(() => onSubmit(choice), 600);
             }
         } catch (err) {
             console.error('handleChoiceSelect error:', err);
-            onSubmit(choice);
         }
     };
 

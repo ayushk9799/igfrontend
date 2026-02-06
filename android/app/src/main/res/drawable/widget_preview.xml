@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget preview showing placeholder heart scribble -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background with border -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FAFAFA" />
+            <corners android:radius="24dp" />
+            <stroke
+                android:width="2dp"
+                android:color="#E8E8E8" />
+        </shape>
+    </item>
+    
+    <!-- Subtle inner shadow effect -->
+    <item
+        android:left="1dp"
+        android:top="1dp"
+        android:right="1dp"
+        android:bottom="1dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFF" />
+            <corners android:radius="22dp" />
+        </shape>
+    </item>
+    
+    <!-- Heart path as vector drawable - larger and centered -->
+    <item
+        android:left="8dp"
+        android:top="8dp"
+        android:right="8dp"
+        android:bottom="8dp">
+        <vector
+            android:width="200dp"
+            android:height="200dp"
+            android:viewportWidth="350"
+            android:viewportHeight="350">
+            <!-- Left heart curve -->
+            <path
+                android:pathData="M159.3,109 L156,105.7 L150.7,101.7 L147.3,98.7 L144,96 L140.3,93 L136,90.7 L130,89 L122.7,88.7 L113.3,88.7 L103.3,93 L94.3,99.3 L86.7,107 L80.3,115.7 L75.7,124 L74,131.7 L73.7,138.7 L74,145 L78,151 L84,157 L91,162.7 L98.3,167.3 L107,171.3 L116,174 L124,176.7 L131.3,180 L138.7,184 L145,188.7 L151.3,194.3 L156.7,199 L161.3,203.3 L165.3,207 L168.3,210.7 L171.3,214 L174.7,218 L177,222 L179.3,226.3 L180.7,229.3 L181.3,231 L181.3,231.3"
+                android:strokeWidth="8"
+                android:strokeColor="#FF6B6B"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:fillColor="#00000000"/>
+            <!-- Right heart curve -->
+            <path
+                android:pathData="M168,108.3 L167,96 L168,91.7 L171,85.3 L174.7,78 L179.7,70.7 L185,64.3 L191.3,58.7 L198.7,53.7 L206.7,49.7 L215.3,47 L223.3,45.3 L231,44.7 L238,44.7 L244.3,45 L249,48.3 L253,52 L256.7,56.7 L259,61.7 L260,67 L260.3,72.7 L260.3,78 L260.3,83 L260.3,88.7 L259.7,94.7 L257.3,100 L254.7,105.3 L252,111 L250,116.3 L247.3,121.3 L244.7,126.3 L241.7,131.3 L238.3,136 L234.7,141.3 L230.3,146 L226,150.3 L221.7,155.3 L217.3,160.3 L212.3,165.3 L207.3,170.3 L202.7,174.7 L198.3,179.3 L194.7,184 L191.3,189 L188.7,194.7 L186.7,200.3 L185.7,205.7 L185,210.7 L184.3,215.7 L184.3,220 L184.3,224 L184.3,227.3 L184.3,229.7 L184.3,231.3 L184.3,232 L184,232"
+                android:strokeWidth="8"
+                android:strokeColor="#F97068"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:fillColor="#00000000"/>
+            <!-- Additional inner curve for more detail -->
+            <path
+                android:pathData="M115,108.3 L113,109 L107,113.7 L102,119.7 L96.7,127 L91.7,133 L89,136.7 L88.3,137.7 L88.7,137.3 L95,132 L103,123.7 L111,115.7 L117.7,108.7 L122.3,104 L123.7,102.3"
+                android:strokeWidth="7"
+                android:strokeColor="#FF8A8A"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:fillColor="#00000000"/>
+        </vector>
+    </item>
+</layer-list>

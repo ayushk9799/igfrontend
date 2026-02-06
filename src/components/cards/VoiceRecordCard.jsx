@@ -41,7 +41,8 @@ const VoiceRecordCard = React.memo(({
     isLastCard,
     onAnswerSubmit,
     isAnswered = false,
-    previousAnswer = null
+    previousAnswer = null,
+    autoAdvanceOnSubmit = true
 }) => {
     const config = categoryConfig.voicerecord;
     const lastTaskIdRef = useRef(task._id);
@@ -299,8 +300,12 @@ const VoiceRecordCard = React.memo(({
             const s3Url = await uploadAudioToS3(recordingUri, 'voice-recordings');
             console.log('🎙️ [VoiceRecordCard] Upload complete:', s3Url);
 
-            await onAnswerSubmit(index, s3Url, 'voice');
-            onSubmit(s3Url);
+            await onAnswerSubmit(task.originalIndex ?? index, s3Url, 'voice');
+            // Only auto-advance if the parent screen doesn't filter answered tasks
+            if (autoAdvanceOnSubmit && onSubmit) {
+                // Delay swipe to show completion state first
+                setTimeout(() => onSubmit(s3Url), 600);
+            }
         } catch (error) {
             console.error('🎙️ [VoiceRecordCard] Upload failed:', error);
             Alert.alert('Upload Failed', 'Could not upload voice recording. Please try again.');

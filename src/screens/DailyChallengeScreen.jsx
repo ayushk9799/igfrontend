@@ -10,6 +10,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -118,6 +119,17 @@ export default function DailyChallengeScreen({
     [userAnswers]
   );
 
+  // Create filtered list of unanswered tasks with original indices
+  // Check if userAnswers[idx] exists and has a truthy answer value
+  const unansweredTasks = useMemo(() => {
+    return tasks
+      .map((task, originalIndex) => ({ ...task, originalIndex }))
+      .filter((_, idx) => {
+        const hasAnswer = userAnswers[idx] && userAnswers[idx].answer;
+        return !hasAnswer;
+      });
+  }, [tasks, userAnswers]);
+
 
 
   // Callback for AnimatedCardStack to update the index
@@ -131,38 +143,42 @@ export default function DailyChallengeScreen({
 
     const task = tasks[taskIndex];
 
-    // Save locally first
-    setUserAnswers(prev => {
-      const updated = [...prev];
-      updated[taskIndex] = {
-        taskIndex,
-        answer,
-        answerType,
-        task,
-        answeredAt: new Date().toISOString()
-      };
+    // Delay local state update so user can see "Submitted" text before card is filtered out
+    setTimeout(() => {
+      setUserAnswers(prev => {
+        const updated = [...prev];
+        updated[taskIndex] = {
+          taskIndex,
+          answer,
+          answerType,
+          task,
+          answeredAt: new Date().toISOString()
+        };
 
-      // Check if all tasks are answered
-      const answered = updated.filter(a => a !== undefined && a !== null).length;
-      if (answered >= tasks.length) {
-        console.log('🎉 Challenge complete!');
-        setIsComplete(true);
-        setShowConfetti(true);
-      }
+        // Check if all tasks are answered
+        const answered = updated.filter(a => a !== undefined && a !== null).length;
+        if (answered >= tasks.length) {
+          console.log('🎉 Challenge complete!');
+          setIsComplete(true);
+          setShowConfetti(true);
+        }
 
-      return updated;
-    });
+        return updated;
+      });
+    }, 600); // 600ms delay to show "Submitted" text
 
-    // Submit to backend
+    // Submit to backend (store placeholder for progress tracking, actual answer goes to Chat)
     if (!userId || !challenge?._id) {
       console.warn('⚠️ [ANSWER] Cannot submit to server: missing userId');
       return;
     }
 
     try {
-      const result = await submitAnswer(userId, challenge._id, taskIndex, answer, answerType);
+      // Store 'answered' placeholder in DailyAnswers for progress tracking only
+      // Actual answer content is stored in Chat model below
+      const result = await submitAnswer(userId, challenge._id, taskIndex, 'answered', answerType);
       if (result.success) {
-        console.log('✅ Server saved:', result.data);
+        console.log('✅ Progress tracked:', result.data);
       }
     } catch (error) {
       console.error('❌ Submit error:', error);
@@ -222,9 +238,9 @@ export default function DailyChallengeScreen({
     );
   }
 
-  // Answers Screen - Show if ANY answers exist (once answered, can't go back)
-  // Also show if fully complete
-  if (answeredCount > 0 || isComplete) {
+  // Show completion screen ONLY when ALL tasks are complete
+  // Also handle edge case where unansweredTasks is empty but isComplete hasn't updated yet
+  if (isComplete || (tasks.length > 0 && unansweredTasks.length === 0)) {
     return (
       <DailyChallengeDoneScreen
         partnerName={partnerName}
@@ -234,9 +250,24 @@ export default function DailyChallengeScreen({
         showConfetti={showConfetti}
         onBack={onBack}
         onCompareWithPartner={onCompareWithPartner}
-        onRemindPartner={() => {
-          // TODO: Send notification to partner
-          console.log('📲 Sending reminder to partner...');
+        onRemindPartner={async () => {
+          try {
+            const response = await fetch(`${API_BASE}/api/daily-challenge/remind`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId }),
+            });
+            const json = await response.json();
+
+            if (json.success) {
+              Alert.alert('Reminder Sent!', `${partnerName} will get a notification 💕`);
+            } else {
+              Alert.alert('Oops', json.message || 'Could not send reminder');
+            }
+          } catch (error) {
+            console.log('❌ Remind error:', error.message);
+            Alert.alert('Error', 'Could not send reminder. Try again later.');
+          }
         }}
       />
     );
@@ -259,9 +290,10 @@ export default function DailyChallengeScreen({
           </View>
 
           {/* Cards Stack - Using AnimatedCardStack for smooth transitions */}
+          {/* Only show unanswered tasks - already answered ones are filtered out */}
           <View style={[styles.cardsContainer, { paddingBottom: insets.bottom + 80 }]}>
             <AnimatedCardStack
-              tasks={tasks}
+              tasks={unansweredTasks}
               currentIndex={currentIndex}
               partnerName={partnerName}
               userName={userName}
@@ -273,6 +305,7 @@ export default function DailyChallengeScreen({
               onAnswerSubmit={handleAnswerSubmit}
               challengeId={challenge._id}
               userAnswers={userAnswers}
+              autoAdvanceOnSubmit={false}
             />
           </View>
         </View>

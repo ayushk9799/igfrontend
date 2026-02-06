@@ -1,6 +1,6 @@
 // Premium Scribble Screen - Drawing Canvas
 // Enhanced with ink effects and dynamic brush visualization
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     StyleSheet,
     Text,
@@ -10,7 +10,12 @@ import {
     Dimensions,
     Animated,
     Alert,
+    Modal,
+    Platform,
+    ScrollView,
+    Image,
 } from 'react-native';
+import penguinLogo from '../../assets/splashscreen.png';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
@@ -130,9 +135,60 @@ export const ScribbleScreen = ({
     const [selectedSize, setSelectedSize] = useState(8);
     const [inkSplash, setInkSplash] = useState(null);
     const [sentScribble, setSentScribble] = useState(null); // Store sent scribble for preview
+    const [showWidgetTutorial, setShowWidgetTutorial] = useState(false);
+    const [tutorialStep, setTutorialStep] = useState(0);
     const insets = useSafeAreaInsets();
     const { socket, isConnected, clearPartnerScribble } = useSocketContext();
     const canvasOpacity = useRef(new Animated.Value(0)).current;
+    const modalOpacity = useRef(new Animated.Value(0)).current;
+    const modalScale = useRef(new Animated.Value(0.85)).current;
+
+    // Animate modal entrance
+    useEffect(() => {
+        if (showWidgetTutorial) {
+            setTutorialStep(0); // Reset to first step when opening
+            Animated.parallel([
+                Animated.timing(modalOpacity, {
+                    toValue: 1,
+                    duration: 250,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(modalScale, {
+                    toValue: 1,
+                    ...timing.springBouncy,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        } else {
+            modalOpacity.setValue(0);
+            modalScale.setValue(0.85);
+        }
+    }, [showWidgetTutorial, modalOpacity, modalScale]);
+
+    const handleTutorialScroll = (event) => {
+        const contentOffset = event.nativeEvent.contentOffset.x;
+        const layoutWidth = event.nativeEvent.layoutMeasurement.width;
+        const pageIndex = Math.round(contentOffset / layoutWidth);
+        if (pageIndex !== tutorialStep) {
+            setTutorialStep(pageIndex);
+        }
+    };
+
+    // Platform-specific widget instructions
+    const widgetInstructions = Platform.select({
+        ios: [
+            { step: 1, icon: '👆', text: 'Long press on your home screen' },
+            { step: 2, icon: '➕', text: 'Tap the + button (top-left corner)' },
+            { step: 3, icon: '🔍', text: 'Search for "Penguin" or scroll to find it' },
+            { step: 4, icon: '✨', text: 'Choose widget size and tap "Add Widget"' },
+        ],
+        android: [
+            { step: 1, icon: '👆', text: 'Long press on your home screen' },
+            { step: 2, icon: '📱', text: 'Tap "Widgets" from the menu' },
+            { step: 3, icon: '🔍', text: 'Find "Penguin" in the widget list' },
+            { step: 4, icon: '✨', text: 'Drag the widget to your home screen' },
+        ],
+    });
 
     // Use refs to avoid stale closures in PanResponder
     const currentPathRef = useRef('');
@@ -271,6 +327,18 @@ export const ScribbleScreen = ({
                             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                                    stroke={colors.text}
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
+                        </TouchableOpacity>
+                        {/* Widget Button */}
+                        <TouchableOpacity style={[styles.headerAction, styles.widgetButton]} onPress={() => setShowWidgetTutorial(true)}>
+                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
                                     stroke={colors.text}
                                     strokeWidth={2}
                                     strokeLinecap="round"
@@ -463,9 +531,305 @@ export const ScribbleScreen = ({
                         />
                     )}
                 </View>
+
+                {/* Widget Tutorial Modal */}
+                <Modal
+                    visible={showWidgetTutorial}
+                    transparent
+                    animationType="none"
+                    onRequestClose={() => setShowWidgetTutorial(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <Animated.View
+                            style={[
+                                styles.modalContainer,
+                                {
+                                    opacity: modalOpacity,
+                                    transform: [{ scale: modalScale }],
+                                    maxHeight: '90%', // Ensure it doesn't overflow
+                                },
+                            ]}
+                        >
+                            {/* Header */}
+                            <View style={styles.timelineHeader}>
+                                <TouchableOpacity
+                                    style={styles.timelineCloseX}
+                                    onPress={() => setShowWidgetTutorial(false)}
+                                >
+                                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                        <Path
+                                            d="M18 6L6 18M6 6l12 12"
+                                            stroke={colors.text}
+                                            strokeWidth={2}
+                                            strokeLinecap="round"
+                                        />
+                                    </Svg>
+                                </TouchableOpacity>
+                                <Text style={styles.timelineHeaderText}>Widget Setup</Text>
+                                <View style={{ width: 40 }} />
+                            </View>
+
+                            <ScrollView
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={styles.timelineContent}
+                            >
+                                {/* Intro */}
+                                <View style={styles.timelineIntro}>
+                                    <Text style={styles.timelineIntroTitle}>Add to Home Screen</Text>
+                                    <Text style={styles.timelineIntroSubtitle}>
+                                        Follow these simple steps to keep your stats visible at a glance on your iPhone.
+                                    </Text>
+                                </View>
+
+                                {/* Steps Container */}
+                                <View style={styles.stepsTimelineContainer}>
+                                    {/* Vertical Line */}
+                                    <View style={styles.timelineVerticalLine} />
+
+                                    {/* Step 1 */}
+                                    <View style={styles.timelineStepRow}>
+                                        <View style={styles.timelineStepNumberContainer}>
+                                            <View style={styles.timelineStepBadgeActive}>
+                                                <Text style={styles.timelineStepBadgeTextActive}>1</Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.timelineStepContent}>
+                                            <Text style={styles.timelineStepTitle}>Long Press</Text>
+                                            <Text style={styles.timelineStepDesc}>
+                                                Go to your <Text style={{ fontWeight: 'bold', color: colors.text }}>home screen</Text> and long press on a <Text style={{ fontWeight: 'bold', color: colors.text }}>blank area</Text> of your wallpaper until the apps start to <Text style={{ fontWeight: 'bold', color: colors.text }}>jiggle</Text>.
+                                            </Text>
+                                            {/* Illustration 1 */}
+                                            <View style={styles.mockupContainer1}>
+                                                <View style={[styles.mockupPhoneScreen, { justifyContent: 'flex-start' }]}>
+                                                    <View style={styles.mockupAppGrid}>
+                                                        {[...Array(6)].map((_, i) => (
+                                                            <View key={i} style={styles.mockupAppIconGray} />
+                                                        ))}
+                                                    </View>
+                                                    {/* Finger indicator on blank wallpaper area - below app icons */}
+                                                    <View style={styles.fingerPressContainer}>
+                                                        {/* Pulsing rings to indicate long press */}
+                                                        <View style={[styles.fingerPressRing, styles.fingerPressRingOuter]} />
+                                                        <View style={[styles.fingerPressRing, styles.fingerPressRingMiddle]} />
+                                                        <View style={[styles.fingerPressRing, styles.fingerPressRingInner]} />
+                                                        {/* Pointing finger icon */}
+                                                        <View style={styles.fingerIcon}>
+                                                            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                                                                <Path d="M12 2C12 2 12 8 12 10M12 10C10.5 10 9.5 10.5 9 12C8.5 13.5 9 15 10 16L11 17C12 18 13 18.5 15 18.5H16C18 18.5 19 17 19 15V12C19 10.5 18 9.5 16.5 9.5C15 9.5 14 10.5 14 12M12 10C13 10 14 9 14 7.5C14 6 13 5 12 5C11 5 10 6 10 7.5C10 9 11 10 12 10Z" stroke="#3b82f6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                                            </Svg>
+                                                        </View>
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </View>
+
+                                    {/* Step 2 */}
+                                    <View style={styles.timelineStepRow}>
+                                        <View style={styles.timelineStepNumberContainer}>
+                                            <View style={styles.timelineStepBadge}>
+                                                <Text style={styles.timelineStepBadgeText}>2</Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.timelineStepContent}>
+                                            <Text style={styles.timelineStepTitle}>
+                                                {Platform.OS === 'ios' ? 'Tap "Edit"' : 'Tap "Widgets"'}
+                                            </Text>
+                                            <Text style={styles.timelineStepDesc}>
+                                                {Platform.OS === 'ios'
+                                                    ? <>Look for the <Text style={{ fontWeight: 'bold', color: colors.text }}>Edit</Text> or <Text style={{ fontWeight: 'bold', color: colors.text }}>plus button</Text> that appears at the top of your screen.</>
+                                                    : <>A menu will appear. Tap on <Text style={{ fontWeight: 'bold', color: colors.text }}>Widgets</Text> to open the widget gallery.</>
+                                                }
+                                            </Text>
+                                            {/* Illustration 2 */}
+                                            <View style={styles.mockupContainer1}>
+                                                <View style={styles.mockupPhoneScreen}>
+                                                    {Platform.OS === 'ios' ? (
+                                                        <>
+                                                            <View style={styles.mockupStatusBar}>
+                                                                <Text style={{ fontSize: 6, fontWeight: 'bold' }}>9:41</Text>
+                                                            </View>
+                                                            <View style={[styles.mockupPlusIndicator, { left: 8 }]}>
+                                                                <View style={[styles.mockupPlusButton, { width: 36, height: 18, borderRadius: 9, backgroundColor: '#3b82f6' }]}>
+                                                                    <Text style={{ color: '#fff', fontSize: 7, fontWeight: 'bold' }}>Edit</Text>
+                                                                </View>
+                                                                <View style={styles.mockupPlusRing} />
+                                                            </View>
+                                                            <View style={[styles.mockupAppGrid, { opacity: 0.1 }]}>
+                                                                {[...Array(4)].map((_, i) => (
+                                                                    <View key={i} style={styles.mockupAppIconGray} />
+                                                                ))}
+                                                            </View>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {/* Android popup menu */}
+                                                            <View style={[styles.mockupAppGrid, { opacity: 0.15 }]}>
+                                                                {[...Array(4)].map((_, i) => (
+                                                                    <View key={i} style={styles.mockupAppIconGray} />
+                                                                ))}
+                                                            </View>
+                                                            <View style={styles.androidPopupMenu}>
+                                                                <View style={styles.androidMenuItem}>
+                                                                    <View style={styles.androidMenuIcon} />
+                                                                    <Text style={styles.androidMenuText}>Wallpaper</Text>
+                                                                </View>
+                                                                <View style={[styles.androidMenuItem, styles.androidMenuItemHighlight]}>
+                                                                    <View style={[styles.androidMenuIcon, { backgroundColor: '#3b82f6' }]} />
+                                                                    <Text style={[styles.androidMenuText, { color: '#3b82f6', fontWeight: 'bold' }]}>Widgets</Text>
+                                                                </View>
+                                                                <View style={styles.androidMenuItem}>
+                                                                    <View style={styles.androidMenuIcon} />
+                                                                    <Text style={styles.androidMenuText}>Settings</Text>
+                                                                </View>
+                                                            </View>
+                                                        </>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </View>
+
+                                    {/* Step 3 */}
+                                    <View style={styles.timelineStepRow}>
+                                        <View style={styles.timelineStepNumberContainer}>
+                                            <View style={styles.timelineStepBadge}>
+                                                <Text style={styles.timelineStepBadgeText}>3</Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.timelineStepContent}>
+                                            <Text style={styles.timelineStepTitle}>
+                                                {Platform.OS === 'ios' ? 'Search App' : 'Find Penguin'}
+                                            </Text>
+                                            <Text style={styles.timelineStepDesc}>
+                                                {Platform.OS === 'ios'
+                                                    ? 'Use the search bar in the widget gallery to find our app.'
+                                                    : 'Scroll through the widget list or search to find the Penguin widget.'
+                                                }
+                                            </Text>
+                                            {/* Illustration 3 */}
+                                            <View style={styles.mockupContainer1}>
+                                                <View style={styles.mockupPhoneScreen}>
+                                                    {Platform.OS === 'ios' ? (
+                                                        <>
+                                                            <View style={styles.mockupSearchBar}>
+                                                                <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
+                                                                    <Path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="#999" strokeWidth={2} />
+                                                                </Svg>
+                                                                <Text style={{ fontSize: 8, color: colors.text, marginLeft: 4 }}>Penguin</Text>
+                                                                <View style={styles.mockupCursor} />
+                                                            </View>
+                                                            <View style={styles.mockupAppResult}>
+                                                                <View style={[styles.mockupAppLogo, { backgroundColor: '#FFFFFF' }]}>
+                                                                    <Image source={penguinLogo} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                                                </View>
+                                                                <View style={styles.mockupAppTexts}>
+                                                                    <Text style={{ fontSize: 9, fontWeight: '800', color: colors.text }}>Penguin</Text>
+                                                                    <Text style={{ fontSize: 7, color: colors.textSecondary }}>Scribble Widget</Text>
+                                                                </View>
+                                                            </View>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {/* Android widget list */}
+                                                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: colors.textSecondary, marginBottom: 8 }}>Widgets</Text>
+                                                            <View style={styles.androidWidgetList}>
+                                                                <View style={styles.androidWidgetItem}>
+                                                                    <View style={[styles.androidWidgetIcon, { backgroundColor: '#ddd' }]} />
+                                                                    <Text style={styles.androidWidgetName}>Other App</Text>
+                                                                </View>
+                                                                <View style={[styles.androidWidgetItem, styles.androidWidgetItemHighlight]}>
+                                                                    <View style={[styles.androidWidgetIcon, { backgroundColor: '#FFFFFF' }]}>
+                                                                        <Image source={penguinLogo} style={{ width: 20, height: 20 }} resizeMode="contain" />
+                                                                    </View>
+                                                                    <Text style={[styles.androidWidgetName, { color: '#3b82f6', fontWeight: 'bold' }]}>Penguin</Text>
+                                                                </View>
+                                                                <View style={styles.androidWidgetItem}>
+                                                                    <View style={[styles.androidWidgetIcon, { backgroundColor: '#ddd' }]} />
+                                                                    <Text style={styles.androidWidgetName}>Another App</Text>
+                                                                </View>
+                                                            </View>
+                                                        </>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </View>
+
+                                    {/* Step 4 */}
+                                    <View style={styles.timelineStepRow}>
+                                        <View style={styles.timelineStepNumberContainer}>
+                                            <View style={styles.timelineStepBadge}>
+                                                <Text style={styles.timelineStepBadgeText}>4</Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.timelineStepContent}>
+                                            <Text style={styles.timelineStepTitle}>
+                                                {Platform.OS === 'ios' ? 'Pick your Scribble' : 'Add Widget'}
+                                            </Text>
+                                            <Text style={styles.timelineStepDesc}>
+                                                {Platform.OS === 'ios'
+                                                    ? <>Swipe to pick your preferred size, then tap <Text style={{ fontWeight: 'bold', color: colors.text }}>"Add Widget"</Text> at the bottom.</>
+                                                    : <>Tap the Penguin widget, then press <Text style={{ fontWeight: 'bold', color: colors.text }}>"Add"</Text> to place it on your home screen.</>
+                                                }
+                                            </Text>
+                                            {/* Illustration 4 */}
+                                            <View style={styles.mockupContainer1}>
+                                                <View style={[styles.mockupPhoneScreen, { alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 }]}>
+                                                    {Platform.OS === 'ios' ? (
+                                                        <>
+                                                            <View style={styles.mockupWidgetPreview}>
+                                                                <Text style={{ fontSize: 6, fontWeight: 'bold', color: '#666', marginBottom: 4 }}>Scribble</Text>
+                                                                <View style={styles.mockupWidgetContent} />
+                                                            </View>
+                                                            <View style={styles.mockupDotsIndicator}>
+                                                                <View style={styles.mockupDot} />
+                                                                <View style={[styles.mockupDot, { backgroundColor: '#3b82f6' }]} />
+                                                                <View style={styles.mockupDot} />
+                                                            </View>
+                                                            <View style={styles.mockupAddWidgetBtn}>
+                                                                <Text style={styles.mockupAddWidgetBtnText}>Add Widget</Text>
+                                                            </View>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {/* Android widget preview with Add button */}
+                                                            <View style={styles.mockupWidgetPreview}>
+                                                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                                                    <Image source={penguinLogo} style={{ width: 16, height: 16, marginRight: 4 }} resizeMode="contain" />
+                                                                    <Text style={{ fontSize: 6, fontWeight: 'bold', color: '#666' }}>Penguin</Text>
+                                                                </View>
+                                                                <View style={styles.mockupWidgetContent} />
+                                                            </View>
+                                                            <View style={styles.mockupAddWidgetBtn}>
+                                                                <Text style={styles.mockupAddWidgetBtnText}>Add</Text>
+                                                            </View>
+                                                        </>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </View>
+                            </ScrollView>
+
+                            {/* Sticky Footer */}
+                            <View style={styles.timelineFooter}>
+                                <TouchableOpacity
+                                    style={styles.timelineReadyBtn}
+                                    onPress={() => setShowWidgetTutorial(false)}
+                                    activeOpacity={0.9}
+                                >
+                                    <Text style={styles.timelineReadyBtnText}>I'm Ready</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </Animated.View>
+                    </View>
+                </Modal>
             </View>
         </GradientBackground>
     );
+
 };
 
 const styles = StyleSheet.create({
@@ -676,6 +1040,629 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: colors.textSecondary,
         fontWeight: '500',
+    },
+    // Widget button style
+    widgetButton: {
+        backgroundColor: colors.primarySoft,
+        borderColor: colors.primary,
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: spacing.md,
+    },
+    modalContainer: {
+        width: '98%',
+        maxWidth: 500,
+        backgroundColor: colors.surface,
+        borderRadius: borderRadius['2xl'],
+        overflow: 'hidden',
+        ...shadows.xl,
+    },
+    modalHeader: {
+        height: 100,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    modalIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    platformBadge: {
+        position: 'absolute',
+        top: spacing.sm,
+        right: spacing.sm,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.xs,
+        borderRadius: borderRadius.full,
+    },
+    platformBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    modalContent: {
+        paddingVertical: spacing.xl,
+        paddingHorizontal: spacing.md,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: spacing.xs,
+        textAlign: 'center',
+    },
+    modalSubtitle: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: spacing.lg,
+        lineHeight: 20,
+    },
+    instructionsContainer: {
+        width: '100%',
+        marginBottom: spacing.lg,
+    },
+    instructionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.md,
+    },
+    instructionStep: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: colors.primarySoft,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: spacing.sm,
+    },
+    instructionStepNumber: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: colors.primary,
+    },
+    instructionContent: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    instructionIcon: {
+        fontSize: 18,
+        marginRight: spacing.sm,
+    },
+    instructionText: {
+        fontSize: 14,
+        color: colors.text,
+        flex: 1,
+        lineHeight: 20,
+    },
+    widgetPreviewContainer: {
+        marginBottom: spacing.lg,
+        alignItems: 'center',
+    },
+    phoneFrame: {
+        width: 100,
+        height: 80,
+        backgroundColor: colors.backgroundAlt,
+        borderRadius: borderRadius.lg,
+        padding: spacing.sm,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: colors.border,
+    },
+    widgetPreview: {
+        width: 70,
+        height: 50,
+        backgroundColor: colors.surface,
+        borderRadius: borderRadius.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#EC4899',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    widgetPreviewLabel: {
+        fontSize: 8,
+        fontWeight: '600',
+        color: colors.textSecondary,
+        marginTop: 2,
+    },
+    modalCloseButton: {
+        overflow: 'hidden',
+        borderRadius: borderRadius.xl,
+        width: '100%',
+    },
+    modalCloseButtonGradient: {
+        paddingVertical: spacing.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalCloseButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    // Timeline Tutorial Styles
+    timelineHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.borderLight,
+        backgroundColor: colors.surface,
+    },
+    timelineCloseX: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    timelineHeaderText: {
+        flex: 1,
+        textAlign: 'center',
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+    },
+    timelineContent: {
+        paddingTop: spacing.xl,
+        paddingBottom: spacing['3xl'] * 2, // Space for sticky footer
+    },
+    timelineIntro: {
+        alignItems: 'center',
+        paddingHorizontal: spacing.xl,
+        marginBottom: spacing['2xl'],
+    },
+    timelineIntroTitle: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: colors.text,
+        textAlign: 'center',
+        marginBottom: spacing.sm,
+    },
+    timelineIntroSubtitle: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    stepsTimelineContainer: {
+        paddingHorizontal: spacing.md,
+        position: 'relative',
+    },
+    timelineVerticalLine: {
+        position: 'absolute',
+        left: spacing.md + 14,
+        top: 14,
+        bottom: 100,
+        width: 2,
+        backgroundColor: colors.borderLight,
+        zIndex: 0,
+    },
+    timelineStepRow: {
+        flexDirection: 'row',
+        marginBottom: spacing['3xl'],
+        zIndex: 1,
+    },
+    timelineStepNumberContainer: {
+        width: 28,
+        marginRight: spacing.md,
+        alignItems: 'center',
+    },
+    timelineStepBadgeActive: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: colors.text,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        borderWidth: 3,
+        borderColor: colors.surface,
+    },
+    timelineStepBadgeTextActive: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    timelineStepBadge: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: colors.surface,
+        borderWidth: 2,
+        borderColor: colors.text,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
+    },
+    timelineStepBadgeText: {
+        color: colors.text,
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    timelineStepContent: {
+        flex: 1,
+        paddingTop: 4,
+    },
+    timelineStepTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: spacing.xs,
+    },
+    timelineStepDesc: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        lineHeight: 20,
+        marginBottom: spacing.md,
+    },
+    mockupContainer1: {
+        width: '100%',
+        aspectRatio: 4 / 3,
+        backgroundColor: '#eef4ff',
+        borderRadius: borderRadius['2xl'],
+        borderWidth: 1,
+        borderColor: '#dbeafe',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: spacing.md,
+    },
+    mockupPhoneScreen: {
+        width: '80%',
+        height: '80%',
+        backgroundColor: colors.surface,
+        borderRadius: borderRadius.xl,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+        padding: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        overflow: 'hidden',
+    },
+    mockupAppGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        justifyContent: 'center',
+    },
+    mockupAppIconGray: {
+        width: 24,
+        height: 24,
+        backgroundColor: colors.backgroundAlt,
+        borderRadius: 6,
+    },
+    mockupFingerIndicator: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        marginTop: -10,
+        marginLeft: -10,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    fingerPressContainer: {
+        marginTop: spacing.xl,
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 80,
+        height: 80,
+        alignSelf: 'center',
+    },
+    fingerPressRing: {
+        position: 'absolute',
+        borderRadius: 100,
+        borderWidth: 2,
+        borderColor: 'rgba(59, 130, 246, 0.3)',
+    },
+    fingerPressRingOuter: {
+        width: 70,
+        height: 70,
+        borderColor: 'rgba(59, 130, 246, 0.15)',
+    },
+    fingerPressRingMiddle: {
+        width: 50,
+        height: 50,
+        borderColor: 'rgba(59, 130, 246, 0.25)',
+    },
+    fingerPressRingInner: {
+        width: 30,
+        height: 30,
+        borderColor: 'rgba(59, 130, 246, 0.4)',
+    },
+    fingerIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    mockupStatusBar: {
+        width: '100%',
+        height: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 8,
+        marginBottom: 8,
+    },
+    mockupPlusIndicator: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+    },
+    mockupPlusButton: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: colors.backgroundAlt,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    mockupPlusRing: {
+        position: 'absolute',
+        top: -4,
+        left: -4,
+        right: -4,
+        bottom: -4,
+        borderRadius: 20,
+        borderWidth: 2,
+        borderColor: '#3b82f6',
+        opacity: 0.5,
+    },
+    mockupSearchBar: {
+        height: 32,
+        backgroundColor: colors.backgroundAlt,
+        borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        marginBottom: 12,
+    },
+    mockupSearchPlaceholder: {
+        width: 50,
+        height: 6,
+        backgroundColor: colors.borderLight,
+        borderRadius: 3,
+        marginLeft: 6,
+    },
+    mockupCursor: {
+        width: 1.5,
+        height: 14,
+        backgroundColor: '#3b82f6',
+        marginLeft: 2,
+    },
+    mockupAppResult: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 8,
+        backgroundColor: '#eef4ff',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#dbeafe',
+    },
+    mockupAppLogo: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: colors.text,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    mockupAppTexts: {
+        marginLeft: spacing.sm,
+        gap: 6,
+    },
+    mockupAppLabelTitle: {
+        width: 60,
+        height: 8,
+        backgroundColor: colors.text,
+        borderRadius: 4,
+    },
+    mockupAppLabelSub: {
+        width: 40,
+        height: 5,
+        backgroundColor: colors.textSecondary,
+        borderRadius: 3,
+    },
+    mockupWidgetPreview: {
+        width: 100,
+        height: 60,
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        padding: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+    },
+    mockupWidgetTitle: {
+        width: 30,
+        height: 6,
+        backgroundColor: '#cbd5e1',
+        borderRadius: 3,
+        marginBottom: 6,
+    },
+    mockupWidgetContent: {
+        flex: 1,
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderRadius: 6,
+    },
+    mockupDotsIndicator: {
+        flexDirection: 'row',
+        gap: 4,
+    },
+    mockupDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: colors.borderLight,
+    },
+    mockupAddWidgetBtn: {
+        width: '100%',
+        height: 28,
+        backgroundColor: '#3b82f6',
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    mockupAddWidgetBtnText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    timelineFooter: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: spacing.xl,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderTopWidth: 1,
+        borderTopColor: colors.borderLight,
+    },
+    timelineReadyBtn: {
+        width: '100%',
+        height: 56,
+        backgroundColor: colors.text,
+        borderRadius: borderRadius.xl,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+    },
+    timelineReadyBtnText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    // Android-specific styles
+    androidPopupMenu: {
+        position: 'absolute',
+        top: '30%',
+        left: '20%',
+        backgroundColor: colors.surface,
+        borderRadius: 12,
+        padding: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 8,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+    },
+    androidMenuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 8,
+        borderRadius: 6,
+    },
+    androidMenuItemHighlight: {
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    },
+    androidMenuIcon: {
+        width: 16,
+        height: 16,
+        borderRadius: 4,
+        backgroundColor: colors.borderLight,
+        marginRight: 8,
+    },
+    androidMenuText: {
+        fontSize: 8,
+        color: colors.text,
+    },
+    androidWidgetList: {
+        width: '100%',
+        gap: 6,
+    },
+    androidWidgetItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 8,
+        backgroundColor: colors.backgroundAlt,
+        borderRadius: 8,
+    },
+    androidWidgetItemHighlight: {
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(59, 130, 246, 0.3)',
+    },
+    androidWidgetIcon: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    androidWidgetName: {
+        fontSize: 8,
+        color: colors.text,
+        marginLeft: 8,
+    },
+    androidDragContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+    },
+    androidDragWidget: {
+        alignItems: 'center',
+        padding: 8,
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#3b82f6',
+        borderStyle: 'dashed',
+    },
+    androidDragArrow: {
+        marginVertical: 4,
+    },
+    androidHomePreview: {
+        width: '100%',
+        backgroundColor: colors.backgroundAlt,
+        borderRadius: 8,
+        padding: 8,
+        alignItems: 'center',
+    },
+    androidDropZone: {
+        marginTop: 8,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderWidth: 2,
+        borderColor: '#3b82f6',
+        borderStyle: 'dashed',
+        borderRadius: 8,
+        backgroundColor: 'rgba(59, 130, 246, 0.05)',
     },
 });
 

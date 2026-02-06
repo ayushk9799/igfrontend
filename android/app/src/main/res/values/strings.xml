@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Penguin</string>
+    <string name="widget_description">See doodles from your loved one</string>
+    <string name="widget_scribble_description">Partner scribble drawing</string>
 </resources>

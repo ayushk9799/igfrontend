@@ -66,7 +66,8 @@ const LikelyToCard = React.memo(({
     isLastCard,
     onAnswerSubmit,
     isAnswered = false,
-    previousAnswer = null
+    previousAnswer = null,
+    autoAdvanceOnSubmit = true
 }) => {
     const config = categoryConfig.likelyto;
     const [selectedAnswer, setSelectedAnswer] = useState(isAnswered ? previousAnswer : null);
@@ -89,15 +90,14 @@ const LikelyToCard = React.memo(({
         setLocked(true);
 
         try {
-            const result = onAnswerSubmit?.(index, who);
-            if (result && typeof result.then === 'function') {
-                result.then(() => onSubmit(who)).catch(err => console.error('Submit error:', err));
-            } else {
-                onSubmit(who);
+            onAnswerSubmit?.(task.originalIndex ?? index, who);
+            // Only auto-advance if the parent screen doesn't filter answered tasks
+            if (autoAdvanceOnSubmit && onSubmit) {
+                // Delay swipe to show "Submitted" text first
+                setTimeout(() => onSubmit(who), 600);
             }
         } catch (err) {
             console.error('handleSelect error:', err);
-            onSubmit(who);
         }
     };
 

@@ -116,35 +116,14 @@ export default function DailyChallengeDoneScreen({
                         </View>
                     )}
 
-                    {isComplete && (
-                        <View style={styles.notifyCard}>
-                            <Text style={styles.notifyEmoji}>🎉</Text>
-                            <Text style={styles.notifyText}>
-                                All done! Compare answers with {partnerName}
-                            </Text>
-                            <TouchableOpacity
-                                style={styles.compareBtn}
-                                onPress={onCompareWithPartner}
-                            >
-                                <Text style={styles.compareBtnText}>Compare Answers</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                  
 
                     <TouchableOpacity style={styles.remindBtn} onPress={onRemindPartner}>
                         <Text style={styles.remindBtnText}>Remind {partnerName} to Play</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={styles.viewAnswersBtn}
-                        onPress={() => setShowAnswers(!showAnswers)}
-                    >
-                        <Text style={styles.viewAnswersBtnText}>
-                            {showAnswers ? '🔼 Hide My Answers' : '📋 View My Answers'}
-                        </Text>
-                    </TouchableOpacity>
+                 
 
-                    {/* Answers List - Show when toggled */}
                     {showAnswers && (
                         <View style={styles.answersContainer}>
                             {userAnswers.map((item, idx) => {
