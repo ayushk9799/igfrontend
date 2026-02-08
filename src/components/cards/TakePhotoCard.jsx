@@ -23,7 +23,7 @@ import { uploadImageToS3 } from '../../utils/uploadApi';
 /**
  * TakePhotoCard - Card for capturing or selecting photos
  */
-const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userName, onSubmit, onSkip, isLastCard, onAnswerSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true }) => {
+const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userName, hasPartner = false, onLinkPartner, onSubmit, onSkip, isLastCard, onAnswerSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true }) => {
     const config = categoryConfig.takephoto;
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
@@ -143,6 +143,12 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
 
     const handleUsePhoto = async () => {
         if (!previewUri || isSubmitting) return;
+
+        // Block submission if no partner linked
+        if (!hasPartner) {
+            onLinkPartner?.();
+            return;
+        }
 
         // Extract URI from object or string
         const imageUri = typeof previewUri === 'string' ? previewUri : previewUri?.uri;

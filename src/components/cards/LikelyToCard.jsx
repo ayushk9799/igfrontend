@@ -61,6 +61,8 @@ const LikelyToCard = React.memo(({
     partnerAvatar,
     userId,
     partnerId,
+    hasPartner = false,
+    onLinkPartner,
     onSubmit,
     onSkip,
     isLastCard,
@@ -84,6 +86,12 @@ const LikelyToCard = React.memo(({
 
     const handleSelect = (who) => {
         if (locked || isAnswered) return;
+
+        // Block submission if no partner linked
+        if (!hasPartner) {
+            onLinkPartner?.();
+            return;
+        }
 
         console.log('🎯 [LikelyToCard] Selection:', who);
         setSelectedAnswer(who);

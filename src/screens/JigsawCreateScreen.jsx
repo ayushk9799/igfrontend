@@ -13,6 +13,7 @@ import {
     Dimensions,
     InteractionManager,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
@@ -26,7 +27,7 @@ import { usePuzzle } from '../hooks/usePuzzle';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const JigsawCreateScreen = ({ navigation, route }) => {
+const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     const { partnerId, partnerName } = route.params || {};
     const { createPuzzle, isUploading } = usePuzzle();
 
@@ -214,7 +215,7 @@ const JigsawCreateScreen = ({ navigation, route }) => {
 
     return (
         <GradientBackground>
-            <View style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top']}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                         <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -309,19 +310,35 @@ const JigsawCreateScreen = ({ navigation, route }) => {
 
                 {/* Footer with Send Button */}
                 <View style={styles.footer}>
-                    <TouchableOpacity
-                        onPress={handleSendPuzzle}
-                        style={[styles.nextButton, (!previewUri && !isSending) && styles.nextButtonDisabled]}
-                        disabled={!previewUri || isSending}
-                    >
-                        {isSending ? (
-                            <ActivityIndicator color="#fff" size="small" />
-                        ) : (
-                            <Text style={styles.nextButtonText}>Send to {partnerName || 'Partner'} 🧩</Text>
-                        )}
-                    </TouchableOpacity>
+                    {partnerId ? (
+                        <TouchableOpacity
+                            onPress={handleSendPuzzle}
+                            style={[styles.nextButton, (!previewUri && !isSending) && styles.nextButtonDisabled]}
+                            disabled={!previewUri || isSending}
+                        >
+                            {isSending ? (
+                                <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                                <Text style={styles.nextButtonText}>Send to {partnerName} 🧩</Text>
+                            )}
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            onPress={() => {
+                                // Use onLinkPartner callback if available, otherwise goBack
+                                if (onLinkPartner) {
+                                    onLinkPartner();
+                                } else {
+                                    navigation.goBack();
+                                }
+                            }}
+                            style={styles.nextButton}
+                        >
+                            <Text style={styles.nextButtonText}>Link Partner to Send 🔗</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
-            </View>
+            </SafeAreaView>
         </GradientBackground>
     );
 };
@@ -343,7 +360,7 @@ const BigPuzzleIcon = () => (
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: Platform.OS === 'ios' ? 60 : 20, paddingBottom: spacing.md },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.glass, alignItems: 'center', justifyContent: 'center' },
     headerTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
     content: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.md },

@@ -10,6 +10,8 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 class MainActivity : ReactActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    // Switch from SplashTheme to AppTheme once the app loads
+    setTheme(R.style.AppTheme)
     super.onCreate(null)
     WindowCompat.setDecorFitsSystemWindows(window, false)
   }

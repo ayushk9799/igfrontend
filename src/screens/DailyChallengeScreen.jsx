@@ -52,6 +52,8 @@ export default function DailyChallengeScreen({
   userAvatar = null,
   partnerAvatar = null,
   userId,
+  hasPartner = false,
+  onLinkPartner = () => { },
   onBack = () => { },
   onCompareWithPartner = () => { }, // New callback for partner comparison
 }) {
@@ -301,6 +303,8 @@ export default function DailyChallengeScreen({
               partnerAvatar={userData.partnerAvatarThumbnail || userData.partnerAvatar || partnerAvatar}
               userId={userId}
               partnerId={userData.partnerId}
+              hasPartner={hasPartner}
+              onLinkPartner={onLinkPartner}
               onIndexChange={handleIndexChange}
               onAnswerSubmit={handleAnswerSubmit}
               challengeId={challenge._id}

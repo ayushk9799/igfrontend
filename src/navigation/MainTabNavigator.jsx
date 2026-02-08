@@ -32,6 +32,7 @@ export const MainTabNavigator = ({
     onTicTacToePress,
     onWordlePress,
     onLogout,
+    onDeleteAccount,
 }) => {
     const [currentTab, setCurrentTab] = useState('home');
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
@@ -156,6 +157,8 @@ export const MainTabNavigator = ({
                         userAvatar={userData?.avatar || null}
                         partnerAvatar={userData?.partnerAvatar || null}
                         userId={userData?._id || userData?.id}
+                        hasPartner={hasPartner}
+                        onLinkPartner={onFindPartner}
                         onBack={() => setCurrentTab('home')}
                     />
                 );
@@ -175,6 +178,9 @@ export const MainTabNavigator = ({
                         userAvatar={userData?.avatar}
                         partnerAvatar={userData?.partnerAvatar}
                         userId={userData?.id}
+                        partnerId={userData?.partnerId}
+                        hasPartner={hasPartner}
+                        onLinkPartner={onFindPartner}
                         onBack={() => setCurrentTab('home')}
                     />
                 );
@@ -186,6 +192,7 @@ export const MainTabNavigator = ({
                         hasPartner={hasPartner}
                         daysTogether={daysTogether}
                         onLogout={onLogout}
+                        onDeleteAccount={onDeleteAccount}
                         onEditProfile={onEditProfile}
                         onAvatarPress={onAvatarPress}
                         onFindPartner={onFindPartner}

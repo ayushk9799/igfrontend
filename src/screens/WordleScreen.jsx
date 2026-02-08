@@ -1,5 +1,5 @@
 // WordleScreen - Partner Wordle game with word creation and guessing
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -7,6 +7,8 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Animated,
+    TextInput,
+    Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -16,13 +18,9 @@ import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 
-const KEYBOARD_ROWS = [
-    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-    ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫']
-];
 
-const WordleScreen = ({ navigation, route }) => {
+
+const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     const { gameId: initialGameId, gameData: initialGameData } = route?.params || {};
     const user = getUser();
     const { socket, partnerOnline } = useSocketContext();
@@ -44,6 +42,7 @@ const WordleScreen = ({ navigation, route }) => {
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [notifyMessage, setNotifyMessage] = useState('');
+    const [showLinkPartner, setShowLinkPartner] = useState(false);
 
     // Keyboard state (for coloring used letters)
     const [keyboardState, setKeyboardState] = useState({});
@@ -55,6 +54,9 @@ const WordleScreen = ({ navigation, route }) => {
     // Animation
     const shakeAnim = useState(new Animated.Value(0))[0];
 
+    // Input ref for focus management
+    const inputRef = useRef(null);
+
     // Load or check for active game
     useEffect(() => {
         if (initialGameData) {
@@ -65,6 +67,13 @@ const WordleScreen = ({ navigation, route }) => {
             fetchActiveGame();
         }
     }, []);
+
+    // Auto-focus input when in create or guess mode
+    useEffect(() => {
+        if ((mode === 'create' || mode === 'guess') && inputRef.current) {
+            setTimeout(() => inputRef.current?.focus(), 100);
+        }
+    }, [mode]);
 
     // Socket listeners for real-time updates
     useEffect(() => {
@@ -211,8 +220,9 @@ const WordleScreen = ({ navigation, route }) => {
     };
 
     // Create game with secret word
-    const createGame = async () => {
-        if (secretWord.length !== 5) {
+    const createGame = async (wordOverride) => {
+        const word = wordOverride || secretWord;
+        if (word.length !== 5) {
             setErrorMessage('Word must be 5 letters');
             shakeRow();
             return;
@@ -228,7 +238,7 @@ const WordleScreen = ({ navigation, route }) => {
                 body: JSON.stringify({
                     creatorId: user?.id,
                     partnerId: partnerId,
-                    secretWord: secretWord.toLowerCase(),
+                    secretWord: word.toLowerCase(),
                 }),
             });
             const data = await response.json();
@@ -260,8 +270,9 @@ const WordleScreen = ({ navigation, route }) => {
     };
 
     // Submit a guess
-    const submitGuess = async () => {
-        if (currentGuess.length !== 5) {
+    const submitGuess = async (guessOverride) => {
+        const guess = guessOverride || currentGuess;
+        if (guess.length !== 5) {
             setErrorMessage('Guess must be 5 letters');
             shakeRow();
             return;
@@ -276,14 +287,14 @@ const WordleScreen = ({ navigation, route }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: user?.id,
-                    guess: currentGuess.toLowerCase(),
+                    guess: guess.toLowerCase(),
                 }),
             });
             const data = await response.json();
 
             if (data.success) {
                 const newGuess = {
-                    word: currentGuess.toLowerCase(),
+                    word: guess.toLowerCase(),
                     result: data.data.guessResult,
                 };
                 const updatedGuesses = [...guesses, newGuess];
@@ -357,25 +368,46 @@ const WordleScreen = ({ navigation, route }) => {
         }
     };
 
-    // Handle keyboard press
-    const handleKeyPress = (key) => {
+    // Handle text input change - only allow letters
+    const handleTextChange = (text) => {
         if (submitting) return;
 
-        const targetWord = mode === 'create' ? secretWord : currentGuess;
-        const setTargetWord = mode === 'create' ? setSecretWord : setCurrentGuess;
+        // Filter to only allow letters (A-Z, a-z)
+        const lettersOnly = text.replace(/[^a-zA-Z]/g, '').toUpperCase();
 
-        if (key === '⌫') {
-            setTargetWord(targetWord.slice(0, -1));
-            setErrorMessage('');
-        } else if (key === 'ENTER') {
-            if (mode === 'create') {
-                createGame();
-            } else if (mode === 'guess') {
-                submitGuess();
+        // Limit to 5 characters
+        const limitedText = lettersOnly.slice(0, 5);
+
+        if (mode === 'create') {
+            setSecretWord(limitedText);
+            // Auto-submit when 5 letters entered - pass word directly
+            if (limitedText.length === 5) {
+                if (!partnerId) {
+                    // Show link partner prompt if no partner
+                    setShowLinkPartner(true);
+                    Keyboard.dismiss();
+                } else {
+                    setTimeout(() => createGame(limitedText), 100);
+                }
+            } else {
+                setShowLinkPartner(false);
             }
-        } else if (targetWord.length < 5) {
-            setTargetWord(targetWord + key);
-            setErrorMessage('');
+        } else {
+            setCurrentGuess(limitedText);
+            // Auto-submit when 5 letters entered - pass word directly
+            if (limitedText.length === 5) {
+                setTimeout(() => submitGuess(limitedText), 100);
+            }
+        }
+        setErrorMessage('');
+    };
+
+    // Handle submit action
+    const handleSubmit = () => {
+        if (mode === 'create') {
+            createGame();
+        } else if (mode === 'guess') {
+            submitGuess();
         }
     };
 
@@ -423,7 +455,7 @@ const WordleScreen = ({ navigation, route }) => {
         );
     };
 
-    // Render current input row
+    // Render current input row (tappable to open keyboard)
     const renderCurrentRow = () => {
         const word = mode === 'create' ? secretWord : currentGuess;
         const tiles = [];
@@ -431,9 +463,14 @@ const WordleScreen = ({ navigation, route }) => {
             tiles.push(renderTile(word[i] || '', null, i));
         }
         return (
-            <Animated.View style={[styles.guessRow, { transform: [{ translateX: shakeAnim }] }]}>
-                {tiles}
-            </Animated.View>
+            <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => inputRef.current?.focus()}
+            >
+                <Animated.View style={[styles.guessRow, { transform: [{ translateX: shakeAnim }] }]}>
+                    {tiles}
+                </Animated.View>
+            </TouchableOpacity>
         );
     };
 
@@ -446,61 +483,7 @@ const WordleScreen = ({ navigation, route }) => {
         return rows;
     };
 
-    // Render keyboard key
-    const renderKey = (key) => {
-        const isEnter = key === 'ENTER';
-        const isBackspace = key === '⌫';
-        const isSpecial = isEnter || isBackspace;
-        const keyStatus = keyboardState[key];
 
-        let bgColor = 'rgba(211, 214, 218, 0.95)';
-        let textColor = colors.text;
-
-        if (keyStatus === 'correct') {
-            bgColor = '#6AAA64';
-            textColor = '#FFFFFF';
-        } else if (keyStatus === 'present') {
-            bgColor = '#C9B458';
-            textColor = '#FFFFFF';
-        } else if (keyStatus === 'absent') {
-            bgColor = '#787C7E';
-            textColor = '#FFFFFF';
-        }
-
-        return (
-            <TouchableOpacity
-                key={key}
-                style={[
-                    styles.keyboardKey,
-                    isSpecial && styles.keyboardKeyWide,
-                    isEnter && styles.keyboardKeyEnter,
-                    { backgroundColor: bgColor }
-                ]}
-                onPress={() => handleKeyPress(key)}
-                activeOpacity={0.6}
-            >
-                {isBackspace ? (
-                    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                        <Path
-                            d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2zm-3 11l-4-4m0 0l-4 4m4-4l4-4m-4 4l-4-4"
-                            stroke={textColor}
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
-                    </Svg>
-                ) : (
-                    <Text style={[
-                        styles.keyboardKeyText,
-                        isEnter && styles.keyboardKeyTextSmall,
-                        { color: textColor }
-                    ]}>
-                        {isEnter ? '↵' : key}
-                    </Text>
-                )}
-            </TouchableOpacity>
-        );
-    };
 
     if (loading) {
         return (
@@ -612,7 +595,24 @@ const WordleScreen = ({ navigation, route }) => {
                     {mode === 'create' && (
                         <>
                             {renderCurrentRow()}
-                            <Text style={styles.hintText}>Type a 5-letter word</Text>
+                            {!showLinkPartner && (
+                                <Text style={styles.hintText}>Type a 5-letter word</Text>
+                            )}
+                            {showLinkPartner && (
+                                <View style={styles.linkPartnerContainer}>
+                                    <Text style={styles.linkPartnerText}>
+                                        Link a partner to send this word
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.linkPartnerButton}
+                                        onPress={onLinkPartner}
+                                    >
+                                        <Text style={styles.linkPartnerButtonText}>
+                                            Link Partner 🔗
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </>
                     )}
 
@@ -661,15 +661,20 @@ const WordleScreen = ({ navigation, route }) => {
                     )}
                 </View>
 
-                {/* Keyboard */}
+                {/* Hidden TextInput for native keyboard */}
                 {(mode === 'create' || mode === 'guess') && (
-                    <View style={styles.keyboardContainer}>
-                        {KEYBOARD_ROWS.map((row, rowIndex) => (
-                            <View key={rowIndex} style={styles.keyboardRow}>
-                                {row.map(key => renderKey(key))}
-                            </View>
-                        ))}
-                    </View>
+                    <TextInput
+                        ref={inputRef}
+                        style={styles.hiddenInput}
+                        value={mode === 'create' ? secretWord : currentGuess}
+                        onChangeText={handleTextChange}
+                        maxLength={5}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        autoComplete="off"
+                        keyboardType="default"
+                        autoFocus={true}
+                    />
                 )}
 
                 {/* Action Buttons */}
@@ -856,45 +861,40 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         marginBottom: 12,
     },
-    keyboardContainer: {
-        paddingHorizontal: 2,
-        paddingBottom: 12,
-        paddingTop: 4,
+    inputContainer: {
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        paddingTop: 10,
+        gap: 12,
     },
-    keyboardRow: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 4,
-        marginBottom: 8,
+    hiddenInput: {
+        position: 'absolute',
+        opacity: 0,
+        height: 0,
+        width: 0,
     },
-    keyboardKey: {
-        minWidth: 36,
-        height: 56,
-        borderRadius: 6,
+    linkPartnerContainer: {
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 3,
-        elevation: 3,
+        paddingHorizontal: 40,
+        paddingVertical: 20,
     },
-    keyboardKeyWide: {
-        minWidth: 58,
-        paddingHorizontal: 6,
+    linkPartnerText: {
+        fontSize: 16,
+        color: colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 20,
+        lineHeight: 24,
     },
-    keyboardKeyEnter: {
-        backgroundColor: '#6AAA64',
+    linkPartnerButton: {
+        backgroundColor: colors.primary,
+        paddingHorizontal: 32,
+        paddingVertical: 16,
+        borderRadius: 30,
     },
-    keyboardKeyText: {
-        fontSize: 18,
+    linkPartnerButtonText: {
+        fontSize: 16,
         fontWeight: '700',
-        letterSpacing: 0.5,
-    },
-    keyboardKeyTextSmall: {
-        fontSize: 22,
-        fontWeight: '800',
+        color: '#FFFFFF',
     },
     actionButtons: {
         alignItems: 'center',

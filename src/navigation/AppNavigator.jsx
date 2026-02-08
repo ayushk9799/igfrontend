@@ -1,5 +1,5 @@
 // Updated Navigator with premium theme and auth persistence
-import React, { useState, useEffect, startTransition } from 'react';
+import React, { useState, useEffect, startTransition, useCallback } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
@@ -17,7 +17,6 @@ import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
 
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
-import EditProfileScreen from '../screens/EditProfileScreen';
 import JigsawCreateScreen from '../screens/JigsawCreateScreen';
 import JigsawPuzzleScreen from '../screens/JigsawPuzzleScreen';
 import TicTacToeScreen from '../screens/TicTacToeScreen';
@@ -30,6 +29,7 @@ import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
 import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener } from '../utils/pushNotifications';
 import { API_BASE } from '../constants/Api';
+import { setAuthErrorHandler } from '../utils/apiFetch';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, logout } from '../store/slices/userSlice';
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
@@ -466,6 +466,60 @@ export const AppNavigator = () => {
         });
     };
 
+    // Handle account deletion - call API, clear storage, go to login
+    const handleDeleteAccount = async () => {
+        try {
+            const userId = userData?.id;
+            if (!userId) {
+                console.log('🗑️ [DELETE] No user ID found');
+                return;
+            }
+
+            const response = await fetch(`${API_BASE}/api/user/delete-account`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('🗑️ [DELETE] Account deleted successfully');
+                // Clear all local storage and navigate to login
+                startTransition(() => {
+                    clearAuth();
+                    dispatch(logout());
+                    setPendingInvite(null);
+                    setCurrentScreen('login');
+                });
+            } else {
+                console.log('🗑️ [DELETE] Failed to delete account:', data.error);
+                Alert.alert('Error', data.error || 'Failed to delete account');
+            }
+        } catch (error) {
+            console.error('🗑️ [DELETE] Error deleting account:', error);
+            Alert.alert('Error', 'Failed to delete account. Please try again.');
+        }
+    };
+
+    // Handle authentication errors globally (401/403 responses)
+    const handleAuthError = useCallback((error) => {
+        console.log('🔒 [AUTH] Global auth error handler triggered:', error);
+        // Directly navigate to login without showing alert
+        startTransition(() => {
+            clearAuth();
+            dispatch(logout());
+            setPendingInvite(null);
+            setCurrentScreen('login');
+        });
+    }, [dispatch]);
+
+    // Set up the global auth error handler
+    useEffect(() => {
+        setAuthErrorHandler(handleAuthError);
+        return () => setAuthErrorHandler(null);
+    }, [handleAuthError]);
+
     // Handle onboarding completion
     const handleOnboardingComplete = () => {
         startTransition(() => {
@@ -562,7 +616,6 @@ export const AppNavigator = () => {
                                 navigate('dailyChallenge');
                             }
                         }}
-                        onEditProfile={() => navigate('editProfile')}
                         onAvatarPress={() => navigate('avatarSelection')}
                         onFindPartner={() => navigate('partnerCode')}
                         onJigsawCreate={() => navigate('jigsawCreate')}
@@ -580,6 +633,7 @@ export const AppNavigator = () => {
                             navigate('wordle');
                         }}
                         onLogout={handleLogout}
+                        onDeleteAccount={handleDeleteAccount}
                     />
                 );
 
@@ -673,6 +727,9 @@ export const AppNavigator = () => {
                             userAvatar={userData.avatar}
                             partnerAvatar={userData.partnerAvatar}
                             userId={userData.id}
+                            partnerId={userData.partnerId}
+                            hasPartner={!!userData.partnerId}
+                            onLinkPartner={() => navigate('partnerCode')}
                             onBack={() => navigate('home')}
                         />
                     );
@@ -696,18 +753,6 @@ export const AppNavigator = () => {
                     />
                 );
 
-            case 'editProfile':
-                return (
-                    <EditProfileScreen
-                        userData={userData}
-                        onSave={(updatedUser) => {
-                            updateUserStorage(updatedUser);
-                            dispatch(updateUser(updatedUser));
-                            navigate('home');
-                        }}
-                        onBack={() => navigate('home')}
-                    />
-                );
 
             case 'jigsawCreate':
                 return (
@@ -719,6 +764,7 @@ export const AppNavigator = () => {
                                 partnerName: userData.partnerUsername || 'Partner',
                             }
                         }}
+                        onLinkPartner={() => navigate('partnerCode')}
                     />
                 );
 
@@ -753,7 +799,7 @@ export const AppNavigator = () => {
             case 'wordle':
                 return (
                     <WordleScreen
-                        navigation={{ goBack: () => navigate('home') }}
+                        navigation={{ goBack: () => navigate('home'), navigate }}
                         route={{
                             params: {
                                 gameId: selectedWordle?._id,
@@ -762,6 +808,7 @@ export const AppNavigator = () => {
                                 partnerName: userData.partnerUsername || 'Partner',
                             }
                         }}
+                        onLinkPartner={() => navigate('partnerCode')}
                     />
                 );
 

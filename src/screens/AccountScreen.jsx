@@ -8,6 +8,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Image,
+    Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -52,10 +53,9 @@ export const AccountScreen = ({
     partnerNickname = null,
     hasPartner = false,
     onLogout,
-
-    onEditProfile,
     onAvatarPress,
     onFindPartner,
+    onDeleteAccount,
 }) => {
     const insets = useSafeAreaInsets();
 
@@ -81,6 +81,25 @@ export const AccountScreen = ({
         if (onLogout) {
             onLogout();
         }
+    };
+
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            'Delete Account',
+            'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                        if (onDeleteAccount) {
+                            onDeleteAccount();
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     return (
@@ -152,11 +171,6 @@ export const AccountScreen = ({
                 <View style={styles.menuSection}>
                     <Text style={styles.sectionTitle}>Settings</Text>
                     <MenuItem
-                        title="Edit Profile"
-                        subtitle="Change your name and photo"
-                        onPress={onEditProfile}
-                    />
-                    <MenuItem
                         title="Notifications"
                         subtitle="Manage push notifications"
                         onPress={() => { }}
@@ -179,6 +193,12 @@ export const AccountScreen = ({
                     <MenuItem
                         title="Log Out"
                         onPress={handleLogout}
+                        danger
+                    />
+                    <MenuItem
+                        title="Delete Account"
+                        subtitle="Permanently delete your account"
+                        onPress={handleDeleteAccount}
                         danger
                     />
                 </View>

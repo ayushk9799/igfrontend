@@ -10,7 +10,7 @@ import { spacing } from '../../theme';
 /**
  * DeepCard - High-impact text-based card for deep questions and sharing
  */
-const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit, onSkip, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true }) => {
+const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, onSkip, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true }) => {
     const [answer, setAnswer] = useState(previousAnswer || '');
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
@@ -28,6 +28,12 @@ const DeepCard = React.memo(({ task, index, totalCards, onAnswerSubmit, onSubmit
 
     const handleSubmit = () => {
         if (answer.trim()) {
+            // Block submission if no partner linked
+            if (!hasPartner) {
+                onLinkPartner?.();
+                return;
+            }
+
             console.log('🎯 [DeepCard] Submitting answer:', answer.trim());
             onAnswerSubmit(task.originalIndex ?? index, answer.trim());
             Keyboard.dismiss();

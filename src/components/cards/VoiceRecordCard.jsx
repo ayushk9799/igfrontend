@@ -36,6 +36,8 @@ const VoiceRecordCard = React.memo(({
     totalCards,
     partnerName,
     userName,
+    hasPartner = false,
+    onLinkPartner,
     onSubmit,
     onSkip,
     isLastCard,
@@ -292,6 +294,12 @@ const VoiceRecordCard = React.memo(({
 
     const handleSubmit = async () => {
         if (!recordingUri || isSubmitting) return;
+
+        // Block submission if no partner linked
+        if (!hasPartner) {
+            onLinkPartner?.();
+            return;
+        }
 
         setIsSubmitting(true);
         console.log('🎙️ [VoiceRecordCard] Uploading voice recording...');

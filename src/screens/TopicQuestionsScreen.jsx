@@ -47,6 +47,9 @@ export default function TopicQuestionsScreen({
     userAvatar = null,
     partnerAvatar = null,
     userId,
+    partnerId,
+    hasPartner = false,
+    onLinkPartner = () => { },
     onBack = () => { },
 }) {
     const insets = useSafeAreaInsets();
@@ -400,6 +403,10 @@ export default function TopicQuestionsScreen({
                             userName={userName}
                             userAvatar={userData.avatarThumbnail || userData.avatar || userAvatar}
                             partnerAvatar={userData.partnerAvatarThumbnail || userData.partnerAvatar || partnerAvatar}
+                            userId={effectiveUserId}
+                            partnerId={partnerId || userData?.partnerId}
+                            hasPartner={hasPartner}
+                            onLinkPartner={onLinkPartner}
                             onIndexChange={handleIndexChange}
                             onAnswerSubmit={handleAnswerSubmit}
                             userAnswers={userAnswers}

@@ -34,6 +34,8 @@ const SliderCard = React.memo(({
     totalCards,
     partnerName,
     userName,
+    hasPartner = false,
+    onLinkPartner,
     onSubmit,
     onSkip,
     isLastCard,
@@ -123,6 +125,12 @@ const SliderCard = React.memo(({
     // Handle submit
     const handleSubmit = () => {
         if (locked || isAnswered) return;
+
+        // Block submission if no partner linked
+        if (!hasPartner) {
+            onLinkPartner?.();
+            return;
+        }
 
         console.log('🎯 [SliderCard] Submitting value:', currentValue);
         setLocked(true);

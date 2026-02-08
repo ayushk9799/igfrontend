@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import { AppState, NativeModules, Platform } from 'react-native';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
+import { setAuthErrorHandler } from '../utils/apiFetch';
 
 // Create context
 const SocketContext = createContext(null);
@@ -108,6 +109,22 @@ export const SocketProvider = ({ children }) => {
             console.error('🔴 Socket connection error:', error.message);
             console.error('🔴 Full error:', error);
             setConnectionState(CONNECTION_STATE.ERROR);
+
+            // Check if this is an authentication error
+            const errorMsg = error.message?.toLowerCase() || '';
+            if (errorMsg.includes('authentication') ||
+                errorMsg.includes('user not found') ||
+                errorMsg.includes('unauthorized') ||
+                errorMsg.includes('invalid token')) {
+                console.log('🔒 [SOCKET] Authentication error detected, triggering logout...');
+                // Trigger global auth error handler
+                const { triggerAuthError } = require('../utils/apiFetch');
+                triggerAuthError({
+                    status: 401,
+                    message: error.message || 'Socket authentication failed',
+                    source: 'socket',
+                });
+            }
         });
 
         // Presence events

@@ -49,6 +49,8 @@ const NeverHaveIEverCard = React.memo(({
     userName,
     userAvatar,
     partnerAvatar,
+    hasPartner = false,
+    onLinkPartner,
     onSubmit,
     onSkip,
     isLastCard,
@@ -74,6 +76,13 @@ const NeverHaveIEverCard = React.memo(({
 
     const handleChoiceSelect = (choice) => {
         if (locked || isAnswered) return;
+
+        // Block submission if no partner linked
+        if (!hasPartner) {
+            onLinkPartner?.();
+            return;
+        }
+
         if (choice === selectedAnswer) {
             setSelectedAnswer(null);
             return;

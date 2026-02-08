@@ -280,7 +280,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
     // Create game with first move (called when tapping first cell)
     const createGameWithFirstMove = async (position) => {
         if (!user?.id || !partnerId) {
-            Alert.alert('Error', 'Missing user or partner info');
+            // Partner not linked - button will show below
             return;
         }
 
@@ -346,8 +346,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
     // Create new game (for Play Again functionality)
     const createNewGame = async () => {
         if (!user?.id || !partnerId) {
-            Alert.alert('Error', 'Missing user or partner info');
-            navigation?.goBack?.();
+            // Partner not linked - button will show below
             return;
         }
 
@@ -675,6 +674,19 @@ const TicTacToeScreen = ({ navigation, route }) => {
                         </TouchableOpacity>
                     </View>
                 )}
+
+                {/* Link Partner Button - shown when no partner is linked */}
+                {!partnerId && (
+                    <View style={styles.linkPartnerContainer}>
+                        <TouchableOpacity
+                            style={styles.linkPartnerButton}
+                            onPress={() => navigation?.navigate?.('PartnerLink')}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.linkPartnerText}>Link Partner to Play 🔗</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </SafeAreaView>
         </GradientBackground>
     );
@@ -908,6 +920,26 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: colors.text,
+    },
+    linkPartnerContainer: {
+        paddingHorizontal: 40,
+        paddingBottom: 30,
+    },
+    linkPartnerButton: {
+        backgroundColor: colors.primary,
+        paddingVertical: 16,
+        borderRadius: 24,
+        alignItems: 'center',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    linkPartnerText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFF',
     },
 });
 

@@ -40,13 +40,12 @@ const AnimatedCardStack = ({
     partnerAvatar,
     userId,
     partnerId,
+    hasPartner = false,
+    onLinkPartner,
     onIndexChange,
     onAnswerSubmit,
     challengeId,
     userAnswers = [],
-    // When true (default), cards will auto-swipe to the next card after answer submission.
-    // Set to false for screens that filter out answered tasks (like DailyChallenge) 
-    // to prevent double-advance (filtering already removes the card, so no swipe needed).
     autoAdvanceOnSubmit = true,
 }) => {
     // Current active slot (0 or 1)
@@ -267,6 +266,8 @@ const AnimatedCardStack = ({
                 partnerAvatar,
                 userId,
                 partnerId,
+                hasPartner,
+                onLinkPartner,
                 onSubmit: triggerTransition,
                 onSkip: triggerTransition,
                 isLastCard: i >= tasks.length - 1,
