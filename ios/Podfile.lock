@@ -232,6 +232,8 @@ PODS:
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
   - PromisesObjC (2.4.0)
+  - PurchasesHybridCommon (17.31.0):
+    - RevenueCat (= 5.57.0)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -2733,6 +2735,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - RevenueCat (5.57.0)
   - RNAudioRecorderPlayer (3.6.11):
     - React-Core
   - RNCClipboard (1.16.3):
@@ -2851,6 +2854,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - RNPurchases (9.7.6):
+    - PurchasesHybridCommon (= 17.31.0)
+    - React-Core
   - RNReanimated (4.1.6):
     - boost
     - DoubleConversion
@@ -3197,6 +3203,7 @@ DEPENDENCIES:
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
@@ -3223,6 +3230,8 @@ SPEC REPOS:
     - Mantis
     - nanopb
     - PromisesObjC
+    - PurchasesHybridCommon
+    - RevenueCat
     - SDWebImage
     - SDWebImageWebPCoder
     - SocketRocket
@@ -3419,6 +3428,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/messaging"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNPurchases:
+    :path: "../node_modules/react-native-purchases"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNSVG:
@@ -3468,6 +3479,7 @@ SPEC CHECKSUMS:
   Mantis: ce302d35742c1bc93cd051199ff7e063ba69da10
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  PurchasesHybridCommon: 21a11c5d66c8a52cf9aede45cecc2efe1551b98b
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: 5eb1d2eeff5fb91151e8a8eef45b6c7658b6c897
   RCTRequired: cebcf9442fc296c9b89ac791dfd463021d9f6f23
@@ -3537,11 +3549,13 @@ SPEC CHECKSUMS:
   ReactCodegen: 6c26f8c25d0b5ae66f86a1cce1777076ac8bcbd8
   ReactCommon: 5f0e5c09a64a2717215dd84380e1a747810406f2
   ReactNativeCameraKit: 8bf3988eb86ba253fafca7c14286aa7855a1c9e1
+  RevenueCat: 2d8aa56c68fa8e92c0d669e5e797c4a93e284f20
   RNAudioRecorderPlayer: a33b29ebcf697a58aa0e502e672604f688c0841d
   RNCClipboard: 4b58c780f63676367640f23c8e114e9bd0cf86ac
   RNFBApp: 3504f3fd9217321ad7bb85cb0243e5c547d98e8c
   RNFBMessaging: d467b8f85ff4a2c2eda11e6c12aa1262e26ce883
   RNGestureHandler: 3a73f098d74712952870e948b3d9cf7b6cae9961
+  RNPurchases: 462fb7edb0304dba1db46e3d38368a271ebe4cc2
   RNReanimated: 0a42c1fc618e8f510b7b1724164308e49220dbe2
   RNSVG: 6f39605a4c4d200b11435c35bd077553c6b5963a
   RNWorklets: ad0606bee2a8103c14adb412149789c60b72bfb2

@@ -31,6 +31,7 @@ export const MainTabNavigator = ({
     onRefreshPuzzle,
     onTicTacToePress,
     onWordlePress,
+    onPremiumPress,
     onLogout,
     onDeleteAccount,
 }) => {
@@ -190,12 +191,16 @@ export const MainTabNavigator = ({
                         userData={userData}
                         partnerName={partnerName}
                         hasPartner={hasPartner}
+                        isPremium={userData?.isPremium}
+                        premiumPlan={userData?.premiumPlan}
+                        premiumExpiresAt={userData?.premiumExpiresAt}
                         daysTogether={daysTogether}
                         onLogout={onLogout}
                         onDeleteAccount={onDeleteAccount}
                         onEditProfile={onEditProfile}
                         onAvatarPress={onAvatarPress}
                         onFindPartner={onFindPartner}
+                        onNavigateToPremium={onPremiumPress}
                         onBack={() => setCurrentTab('home')}
                     />
                 );

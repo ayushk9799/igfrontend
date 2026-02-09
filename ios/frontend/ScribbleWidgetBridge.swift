@@ -19,30 +19,43 @@ class ScribbleWidgetBridge: NSObject {
     func saveScribblePaths(_ pathsArray: NSArray, metadata: NSDictionary, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         
         guard let containerURL = getSharedContainerURL() else {
+            print("❌ App Group container not found!")
             rejecter("ERROR", "App Group container not found. Make sure App Group is configured.", nil)
             return
         }
         
+        print("📁 App Group container URL: \(containerURL.path)")
+        
         do {
+            // Add version number to bust widget cache
+            let version = Int(Date().timeIntervalSince1970 * 1000)
+            
             // Create scribble data structure
             let scribbleData: [String: Any] = [
                 "paths": pathsArray,
                 "senderName": metadata["senderName"] ?? "Your Love",
                 "timestamp": metadata["timestamp"] ?? ISO8601DateFormatter().string(from: Date()),
-                "savedAt": ISO8601DateFormatter().string(from: Date())
+                "savedAt": ISO8601DateFormatter().string(from: Date()),
+                "version": version  // Cache-busting version
             ]
             
-            // Save as JSON
+            // Save as JSON with atomic write
             let jsonURL = containerURL.appendingPathComponent("scribble.json")
             let jsonData = try JSONSerialization.data(withJSONObject: scribbleData, options: .prettyPrinted)
-            try jsonData.write(to: jsonURL)
+            try jsonData.write(to: jsonURL, options: .atomic)
             
             print("✅ Scribble paths saved to App Group: \(jsonURL.path)")
+            print("📊 Paths count: \(pathsArray.count), Version: \(version)")
             
-            // Trigger widget refresh
+            // Trigger widget refresh by specific kind
             if #available(iOS 14.0, *) {
+                // Use specific kind name that matches the widget
+                WidgetCenter.shared.reloadTimelines(ofKind: "ScribbleWidget")
+                print("🔄 Widget refresh triggered for 'ScribbleWidget'")
+                
+                // Also call reloadAllTimelines as backup
                 WidgetCenter.shared.reloadAllTimelines()
-                print("🔄 Widget refresh triggered")
+                print("🔄 All widget timelines reloaded")
             }
             
             resolver(true)
@@ -119,6 +132,48 @@ class ScribbleWidgetBridge: NSObject {
         } else {
             resolver(false)
         }
+    }
+    
+    /// Get scribble status from App Group (for debugging)
+    @objc
+    func getScribbleStatus(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        guard let containerURL = getSharedContainerURL() else {
+            resolver([
+                "success": false,
+                "error": "App Group container not found",
+                "containerPath": NSNull()
+            ])
+            return
+        }
+        
+        let jsonURL = containerURL.appendingPathComponent("scribble.json")
+        let fileExists = FileManager.default.fileExists(atPath: jsonURL.path)
+        
+        var result: [String: Any] = [
+            "success": true,
+            "containerPath": containerURL.path,
+            "filePath": jsonURL.path,
+            "fileExists": fileExists
+        ]
+        
+        if fileExists {
+            do {
+                let data = try Data(contentsOf: jsonURL)
+                result["fileSize"] = data.count
+                
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    let paths = json["paths"] as? [[String: Any]] ?? []
+                    result["pathsCount"] = paths.count
+                    result["senderName"] = json["senderName"] ?? NSNull()
+                    result["version"] = json["version"] ?? NSNull()
+                    result["savedAt"] = json["savedAt"] ?? NSNull()
+                }
+            } catch {
+                result["readError"] = error.localizedDescription
+            }
+        }
+        
+        resolver(result)
     }
     
     /// Required for React Native modules

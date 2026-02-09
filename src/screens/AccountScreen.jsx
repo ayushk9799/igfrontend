@@ -18,6 +18,13 @@ import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAvatarUpload } from '../hooks/useAvatarUpload';
 
+// Crown icon component for premium badge
+const CrownIcon = ({ size = 20, color = colors.accentGold }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+        <Path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm0 3h14v2H5v-2z" />
+    </Svg>
+);
+
 // Settings menu item
 const MenuItem = ({ title, subtitle, onPress, danger = false }) => {
     return (
@@ -52,10 +59,14 @@ export const AccountScreen = ({
     partnerName = null,
     partnerNickname = null,
     hasPartner = false,
+    isPremium = false,
+    premiumPlan = null,
+    premiumExpiresAt = null,
     onLogout,
     onAvatarPress,
     onFindPartner,
     onDeleteAccount,
+    onNavigateToPremium,
 }) => {
     const insets = useSafeAreaInsets();
 
@@ -164,6 +175,45 @@ export const AccountScreen = ({
                         <Text style={styles.partnerText}>
                             With {partnerNickname || partnerName}
                         </Text>
+                    )}
+                </View>
+
+                {/* Premium Section */}
+                <View style={styles.menuSection}>
+                    <Text style={styles.sectionTitle}>Premium</Text>
+                    {isPremium ? (
+                        <View style={styles.premiumCard}>
+                            <View style={styles.premiumCardHeader}>
+                                <CrownIcon size={20} color={colors.accentGold} />
+                                <Text style={styles.premiumCardTitle}>You're Premium</Text>
+                            </View>
+                            <View style={styles.premiumCardDetails}>
+                                <View>
+                                    <Text style={styles.premiumCardLabel}>Plan</Text>
+                                    <Text style={styles.premiumCardValue}>
+                                        {premiumPlan ? (premiumPlan.includes('month') ? 'Monthly' : premiumPlan.includes('six') ? '6 Month' : 'Active') : 'Active'}
+                                    </Text>
+                                </View>
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={styles.premiumCardLabel}>Renews</Text>
+                                    <Text style={styles.premiumCardValue}>
+                                        {premiumExpiresAt ? new Date(premiumExpiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Active'}
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.upgradePremiumButton}
+                            onPress={onNavigateToPremium}
+                            activeOpacity={0.8}
+                        >
+                            <View style={styles.upgradePremiumContent}>
+                                <CrownIcon size={20} color="#FFFFFF" />
+                                <Text style={styles.upgradePremiumText}>Upgrade to Premium</Text>
+                                <Text style={styles.upgradePremiumArrow}>→</Text>
+                            </View>
+                        </TouchableOpacity>
                     )}
                 </View>
 
@@ -347,6 +397,64 @@ const styles = StyleSheet.create({
         color: colors.textMuted,
         marginTop: spacing.lg,
         marginBottom: spacing.xl,
+    },
+    // Premium section styles
+    premiumCard: {
+        backgroundColor: colors.surface,
+        borderRadius: borderRadius.lg,
+        padding: spacing.md,
+        borderWidth: 1,
+        borderColor: colors.accentGold + '40',
+        backgroundColor: colors.accentSoft,
+    },
+    premiumCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: spacing.sm,
+    },
+    premiumCardTitle: {
+        marginLeft: spacing.sm,
+        fontSize: 16,
+        fontWeight: '800',
+        color: colors.text,
+    },
+    premiumCardDetails: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    premiumCardLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: colors.textMuted,
+    },
+    premiumCardValue: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: colors.text,
+        marginTop: 2,
+    },
+    upgradePremiumButton: {
+        borderRadius: borderRadius.lg,
+        overflow: 'hidden',
+        backgroundColor: colors.primary,
+    },
+    upgradePremiumContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.lg,
+    },
+    upgradePremiumText: {
+        flex: 1,
+        marginLeft: spacing.sm,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    upgradePremiumArrow: {
+        fontSize: 20,
+        color: '#FFFFFF',
+        fontWeight: '700',
     },
 });
 

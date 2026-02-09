@@ -22,6 +22,7 @@ import JigsawPuzzleScreen from '../screens/JigsawPuzzleScreen';
 import TicTacToeScreen from '../screens/TicTacToeScreen';
 import WordleScreen from '../screens/WordleScreen';
 import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
+import PremiumScreen from '../screens/PremiumScreen';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
 import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding } from '../utils/authStorage';
@@ -632,6 +633,7 @@ export const AppNavigator = () => {
                             dispatch(setSelectedWordle(gameData));
                             navigate('wordle');
                         }}
+                        onPremiumPress={() => navigate('premium')}
                         onLogout={handleLogout}
                         onDeleteAccount={handleDeleteAccount}
                     />
@@ -820,6 +822,13 @@ export const AppNavigator = () => {
                         userId={userData?.id}
                         userName={userData?.name || 'You'}
                         partnerName={userData?.partnerUsername || 'Partner'}
+                        onBack={() => navigate('home')}
+                    />
+                );
+
+            case 'premium':
+                return (
+                    <PremiumScreen
                         onBack={() => navigate('home')}
                     />
                 );

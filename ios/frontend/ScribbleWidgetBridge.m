@@ -25,4 +25,7 @@ RCT_EXTERN_METHOD(refreshWidget:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(isWidgetAvailable:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(getScribbleStatus:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

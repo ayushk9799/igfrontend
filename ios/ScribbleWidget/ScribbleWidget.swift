@@ -33,24 +33,46 @@ struct ScribbleProvider: TimelineProvider {
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<ScribbleEntry>) -> Void) {
         let entry = loadScribbleEntry()
-        let timeline = Timeline(entries: [entry], policy: .never)
+        // Use .after with current date + 1 second to force immediate refresh when reloadTimelines is called
+        // This prevents iOS from caching the old data
+        let refreshDate = Calendar.current.date(byAdding: .second, value: 1, to: Date()) ?? Date()
+        let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
         completion(timeline)
     }
     
     private func loadScribbleEntry() -> ScribbleEntry {
+        print("🔍 [Widget] Loading scribble entry...")
+        
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+            print("❌ [Widget] Failed to get App Group container!")
             return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false)
         }
         
+        print("📁 [Widget] Container URL: \(containerURL.path)")
+        
         let jsonURL = containerURL.appendingPathComponent("scribble.json")
         
-        guard let data = try? Data(contentsOf: jsonURL),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        // Check if file exists
+        let fileExists = FileManager.default.fileExists(atPath: jsonURL.path)
+        print("📄 [Widget] File exists: \(fileExists)")
+        
+        guard let data = try? Data(contentsOf: jsonURL) else {
+            print("❌ [Widget] Failed to read data from file!")
+            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false)
+        }
+        
+        print("📊 [Widget] Read \(data.count) bytes from file")
+        
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            print("❌ [Widget] Failed to parse JSON!")
             return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false)
         }
         
         let paths = json["paths"] as? [[String: Any]] ?? []
         let senderName = json["senderName"] as? String ?? "Your Love"
+        let version = json["version"] as? Int ?? 0
+        
+        print("✅ [Widget] Loaded \(paths.count) paths, sender: \(senderName), version: \(version)")
         
         return ScribbleEntry(
             date: Date(),
@@ -318,7 +340,7 @@ struct ScribbleWidget: Widget {
         }
         .configurationDisplayName("Penguin")
         .description("See doodles from your loved one")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
 }

@@ -15,6 +15,11 @@ const initialState = {
     connectionDate: null,
     isAuthenticated: false,
     isOnboarded: false,
+    // Premium subscription fields
+    isPremium: false,
+    customerInfo: null,
+    premiumExpiresAt: null,
+    premiumPlan: null,
 };
 
 const userSlice = createSlice({
@@ -40,11 +45,21 @@ const userSlice = createSlice({
         setOnboarded: (state, action) => {
             state.isOnboarded = action.payload;
         },
+        // Premium-related reducers
+        setCustomerInfo: (state, action) => {
+            state.isPremium = action.payload?.activeSubscriptions?.length > 0;
+            state.customerInfo = action.payload || null;
+        },
+        setPremiumStatus: (state, action) => {
+            state.isPremium = action.payload.isPremium;
+            state.premiumExpiresAt = action.payload.premiumExpiresAt;
+            state.premiumPlan = action.payload.premiumPlan;
+        },
         logout: () => initialState,
     },
 });
 
-export const { setUser, updateUser, setPartner, setOnboarded, logout } = userSlice.actions;
+export const { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } = userSlice.actions;
 
 // Selectors
 export const selectUser = (state) => state.user;
@@ -52,9 +67,11 @@ export const selectIsAuthenticated = (state) => state.user.isAuthenticated;
 export const selectIsOnboarded = (state) => state.user.isOnboarded;
 export const selectHasPartner = (state) => !!state.user.partnerId;
 export const selectPartnerName = (state) => state.user.partnerUsername;
+export const selectIsPremium = (state) => state.user.isPremium;
 export const selectDaysTogether = (state) => {
     if (!state.user.connectionDate) return 0;
     return Math.floor((new Date() - new Date(state.user.connectionDate)) / (1000 * 60 * 60 * 24));
 };
 
 export default userSlice.reducer;
+

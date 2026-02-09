@@ -35,6 +35,12 @@ const savePathsToWidget = async (paths, fromUserName, timestamp) => {
             timestamp: timestamp || new Date().toISOString(),
         });
         console.log(`✅ Paths saved to ${Platform.OS} widget`);
+
+        // Debug: Check what's in the App Group after saving
+        if (Platform.OS === 'ios' && ScribbleWidgetBridge.getScribbleStatus) {
+            const status = await ScribbleWidgetBridge.getScribbleStatus();
+            console.log('📊 Widget scribble status:', JSON.stringify(status, null, 2));
+        }
     } catch (error) {
         console.error('❌ Failed to save paths to widget:', error);
     }
