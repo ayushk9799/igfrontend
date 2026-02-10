@@ -121,7 +121,6 @@ const VoiceBubble = ({ audioUri, isSent = false }) => {
                 setIsPlaying(false);
             } else {
                 setIsLoading(true);
-                console.log('▶️ [VoiceBubble] Playing:', audioUri);
 
                 await audioPlayerRef.current.startPlayer(audioUri);
                 audioPlayerRef.current.setVolume(1.0);

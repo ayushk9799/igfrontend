@@ -134,7 +134,6 @@ export const PartnerCodeScreen = ({
 
     // Check if user is already paired on mount - redirect immediately
     useEffect(() => {
-        console.log('PartnerCodeScreen: partnerId =', partnerId);
         if (partnerId) {
             setIsAlreadyPaired(true);
             Alert.alert(

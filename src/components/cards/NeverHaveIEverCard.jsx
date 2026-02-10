@@ -96,7 +96,6 @@ const NeverHaveIEverCard = React.memo(({
             setSelectedAnswer(null);
             return;
         }
-        console.log('🎯 [NeverHaveIEverCard] Choice selected, submitting:', choice);
         setSelectedAnswer(choice);
         setLocked(true);
 

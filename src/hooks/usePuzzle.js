@@ -17,7 +17,6 @@ export const usePuzzle = () => {
      * Upload image to S3 and create a puzzle
      */
     const createPuzzle = useCallback(async (imageAsset, partnerId, gridSize = { rows: 3, cols: 3 }) => {
-        console.log('🧩 [PUZZLE] Starting puzzle creation...');
 
         const user = getUser();
         if (!user?.id) {
@@ -33,10 +32,7 @@ export const usePuzzle = () => {
             const fileName = imageAsset.fileName || `puzzle_${Date.now()}.jpg`;
             const fileType = imageAsset.mimeType || 'image/jpeg';
 
-            console.log('🧩 [PUZZLE] File info:', { uri, fileName, fileType });
-
             // Step 1: Get presigned URL
-            console.log('🧩 [PUZZLE] Getting presigned URL...');
             const presignedResponse = await fetch(`${API_BASE}/api/upload/presigned-url`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -53,10 +49,8 @@ export const usePuzzle = () => {
             }
 
             const { presignedUrl, publicUrl } = presignedData.data;
-            console.log('🧩 [PUZZLE] ✅ Got presigned URL');
 
             // Step 2: Upload to S3
-            console.log('🧩 [PUZZLE] Uploading to S3...');
             const fileResponse = await fetch(uri);
             const blob = await fileResponse.blob();
 
@@ -69,10 +63,8 @@ export const usePuzzle = () => {
             if (!uploadResult.ok) {
                 throw new Error('S3 upload failed');
             }
-            console.log('🧩 [PUZZLE] ✅ S3 upload successful');
 
             // Step 3: Create puzzle in backend
-            console.log('🧩 [PUZZLE] Creating puzzle record...');
             const puzzleResponse = await fetch(`${API_BASE}/api/puzzle/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -89,7 +81,6 @@ export const usePuzzle = () => {
                 throw new Error(puzzleData.message || 'Failed to create puzzle');
             }
 
-            console.log('🧩 [PUZZLE] ✅ Puzzle created!', puzzleData.data);
             setIsUploading(false);
             return { success: true, puzzle: puzzleData.data };
 
@@ -115,7 +106,6 @@ export const usePuzzle = () => {
 
             if (data.success) {
                 setPendingPuzzles(data.data);
-                console.log('🧩 [PUZZLE] Pending puzzles:', data.data.length);
             }
             setIsLoading(false);
             return { success: true, puzzles: data.data };

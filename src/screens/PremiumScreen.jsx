@@ -190,7 +190,7 @@ export default function PremiumScreen({ onBack }) {
             const customerInfo = await Purchases.getCustomerInfo();
             dispatch(setCustomerInfo(customerInfo));
             setEntitlements(customerInfo.entitlements.active);
-            await syncServerPremium(customerInfo);
+            // await syncServerPremium(customerInfo);
         } catch (e) {
             console.error('Error checking entitlements:', e);
         }
@@ -221,10 +221,12 @@ export default function PremiumScreen({ onBack }) {
         try {
             setLoading(true);
             const o = await Purchases.getOfferings();
+            console.log('offerings', o);
+
             if (o?.current && Array.isArray(o.current.availablePackages) && o.current.availablePackages.length > 0) {
                 setOfferings(o);
-                if (o.current.sixMonth) {
-                    setSelectedPlan('sixMonth');
+                if (o.current.annual) {
+                    setSelectedPlan('annual');
                 } else if (o.current.monthly) {
                     setSelectedPlan('monthly');
                 } else {
@@ -244,9 +246,9 @@ export default function PremiumScreen({ onBack }) {
         }
     };
 
-    const sixMonthPackage = offerings?.current?.sixMonth || null;
+    const annualPackage = offerings?.current?.annual || null;
     const monthlyPackage = offerings?.current?.monthly || null;
-    const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'sixMonth' ? sixMonthPackage : null;
+    const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'annual' ? annualPackage : null;
     const isPremium = !!(user?.isPremium || (entitlements && Object.keys(entitlements || {}).length > 0));
     const premiumPlan = user?.premiumPlan || null;
     const premiumExpiresAt = user?.premiumExpiresAt || null;
@@ -306,11 +308,11 @@ export default function PremiumScreen({ onBack }) {
         return formatCurrencyPrice(originalPrice, monthlyPackage.product.currencyCode, true);
     };
 
-    const getSixMonthStrikethroughPrice = () => {
-        if (!sixMonthPackage?.product?.price || !sixMonthPackage?.product?.currencyCode) return null;
-        const sixMonthPrice = sixMonthPackage.product.price;
-        const originalPrice = sixMonthPrice * 1.5;
-        return formatCurrencyPrice(originalPrice, sixMonthPackage.product.currencyCode, true);
+    const getAnnualStrikethroughPrice = () => {
+        if (!annualPackage?.product?.price || !annualPackage?.product?.currencyCode) return null;
+        const annualPrice = annualPackage.product.price;
+        const originalPrice = annualPrice * 1.5;
+        return formatCurrencyPrice(originalPrice, annualPackage.product.currencyCode, true);
     };
 
     return (
@@ -480,51 +482,51 @@ export default function PremiumScreen({ onBack }) {
                                     </View>
                                 </Pressable>
 
-                                {/* 6 Month Plan */}
+                                {/* Yearly Plan */}
                                 <Pressable
-                                    onPress={() => sixMonthPackage && setSelectedPlan('sixMonth')}
+                                    onPress={() => annualPackage && setSelectedPlan('annual')}
                                     style={[
                                         styles.planCard,
-                                        selectedPlan === 'sixMonth' && styles.planCardSelected,
-                                        !sixMonthPackage && styles.planCardDisabled,
+                                        selectedPlan === 'annual' && styles.planCardSelected,
+                                        !annualPackage && styles.planCardDisabled,
                                     ]}
                                 >
-                                    {sixMonthPackage && (
+                                    {annualPackage && (
                                         <View style={styles.bestValueBadge}>
                                             <Text style={styles.bestValueText}>BEST VALUE</Text>
                                         </View>
                                     )}
                                     <View style={styles.planCardContent}>
-                                        {selectedPlan === 'sixMonth' ? (
+                                        {selectedPlan === 'annual' ? (
                                             <CheckCircleIcon size={22} color={colors.primary} />
                                         ) : (
                                             <CircleOutlineIcon size={22} color="#B0B7BF" />
                                         )}
                                         <View style={[styles.planCardInfo, { paddingRight: 10 }]}>
-                                            <Text style={styles.planCardTitle}>6 Month Plan</Text>
+                                            <Text style={styles.planCardTitle}>Yearly Plan</Text>
                                             <Text style={styles.planCardDescription}>
                                                 Value for money. Auto-renewal subscription
                                             </Text>
-                                            {sixMonthPackage?.product?.pricePerMonthString && (
+                                            {annualPackage?.product?.pricePerMonthString && (
                                                 <Text style={styles.planCardMonthly}>
-                                                    Only {sixMonthPackage.product.pricePerMonthString}/month
+                                                    Only {annualPackage.product.pricePerMonthString}/month
                                                 </Text>
                                             )}
                                         </View>
                                         <View style={styles.planCardPricing}>
                                             <Text style={styles.planCardPrice}>
-                                                {sixMonthPackage?.product?.priceString || ''}
+                                                {annualPackage?.product?.priceString || ''}
                                             </Text>
-                                            {getSixMonthStrikethroughPrice() && (
+                                            {getAnnualStrikethroughPrice() && (
                                                 <Text style={styles.planCardStrikethrough}>
-                                                    {getSixMonthStrikethroughPrice()}
+                                                    {getAnnualStrikethroughPrice()}
                                                 </Text>
                                             )}
                                         </View>
                                     </View>
                                 </Pressable>
 
-                                {!monthlyPackage && !sixMonthPackage && (
+                                {!monthlyPackage && !annualPackage && (
                                     <View style={styles.noPackagesContainer}>
                                         <Text style={styles.noPackagesText}>No packages available</Text>
                                     </View>

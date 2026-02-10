@@ -1,6 +1,6 @@
 // Updated Navigator with premium theme and auth persistence
 import React, { useState, useEffect, startTransition, useCallback } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, Platform } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
 import NicknameScreen from '../screens/NicknameScreen';
@@ -35,6 +35,7 @@ import { setAuthErrorHandler } from '../utils/apiFetch';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, logout } from '../store/slices/userSlice';
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 
 export const AppNavigator = () => {
     const dispatch = useDispatch();
@@ -54,6 +55,43 @@ export const AppNavigator = () => {
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
 
+    // RevenueCat configuration
+    // useEffect(() => {
+    //     Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+
+    //     // Platform-specific API keys
+    //     const iosApiKey = 'test_WfhwFIsZuLDDIsuxUwoASrpbUbr';
+    //     const androidApiKey = 'test_WfhwFIsZuLDDIsuxUwoASrpbUbr';
+
+    //     if (Platform.OS === 'ios') {
+    //         Purchases.configure({ apiKey: iosApiKey });
+    //     } else if (Platform.OS === 'android') {
+    //         Purchases.configure({ apiKey: androidApiKey });
+    //     }
+    // }, []);
+
+    const purchasesConfiguredRef = React.useRef(false);
+    const initPurchases = React.useCallback(async () => {
+        try {
+            if (purchasesConfiguredRef.current) return;
+            Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+            if (Platform.OS === 'ios') {
+                Purchases.configure({ apiKey: 'appl_XNiOeilxYHFbHHJIzrroDvhxQDA' });
+            } else if (Platform.OS === 'android') {
+                Purchases.configure({ apiKey: 'goog_GZJTkFQaWlmsypgjConPmrRlioL' });
+            }
+            purchasesConfiguredRef.current = true;
+        } catch (e) {
+            // no-op; SDK will throw if misconfigured
+            console.log('revenue error', e);
+
+        }
+    }, []);
+
+    useEffect(() => {
+        initPurchases();
+    }, []);
+
     // Sync local yourMood state with socket userMood when it loads
     useEffect(() => {
         if (userMood) {
@@ -66,12 +104,10 @@ export const AppNavigator = () => {
         if (!socket || !userData?.id) return;
 
         const handleWordleInvite = (data) => {
-            console.log('🎯 Received wordle:invite', data);
             fetchPendingWordle(userData.id);
         };
 
         const handleWordleUpdate = (data) => {
-            console.log('🎯 Received wordle:update', data);
             fetchPendingWordle(userData.id);
         };
 
@@ -89,25 +125,22 @@ export const AppNavigator = () => {
         // 1. Initial Notification (App opened from quit state)
         getInitialNotification(getMessaging(getApp())).then(remoteMessage => {
             if (remoteMessage) {
-                console.log('🔔 App opened from quit state via notification:', remoteMessage.notification);
                 // Handle navigation here if needed, e.g. navigate('chat')
             }
         });
 
         // 2. Notification Opened App (App opened from background state)
         const unsubscribeOpenedApp = onNotificationOpenedApp(getMessaging(getApp()), remoteMessage => {
-            console.log('🔔 App opened from background via notification:', remoteMessage.notification);
             // Handle navigation here if needed
         });
 
         // 3. Foreground Message Handler
         const unsubscribeForeground = setupForegroundMessageHandler((remoteMessage) => {
-            console.log('🔔 Foreground notification received:', remoteMessage);
             Alert.alert(
                 remoteMessage.notification?.title || 'New Notification',
                 remoteMessage.notification?.body || 'You have a new message',
                 [
-                    { text: 'OK', onPress: () => console.log('OK Pressed') }
+                    { text: 'OK', onPress: () => { } }
                 ]
             );
         });
@@ -129,8 +162,6 @@ export const AppNavigator = () => {
                 const authenticated = isAuthenticated();
                 const storedUser = getUser();
 
-                console.log('Auth state:', { authenticated, storedUser });
-                console.log(storedUser)
 
                 if (authenticated && storedUser) {
                     // User is authenticated - dispatch to Redux
@@ -147,11 +178,9 @@ export const AppNavigator = () => {
                     try {
                         const response = await fetch(`${API_BASE}/api/partner/status/${storedUser.id}`);
                         const statusData = await response.json();
-                        console.log('Partner status from server:', statusData);
 
                         if (statusData.success && statusData.isPaired) {
                             // Sync latest partner data from server
-                            console.log('Syncing partner data from server');
                             const partnerData = {
                                 partnerId: statusData.partner.id,
                                 partnerUsername: statusData.partner.name,
@@ -172,7 +201,6 @@ export const AppNavigator = () => {
                             }
                         }
                     } catch (err) {
-                        console.log('Could not fetch partner status:', err.message);
                         // Continue with local data if server check fails
                     }
 
@@ -216,19 +244,14 @@ export const AppNavigator = () => {
     const fetchPendingPuzzle = async (userId) => {
         if (!userId) return;
         try {
-            console.log('🧩 Fetching pending puzzles for user:', userId);
             const response = await fetch(`${API_BASE}/api/puzzle/pending/${userId}`);
             const data = await response.json();
-            console.log('🧩 Puzzle API response:', data);
             if (data.success && data.data.length > 0) {
                 dispatch(setPendingPuzzle(data.data[0])); // Show first pending puzzle
-                console.log('🧩 Pending puzzle found:', data.data[0]);
             } else {
                 dispatch(setPendingPuzzle(null));
-                console.log('🧩 No pending puzzles');
             }
         } catch (err) {
-            console.log('🧩 Error fetching puzzles:', err.message);
             dispatch(setPendingPuzzle(null));
         }
     };
@@ -251,10 +274,8 @@ export const AppNavigator = () => {
     const fetchPendingTicTacToe = async (userId) => {
         if (!userId) return;
         try {
-            console.log('🎮 Fetching pending TicTacToe for user:', userId);
             const response = await fetch(`${API_BASE}/api/tictactoe/pending/${userId}`);
             const data = await response.json();
-            console.log('🎮 TicTacToe API response:', data);
             if (data.success && data.data.length > 0) {
                 // Store any active game (for showing "Partner's turn" when applicable)
                 dispatch(setActiveTicTacToe(data.data[0]));
@@ -266,14 +287,11 @@ export const AppNavigator = () => {
                 });
                 // Only show "Your turn" when it's actually your turn
                 dispatch(setPendingTicTacToe(myTurnGame || null));
-                console.log('🎮 Active TicTacToe:', data.data[0]._id, '| My turn:', myTurnGame ? 'yes' : 'no');
             } else {
                 dispatch(setActiveTicTacToe(null));
                 dispatch(setPendingTicTacToe(null));
-                console.log('🎮 No pending TicTacToe games');
             }
         } catch (err) {
-            console.log('🎮 Error fetching TicTacToe:', err.message);
             dispatch(setActiveTicTacToe(null));
             dispatch(setPendingTicTacToe(null));
         }
@@ -283,15 +301,12 @@ export const AppNavigator = () => {
     const fetchPendingWordle = async (userId) => {
         if (!userId) return;
         try {
-            console.log('🎯 Fetching pending Wordle for user:', userId);
             const response = await fetch(`${API_BASE}/api/wordle/pending/${userId}`);
             const data = await response.json();
-            console.log('🎯 Wordle API response:', data);
             if (data.success && data.data.length > 0) {
                 // User is the guesser (partner) - show pending
                 dispatch(setPendingWordle(data.data[0]));
                 dispatch(setActiveWordle(null));
-                console.log('🎯 Pending Wordle to guess:', data.data[0]._id);
             } else {
                 // Check if user has an active game as creator
                 const activeResponse = await fetch(`${API_BASE}/api/wordle/active/${userId}`);
@@ -299,15 +314,12 @@ export const AppNavigator = () => {
                 if (activeData.success && activeData.data && activeData.isCreator) {
                     dispatch(setActiveWordle(activeData.data));
                     dispatch(setPendingWordle(null));
-                    console.log('🎯 Active Wordle (waiting for partner):', activeData.data._id);
                 } else {
                     dispatch(setActiveWordle(null));
                     dispatch(setPendingWordle(null));
-                    console.log('🎯 No pending Wordle games');
                 }
             }
         } catch (err) {
-            console.log('🎯 Error fetching Wordle:', err.message);
             dispatch(setActiveWordle(null));
             dispatch(setPendingWordle(null));
         }
@@ -381,7 +393,6 @@ export const AppNavigator = () => {
     const handleAvatarComplete = () => {
         startTransition(() => {
             // Check if already paired
-            console.log('userData', userData);
             if (userData.partnerId) {
                 // Already paired - go to home
                 dispatch(setOnboarded(true));
@@ -497,7 +508,6 @@ export const AppNavigator = () => {
         try {
             const userId = userData?.id;
             if (!userId) {
-                console.log('🗑️ [DELETE] No user ID found');
                 return;
             }
 
@@ -510,7 +520,6 @@ export const AppNavigator = () => {
             const data = await response.json();
 
             if (data.success) {
-                console.log('🗑️ [DELETE] Account deleted successfully');
                 // Clear all local storage and navigate to login
                 startTransition(() => {
                     clearAuth();
@@ -519,7 +528,6 @@ export const AppNavigator = () => {
                     setCurrentScreen('login');
                 });
             } else {
-                console.log('🗑️ [DELETE] Failed to delete account:', data.error);
                 Alert.alert('Error', data.error || 'Failed to delete account');
             }
         } catch (error) {
@@ -530,7 +538,6 @@ export const AppNavigator = () => {
 
     // Handle authentication errors globally (401/403 responses)
     const handleAuthError = useCallback((error) => {
-        console.log('🔒 [AUTH] Global auth error handler triggered:', error);
         // Directly navigate to login without showing alert
         startTransition(() => {
             clearAuth();
@@ -555,7 +562,6 @@ export const AppNavigator = () => {
     };
 
     const renderScreen = () => {
-        console.log('currentScreen:', currentScreen);
 
         // Loading state while checking auth
         if (currentScreen === null) {
@@ -640,11 +646,9 @@ export const AppNavigator = () => {
                                     navigate('chat');
                                     return;
                                 }
-                                console.log("category", category);
                                 setSelectedCategory(category);
                                 navigate('questions');
                             } else {
-                                console.log("category", "else");
                                 navigate('dailyChallenge');
                             }
                         }}
@@ -685,7 +689,6 @@ export const AppNavigator = () => {
                 return (
                     <ScribbleScreen
                         onSend={(paths) => {
-                            console.log('Sending scribble:', paths);
                             navigate('home');
                         }}
                         onBack={() => navigate('home')}
@@ -715,7 +718,6 @@ export const AppNavigator = () => {
                             userAvatar={userData.avatar}
                             partnerAvatar={userData.partnerAvatar}
                             onSubmitAnswer={(answer) => {
-                                console.log('LikelyTo answer:', answer);
                                 navigate(backDestination);
                             }}
                             onBack={() => navigate(backDestination)}
@@ -739,7 +741,6 @@ export const AppNavigator = () => {
                             }}
                             partnerName={userData.partnerUsername || 'Your Love'}
                             onSubmitAnswer={(answer) => {
-                                console.log('NeverHaveIEver answer:', answer);
                                 navigate(backDestination);
                             }}
                             onBack={() => navigate(backDestination)}
@@ -779,7 +780,6 @@ export const AppNavigator = () => {
                         partnerName={userData.partnerUsername || null}
                         isLocked={true}
                         onSubmitAnswer={(answer) => {
-                            console.log('Submitted answer:', answer);
                             navigate('home');
                         }}
                         onBack={() => navigate('home')}

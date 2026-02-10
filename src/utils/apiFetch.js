@@ -41,7 +41,6 @@ export const apiFetch = async (url, options = {}) => {
 
         // Check for authentication errors (401 Unauthorized, 403 Forbidden)
         if (response.status === 401 || response.status === 403) {
-            console.log('🔒 [API] Authentication error detected:', response.status);
 
             // Try to get more details from the response
             let errorMessage = 'Authentication failed';

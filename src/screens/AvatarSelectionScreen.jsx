@@ -96,7 +96,6 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
 
             setShowCamera(false);
         } catch (e) {
-            console.log('Capture error:', e);
             Alert.alert('Error', e.message);
         } finally {
             isProcessingRef.current = false;
@@ -129,7 +128,6 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
                 setShowCamera(false);
             }
         } catch (e) {
-            console.log('Gallery error:', e);
         }
     };
 

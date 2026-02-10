@@ -77,7 +77,6 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
         // Listen for moves
         const handleMoveReceived = (data) => {
-            console.log('🎮 Move received:', data);
             if (data.gameId === gameId) {
                 setBoard(data.board);
                 setCurrentTurn(data.currentTurn);
@@ -88,19 +87,16 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
         // Listen for player joined
         const handlePlayerJoined = (data) => {
-            console.log('🎮 Player joined:', data.playerName);
         };
 
         // Listen for game complete
         const handleGameComplete = (data) => {
-            console.log('🎮 Game complete:', data);
             setStatus(data.status);
             if (data.winnerId) setWinner(data.winnerId);
         };
 
         // Listen for new game (Play Again from partner)
         const handleNewGame = (data) => {
-            console.log('🎮 New game received from partner:', data);
             // Reset to the new game state
             setGameId(data.gameId);
             setBoard(data.board || Array(9).fill(null));
@@ -234,17 +230,14 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
     const fetchActiveGame = async () => {
         try {
-            console.log('🎮 Fetching active game for user:', user?.id);
             const response = await fetch(`${API_BASE}/api/tictactoe/active/${user?.id}`);
             const data = await response.json();
-            console.log('🎮 Active game response:', data);
 
             if (data.success && data.data) {
                 // Active game exists - load it
                 loadGameFromData(data.data);
             } else {
                 // No active game - show empty board, ready to create on first move
-                console.log('🎮 No active game, showing empty board');
                 setLoading(false);
                 setGameId(null);
                 setBoard(Array(9).fill(null));
@@ -301,7 +294,6 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 }),
             });
             const data = await response.json();
-            console.log('🎮 Create game response:', data);
 
             if (data.success) {
                 setGameId(data.data.gameId);

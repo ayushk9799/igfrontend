@@ -8,16 +8,12 @@ import { API_BASE } from '../constants/Api';
  * @returns {Promise<string>} - The public S3 URL of the uploaded image
  */
 export const uploadImageToS3 = async (localUri, folder = 'uploads') => {
-    console.log('📤 [S3_UPLOAD] Starting upload...');
-    console.log('📤 [S3_UPLOAD] Local URI:', localUri);
-    console.log('📤 [S3_UPLOAD] Folder:', folder);
 
     try {
         // Step 1: Get presigned URL from backend
         const fileName = `photo_${Date.now()}.jpg`;
         const fileType = 'image/jpeg';
 
-        console.log('📤 [S3_UPLOAD] Requesting presigned URL...');
         const presignedResponse = await fetch(`${API_BASE}/api/upload/presigned-url`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -25,7 +21,6 @@ export const uploadImageToS3 = async (localUri, folder = 'uploads') => {
         });
 
         const presignedData = await presignedResponse.json();
-        console.log('📤 [S3_UPLOAD] Presigned response:', presignedData);
 
         if (!presignedData.success) {
             throw new Error(presignedData.message || 'Failed to get presigned URL');
@@ -34,12 +29,9 @@ export const uploadImageToS3 = async (localUri, folder = 'uploads') => {
         const { presignedUrl, publicUrl } = presignedData.data;
 
         // Step 2: Read the file and upload to S3
-        console.log('📤 [S3_UPLOAD] Fetching local file...');
         const fileResponse = await fetch(localUri);
         const blob = await fileResponse.blob();
-        console.log('📤 [S3_UPLOAD] File blob size:', blob.size);
 
-        console.log('📤 [S3_UPLOAD] Uploading to S3...');
         const uploadResponse = await fetch(presignedUrl, {
             method: 'PUT',
             body: blob,
@@ -51,9 +43,6 @@ export const uploadImageToS3 = async (localUri, folder = 'uploads') => {
         if (!uploadResponse.ok) {
             throw new Error(`S3 upload failed with status: ${uploadResponse.status}`);
         }
-
-        console.log('📤 [S3_UPLOAD] ✅ Upload successful!');
-        console.log('📤 [S3_UPLOAD] Public URL:', publicUrl);
 
         return publicUrl;
     } catch (error) {
@@ -70,16 +59,12 @@ export const uploadImageToS3 = async (localUri, folder = 'uploads') => {
  * @returns {Promise<string>} - The public S3 URL of the uploaded audio
  */
 export const uploadAudioToS3 = async (localUri, folder = 'voice-recordings') => {
-    console.log('📤 [S3_AUDIO_UPLOAD] Starting upload...');
-    console.log('📤 [S3_AUDIO_UPLOAD] Local URI:', localUri);
-    console.log('📤 [S3_AUDIO_UPLOAD] Folder:', folder);
 
     try {
         // Step 1: Get presigned URL from backend
         const fileName = `voice_${Date.now()}.m4a`;
         const fileType = 'audio/m4a';
 
-        console.log('📤 [S3_AUDIO_UPLOAD] Requesting presigned URL...');
         const presignedResponse = await fetch(`${API_BASE}/api/upload/presigned-url`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -87,7 +72,6 @@ export const uploadAudioToS3 = async (localUri, folder = 'voice-recordings') => 
         });
 
         const presignedData = await presignedResponse.json();
-        console.log('📤 [S3_AUDIO_UPLOAD] Presigned response:', presignedData);
 
         if (!presignedData.success) {
             throw new Error(presignedData.message || 'Failed to get presigned URL');
@@ -96,12 +80,8 @@ export const uploadAudioToS3 = async (localUri, folder = 'voice-recordings') => 
         const { presignedUrl, publicUrl } = presignedData.data;
 
         // Step 2: Read the file and upload to S3
-        console.log('📤 [S3_AUDIO_UPLOAD] Fetching local file...');
-        const fileResponse = await fetch(localUri);
         const blob = await fileResponse.blob();
-        console.log('📤 [S3_AUDIO_UPLOAD] File blob size:', blob.size);
 
-        console.log('📤 [S3_AUDIO_UPLOAD] Uploading to S3...');
         const uploadResponse = await fetch(presignedUrl, {
             method: 'PUT',
             body: blob,
@@ -113,9 +93,6 @@ export const uploadAudioToS3 = async (localUri, folder = 'voice-recordings') => 
         if (!uploadResponse.ok) {
             throw new Error(`S3 upload failed with status: ${uploadResponse.status}`);
         }
-
-        console.log('📤 [S3_AUDIO_UPLOAD] ✅ Upload successful!');
-        console.log('📤 [S3_AUDIO_UPLOAD] Public URL:', publicUrl);
 
         return publicUrl;
     } catch (error) {

@@ -86,7 +86,6 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
         // Listen for guess updates from partner
         const handleGuessReceived = (data) => {
-            console.log('🎯 Received wordle:guessReceived', data);
             if (data.gameId === gameId) {
                 // Refresh game state to get the latest guesses
                 fetchGame(gameId);
@@ -95,7 +94,6 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
         // Listen for game completion
         const handleGameComplete = (data) => {
-            console.log('🎯 Received wordle:gameComplete', data);
             if (data.gameId === gameId) {
                 setStatus(data.status);
                 fetchGame(gameId);
@@ -104,7 +102,6 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
         // Listen for new game created by partner
         const handleNewGame = (data) => {
-            console.log('🎯 New Wordle game received from partner:', data);
             // Reset state and fetch the new game
             setGuesses([]);
             setCurrentGuess('');

@@ -102,7 +102,6 @@ const LikelyToCard = React.memo(({
             return;
         }
 
-        console.log('🎯 [LikelyToCard] Selection:', who);
         setSelectedAnswer(who);
         setLocked(true);
 

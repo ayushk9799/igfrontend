@@ -75,7 +75,6 @@ export default function DailyChallengeScreen({
       // Get user's local date in YYYY-MM-DD format (avoids timezone issues with server's "today")
       const now = new Date();
       const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      console.log('📅 Fetching challenge for user\'s local date:', userLocalDate);
 
       const res = await fetch(`${API_BASE}/api/daily-challenge/date/${userLocalDate}`);
       const json = await res.json();
@@ -85,7 +84,6 @@ export default function DailyChallengeScreen({
       if (userId && json.data?._id) {
         const answersRes = await getUserAnswers(json.data._id, userId);
         if (answersRes.success && answersRes.data) {
-          console.log('📥 Fetched saved answers from backend:', answersRes.data);
 
           // Convert backend format to local format
           const savedAnswers = answersRes.data.answers.map((ans, idx) => {
@@ -141,7 +139,6 @@ export default function DailyChallengeScreen({
 
   // Callback to submit answer to backend
   const handleAnswerSubmit = useCallback(async (taskIndex, answer, answerType = 'text') => {
-    console.log('🎯 [ANSWER] Submitting:', { taskIndex, answer, answerType });
 
     const task = tasks[taskIndex];
 
@@ -160,7 +157,6 @@ export default function DailyChallengeScreen({
         // Check if all tasks are answered
         const answered = updated.filter(a => a !== undefined && a !== null).length;
         if (answered >= tasks.length) {
-          console.log('🎉 Challenge complete!');
           setIsComplete(true);
           setShowConfetti(true);
         }
@@ -180,10 +176,8 @@ export default function DailyChallengeScreen({
       // Actual answer content is stored in Chat model below
       const result = await submitAnswer(userId, challenge._id, taskIndex, 'answered', answerType);
       if (result.success) {
-        console.log('✅ Progress tracked:', result.data);
       }
     } catch (error) {
-      console.error('❌ Submit error:', error);
     }
 
     // Create/update chat thread for this question
@@ -206,12 +200,9 @@ export default function DailyChallengeScreen({
         const json = await response.json();
 
         if (json.success) {
-          console.log('💬 [CHAT] Thread created/updated:', json.data.chatId);
         } else {
-          console.log('⚠️ [CHAT] Could not create thread:', json.message);
         }
       } catch (err) {
-        console.log('⚠️ [CHAT] API error:', err.message);
         // Don't block answer flow if chat creation fails
       }
     }
@@ -267,7 +258,6 @@ export default function DailyChallengeScreen({
               Alert.alert('Oops', json.message || 'Could not send reminder');
             }
           } catch (error) {
-            console.log('❌ Remind error:', error.message);
             Alert.alert('Error', 'Could not send reminder. Try again later.');
           }
         }}

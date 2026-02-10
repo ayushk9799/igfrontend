@@ -161,13 +161,11 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
         const imageUri = typeof previewUri === 'string' ? previewUri : previewUri?.uri;
         if (!imageUri) return;
 
-        console.log('🎯 [TakePhotoCard] Using photo, uploading to S3...');
         setIsSubmitting(true);
 
         try {
             // Upload to S3 first
             const s3Url = await uploadImageToS3(imageUri, 'daily-photos');
-            console.log('🎯 [TakePhotoCard] S3 upload complete:', s3Url);
 
             await onAnswerSubmit(task.originalIndex ?? index, s3Url, 'photo');
             setJustSubmitted(true);

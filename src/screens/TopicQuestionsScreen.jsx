@@ -59,7 +59,6 @@ export default function TopicQuestionsScreen({
 
     // Use prop userId if provided, otherwise fallback to Redux store
     const effectiveUserId = userId || userData?.id;
-    console.log('👤 [TopicScreen] Effective User ID:', effectiveUserId, 'Provided:', userId, 'Redux:', userData?.id);
 
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -103,10 +102,8 @@ export default function TopicQuestionsScreen({
         const lastSynced = lastSyncedOrderRef.current;
         const currentUserId = userIdRef.current;
 
-        console.log(`💾 [SYNC CHECK] MaxSeen: ${maxSeen}, LastSynced: ${lastSynced}, UserID: ${currentUserId}`);
 
         if (maxSeen > lastSynced && currentUserId) {
-            console.log(`💾 [SYNC] Syncing progress on unmount: ${maxSeen}`);
             try {
                 // Using fetch with keepalive: true if supported, or just standard fetch
                 // React Native doesn't support keepalive flag standardly but standard fetch usually initiates
@@ -135,49 +132,17 @@ export default function TopicQuestionsScreen({
                 setError(null);
             }
 
-            console.log(`📡 Fetching questions for topic: ${topic} (Initial: ${isInitial})`);
-
-            // If it's not initial, we want to fetch *after* the last question we have
-            // But the API uses user's progress. 
-            // If we have questions loaded [Q1..Q20], asking API again might return Q21..Q40 if we call with correct params?
-            // Actually the API fetches based on DB User progress. 
-            // PROBLEM: If user hasn't synced progress yet (local browsing), API will return Q1..Q20 again?
-            // SOLUTION: We should pass a `minOrder` param to API if we have local questions?
-            // OR checks against `questions` state last element.
-            // Let's modify the API call or trust the flow?
-            // Current API: `GET /topic?userId=...` -> fetches > user.topicProgress.
-            // If user swiped 5 cards locally but didn't sync, API returns card 1 again?
-            // Yes.
-            // WE NEED TO SYNC PROGRESS BEFORE FETCHING MORE?
-            // OR allow API to accept `afterOrder` param.
-            // I didn't add `afterOrder` to backend.
-            // Hack for now: We assume we sync progress on Answer.
-            // For Infinite Scroll to work without answering, we might need to rely on what's loaded.
-            // Actually, if we just append, we are fine locally.
-            // But if we run out of buffer and need more...
-            // Use the `lastSeenOrder` from the *server's perspective*?
-            // If I just pass `userId`, it uses server state.
-            // If I don't answer, server state is old.
-            // I should passes `startingOrder` if I can?
-            // But I didn't implement that in backend.
-            // Wait, I can just rely on the initial batch being large enough (20)?
-            // If user swipes 15, we fetch more.
-            // Ideally we'd sync the 15 skips then fetch.
-            // I will implement "Sync before Fetch" strategy for infinite scroll.
-
             if (!isInitial) {
                 await syncProgress(); // Sync any pending skips
                 lastSyncedOrderRef.current = maxSeenOrderRef.current; // Update ref to avoid double sync
             }
 
             const url = `${API_BASE}/api/questions/topic/${topic}?userId=${effectiveUserId || ''}&limit=20`;
-            console.log(`🔗 [API] Calling: ${url}`);
             const res = await fetch(url);
             const json = await res.json();
 
             if (json.success && json.data?.questions) {
                 const newQuestions = json.data.questions;
-                console.log(`✅ Fetched ${newQuestions.length} questions for topic: ${topic}`);
 
                 if (isInitial) {
                     setQuestions(newQuestions);
@@ -232,7 +197,6 @@ export default function TopicQuestionsScreen({
                         }),
                     }).then(() => {
                         lastSyncedOrderRef.current = passedQuestion.order;
-                        console.log(`✅ [SYNC] Auto-synced order ${passedQuestion.order}`);
                     }).catch(err => console.error('❌ [SYNC] Auto-sync failed:', err));
                 }
             }
@@ -247,7 +211,6 @@ export default function TopicQuestionsScreen({
 
     // Callback to handle answer submission
     const handleAnswerSubmit = useCallback(async (taskIndex, answer, answerType = 'text') => {
-        console.log('🎯 [ANSWER] Submitting:', { taskIndex, answer, answerType });
 
         const question = questions[taskIndex];
 
@@ -310,7 +273,6 @@ export default function TopicQuestionsScreen({
 
     // Transform questions to tasks format for AnimatedCardStack
     const tasks = useMemo(() => {
-        console.log('🔍 [TopicScreen] First question data:', questions[0]);
         return questions.map(q => ({
             _id: q._id,
             taskstatement: q.taskstatement || q.question,
