@@ -133,10 +133,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             if (puzzleId && !initialData) {
                 const result = await getPuzzle(puzzleId);
                 if (result.success) {
-                    console.log('🧩 Loaded puzzle pieces from API:', result.data.pieces);
-                    console.log('🧩 Piece positions - Index: OriginalPiece');
                     result.data.pieces.forEach((piece, idx) => {
-                        console.log(`   Position ${idx}: Piece ${piece}`);
                     });
 
                     // Check for duplicates
@@ -151,10 +148,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                     setMoveCount(result.data.moveCount || 0);
                 }
             } else if (initialData) {
-                console.log('🧩 Using initialData pieces:', initialData.pieces);
-                console.log('🧩 Piece positions - Index: OriginalPiece');
                 initialData.pieces.forEach((piece, idx) => {
-                    console.log(`   Position ${idx}: Piece ${piece}`);
                 });
 
                 // Check for duplicates
@@ -171,16 +165,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         loadPuzzle();
     }, [puzzleId, initialData]);
 
-    // Debug: Log puzzle dimensions on mount
-    useEffect(() => {
-        console.log('🧩 �� PUZZLE DIMENSIONS:');
-        console.log('   SCREEN_WIDTH:', SCREEN_WIDTH);
-        console.log('   PUZZLE_SIZE:', PUZZLE_SIZE);
-        console.log('   PIECE_SIZE:', PIECE_SIZE);
-        console.log('   ACTUAL_PUZZLE_SIZE:', ACTUAL_PUZZLE_SIZE);
-        console.log('   GRID_SIZE:', GRID_SIZE);
-    }, []);
-
     // Preload puzzle image
     useEffect(() => {
         if (puzzle?.imageUrl) {
@@ -188,10 +172,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             Image.prefetch(puzzle.imageUrl)
                 .then(() => {
                     setImageLoaded(true);
-                    console.log('🧩 Puzzle image preloaded');
                 })
                 .catch((err) => {
-                    console.log('🧩 Image prefetch failed, showing anyway:', err);
                     setImageLoaded(true);
                 });
         }
@@ -246,7 +228,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         const col = Math.floor(relX / PIECE_SIZE);
         const row = Math.floor(relY / PIECE_SIZE);
 
-        console.log('🧩 Drop coords:', { pageX, pageY, gp, relX, relY, col, row });
 
         if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) {
             return row * GRID_SIZE + col;
@@ -256,13 +237,11 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
     // Handle piece swap
     const handlePieceSwap = useCallback((fromIndex, toIndex) => {
-        console.log('🧩 Swapping:', fromIndex, '->', toIndex);
         if (fromIndex === toIndex || toIndex === -1) return;
 
         const currentPieces = [...piecesRef.current];
 
         // Log before swap
-        console.log('🧩 📊 BEFORE SWAP:', currentPieces);
 
         // Perform the swap
         const temp = currentPieces[fromIndex];
@@ -270,7 +249,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         currentPieces[toIndex] = temp;
 
         // Log after swap
-        console.log('🧩 📊 AFTER SWAP:', currentPieces);
 
         // Check for duplicates
         const duplicates = currentPieces.filter((item, index) => currentPieces.indexOf(item) !== index);
@@ -290,7 +268,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
         // Check if solved
         if (checkSolved(currentPieces)) {
-            console.log('🧩 🎉 PUZZLE SOLVED!');
             setIsSolved(true);
             playCelebration();
         }
@@ -306,8 +283,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
                 onPanResponderGrant: () => {
                     const currentPiece = piecesRef.current[index];
-                    console.log(`🧩 🟢 DRAG START - Position ${index}: Piece ${currentPiece}`);
-                    console.log(`   Current grid state:`, piecesRef.current);
                     setDraggingIndex(index);
                     setHoverTarget(-1);
                     Animated.spring(pieceAnimations[index].scale, {
@@ -340,7 +315,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                         if (newTarget !== -1 && newTarget !== index) {
                             const draggedPiece = piecesRef.current[index];
                             const targetPiece = piecesRef.current[newTarget];
-                            console.log(`🧩 🔄 HOVER CHANGE - Dragging Piece ${draggedPiece} from position ${index} over position ${newTarget} (Piece ${targetPiece})`);
                         }
 
                         // Reset previous hover target piece to its position
@@ -399,7 +373,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
                 onPanResponderRelease: (evt, gestureState) => {
                     const currentHoverTarget = hoverTargetRef.current;
-                    console.log(`🧩 🔴 DRAG END - Released at position ${index}`);
 
                     // Reset dragged piece position
                     Animated.parallel([
@@ -424,7 +397,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                     if (currentHoverTarget !== -1 && currentHoverTarget !== index) {
                         const piece1 = piecesRef.current[index];
                         const piece2 = piecesRef.current[currentHoverTarget];
-                        console.log(`🧩 ✅ SWAPPING - Position ${index} (Piece ${piece1}) ↔️ Position ${currentHoverTarget} (Piece ${piece2})`);
 
                         // Reset target piece animation to origin
                         Animated.parallel([
@@ -450,7 +422,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                         // USE THE EXISTING handlePieceSwap FUNCTION INSTEAD OF INLINE SWAP
                         handlePieceSwap(index, currentHoverTarget);
                     } else {
-                        console.log(`🧩 ❌ NO SWAP - No valid drop target`);
                     }
 
                     setHoverTarget(-1);
@@ -493,7 +464,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
         // Use measure for accurate page coordinates
         event.target.measure?.((fx, fy, w, h, px, py) => {
-            console.log('🧩 Grid measured:', { px, py });
             setGridPosition({ x: px, y: py });
         });
     };
@@ -699,7 +669,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                             resizeMode="cover"
                                             fadeDuration={0}
                                             onLoad={() => {
-                                                console.log(`🧩 ✅ Image LOADED for Position ${currentIndex} (Piece ${validOriginalIndex})`);
                                             }}
                                             onError={(error) => {
                                                 console.error(`🧩 ❌ Image FAILED to load for Position ${currentIndex} (Piece ${validOriginalIndex}):`, error.nativeEvent);

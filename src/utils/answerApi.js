@@ -10,15 +10,11 @@ import { API_BASE } from '../constants/Api';
  * @param {string} answerType - The answer type: 'text', 'photo', or 'video'
  */
 export const submitAnswer = async (userId, challengeId, taskIndex, answer, answerType = 'text') => {
-    console.log('📤 [SUBMIT] Starting answer submission...');
-    console.log('📤 [SUBMIT] Params:', { userId, challengeId, taskIndex, answer, answerType });
 
     try {
         const url = `${API_BASE}/api/answers/submit`;
         const body = { userId, challengeId, taskIndex, answer, answerType };
 
-        console.log('📤 [SUBMIT] URL:', url);
-        console.log('📤 [SUBMIT] Body:', JSON.stringify(body));
 
         const response = await fetch(url, {
             method: 'POST',
@@ -26,10 +22,8 @@ export const submitAnswer = async (userId, challengeId, taskIndex, answer, answe
             body: JSON.stringify(body)
         });
 
-        console.log('📤 [SUBMIT] Response status:', response.status);
 
         const data = await response.json();
-        console.log('📤 [SUBMIT] Response data:', JSON.stringify(data));
 
         return data;
     } catch (error) {
@@ -42,18 +36,13 @@ export const submitAnswer = async (userId, challengeId, taskIndex, answer, answe
  * Get user's answers for a challenge
  */
 export const getUserAnswers = async (challengeId, userId) => {
-    console.log('📥 [GET_USER_ANSWERS] Fetching user answers...');
-    console.log('📥 [GET_USER_ANSWERS] Params:', { challengeId, userId });
 
     try {
         const url = `${API_BASE}/api/answers/${challengeId}?userId=${userId}`;
-        console.log('📥 [GET_USER_ANSWERS] URL:', url);
 
         const response = await fetch(url);
-        console.log('📥 [GET_USER_ANSWERS] Response status:', response.status);
 
         const data = await response.json();
-        console.log('📥 [GET_USER_ANSWERS] Response data:', JSON.stringify(data, null, 2));
 
         return data;
     } catch (error) {
@@ -95,18 +84,13 @@ export const getActivityByDate = async (date) => {
  * Get both partners' answers for comparison
  */
 export const getCoupleAnswers = async (date, userId) => {
-    console.log('💑 [GET_COUPLE_ANSWERS] Fetching couple answers...');
-    console.log('💑 [GET_COUPLE_ANSWERS] Params:', { date, userId });
 
     try {
         const url = `${API_BASE}/api/answers/couple/${date}?userId=${userId}`;
-        console.log('💑 [GET_COUPLE_ANSWERS] URL:', url);
 
         const response = await fetch(url);
-        console.log('💑 [GET_COUPLE_ANSWERS] Response status:', response.status);
 
         const data = await response.json();
-        console.log('💑 [GET_COUPLE_ANSWERS] Response data:', JSON.stringify(data, null, 2));
 
         return data;
     } catch (error) {
@@ -121,18 +105,13 @@ export const getCoupleAnswers = async (date, userId) => {
  * @param {string} userId - User ID
  */
 export const getChallengeWithAnswers = async (date, userId) => {
-    console.log('🚀 [GET_CHALLENGE_WITH_ANSWERS] Fetching combined data...');
-    console.log('🚀 [GET_CHALLENGE_WITH_ANSWERS] Params:', { date, userId });
 
     try {
         const url = `${API_BASE}/api/daily-challenge/date/${date}/with-answers?userId=${userId}`;
-        console.log('🚀 [GET_CHALLENGE_WITH_ANSWERS] URL:', url);
 
         const response = await fetch(url);
-        console.log('🚀 [GET_CHALLENGE_WITH_ANSWERS] Response status:', response.status);
 
         const data = await response.json();
-        console.log('🚀 [GET_CHALLENGE_WITH_ANSWERS] Response data:', JSON.stringify(data, null, 2));
 
         return data;
     } catch (error) {

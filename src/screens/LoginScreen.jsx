@@ -105,7 +105,6 @@ export const LoginScreen = ({
             if (Platform.OS === 'ios') {
                 // Native iOS Google Sign-In
                 const result = await GoogleSignInModule.signIn();
-                console.log('iOS Google Sign-In result:', result);
                 idToken = result.idToken;
             } else {
                 // Android - use credentials manager
@@ -113,14 +112,12 @@ export const LoginScreen = ({
                     serverClientId: GOOGLE_CLIENT_ID_ANDROID,
                     autoSelectEnabled: false,
                 });
-                console.log('Android Google credential:', googleCredential);
                 idToken = googleCredential?.idToken;
             }
 
             if (!idToken) {
                 throw new Error('No ID token received from Google');
             }
-            console.log("udbcuids");
 
             // Send token to backend for verification
             const response = await fetch(`${API_BASE}/api/login/google/loginSignUp`, {
@@ -133,21 +130,16 @@ export const LoginScreen = ({
                     platform: Platform.OS,
                 })
             });
-            console.log("Response status:", response.status);
-            console.log("Response ok:", response.ok);
 
             const text = await response.text();
-            console.log("Raw response:", text);
 
             if (!text) {
                 throw new Error('Empty response from server');
             }
 
             const data = JSON.parse(text);
-            console.log(data)
 
             if (data.success && data.user) {
-                console.log(data.user)
                 onLogin(data.user);
             } else {
                 throw new Error(data.error || 'Login failed');

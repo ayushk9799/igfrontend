@@ -32,9 +32,6 @@ const TaskCard = React.memo(({
 }) => {
     if (!task) return null;
 
-    // Debug: Log the category being received
-    console.log('🎴 [TaskCard] Rendering task:', task._id, 'category:', task.category, 'visualType:', task.visualType);
-
     const commonProps = {
         task,
         index,

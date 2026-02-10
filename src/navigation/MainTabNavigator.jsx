@@ -63,7 +63,6 @@ export const MainTabNavigator = ({
                 setChatBadge(json.data.unreadCount || 0);
             }
         } catch (err) {
-            console.log('Could not fetch chat badge:', err.message);
         }
     }, [userData]);
 

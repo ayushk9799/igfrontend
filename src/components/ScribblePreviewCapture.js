@@ -32,7 +32,6 @@ const ScribblePreviewCapture = forwardRef(({ paths, fromUserName, timestamp, sty
                     result: 'tmpfile',
                 });
 
-                console.log('📸 Scribble captured:', uri);
 
                 // Save to App Group
                 if (Platform.OS === 'ios' && ScribbleWidgetBridge) {
@@ -40,11 +39,9 @@ const ScribblePreviewCapture = forwardRef(({ paths, fromUserName, timestamp, sty
                         senderName: fromUserName || 'Your Love',
                         timestamp: timestamp || new Date().toISOString(),
                     });
-                    console.log('✅ Saved to App Group');
 
                     // Trigger widget refresh
                     await ScribbleWidgetBridge.refreshWidget();
-                    console.log('🔄 Widget refreshed');
 
                     return true;
                 }

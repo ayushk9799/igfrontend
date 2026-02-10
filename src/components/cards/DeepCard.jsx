@@ -34,7 +34,6 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
                 return;
             }
 
-            console.log('🎯 [DeepCard] Submitting answer:', answer.trim());
             onAnswerSubmit(task.originalIndex ?? index, answer.trim());
             Keyboard.dismiss();
             setJustSubmitted(true);

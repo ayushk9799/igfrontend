@@ -118,7 +118,6 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
             setShowCamera(false);
         } catch (e) {
-            console.log('Capture error:', e);
             Alert.alert('Error', 'Could not capture photo');
         } finally {
             isProcessingRef.current = false;
@@ -146,7 +145,6 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             const finalUri = sourceUri.startsWith('file://') ? sourceUri : `file://${sourceUri}`;
             setPreviewUri({ uri: finalUri, isFrontCamera: false });
         } catch (e) {
-            console.log('Gallery error:', e);
         }
     };
 
@@ -174,7 +172,6 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             setPreviewUri({ uri: finalUri, isFrontCamera: previewUri?.isFrontCamera || false });
             return finalUri;
         } catch (e) {
-            console.log('Auto-crop error:', e);
             // If crop fails, return the original URI as a fallback
             return uri.startsWith('file://') ? uri : `file://${uri}`;
         }

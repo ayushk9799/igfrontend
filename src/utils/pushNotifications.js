@@ -29,7 +29,6 @@ export const requestNotificationPermission = async () => {
             const enabled =
                 status === AuthorizationStatus.AUTHORIZED ||
                 status === AuthorizationStatus.PROVISIONAL;
-            console.log('📱 Notification permission:', enabled ? 'granted' : 'denied');
             return enabled;
         }
 
@@ -39,14 +38,12 @@ export const requestNotificationPermission = async () => {
                 PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
             );
             const enabled = result === PermissionsAndroid.RESULTS.GRANTED;
-            console.log('📱 Notification permission:', enabled ? 'granted' : 'denied');
             return enabled;
         }
 
         // Android < 13 doesn't need explicit permission
         return true;
     } catch (error) {
-        console.log('⚠️ Permission request failed:', error.message);
         return false;
     }
 };
@@ -55,17 +52,14 @@ export const requestNotificationPermission = async () => {
  * Get FCM token and register with backend
  */
 export const registerFCMToken = async () => {
-    console.log('🔄 Starting FCM token registration...');
 
     try {
         // Only needed on Android - iOS auto-registers for remote messages
         // UPDATE: iOS also needs this for full APNs integration with Firebase
         try {
-            console.log('📱 Registering device for remote messages...');
             if (!getMessaging().isDeviceRegisteredForRemoteMessages) {
                 await registerDeviceForRemoteMessages(getMessaging(getApp()));
             }
-            console.log('✅ Device registered for remote messages');
         } catch (e) {
             console.warn('⚠️ Failed to register device for remote messages:', e.message);
         }
@@ -73,14 +67,11 @@ export const registerFCMToken = async () => {
         // Request permission first
         const hasPermission = await requestNotificationPermission();
         if (!hasPermission) {
-            console.log('⚠️ Notification permission not granted');
             return null;
         }
 
         // Get FCM token using modular API
-        console.log('🔑 Getting FCM token...');
         const token = await getToken(getMessaging(getApp()));
-        console.log('🔑 FCM Token obtained:', token?.slice(0, 30) + '...');
 
         if (!token) {
             console.error('❌ Failed to get FCM token');
@@ -90,12 +81,10 @@ export const registerFCMToken = async () => {
         // Get current user
         const user = getUser();
         if (!user?.id) {
-            console.log('⚠️ User not logged in, skipping FCM registration');
             return token;
         }
 
         // Register token with backend
-        console.log('📤 Registering FCM token with backend for user:', user.id);
         const response = await fetch(`${API_BASE}/api/user/fcm-token`, {
             method: 'POST',
             headers: {
@@ -106,10 +95,8 @@ export const registerFCMToken = async () => {
                 fcmToken: token
             }),
         });
-        console.log('response', response);
 
         if (response.ok) {
-            console.log('✅ FCM token registered with backend successfully!');
         } else {
             console.error('❌ Failed to register FCM token:', response.status);
         }
@@ -128,11 +115,9 @@ export const registerFCMToken = async () => {
 export const setupTokenRefreshListener = () => {
     try {
         return onTokenRefresh(getMessaging(getApp()), async (token) => {
-            console.log('🔄 FCM Token refreshed');
             await registerFCMToken();
         });
     } catch (error) {
-        console.log('⚠️ Token refresh listener failed:', error.message);
         return null;
     }
 };
@@ -143,13 +128,11 @@ export const setupTokenRefreshListener = () => {
 export const setupForegroundMessageHandler = (onMessageReceived) => {
     try {
         return onMessage(getMessaging(getApp()), async (remoteMessage) => {
-            console.log('📩 FCM Message received in foreground:', remoteMessage);
             if (onMessageReceived) {
                 onMessageReceived(remoteMessage);
             }
         });
     } catch (error) {
-        console.log('⚠️ Foreground message handler failed:', error.message);
         return null;
     }
 };

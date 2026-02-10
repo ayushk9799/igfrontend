@@ -8,11 +8,9 @@ export const AuthProvider = ({ children, onAuthError }) => {
 
     // This function will be called when a 401/authentication error occurs
     const handleAuthError = useCallback((error) => {
-        console.log('🔒 [AUTH] Authentication error detected:', error);
 
         // Prevent multiple redirects
         if (authErrorOccurred) {
-            console.log('🔒 [AUTH] Auth error already handled, skipping...');
             return;
         }
 

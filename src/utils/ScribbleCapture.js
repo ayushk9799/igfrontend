@@ -25,23 +25,18 @@ export const captureAndSaveScribble = async (viewRef, metadata = {}) => {
             result: 'tmpfile',
         });
 
-        console.log('📸 Scribble captured:', uri);
-
         // Save to widget storage (iOS App Group / Android SharedPreferences)
         if (ScribbleWidgetBridge) {
             await ScribbleWidgetBridge.saveScribbleImage(uri, {
                 senderName: metadata.fromUserName || 'Your Love',
                 timestamp: metadata.timestamp || new Date().toISOString(),
             });
-            console.log(`✅ Scribble saved to ${Platform.OS} widget storage`);
 
             // Trigger widget refresh
             await ScribbleWidgetBridge.refreshWidget();
-            console.log('🔄 Widget refresh triggered');
 
             return true;
         } else {
-            console.log('⚠️ Widget bridge not available');
             return false;
         }
     } catch (error) {

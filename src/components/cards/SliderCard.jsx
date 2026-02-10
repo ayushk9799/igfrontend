@@ -132,7 +132,6 @@ const SliderCard = React.memo(({
             return;
         }
 
-        console.log('🎯 [SliderCard] Submitting value:', currentValue);
         setLocked(true);
 
         try {

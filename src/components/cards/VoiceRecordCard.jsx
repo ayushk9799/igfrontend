@@ -56,10 +56,7 @@ const VoiceRecordCard = React.memo(({
     // Initialize the audio recorder player on mount
     useEffect(() => {
         try {
-            console.log('🎙️ [VoiceRecordCard] Initializing AudioRecorderPlayer...');
             const player = new AudioRecorderPlayer();
-            console.log('🎙️ [VoiceRecordCard] AudioRecorderPlayer instance:', player);
-            console.log('🎙️ [VoiceRecordCard] startRecorder method:', typeof player?.startRecorder);
             audioRecorderPlayerRef.current = player;
             setIsPlayerReady(true);
         } catch (error) {
@@ -196,7 +193,6 @@ const VoiceRecordCard = React.memo(({
                 await cleanupPlayback();
                 await cleanupRecording();
 
-                console.log('🎙️ [VoiceRecordCard] Starting recording...');
 
                 if (!audioRecorderPlayerRef.current) {
                     console.error('AudioRecorderPlayer not initialized');
@@ -212,7 +208,6 @@ const VoiceRecordCard = React.memo(({
                 });
 
                 const uri = await audioRecorderPlayerRef.current.startRecorder(path);
-                console.log('🎙️ [VoiceRecordCard] Recording to:', uri);
 
                 audioRecorderPlayerRef.current.addRecordBackListener((e) => {
                     const duration = audioRecorderPlayerRef.current.mmssss(Math.floor(e.currentPosition));
@@ -233,7 +228,6 @@ const VoiceRecordCard = React.memo(({
         if (!isRecording) return;
 
         try {
-            console.log('🎙️ [VoiceRecordCard] Stopping recording...');
             if (!audioRecorderPlayerRef.current) return;
             const uri = await audioRecorderPlayerRef.current.stopRecorder();
             audioRecorderPlayerRef.current.removeRecordBackListener();
@@ -241,7 +235,6 @@ const VoiceRecordCard = React.memo(({
             setIsRecording(false);
             if (uri) {
                 setRecordingUri(uri);
-                console.log('🎙️ [VoiceRecordCard] Recording saved:', uri);
             }
         } catch (error) {
             console.error('Failed to stop recording:', error);
@@ -259,7 +252,6 @@ const VoiceRecordCard = React.memo(({
                 await audioRecorderPlayerRef.current.pausePlayer();
                 setIsPlaying(false);
             } else {
-                console.log('▶️ [VoiceRecordCard] Playing:', recordingUri);
 
                 await audioRecorderPlayerRef.current.startPlayer(recordingUri);
                 audioRecorderPlayerRef.current.setVolume(1.0);
@@ -302,11 +294,9 @@ const VoiceRecordCard = React.memo(({
         }
 
         setIsSubmitting(true);
-        console.log('🎙️ [VoiceRecordCard] Uploading voice recording...');
 
         try {
             const s3Url = await uploadAudioToS3(recordingUri, 'voice-recordings');
-            console.log('🎙️ [VoiceRecordCard] Upload complete:', s3Url);
 
             await onAnswerSubmit(task.originalIndex ?? index, s3Url, 'voice');
             // Only auto-advance if the parent screen doesn't filter answered tasks
