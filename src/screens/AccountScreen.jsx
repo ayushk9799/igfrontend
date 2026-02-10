@@ -1,5 +1,5 @@
 // Account Screen - User profile and settings
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
     StyleSheet,
     Text,
@@ -9,6 +9,9 @@ import {
     ActivityIndicator,
     Image,
     Alert,
+    Platform,
+    Linking,
+    AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -17,6 +20,10 @@ import * as ImagePicker from 'expo-image-picker';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { useAvatarUpload } from '../hooks/useAvatarUpload';
+import { requestNotificationPermission, registerFCMToken } from '../utils/pushNotifications';
+import { getApp } from '@react-native-firebase/app';
+import { getMessaging, AuthorizationStatus } from '@react-native-firebase/messaging';
+import { PermissionsAndroid } from 'react-native';
 
 // Crown icon component for premium badge
 const CrownIcon = ({ size = 20, color = colors.accentGold }) => (
@@ -77,6 +84,69 @@ export const AccountScreen = ({
         // Prefer thumbnail for fast loading, fallback to full avatar URL
         setLocalAvatar(userData.avatarThumbnail || userData.avatar || null);
     }, [userData.avatarThumbnail, userData.avatar]);
+
+    // Notification permission state
+    const [notificationEnabled, setNotificationEnabled] = useState(true); // default true to hide button until checked
+
+    const checkNotificationPermission = useCallback(async () => {
+        try {
+            if (Platform.OS === 'ios') {
+                const messaging = getMessaging(getApp());
+                const status = await messaging.hasPermission();
+                setNotificationEnabled(
+                    status === AuthorizationStatus.AUTHORIZED ||
+                    status === AuthorizationStatus.PROVISIONAL
+                );
+            } else if (Platform.OS === 'android' && Platform.Version >= 33) {
+                const result = await PermissionsAndroid.check(
+                    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+                );
+                setNotificationEnabled(result);
+            } else {
+                setNotificationEnabled(true);
+            }
+        } catch (e) {
+            console.log('⚠️ Error checking notification permission:', e.message);
+        }
+    }, []);
+
+    useEffect(() => {
+        checkNotificationPermission();
+        const subscription = AppState.addEventListener('change', (nextState) => {
+            if (nextState === 'active') {
+                checkNotificationPermission();
+            }
+        });
+        return () => subscription.remove();
+    }, [checkNotificationPermission]);
+
+    const handleAllowNotifications = async () => {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+            setNotificationEnabled(true);
+            // Register FCM token with backend now that permission is granted
+            await registerFCMToken();
+        } else {
+            // Permission previously denied — guide user to settings
+            Alert.alert(
+                'Notifications Disabled',
+                'Please enable notifications in your device settings to stay connected.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Open Settings',
+                        onPress: () => {
+                            if (Platform.OS === 'ios') {
+                                Linking.openURL('app-settings:');
+                            } else {
+                                Linking.openSettings();
+                            }
+                        },
+                    },
+                ]
+            );
+        }
+    };
 
 
 
@@ -217,16 +287,29 @@ export const AccountScreen = ({
                     )}
                 </View>
 
-                {/* Menu Items */}
-                <View style={styles.menuSection}>
-                    <Text style={styles.sectionTitle}>Settings</Text>
-                    <MenuItem
-                        title="Notifications"
-                        subtitle="Manage push notifications"
-                        onPress={() => { }}
-                    />
-
-                </View>
+                {/* Notification Permission Button - only show when not granted */}
+                {!notificationEnabled && (
+                    <View style={styles.menuSection}>
+                        <Text style={styles.sectionTitle}>Notifications</Text>
+                        <TouchableOpacity
+                            style={styles.allowNotifButton}
+                            onPress={handleAllowNotifications}
+                            activeOpacity={0.8}
+                        >
+                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"
+                                    stroke="#FFFFFF"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
+                            <Text style={styles.allowNotifText}>Allow Notifications</Text>
+                            <Text style={styles.allowNotifArrow}>→</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
 
 
@@ -238,7 +321,11 @@ export const AccountScreen = ({
                     />
                     <MenuItem
                         title="Privacy Policy"
-                        onPress={() => { }}
+                        onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/privacy-policy.html')}
+                    />
+                    <MenuItem
+                        title="Terms of Service"
+                        onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/terms-of-service.html')}
                     />
                     <MenuItem
                         title="Log Out"
@@ -452,6 +539,26 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     upgradePremiumArrow: {
+        fontSize: 20,
+        color: '#FFFFFF',
+        fontWeight: '700',
+    },
+    allowNotifButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary,
+        borderRadius: borderRadius.lg,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.lg,
+    },
+    allowNotifText: {
+        flex: 1,
+        marginLeft: spacing.sm,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    allowNotifArrow: {
         fontSize: 20,
         color: '#FFFFFF',
         fontWeight: '700',

@@ -16,8 +16,8 @@ import { categoryConfig, defaultConfig } from './categoryConfig';
 import { cardStyles } from './cardStyles';
 import {
     colors, spacing
-
 } from '../../theme';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLIDER_WIDTH = SCREEN_WIDTH - 80;
@@ -42,7 +42,9 @@ const SliderCard = React.memo(({
     onAnswerSubmit,
     isAnswered = false,
     previousAnswer = null,
-    autoAdvanceOnSubmit = true
+    autoAdvanceOnSubmit = true,
+    isLocked = false,
+    onNavigateToPremium = () => { },
 }) => {
     const config = categoryConfig[task.category] || categoryConfig.slider || defaultConfig;
 
@@ -125,6 +127,12 @@ const SliderCard = React.memo(({
     // Handle submit
     const handleSubmit = () => {
         if (locked || isAnswered) return;
+
+        // Block if locked (premium restriction)
+        if (isLocked) {
+            onNavigateToPremium?.();
+            return;
+        }
 
         // Block submission if no partner linked
         if (!hasPartner) {
@@ -235,7 +243,7 @@ const SliderCard = React.memo(({
                 {/* Submit Button */}
                 <View style={styles.actionRow}>
                     <TouchableOpacity
-                        onPress={onSkip}
+                        onPress={isLocked ? onNavigateToPremium : onSkip}
                         style={styles.skipButton}
                         disabled={locked}
                     >
@@ -256,6 +264,8 @@ const SliderCard = React.memo(({
                         </Text>
                     </TouchableOpacity>
                 </View>
+
+
             </View>
         </LinearGradient>
     );
@@ -420,6 +430,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
+
 });
 
 export default SliderCard;

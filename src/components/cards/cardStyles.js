@@ -384,4 +384,7 @@ export const cardStyles = StyleSheet.create({
         textTransform: 'uppercase',
         paddingVertical: spacing.xs,
     },
+
+
+
 });

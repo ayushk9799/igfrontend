@@ -182,6 +182,7 @@ export const MainTabNavigator = ({
                         partnerId={userData?.partnerId}
                         hasPartner={hasPartner}
                         onLinkPartner={onFindPartner}
+                        onNavigateToPremium={onPremiumPress}
                         onBack={() => setCurrentTab('home')}
                     />
                 );

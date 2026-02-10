@@ -5,6 +5,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { categoryConfig } from './categoryConfig';
 import { cardStyles as styles } from './cardStyles';
 
+
 /**
  * Choice button for Never Have I Ever card
  */
@@ -57,7 +58,9 @@ const NeverHaveIEverCard = React.memo(({
     onAnswerSubmit,
     isAnswered = false,
     previousAnswer = null,
-    autoAdvanceOnSubmit = true
+    autoAdvanceOnSubmit = true,
+    isLocked = false,
+    onNavigateToPremium = () => { },
 }) => {
     const config = categoryConfig.neverhaveiever;
     const [selectedAnswer, setSelectedAnswer] = useState(isAnswered ? previousAnswer : null);
@@ -76,6 +79,12 @@ const NeverHaveIEverCard = React.memo(({
 
     const handleChoiceSelect = (choice) => {
         if (locked || isAnswered) return;
+
+        // Block if locked (premium restriction)
+        if (isLocked) {
+            onNavigateToPremium?.();
+            return;
+        }
 
         // Block submission if no partner linked
         if (!hasPartner) {
@@ -131,11 +140,13 @@ const NeverHaveIEverCard = React.memo(({
 
                 {!isLastCard && (
                     <View style={[styles.cardButtonsRow, locked && { opacity: 0 }]}>
-                        <TouchableOpacity onPress={onSkip} style={styles.skipButtonInCard} disabled={locked}>
+                        <TouchableOpacity onPress={isLocked ? onNavigateToPremium : onSkip} style={styles.skipButtonInCard} disabled={locked}>
                             <Text style={styles.skipTextInCard}>Skip →</Text>
                         </TouchableOpacity>
                     </View>
                 )}
+
+
             </View>
         </LinearGradient>
     );

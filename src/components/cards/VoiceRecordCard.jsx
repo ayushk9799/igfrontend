@@ -26,6 +26,7 @@ import { cardStyles as styles } from './cardStyles';
 import { colors, spacing } from '../../theme';
 import { uploadAudioToS3 } from '../../utils/uploadApi';
 
+
 /**
  * VoiceRecordCard - Card for recording voice messages
  * Uses react-native-audio-recorder-player v3.6.0 (non-Expo)
@@ -44,7 +45,9 @@ const VoiceRecordCard = React.memo(({
     onAnswerSubmit,
     isAnswered = false,
     previousAnswer = null,
-    autoAdvanceOnSubmit = true
+    autoAdvanceOnSubmit = true,
+    isLocked = false,
+    onNavigateToPremium = () => { },
 }) => {
     const config = categoryConfig.voicerecord;
     const lastTaskIdRef = useRef(task._id);
@@ -295,6 +298,12 @@ const VoiceRecordCard = React.memo(({
     const handleSubmit = async () => {
         if (!recordingUri || isSubmitting) return;
 
+        // Block if locked (premium restriction)
+        if (isLocked) {
+            onNavigateToPremium?.();
+            return;
+        }
+
         // Block submission if no partner linked
         if (!hasPartner) {
             onLinkPartner?.();
@@ -490,11 +499,13 @@ const VoiceRecordCard = React.memo(({
                 {/* Skip Button */}
                 {!isLastCard && !recordingUri && !isRecording && (
                     <View style={voiceStyles.skipContainer}>
-                        <TouchableOpacity onPress={onSkip} style={voiceStyles.skipButton}>
+                        <TouchableOpacity onPress={isLocked ? onNavigateToPremium : onSkip} style={voiceStyles.skipButton}>
                             <Text style={voiceStyles.skipText}>Skip</Text>
                         </TouchableOpacity>
                     </View>
                 )}
+
+
             </View>
         </LinearGradient>
     );
@@ -671,6 +682,7 @@ const voiceStyles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
     },
+
 });
 
 export default VoiceRecordCard;

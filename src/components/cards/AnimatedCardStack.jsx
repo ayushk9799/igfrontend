@@ -47,6 +47,8 @@ const AnimatedCardStack = ({
     challengeId,
     userAnswers = [],
     autoAdvanceOnSubmit = true,
+    isPremium = false,
+    onNavigateToPremium = () => { },
 }) => {
     // Current active slot (0 or 1)
     const activeSlotIndex = currentIndex % 2;
@@ -71,6 +73,12 @@ const AnimatedCardStack = ({
     // Navigation helpers
     const canGoNext = currentIndex < tasks.length - 1;
     const canGoPrev = currentIndex > 0;
+
+    // Premium restriction: lock questions with order >= 6 (first 5 orders are free)
+    // Check current card's order field from database
+    const FREE_QUESTION_ORDER_LIMIT = 6; // Questions with order >= 6 are premium
+    const currentTask = tasks[currentIndex];
+    const isCurrentCardLocked = !isPremium && currentTask?.order >= FREE_QUESTION_ORDER_LIMIT;
 
     // Reset the INACTIVE slot when index changes
     useEffect(() => {
@@ -159,7 +167,7 @@ const AnimatedCardStack = ({
             if (isTransitioning.value) return;
 
             const shouldSwipeLeft =
-                (event.translationX < -SWIPE_THRESHOLD || event.velocityX < -SWIPE_VELOCITY_THRESHOLD) && canGoNext;
+                (event.translationX < -SWIPE_THRESHOLD || event.velocityX < -SWIPE_VELOCITY_THRESHOLD) && canGoNext && !isCurrentCardLocked;
             const shouldSwipeRight =
                 (event.translationX > SWIPE_THRESHOLD || event.velocityX > SWIPE_VELOCITY_THRESHOLD) && canGoPrev;
 
@@ -256,6 +264,8 @@ const AnimatedCardStack = ({
         const getCardProps = (t, i) => {
             // Use originalIndex if available (from filtered unansweredTasks), fallback to i
             const answerIndex = t.originalIndex ?? i;
+            // Card is locked if user is not premium and question order >= 6
+            const cardIsLocked = !isPremium && t?.order >= FREE_QUESTION_ORDER_LIMIT;
             return {
                 task: t,
                 index: i,
@@ -268,13 +278,15 @@ const AnimatedCardStack = ({
                 partnerId,
                 hasPartner,
                 onLinkPartner,
-                onSubmit: triggerTransition,
-                onSkip: triggerTransition,
+                onSubmit: cardIsLocked ? onNavigateToPremium : triggerTransition,
+                onSkip: cardIsLocked ? onNavigateToPremium : triggerTransition,
                 isLastCard: i >= tasks.length - 1,
                 onAnswerSubmit,
                 isAnswered: !!(userAnswers[answerIndex]?.answer),
                 previousAnswer: userAnswers[answerIndex]?.answer,
                 autoAdvanceOnSubmit,
+                isLocked: cardIsLocked,
+                onNavigateToPremium,
             };
         };
 

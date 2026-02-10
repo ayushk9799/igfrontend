@@ -14,6 +14,7 @@ import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
 import ChatScreen from '../screens/ChatScreen';
 import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
+import NotificationPermissionScreen from '../screens/NotificationPermissionScreen';
 
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
@@ -28,7 +29,7 @@ import { colors } from '../theme';
 import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
-import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener } from '../utils/pushNotifications';
+import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener, checkNotificationPermission } from '../utils/pushNotifications';
 import { API_BASE } from '../constants/Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
 // Redux actions
@@ -393,28 +394,52 @@ export const AppNavigator = () => {
         });
     };
 
+
     // Handle successful pairing
-    const handlePartnerPaired = (partner) => {
+    const handlePartnerPaired = async (partner) => {
+        // Update stored user with partner info
+        const partnerData = {
+            partnerId: partner.id,
+            partnerUsername: partner.name,
+            partnerAvatar: partner.avatar || null,
+            connectionDate: partner.connectionDate,
+        };
+        updateUserStorage(partnerData);
+        dispatch(setPartner(partner));
+        setOnboardedStorage(true);
+
+        // Check if notification permission is already granted
+        const hasPermission = await checkNotificationPermission();
         startTransition(() => {
-            // Update stored user with partner info
-            const partnerData = {
-                partnerId: partner.id,
-                partnerUsername: partner.name,
-                partnerAvatar: partner.avatar || null,
-                connectionDate: partner.connectionDate,
-            };
-            updateUserStorage(partnerData);
-            dispatch(setPartner(partner));
-            setOnboardedStorage(true);
-            setCurrentScreen('home');
+            if (hasPermission) {
+                console.log('🔔 Notification permission already granted, skipping screen');
+                setCurrentScreen('home');
+            } else {
+                setCurrentScreen('notificationPermission');
+            }
         });
     };
 
     // Handle skip partner pairing
-    const handleSkipPartner = () => {
+    const handleSkipPartner = async () => {
+        dispatch(setOnboarded(true));
+        setOnboardedStorage(true);
+
+        // Check if notification permission is already granted
+        const hasPermission = await checkNotificationPermission();
         startTransition(() => {
-            dispatch(setOnboarded(true));
-            setOnboardedStorage(true);
+            if (hasPermission) {
+                console.log('🔔 Notification permission already granted, skipping screen');
+                setCurrentScreen('home');
+            } else {
+                setCurrentScreen('notificationPermission');
+            }
+        });
+    };
+
+    // Handle notification permission completion (allow or skip)
+    const handleNotificationComplete = () => {
+        startTransition(() => {
             setCurrentScreen('home');
         });
     };
@@ -585,6 +610,12 @@ export const AppNavigator = () => {
                     />
                 );
 
+            case 'notificationPermission':
+                return (
+                    <NotificationPermissionScreen
+                        onComplete={handleNotificationComplete}
+                    />
+                );
 
             case 'inviteAccepted':
                 return (

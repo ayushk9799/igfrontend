@@ -34,6 +34,7 @@ class MainApplication : Application(), ReactApplication {
         add(ScribbleWidgetPackage())
       },
       jsRuntimeFactory = HermesInstance(),
+      jsBundleAssetPath = "index.android.bundle",
     )
   }
 

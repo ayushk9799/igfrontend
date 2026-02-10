@@ -12,6 +12,7 @@ import {
     ActivityIndicator,
     Alert,
     NativeModules,
+    Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signUpWithGoogle, signUpWithApple } from 'react-native-credentials-manager';
@@ -256,11 +257,11 @@ export const LoginScreen = ({
                             By signing up for Penguin, you agree to our
                         </Text>
                         <View style={styles.termsLinks}>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/terms-of-service.html')}>
                                 <Text style={styles.termsLink}>Terms of Service</Text>
                             </TouchableOpacity>
                             <Text style={styles.termsText}> and </Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/privacy-policy.html')}>
                                 <Text style={styles.termsLink}>Privacy Policy</Text>
                             </TouchableOpacity>
                         </View>

@@ -84,10 +84,24 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     }, [showCamera, previewUri]);
 
     const requestCameraPermission = async () => {
-        if (Platform.OS === 'android') {
-            const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
-            setHasPermission(result === PermissionsAndroid.RESULTS.GRANTED);
+        if (Platform.OS === 'ios') {
+            setHasPermission(true);
+            return true;
         }
+        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+        const granted = result === PermissionsAndroid.RESULTS.GRANTED;
+        setHasPermission(granted);
+        if (!granted) {
+            Alert.alert(
+                'Camera Permission Needed',
+                'We need camera access to take photos for puzzles. Please grant camera permission.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Try Again', onPress: () => requestCameraPermission() },
+                ]
+            );
+        }
+        return granted;
     };
 
     const handleOpenCamera = async () => {
@@ -129,7 +143,14 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
         try {
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
-                Alert.alert('Permission required', 'Please allow gallery access.');
+                Alert.alert(
+                    'Gallery Permission Needed',
+                    'We need gallery access to pick photos for puzzles. Please grant gallery permission.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Try Again', onPress: () => handlePickFromGallery() },
+                    ]
+                );
                 return;
             }
 
@@ -245,13 +266,25 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                     {/* Camera / Preview Box */}
                     <View style={styles.cameraBoxContainer}>
                         {showCamera && !previewUri ? (
-                            isCameraInitialized ? (
+                            isCameraInitialized && hasPermission ? (
                                 <Camera
                                     ref={cameraRef}
                                     style={styles.camera}
                                     cameraType={cameraType}
                                     flashMode={cameraType === 'front' ? 'off' : 'auto'}
                                 />
+                            ) : !hasPermission && isCameraInitialized ? (
+                                <View style={styles.loadingContainer}>
+                                    <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16, paddingHorizontal: 20 }}>
+                                        Camera access is needed to take puzzle photos
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={requestCameraPermission}
+                                        style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 }}
+                                    >
+                                        <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Grant Camera Access</Text>
+                                    </TouchableOpacity>
+                                </View>
                             ) : (
                                 <View style={styles.loadingContainer}>
                                     <ActivityIndicator size="large" color={colors.primary} />

@@ -6,6 +6,7 @@ import { categoryConfig } from './categoryConfig';
 import { cardStyles as styles } from './cardStyles';
 import { colors } from '../../theme';
 
+
 /**
  * SelectableAvatar - Simple tap-to-select avatar with real image support
  */
@@ -69,7 +70,9 @@ const LikelyToCard = React.memo(({
     onAnswerSubmit,
     isAnswered = false,
     previousAnswer = null,
-    autoAdvanceOnSubmit = true
+    autoAdvanceOnSubmit = true,
+    isLocked = false,
+    onNavigateToPremium = () => { },
 }) => {
     const config = categoryConfig.likelyto;
     const [selectedAnswer, setSelectedAnswer] = useState(isAnswered ? previousAnswer : null);
@@ -86,6 +89,12 @@ const LikelyToCard = React.memo(({
 
     const handleSelect = (who) => {
         if (locked || isAnswered) return;
+
+        // Block if locked (premium restriction)
+        if (isLocked) {
+            onNavigateToPremium?.();
+            return;
+        }
 
         // Block submission if no partner linked
         if (!hasPartner) {
@@ -152,6 +161,8 @@ const LikelyToCard = React.memo(({
                         avatarUrl={userAvatar}
                     />
                 </View>
+
+
             </View>
         </LinearGradient>
     );
@@ -178,6 +189,7 @@ const likelyStyles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
     },
+
 });
 
 export default LikelyToCard;

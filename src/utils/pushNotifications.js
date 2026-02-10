@@ -20,7 +20,39 @@ import { getUser } from './authStorage';
 import { API_BASE } from '../constants/Api';
 
 /**
- * Request notification permissions
+ * Check if notification permission is already granted (silent - no dialog)
+ */
+export const checkNotificationPermission = async () => {
+    try {
+        if (Platform.OS === 'ios') {
+            // On iOS, requestPermission returns current status if already determined
+            const status = await requestPermission(getMessaging(getApp()));
+            const enabled =
+                status === AuthorizationStatus.AUTHORIZED ||
+                status === AuthorizationStatus.PROVISIONAL;
+            console.log('📱 Notification permission check:', enabled ? 'granted' : 'not granted');
+            return enabled;
+        }
+
+        // Android 13+ - silently CHECK without triggering system dialog
+        if (Platform.OS === 'android' && Platform.Version >= 33) {
+            const granted = await PermissionsAndroid.check(
+                PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+            );
+            console.log('📱 Notification permission check:', granted ? 'granted' : 'not granted');
+            return granted;
+        }
+
+        // Android < 13 doesn't need explicit permission
+        return true;
+    } catch (error) {
+        console.log('⚠️ Permission check failed:', error.message);
+        return false;
+    }
+};
+
+/**
+ * Request notification permissions (shows system dialog if not yet granted)
  */
 export const requestNotificationPermission = async () => {
     try {
@@ -70,10 +102,10 @@ export const registerFCMToken = async () => {
             console.warn('⚠️ Failed to register device for remote messages:', e.message);
         }
 
-        // Request permission first
-        const hasPermission = await requestNotificationPermission();
+        // Check permission silently (don't trigger system dialog)
+        const hasPermission = await checkNotificationPermission();
         if (!hasPermission) {
-            console.log('⚠️ Notification permission not granted');
+            console.log('⚠️ Notification permission not granted, skipping FCM token registration');
             return null;
         }
 
@@ -162,6 +194,7 @@ export {
 };
 
 export default {
+    checkNotificationPermission,
     requestNotificationPermission,
     registerFCMToken,
     setupTokenRefreshListener,

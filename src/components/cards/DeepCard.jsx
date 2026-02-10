@@ -7,10 +7,11 @@ import { categoryConfig, defaultConfig } from './categoryConfig';
 import { cardStyles } from './cardStyles';
 import { spacing } from '../../theme';
 
+
 /**
  * DeepCard - High-impact text-based card for deep questions and sharing
  */
-const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, onSkip, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true }) => {
+const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, onSkip, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
     const [answer, setAnswer] = useState(previousAnswer || '');
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
@@ -27,6 +28,12 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
     const [justSubmitted, setJustSubmitted] = useState(false);
 
     const handleSubmit = () => {
+        // Block if locked (premium restriction)
+        if (isLocked) {
+            onNavigateToPremium?.();
+            return;
+        }
+
         if (answer.trim()) {
             // Block submission if no partner linked
             if (!hasPartner) {
@@ -104,10 +111,12 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
                     </View>
 
                     {/* Skip link */}
-                    <TouchableOpacity onPress={onSkip} activeOpacity={0.7} style={styles.skipContainer}>
+                    <TouchableOpacity onPress={isLocked ? onNavigateToPremium : onSkip} activeOpacity={0.7} style={styles.skipContainer}>
                         <Text style={styles.skipText}>Skip </Text>
                     </TouchableOpacity>
                 </View>
+
+
             </KeyboardAvoidingView>
         </LinearGradient>
     );
@@ -209,6 +218,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: 'rgba(255, 255, 255, 0.6)',
     },
+
 });
 
 export default DeepCard;

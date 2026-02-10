@@ -30,7 +30,7 @@ import { AnimatedCardStack } from '../components/cards';
 import { colors, spacing, borderRadius } from '../theme';
 import { API_BASE } from '../constants/Api';
 import { useSelector } from 'react-redux';
-import { selectUser } from '../store/slices/userSlice';
+import { selectUser, selectIsPremium } from '../store/slices/userSlice';
 
 const { width, height } = Dimensions.get('window');
 
@@ -50,10 +50,12 @@ export default function TopicQuestionsScreen({
     partnerId,
     hasPartner = false,
     onLinkPartner = () => { },
+    onNavigateToPremium = () => { },
     onBack = () => { },
 }) {
     const insets = useSafeAreaInsets();
     const userData = useSelector(selectUser);
+    const isPremium = useSelector(selectIsPremium);
 
     // Use prop userId if provided, otherwise fallback to Redux store
     const effectiveUserId = userId || userData?.id;
@@ -316,6 +318,7 @@ export default function TopicQuestionsScreen({
             options: q.options || [],
             topic: q.topic,
             visualType: q.visualType,  // Keep original for debugging
+            order: q.order,  // Include order for premium restriction check
         }));
     }, [questions]);
 
@@ -410,6 +413,8 @@ export default function TopicQuestionsScreen({
                             onIndexChange={handleIndexChange}
                             onAnswerSubmit={handleAnswerSubmit}
                             userAnswers={userAnswers}
+                            isPremium={isPremium}
+                            onNavigateToPremium={onNavigateToPremium}
                         />
                     </View>
                 </View>

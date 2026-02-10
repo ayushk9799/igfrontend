@@ -20,10 +20,11 @@ import { cardStyles as styles } from './cardStyles';
 import { colors } from '../../theme';
 import { uploadImageToS3 } from '../../utils/uploadApi';
 
+
 /**
  * TakePhotoCard - Card for capturing or selecting photos
  */
-const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userName, hasPartner = false, onLinkPartner, onSubmit, onSkip, isLastCard, onAnswerSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true }) => {
+const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userName, hasPartner = false, onLinkPartner, onSubmit, onSkip, isLastCard, onAnswerSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
     const config = categoryConfig.takephoto;
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
@@ -143,6 +144,12 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
 
     const handleUsePhoto = async () => {
         if (!previewUri || isSubmitting) return;
+
+        // Block if locked (premium restriction)
+        if (isLocked) {
+            onNavigateToPremium?.();
+            return;
+        }
 
         // Block submission if no partner linked
         if (!hasPartner) {
@@ -279,12 +286,12 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                         </TouchableOpacity>
 
                         {/* Skip - Center */}
-                        <TouchableOpacity onPress={onSkip} style={photoStyles.skipButton}>
+                        <TouchableOpacity onPress={isLocked ? onNavigateToPremium : onSkip} style={photoStyles.skipButton}>
                             <Text style={photoStyles.skipText}>Skip</Text>
                         </TouchableOpacity>
 
                         {/* Camera Icon - Right */}
-                        <TouchableOpacity onPress={handleOpenCamera} style={photoStyles.iconButton}>
+                        <TouchableOpacity onPress={isLocked ? onNavigateToPremium : handleOpenCamera} style={photoStyles.iconButton}>
                             <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
                                 <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                                 <Path d="M12 17a4 4 0 100-8 4 4 0 000 8z" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
@@ -292,6 +299,8 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                         </TouchableOpacity>
                     </View>
                 )}
+
+
             </View>
         </LinearGradient>
     );
@@ -332,6 +341,7 @@ const photoStyles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: spacing.lg,
     },
+
 });
 
 export default TakePhotoCard;
