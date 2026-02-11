@@ -33,7 +33,7 @@ import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedAp
 import { API_BASE } from '../constants/Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
 // Redux actions
-import { setUser, updateUser, setPartner, setOnboarded, logout } from '../store/slices/userSlice';
+import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 
@@ -55,42 +55,123 @@ export const AppNavigator = () => {
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
 
-    // RevenueCat configuration
-    // useEffect(() => {
-    //     Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
-
-    //     // Platform-specific API keys
-    //     const iosApiKey = 'test_WfhwFIsZuLDDIsuxUwoASrpbUbr';
-    //     const androidApiKey = 'test_WfhwFIsZuLDDIsuxUwoASrpbUbr';
-
-    //     if (Platform.OS === 'ios') {
-    //         Purchases.configure({ apiKey: iosApiKey });
-    //     } else if (Platform.OS === 'android') {
-    //         Purchases.configure({ apiKey: androidApiKey });
-    //     }
-    // }, []);
-
     const purchasesConfiguredRef = React.useRef(false);
     const initPurchases = React.useCallback(async () => {
         try {
             if (purchasesConfiguredRef.current) return;
             Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
             if (Platform.OS === 'ios') {
-                Purchases.configure({ apiKey: 'appl_XNiOeilxYHFbHHJIzrroDvhxQDA' });
+                await Purchases.configure({ apiKey: 'appl_XNiOeilxYHFbHHJIzrroDvhxQDA' });
             } else if (Platform.OS === 'android') {
-                Purchases.configure({ apiKey: 'goog_GZJTkFQaWlmsypgjConPmrRlioL' });
+                await Purchases.configure({ apiKey: 'goog_MgqwBDTfVyuiMCQtLAKlcxcbhZG' });
             }
-            purchasesConfiguredRef.current = true;
-        } catch (e) {
-            // no-op; SDK will throw if misconfigured
-            console.log('revenue error', e);
 
+            // Verify SDK is actually working by fetching customer info
+            await Purchases.getCustomerInfo();
+            purchasesConfiguredRef.current = true;
+            console.log('✅ RevenueCat SDK configured successfully');
+        } catch (e) {
+            purchasesConfiguredRef.current = false;
+            const errorMessage = e?.message || e?.underlyingErrorMessage || String(e);
+            console.error('❌ RevenueCat SDK configuration failed:', errorMessage);
+            Alert.alert(
+                'Subscription Service Error',
+                `Failed to initialize the subscription service. Premium features may be unavailable.\n\nError: ${errorMessage}`,
+                [{ text: 'OK' }]
+            );
         }
     }, []);
+
+    const identifyPurchasesUser = React.useCallback(async (appUserId) => {
+        try {
+            await initPurchases();
+            if (!purchasesConfiguredRef.current) return;
+            if (appUserId) {
+                await Purchases.logIn(String(appUserId));
+            } else {
+                try { await Purchases.logOut(); } catch { }
+            }
+        } catch (e) {
+            console.log('RevenueCat identify error', e);
+        }
+    }, [initPurchases]);
+
+    // Sync premium status from RevenueCat on app startup
+    const syncPremiumFromRevenueCat = React.useCallback(async (userId) => {
+        try {
+            await initPurchases();
+            if (!purchasesConfiguredRef.current) return;
+            const customerInfo = await Purchases.getCustomerInfo();
+            dispatch(setCustomerInfo(customerInfo));
+
+            const active = customerInfo?.entitlements?.active || {};
+            const activeList = Object.values(active || {});
+            const hasActive = activeList.length > 0;
+            let premiumExpiresAt = null;
+            let premiumPlan = null;
+
+            if (hasActive) {
+                const maxDate = activeList.reduce((acc, e) => {
+                    const d = e?.expirationDate ? new Date(e.expirationDate) : null;
+                    if (!d) return acc;
+                    if (!acc) return d;
+                    return d > acc ? d : acc;
+                }, null);
+                premiumExpiresAt = maxDate ? maxDate.toISOString() : null;
+                premiumPlan = activeList[0]?.productIdentifier || null;
+            }
+
+            if (!userId) return;
+
+            // Update backend
+            await fetch(`${API_BASE}/api/user/premium`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    isPremium: hasActive,
+                    premiumExpiresAt: hasActive ? premiumExpiresAt : null,
+                    premiumPlan: hasActive ? premiumPlan : null,
+                }),
+            });
+
+            // Update local storage
+            updateUserStorage({
+                isPremium: hasActive,
+                premiumExpiresAt: hasActive ? premiumExpiresAt : null,
+                premiumPlan: hasActive ? premiumPlan : null,
+            });
+
+            // Update Redux state
+            dispatch(setPremiumStatus({
+                isPremium: hasActive,
+                premiumExpiresAt: hasActive ? premiumExpiresAt : null,
+                premiumPlan: hasActive ? premiumPlan : null,
+            }));
+
+            console.log('✅ Premium status synced from RevenueCat on startup:', hasActive);
+        } catch (e) {
+            console.error('Error syncing premium from RevenueCat on startup:', e);
+        }
+    }, [initPurchases, dispatch]);
 
     useEffect(() => {
         initPurchases();
     }, []);
+
+    // Identify RevenueCat user after login (using email, same as gtdfront)
+    // Then sync premium status from RevenueCat
+    useEffect(() => {
+        if (!userData?.email) return;
+        const identifyAndSync = async () => {
+            await identifyPurchasesUser(userData.email);
+            // After identifying, sync premium status from RevenueCat
+            if (userData?.id) {
+                await syncPremiumFromRevenueCat(userData.id);
+            }
+        };
+        identifyAndSync();
+    }, [userData?.email, userData?.id, identifyPurchasesUser, syncPremiumFromRevenueCat]);
 
     // Sync local yourMood state with socket userMood when it loads
     useEffect(() => {
@@ -119,6 +200,61 @@ export const AppNavigator = () => {
             socket.off('wordle:update', handleWordleUpdate);
         };
     }, [socket, userData?.id]);
+
+    // Listen for partner:paired socket event (when someone pairs with us in real-time)
+    useEffect(() => {
+        if (!socket || !userData?.id) return;
+
+        const handlePartnerPaired = async (data) => {
+            console.log('💕 Partner paired event received:', data);
+            try {
+                // Fetch full partner status from server
+                const response = await fetch(`${API_BASE}/api/partner/status/${userData.id}`);
+                const statusData = await response.json();
+
+                if (statusData.success && statusData.isPaired) {
+                    const partnerData = {
+                        partnerId: statusData.partner.id,
+                        partnerUsername: statusData.partner.name,
+                        partnerAvatar: statusData.partner.avatar || null,
+                        connectionDate: statusData.connectionDate,
+                        partnerIsPremium: statusData.partner.isPremium || false,
+                        partnerPremiumPlan: statusData.partner.premiumPlan || null,
+                        partnerPremiumExpiresAt: statusData.partner.premiumExpiresAt || null,
+                    };
+                    const userPremium = userData.isPremium;
+                    const partnerPremium = statusData.partner.isPremium || false;
+                    const effectivePremium = userPremium || partnerPremium;
+                    const premiumSource = userPremium ? (userData.premiumSource || 'self') : (partnerPremium ? 'partner' : null);
+
+                    updateUserStorage({ ...partnerData, isPremium: effectivePremium, premiumSource });
+                    dispatch(updateUser({ ...partnerData, isPremium: effectivePremium, premiumSource, isOnboarded: true }));
+                    dispatch(setPartner({
+                        id: statusData.partner.id,
+                        name: statusData.partner.name,
+                        avatar: statusData.partner.avatar || null,
+                        connectionDate: statusData.connectionDate,
+                    }));
+                    setOnboardedStorage(true);
+
+                    // Auto-navigate to home after a short delay so PartnerCodeScreen can show the connected text
+                    if (currentScreen === 'partnerCode') {
+                        setTimeout(() => {
+                            setCurrentScreen('home');
+                        }, 2500);
+                    }
+                }
+            } catch (err) {
+                console.error('Error handling partner:paired event:', err);
+            }
+        };
+
+        socket.on('partner:paired', handlePartnerPaired);
+
+        return () => {
+            socket.off('partner:paired', handlePartnerPaired);
+        };
+    }, [socket, userData?.id, userData?.isPremium, currentScreen, dispatch]);
 
     // Setup Notification Listeners
     useEffect(() => {
@@ -186,9 +322,17 @@ export const AppNavigator = () => {
                                 partnerUsername: statusData.partner.name,
                                 partnerAvatar: statusData.partner.avatar || null,
                                 connectionDate: statusData.connectionDate,
+                                partnerIsPremium: statusData.partner.isPremium || false,
+                                partnerPremiumPlan: statusData.partner.premiumPlan || null,
+                                partnerPremiumExpiresAt: statusData.partner.premiumExpiresAt || null,
                             };
-                            updateUserStorage(partnerData);
-                            dispatch(updateUser({ ...partnerData, isOnboarded: true }));
+                            // Compute couple premium
+                            const userPremium = storedUser.isPremium;
+                            const partnerPremium = statusData.partner.isPremium || false;
+                            const effectivePremium = userPremium || partnerPremium;
+                            const premiumSource = userPremium ? (storedUser.premiumSource || 'self') : (partnerPremium ? 'partner' : null);
+                            updateUserStorage({ ...partnerData, isPremium: effectivePremium, premiumSource });
+                            dispatch(updateUser({ ...partnerData, isPremium: effectivePremium, premiumSource, isOnboarded: true }));
 
                             if (!storedUser.partnerId) {
                                 // We were just paired by someone else!
@@ -611,6 +755,7 @@ export const AppNavigator = () => {
                         partnerCode={userData.partnerCode || getPartnerCode() || 'XXXXXX'}
                         userId={userData.id}
                         partnerId={userData.partnerId}
+                        partnerUsername={userData.partnerUsername}
                         onPaired={handlePartnerPaired}
                         onSkip={handleSkipPartner}
                     />

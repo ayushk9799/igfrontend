@@ -22,6 +22,9 @@ import { colors, spacing, borderRadius } from '../theme';
 import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
 import { API_URL } from '../constants/Api';
 
+// RevenueCat is configured once in AppNavigator.jsx on app startup.
+// No need to configure again here — just use the SDK directly.
+
 const HERO_HEIGHT = 320;
 const HERO_GRADIENT_HEIGHT = 180;
 const HERO_PLACEHOLDER_HEIGHT = HERO_HEIGHT - 10;
@@ -190,7 +193,7 @@ export default function PremiumScreen({ onBack }) {
             const customerInfo = await Purchases.getCustomerInfo();
             dispatch(setCustomerInfo(customerInfo));
             setEntitlements(customerInfo.entitlements.active);
-            // await syncServerPremium(customerInfo);
+            await syncServerPremium(customerInfo);
         } catch (e) {
             console.error('Error checking entitlements:', e);
         }

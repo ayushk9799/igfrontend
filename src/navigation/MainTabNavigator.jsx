@@ -194,6 +194,7 @@ export const MainTabNavigator = ({
                         isPremium={userData?.isPremium}
                         premiumPlan={userData?.premiumPlan}
                         premiumExpiresAt={userData?.premiumExpiresAt}
+                        premiumSource={userData?.premiumSource}
                         daysTogether={daysTogether}
                         onLogout={onLogout}
                         onDeleteAccount={onDeleteAccount}

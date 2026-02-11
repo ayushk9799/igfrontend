@@ -121,6 +121,7 @@ export const PartnerCodeScreen = ({
     partnerCode = 'XXXXXX',
     userId,
     partnerId = null, // Check if already paired
+    partnerUsername = null,
     onPaired = () => { },
     onSkip = () => { },
 }) => {
@@ -130,20 +131,22 @@ export const PartnerCodeScreen = ({
     const [copied, setCopied] = useState(false);
     const [isAlreadyPaired, setIsAlreadyPaired] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const connectedScale = useRef(new Animated.Value(0)).current;
     const insets = useSafeAreaInsets();
 
-    // Check if user is already paired on mount - redirect immediately
+    // Check if user is already paired on mount or when partnerId changes
     useEffect(() => {
         if (partnerId) {
             setIsAlreadyPaired(true);
-            Alert.alert(
-                'Already Paired! 💕',
-                'You are already connected with your partner.',
-                [{ text: 'Go Back', onPress: () => onSkip() }],
-                { cancelable: false }
-            );
+            // Animate the connected screen
+            Animated.spring(connectedScale, {
+                toValue: 1,
+                friction: 5,
+                tension: 80,
+                useNativeDriver: true,
+            }).start();
         }
-    }, [partnerId, onSkip]);
+    }, [partnerId, connectedScale]);
 
     useEffect(() => {
         if (!isAlreadyPaired) {
@@ -155,12 +158,20 @@ export const PartnerCodeScreen = ({
         }
     }, [fadeAnim, isAlreadyPaired]);
 
-    // If already paired, don't render the pairing UI
+    // If already paired, show connected text instead of pairing UI
     if (isAlreadyPaired) {
         return (
             <GradientBackground variant="warm">
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 48 }}>💕</Text>
+                <View style={styles.connectedContainer}>
+                    <Animated.View style={[styles.connectedContent, { transform: [{ scale: connectedScale }] }]}>
+                        <Text style={styles.connectedEmoji}>💕</Text>
+                        <Text style={styles.connectedTitle}>You're Connected!</Text>
+                        {partnerUsername && (
+                            <Text style={styles.connectedSubtitle}>
+                                {partnerUsername} just paired with you
+                            </Text>
+                        )}
+                    </Animated.View>
                 </View>
             </GradientBackground>
         );
@@ -493,6 +504,32 @@ const styles = StyleSheet.create({
     skipText: {
         fontSize: 15,
         color: colors.textSecondary,
+        fontWeight: '500',
+    },
+    connectedContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: spacing.xl,
+    },
+    connectedContent: {
+        alignItems: 'center',
+    },
+    connectedEmoji: {
+        fontSize: 64,
+        marginBottom: spacing.lg,
+    },
+    connectedTitle: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: colors.text,
+        textAlign: 'center',
+        marginBottom: spacing.sm,
+    },
+    connectedSubtitle: {
+        fontSize: 16,
+        color: colors.textSecondary,
+        textAlign: 'center',
         fontWeight: '500',
     },
 });

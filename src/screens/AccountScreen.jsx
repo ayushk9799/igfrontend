@@ -69,6 +69,7 @@ export const AccountScreen = ({
     isPremium = false,
     premiumPlan = null,
     premiumExpiresAt = null,
+    premiumSource = null,
     onLogout,
     onAvatarPress,
     onFindPartner,
@@ -255,7 +256,9 @@ export const AccountScreen = ({
                         <View style={styles.premiumCard}>
                             <View style={styles.premiumCardHeader}>
                                 <CrownIcon size={20} color={colors.accentGold} />
-                                <Text style={styles.premiumCardTitle}>You're Premium</Text>
+                                <Text style={styles.premiumCardTitle}>
+                                    {premiumSource === 'partner' ? 'Couple Premium ✨' : "You're Premium"}
+                                </Text>
                             </View>
                             <View style={styles.premiumCardDetails}>
                                 <View>
@@ -271,6 +274,11 @@ export const AccountScreen = ({
                                     </Text>
                                 </View>
                             </View>
+                            {premiumSource === 'partner' && (
+                                <Text style={styles.premiumCoupleSubtext}>
+                                    Premium through your partner's subscription
+                                </Text>
+                            )}
                         </View>
                     ) : (
                         <TouchableOpacity
@@ -519,6 +527,12 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: colors.text,
         marginTop: 2,
+    },
+    premiumCoupleSubtext: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        marginTop: spacing.sm,
+        fontStyle: 'italic',
     },
     upgradePremiumButton: {
         borderRadius: borderRadius.lg,
