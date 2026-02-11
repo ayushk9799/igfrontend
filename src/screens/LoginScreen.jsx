@@ -237,12 +237,7 @@ export const LoginScreen = ({
 
                 {/* Footer */}
                 <View style={styles.footer}>
-                    <View style={styles.signInRow}>
-                        <Text style={styles.footerText}>Already have an account? </Text>
-                        <TouchableOpacity>
-                            <Text style={styles.signInLink}>Sign in</Text>
-                        </TouchableOpacity>
-                    </View>
+
 
                     <View style={styles.termsContainer}>
                         <Text style={styles.termsText}>
@@ -334,20 +329,6 @@ const styles = StyleSheet.create({
     footer: {
         alignItems: 'center',
         paddingBottom: spacing.lg,
-    },
-    signInRow: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginBottom: spacing.xl,
-    },
-    footerText: {
-        fontSize: 15,
-        color: colors.textSecondary,
-    },
-    signInLink: {
-        fontSize: 15,
-        color: colors.text,
-        fontWeight: '700',
     },
     termsContainer: {
         alignItems: 'center',

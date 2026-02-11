@@ -55,21 +55,6 @@ export const AppNavigator = () => {
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
 
-    // RevenueCat configuration
-    // useEffect(() => {
-    //     Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
-
-    //     // Platform-specific API keys
-    //     const iosApiKey = 'test_WfhwFIsZuLDDIsuxUwoASrpbUbr';
-    //     const androidApiKey = 'test_WfhwFIsZuLDDIsuxUwoASrpbUbr';
-
-    //     if (Platform.OS === 'ios') {
-    //         Purchases.configure({ apiKey: iosApiKey });
-    //     } else if (Platform.OS === 'android') {
-    //         Purchases.configure({ apiKey: androidApiKey });
-    //     }
-    // }, []);
-
     const purchasesConfiguredRef = React.useRef(false);
     const initPurchases = React.useCallback(async () => {
         try {
