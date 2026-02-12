@@ -1,6 +1,7 @@
 // Updated Navigator with premium theme and auth persistence
-import React, { useState, useEffect, startTransition, useCallback } from 'react';
+import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
 import { View, StyleSheet, Alert, Platform } from 'react-native';
+import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
 import NicknameScreen from '../screens/NicknameScreen';
@@ -55,44 +56,57 @@ export const AppNavigator = () => {
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
 
+    // In-app update instance (debug flag mirrors __DEV__)
+    const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
+
     const purchasesConfiguredRef = React.useRef(false);
     const initPurchases = React.useCallback(async () => {
         try {
             if (purchasesConfiguredRef.current) return;
+
             Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
-            if (Platform.OS === 'ios') {
-                await Purchases.configure({ apiKey: 'appl_XNiOeilxYHFbHHJIzrroDvhxQDA' });
-            } else if (Platform.OS === 'android') {
-                await Purchases.configure({ apiKey: 'goog_MgqwBDTfVyuiMCQtLAKlcxcbhZG' });
-            }
+            const apiKey = Platform.OS === 'ios'
+                ? 'appl_XNiOeilxYHFbHHJIzrroDvhxQDA'
+                : 'goog_MgqwBDTfVyuiMCQtLAKlcxcbhZG';
+
+            await Purchases.configure({ apiKey });
 
             // Verify SDK is actually working by fetching customer info
             await Purchases.getCustomerInfo();
             purchasesConfiguredRef.current = true;
-            console.log('✅ RevenueCat SDK configured successfully');
         } catch (e) {
             purchasesConfiguredRef.current = false;
-            const errorMessage = e?.message || e?.underlyingErrorMessage || String(e);
-            console.error('❌ RevenueCat SDK configuration failed:', errorMessage);
-            Alert.alert(
-                'Subscription Service Error',
-                `Failed to initialize the subscription service. Premium features may be unavailable.\n\nError: ${errorMessage}`,
-                [{ text: 'OK' }]
-            );
+            const errorInfo = e?.message || e?.underlyingErrorMessage || String(e);
+            const errorCode = e?.code;
+            console.error(`❌ RevenueCat SDK configuration failed (Code: ${errorCode}):`, errorInfo);
+
+            // Only alert if it's a critical non-network error
+            if (__DEV__ || (errorCode !== 0 && errorCode !== 1)) {
+                Alert.alert(
+                    'Subscription Service Error',
+                    `Failed to initialize the subscription service. Error Code: ${errorCode}\n\n${errorInfo}`,
+                    [{ text: 'OK' }]
+                );
+            }
         }
     }, []);
 
     const identifyPurchasesUser = React.useCallback(async (appUserId) => {
         try {
+            // Ensure SDK is configured first
             await initPurchases();
-            if (!purchasesConfiguredRef.current) return;
-            if (appUserId) {
-                await Purchases.logIn(String(appUserId));
-            } else {
-                try { await Purchases.logOut(); } catch { }
+
+            if (!appUserId) {
+                if (purchasesConfiguredRef.current) {
+                    try { await Purchases.logOut(); } catch { }
+                }
+                return;
+            }
+
+            if (purchasesConfiguredRef.current) {
+                const result = await Purchases.logIn(String(appUserId));
             }
         } catch (e) {
-            console.log('RevenueCat identify error', e);
         }
     }, [initPurchases]);
 
@@ -149,15 +163,60 @@ export const AppNavigator = () => {
                 premiumPlan: hasActive ? premiumPlan : null,
             }));
 
-            console.log('✅ Premium status synced from RevenueCat on startup:', hasActive);
         } catch (e) {
-            console.error('Error syncing premium from RevenueCat on startup:', e);
         }
     }, [initPurchases, dispatch]);
 
     useEffect(() => {
         initPurchases();
     }, []);
+
+    // ── In-app update check (runs once on launch, skipped in dev) ──
+    useEffect(() => {
+        if (__DEV__) return;
+
+        let statusListener;
+        const checkForUpdates = async () => {
+            try {
+                const result = await inAppUpdates.checkNeedsUpdate();
+                if (!result?.shouldUpdate) return;
+
+                if (Platform.OS === 'android') {
+                    statusListener = (event) => {
+                        if (event.status === IAUInstallStatus.DOWNLOADED) {
+                            Alert.alert(
+                                'Update ready',
+                                'A newer version has finished downloading. Restart to install now?',
+                                [
+                                    { text: 'Later', style: 'cancel' },
+                                    { text: 'Restart', onPress: () => inAppUpdates.installUpdate() },
+                                ],
+                            );
+                        }
+                    };
+                    inAppUpdates.addStatusUpdateListener(statusListener);
+                    await inAppUpdates.startUpdate({ updateType: IAUUpdateKind.IMMEDIATE });
+                } else {
+                    await inAppUpdates.startUpdate({
+                        title: 'Update available',
+                        message: 'A new version is ready on the App Store.',
+                        buttonUpgradeText: 'Update',
+                        buttonCancelText: 'Later',
+                    });
+                }
+            } catch (error) {
+                console.warn('Failed to run in-app update check', error);
+            }
+        };
+
+        checkForUpdates();
+
+        return () => {
+            if (statusListener) {
+                inAppUpdates.removeStatusUpdateListener(statusListener);
+            }
+        };
+    }, [inAppUpdates]);
 
     // Identify RevenueCat user after login (using email, same as gtdfront)
     // Then sync premium status from RevenueCat
@@ -206,7 +265,6 @@ export const AppNavigator = () => {
         if (!socket || !userData?.id) return;
 
         const handlePartnerPaired = async (data) => {
-            console.log('💕 Partner paired event received:', data);
             try {
                 // Fetch full partner status from server
                 const response = await fetch(`${API_BASE}/api/partner/status/${userData.id}`);
@@ -567,7 +625,6 @@ export const AppNavigator = () => {
         const hasPermission = await checkNotificationPermission();
         startTransition(() => {
             if (hasPermission) {
-                console.log('🔔 Notification permission already granted, skipping screen');
                 setCurrentScreen('home');
             } else {
                 setCurrentScreen('notificationPermission');
@@ -584,7 +641,6 @@ export const AppNavigator = () => {
         const hasPermission = await checkNotificationPermission();
         startTransition(() => {
             if (hasPermission) {
-                console.log('🔔 Notification permission already granted, skipping screen');
                 setCurrentScreen('home');
             } else {
                 setCurrentScreen('notificationPermission');

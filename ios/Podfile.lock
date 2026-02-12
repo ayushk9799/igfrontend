@@ -2736,7 +2736,7 @@ PODS:
     - SocketRocket
     - Yoga
   - RevenueCat (5.57.0)
-  - RNAudioRecorderPlayer (3.6.11):
+  - RNAudioRecorderPlayer (3.6.14):
     - React-Core
   - RNCClipboard (1.16.3):
     - boost
@@ -2766,7 +2766,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNFBApp (23.8.5):
+  - RNFBApp (23.8.6):
     - boost
     - DoubleConversion
     - fast_float
@@ -2795,7 +2795,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNFBMessaging (23.8.5):
+  - RNFBMessaging (23.8.6):
     - boost
     - DoubleConversion
     - fast_float
@@ -3550,10 +3550,10 @@ SPEC CHECKSUMS:
   ReactCommon: 5f0e5c09a64a2717215dd84380e1a747810406f2
   ReactNativeCameraKit: 8bf3988eb86ba253fafca7c14286aa7855a1c9e1
   RevenueCat: 2d8aa56c68fa8e92c0d669e5e797c4a93e284f20
-  RNAudioRecorderPlayer: a33b29ebcf697a58aa0e502e672604f688c0841d
+  RNAudioRecorderPlayer: b5ed41ccfe72a211a870bfe09ab36c046eb27d2a
   RNCClipboard: 4b58c780f63676367640f23c8e114e9bd0cf86ac
-  RNFBApp: 3504f3fd9217321ad7bb85cb0243e5c547d98e8c
-  RNFBMessaging: d467b8f85ff4a2c2eda11e6c12aa1262e26ce883
+  RNFBApp: b574c08010a6d3e995e654d03e34e789ebe55a35
+  RNFBMessaging: da2d7f511df0368011a126b156f1a7f4be0c1b72
   RNGestureHandler: 3a73f098d74712952870e948b3d9cf7b6cae9961
   RNPurchases: 462fb7edb0304dba1db46e3d38368a271ebe4cc2
   RNReanimated: 0a42c1fc618e8f510b7b1724164308e49220dbe2

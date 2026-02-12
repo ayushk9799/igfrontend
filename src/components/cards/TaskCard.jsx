@@ -222,7 +222,6 @@ const TaskCard = React.memo(({
     if (!task) return null;
 
     // Debug: Log the category being received
-    console.log('🎴 [TaskCard] Rendering task:', task._id, 'category:', task.category, 'visualType:', task.visualType, 'isLocked:', isLocked);
 
     // If locked, render the in-card premium lock instead of the actual card
     if (isLocked) {

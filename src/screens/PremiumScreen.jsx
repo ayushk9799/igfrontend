@@ -140,7 +140,12 @@ export default function PremiumScreen({ onBack }) {
     );
 
     useEffect(() => {
-        getOfferingsAndEntitlements();
+        const init = async () => {
+            // Wait a small bit to ensure AppNavigator configuration logic has a head start
+            // although Purchases is a singleton and should handle multiple calls gracefully
+            await getOfferingsAndEntitlements();
+        };
+        init();
     }, []);
 
     const syncServerPremium = async (customerInfo) => {
@@ -202,18 +207,37 @@ export default function PremiumScreen({ onBack }) {
     const handlePurchase = async (pkg) => {
         try {
             setLoading(true);
+
             const { customerInfo } = await Purchases.purchasePackage(pkg);
             dispatch(setCustomerInfo(customerInfo));
             await checkEntitlements();
+
+            if (Platform.OS === 'android') {
+                ToastAndroid.show('Purchase successful!', ToastAndroid.SHORT);
+            }
         } catch (e) {
+            const errorCode = e?.code;
+            const errorMessage = e?.message || e?.underlyingErrorMessage || String(e);
+
             if (e?.userCancelled) {
                 if (Platform.OS === 'android') {
                     ToastAndroid.show('Purchase cancelled', ToastAndroid.SHORT);
                 } else {
                     Alert.alert('Purchase cancelled');
                 }
+            } else if (errorCode === 5 || errorCode === 6) { // DEVELOPER_ERROR or PRODUCT_NOT_AVAILABLE_ERROR
+                console.error(`❌ Store Error (Code ${errorCode}). Attempting to refresh offerings...`);
+                Alert.alert(
+                    'Purchase Sync Error',
+                    'The store is temporarily out of sync or reported a developer error. We are refreshing the catalog, please try again in a moment.',
+                    [{ text: 'OK', onPress: () => getOfferingsAndEntitlements() }]
+                );
             } else {
-                console.error('Purchase error:', e);
+                console.error(`❌ Purchase error (Code: ${errorCode}):`, errorMessage);
+                Alert.alert(
+                    'Purchase Failed',
+                    `Something went wrong with the purchase.\n\nError: ${errorMessage}${errorCode ? ` (Code: ${errorCode})` : ''}`
+                );
             }
         } finally {
             setLoading(false);
@@ -224,7 +248,6 @@ export default function PremiumScreen({ onBack }) {
         try {
             setLoading(true);
             const o = await Purchases.getOfferings();
-            console.log('offerings', o);
 
             if (o?.current && Array.isArray(o.current.availablePackages) && o.current.availablePackages.length > 0) {
                 setOfferings(o);

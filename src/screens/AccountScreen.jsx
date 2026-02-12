@@ -107,7 +107,6 @@ export const AccountScreen = ({
                 setNotificationEnabled(true);
             }
         } catch (e) {
-            console.log('⚠️ Error checking notification permission:', e.message);
         }
     }, []);
 

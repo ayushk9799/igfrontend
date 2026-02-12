@@ -30,7 +30,6 @@ export const checkNotificationPermission = async () => {
             const enabled =
                 status === AuthorizationStatus.AUTHORIZED ||
                 status === AuthorizationStatus.PROVISIONAL;
-            console.log('📱 Notification permission check:', enabled ? 'granted' : 'not granted');
             return enabled;
         }
 
@@ -39,14 +38,12 @@ export const checkNotificationPermission = async () => {
             const granted = await PermissionsAndroid.check(
                 PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
             );
-            console.log('📱 Notification permission check:', granted ? 'granted' : 'not granted');
             return granted;
         }
 
         // Android < 13 doesn't need explicit permission
         return true;
     } catch (error) {
-        console.log('⚠️ Permission check failed:', error.message);
         return false;
     }
 };
