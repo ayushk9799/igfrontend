@@ -12,25 +12,27 @@ import {
     Animated,
     Dimensions,
     InteractionManager,
-    SafeAreaView,
-    StatusBar,
+    Linking,
 } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import ExpoImageCropTool from 'expo-image-crop-tool';
 import { ImageManipulator, FlipType, SaveFormat } from 'expo-image-manipulator';
 import { Camera } from 'react-native-camera-kit';
 import { useSelector } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, spacing, borderRadius } from '../theme';
+import GradientBackground from '../components/GradientBackground';
+import { colors, spacing, borderRadius, shadows } from '../theme';
 import useAvatarUpload from '../hooks/useAvatarUpload';
 import { selectUser } from '../store/slices/userSlice';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const AvatarSelectionScreen = ({ onComplete, onBack }) => {
+const AvatarSelectionScreen = ({ onComplete }) => {
     const { uploadAvatar, isUploading } = useAvatarUpload();
     const userData = useSelector(selectUser);
+    const insets = useSafeAreaInsets();
 
     // Get existing avatar from store
     const existingAvatar = userData?.avatarThumbnail || userData?.avatar || null;
@@ -38,7 +40,7 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
 
-    const [hasPermission, setHasPermission] = useState(Platform.OS === 'ios');
+    const [hasPermission, setHasPermission] = useState(false);
     // Initialize with existing avatar if available
     const [previewUri, setPreviewUri] = useState(
         existingAvatar ? { uri: existingAvatar, isFrontCamera: false } : null
@@ -49,28 +51,71 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
 
     // Animations
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(30)).current;
 
     useEffect(() => {
-        Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-        }).start();
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+        ]).start();
     }, []);
 
     useEffect(() => {
         const task = InteractionManager.runAfterInteractions(() => {
             setIsCameraInitialized(true);
-            requestCameraPermission();
+            checkCameraPermission();
         });
 
         return () => task.cancel();
     }, []);
 
+    const checkCameraPermission = async () => {
+        if (Platform.OS === 'ios') {
+            const { status } = await ImagePicker.getCameraPermissionsAsync();
+            setHasPermission(status === 'granted');
+            return;
+        }
+        const granted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
+        setHasPermission(granted);
+    };
+
     const requestCameraPermission = async () => {
-        if (Platform.OS === 'android') {
-            const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
-            setHasPermission(result === PermissionsAndroid.RESULTS.GRANTED);
+        if (Platform.OS === 'ios') {
+            const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+            const granted = status === 'granted';
+            setHasPermission(granted);
+            if (!granted && !canAskAgain) {
+                Alert.alert(
+                    'Camera Permission Needed',
+                    'Camera access was denied. Please enable it in Settings to take your profile photo.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                    ]
+                );
+            }
+            return;
+        }
+        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+        const granted = result === PermissionsAndroid.RESULTS.GRANTED;
+        setHasPermission(granted);
+        if (!granted) {
+            Alert.alert(
+                'Camera Permission Needed',
+                'We need camera access to take your profile photo. Please grant camera permission.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Try Again', onPress: () => requestCameraPermission() },
+                ]
+            );
         }
     };
 
@@ -177,8 +222,6 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
                     finalUploadUri = saved.uri;
                 } catch (err) {
                     console.error('Failed to flip image before upload:', err);
-                    // Decide if we should return or proceed with unflipped image. 
-                    // Proceeding might be safer ensuring the user doesn't get stuck.
                 }
             }
 
@@ -207,45 +250,68 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
 
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <GradientBackground variant="warm">
+            <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
+                {/* Brand Name */}
+                <View style={styles.brandContainer}>
+                    <Text style={styles.brandName}>penguin.</Text>
+                </View>
 
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                        <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                {/* Skip Button (Cross) */}
+                <TouchableOpacity onPress={onComplete} style={styles.skipButton}>
+                    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                        <Path d="M18 6L6 18M6 6l12 12" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                     </Svg>
                 </TouchableOpacity>
 
-                {/* Progress Bar */}
-                <View style={styles.progressBarContainer}>
-                    <View style={styles.progressBarFill} />
-                    <View style={styles.progressBarTrack} />
-                </View>
-
-                {/* Placeholder */}
-                <View style={{ width: 44 }} />
-            </View>
-
-            <View style={styles.content}>
-
-                <Text style={styles.title}>
-                    {previewUri ? 'Look good?' : 'Choose a\nprofile picture'}
-                </Text>
+                {/* Title Section */}
+                <Animated.View
+                    style={[
+                        styles.titleSection,
+                        {
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                        },
+                    ]}
+                >
+                    <Text style={styles.title}>
+                        {previewUri ? 'looking good?' : 'add a photo'}
+                    </Text>
+                    <Text style={styles.subtitle}>
+                        {previewUri ? 'Your partner will love it' : 'Let your partner see you'}
+                    </Text>
+                </Animated.View>
 
                 {/* Camera / Preview Box */}
-                <View style={styles.cameraBoxContainer}>
+                <Animated.View
+                    style={[
+                        styles.cameraBoxContainer,
+                        {
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                        },
+                    ]}
+                >
                     {showCamera && !previewUri ? (
-                        isCameraInitialized ? (
+                        isCameraInitialized && hasPermission ? (
                             <Camera
                                 ref={cameraRef}
-                                style={[
-                                    styles.camera
-                                ]}
+                                style={styles.camera}
                                 cameraType={cameraType}
                                 flashMode={cameraType === 'front' ? 'off' : 'auto'}
                             />
+                        ) : !hasPermission && isCameraInitialized ? (
+                            <View style={styles.loadingContainer}>
+                                <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16, paddingHorizontal: 20 }}>
+                                    Camera access is needed to take your profile photo
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={requestCameraPermission}
+                                    style={{ backgroundColor: '#000000', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 }}
+                                >
+                                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Grant Camera Access</Text>
+                                </TouchableOpacity>
+                            </View>
                         ) : (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color={colors.primary} />
@@ -261,15 +327,15 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
                             resizeMode="cover"
                         />
                     )}
-                </View>
+                </Animated.View>
 
                 {/* Controls */}
                 <View style={styles.controlsRow}>
                     {!previewUri ? (
                         <>
                             <TouchableOpacity onPress={handlePickFromGallery} style={styles.controlBtnSecondary}>
-                                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                                    <Path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke={colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                                 </Svg>
                             </TouchableOpacity>
 
@@ -278,120 +344,99 @@ const AvatarSelectionScreen = ({ onComplete, onBack }) => {
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={toggleCamera} style={styles.controlBtnSecondary}>
-                                {/* Flipping Icon */}
-                                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M1 4v6h6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                                    <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                                    <Path d="M1 4v6h6" stroke={colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                                    <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke={colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                                 </Svg>
                             </TouchableOpacity>
                         </>
                     ) : (
-                        <TouchableOpacity onPress={handleRetake} style={styles.controlBtnText}>
-                            <Text style={styles.retakeText}>Retake Photo</Text>
+                        <TouchableOpacity onPress={handleRetake} activeOpacity={0.7}>
+                            <Text style={styles.retakeText}>Retake Photo →</Text>
                         </TouchableOpacity>
                     )}
                 </View>
 
-            </View>
+                {/* Spacer */}
+                <View style={styles.spacer} />
 
-            {/* Footer Button */}
-            <View style={styles.footer}>
-                <TouchableOpacity
-                    style={[styles.nextButton, (!previewUri && !isUploading) && styles.nextButtonDisabled]}
-                    onPress={handleNext}
-                    disabled={isUploading}
-                >
-                    {isUploading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={styles.nextButtonText}>Next</Text>
-                    )}
-                </TouchableOpacity>
+                {/* Footer Button */}
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        style={[styles.continueButton, (!previewUri && !isUploading) && styles.continueButtonDisabled]}
+                        onPress={handleNext}
+                        disabled={isUploading}
+                        activeOpacity={0.9}
+                    >
+                        {isUploading ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                            <Text style={[
+                                styles.continueButtonText,
+                                (!previewUri && !isUploading) && styles.continueButtonTextDisabled,
+                            ]}>
+                                Continue →
+                            </Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
             </View>
-
-        </SafeAreaView>
+        </GradientBackground>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background, // Light theme background
+        paddingHorizontal: spacing.xl,
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: spacing.lg,
-        paddingTop: Platform.OS === 'android' ? spacing.lg : 0,
-        height: 60,
+    brandContainer: {
+        alignSelf: 'flex-start',
+        marginBottom: spacing.md,
     },
-    backButton: {
-        width: 44,
-        height: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: colors.surface,
-        borderRadius: 22,
-        shadowColor: colors.shadowLight,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
+    brandName: {
+        fontSize: 28,
+        fontWeight: '600',
+        color: colors.text,
+        letterSpacing: -0.5,
     },
-    progressBarContainer: {
-        flex: 1,
-        height: 6,
-        backgroundColor: colors.borderLight,
-        borderRadius: 3,
-        marginHorizontal: spacing.xl,
-        overflow: 'hidden',
-        flexDirection: 'row',
+    skipButton: {
+        alignSelf: 'flex-end',
+        marginBottom: spacing.xl,
+        padding: spacing.xs,
     },
-    progressBarFill: {
-        flex: 0.6,
-        backgroundColor: colors.primary,
-        borderRadius: 3,
-    },
-    progressBarTrack: {
-        flex: 0.4,
-    },
-    content: {
-        flex: 1,
-        alignItems: 'center',
-        paddingHorizontal: spacing.lg,
+    titleSection: {
+        alignSelf: 'flex-start',
+        marginBottom: spacing.xl,
     },
     title: {
+        fontSize: 34,
+        fontWeight: '600',
         color: colors.text,
-        fontSize: 28,
-        fontWeight: '700',
-        textAlign: 'center',
-        marginTop: spacing.lg,
-        marginBottom: spacing.xl,
-        lineHeight: 36,
+        letterSpacing: -0.5,
+    },
+    subtitle: {
+        fontSize: 16,
+        color: colors.textSecondary,
+        marginTop: spacing.xs,
     },
     cameraBoxContainer: {
         width: '100%',
-        aspectRatio: 1, // Square aspect ratio
-        borderRadius: 32,
+        aspectRatio: 1,
+        borderRadius: borderRadius['2xl'],
         overflow: 'hidden',
         backgroundColor: colors.surface,
         marginBottom: spacing.xl,
         borderWidth: 1,
-        borderColor: colors.border,
-        shadowColor: colors.shadowMedium,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 5,
+        borderColor: colors.borderLight,
+        ...shadows.sm,
     },
     camera: {
-        // Make camera taller than container and center it to fill width
         position: 'absolute',
-        top: '-38.5%', // Center the 16:9 camera in the 1:1 box
+        top: '-38.5%',
         left: 0,
         width: '100%',
-        height: '177%', // 16:9 Aspect Ratio within the square
+        height: '177%',
     },
     previewImage: {
         flex: 1,
@@ -406,78 +451,64 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: spacing.xl,
-        marginTop: spacing.sm,
     },
     controlBtnSecondary: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: colors.border,
-        shadowColor: colors.shadowLight,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        borderColor: colors.borderLight,
+        ...shadows.xs,
     },
     controlBtnPrimary: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: 72,
+        height: 72,
+        borderRadius: 36,
         backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 4,
+        borderWidth: 3,
         borderColor: colors.borderLight,
     },
     captureInner: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: colors.primary,
-    },
-    controlBtnText: {
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.xl,
-        backgroundColor: colors.surface,
-        borderRadius: borderRadius.full,
-        borderWidth: 1,
-        borderColor: colors.border,
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        backgroundColor: '#000000',
     },
     retakeText: {
+        fontSize: 15,
         color: colors.textSecondary,
-        fontWeight: '600',
-        fontSize: 16,
+        fontWeight: '500',
+        paddingVertical: spacing.sm,
+    },
+    spacer: {
+        flex: 1,
     },
     footer: {
-        paddingHorizontal: spacing.lg,
-        paddingBottom: Platform.OS === 'ios' ? 0 : spacing.lg,
-        marginBottom: spacing.lg,
+        marginBottom: spacing.sm,
     },
-    nextButton: {
-        height: 56,
-        backgroundColor: colors.primary,
-        borderRadius: 28,
+    continueButton: {
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderRadius: borderRadius.xl,
+        backgroundColor: '#000000',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '100%',
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 6,
     },
-    nextButtonDisabled: {
-        opacity: 0.6,
-        shadowOpacity: 0.1,
+    continueButtonDisabled: {
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
     },
-    nextButtonText: {
-        color: '#fff',
-        fontSize: 18,
+    continueButtonText: {
+        fontSize: 16,
         fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    continueButtonTextDisabled: {
+        color: 'rgba(255, 255, 255, 0.6)',
     },
 });
 

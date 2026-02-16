@@ -10,7 +10,7 @@ import {
     Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius, shadows } from '../theme';
 import { requestNotificationPermission, registerFCMToken } from '../utils/pushNotifications';
@@ -233,15 +233,8 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                         onPress={handleAllowNotifications}
                         activeOpacity={0.85}
                     >
-                        <LinearGradient
-                            colors={['#E88A4C', '#D4763B']}
-                            style={styles.allowButtonGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                        >
-                            <Text style={styles.allowButtonText}>Allow Notifications</Text>
-                            <Text style={styles.allowButtonIcon}>🔔</Text>
-                        </LinearGradient>
+                        <Text style={styles.allowButtonText}>Allow Notifications</Text>
+                        <Text style={styles.allowButtonIcon}>🔔</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
@@ -359,16 +352,14 @@ const styles = StyleSheet.create({
     allowButton: {
         width: '100%',
         borderRadius: borderRadius.xl,
-        overflow: 'hidden',
-        ...shadows.md,
-    },
-    allowButtonGradient: {
+        backgroundColor: '#E08545',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 16,
         paddingHorizontal: spacing.xl,
         gap: spacing.sm,
+        ...shadows.md,
     },
     allowButtonText: {
         fontSize: 17,

@@ -43,20 +43,15 @@ class NotificationService: UNNotificationServiceExtension {
                 let saved = saveScribbleToAppGroup(paths: paths, senderName: senderName, timestamp: timestamp)
                 
                 if saved {
-                    bestAttemptContent.subtitle = "✅ \(paths.count) paths saved"
-                    
                     // Trigger widget refresh using SPECIFIC kind
                     if #available(iOS 14.0, *) {
                         WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
                     }
                 } else {
-                    bestAttemptContent.subtitle = "❌ Save failed"
                 }
             } else {
-                bestAttemptContent.subtitle = "❌ JSON parse failed"
             }
         } else {
-            bestAttemptContent.subtitle = "type=\(type ?? "nil")"
         }
         
         contentHandler(bestAttemptContent)

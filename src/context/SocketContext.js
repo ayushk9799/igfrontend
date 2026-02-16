@@ -64,12 +64,20 @@ export const SocketProvider = ({ children }) => {
             return;
         }
 
-        // Don't reconnect if already connected
+        // Check if already connected
         if (socketRef.current?.connected) {
-            return;
+            // If the connected userId matches the current user, we're good
+            if (socketRef.current.auth?.userId === user.id) {
+                return;
+            }
+            // Otherwise, we have a stale connection (e.g. after logout/login)
+            console.log(`🔄 User ID changed from ${socketRef.current.auth?.userId} to ${user.id}, reconnecting...`);
+            socketRef.current.disconnect();
         }
 
         setConnectionState(CONNECTION_STATE.CONNECTING);
+
+        console.log(`📡 Attempting socket connection for user: ${user.id}`);
 
         // Create socket connection with auth
         const socketInstance = io(API_BASE, {
@@ -86,6 +94,7 @@ export const SocketProvider = ({ children }) => {
 
         // Connection events
         socketInstance.on('connect', () => {
+            console.log(`✅ Socket connected with ID: ${socketInstance.id}`);
             setConnectionState(CONNECTION_STATE.CONNECTED);
 
             // Request current moods and status
@@ -96,10 +105,12 @@ export const SocketProvider = ({ children }) => {
         });
 
         socketInstance.on('disconnect', (reason) => {
+            console.log(`🔌 Socket disconnected: ${reason}`);
             setConnectionState(CONNECTION_STATE.DISCONNECTED);
         });
 
         socketInstance.on('connect_error', (error) => {
+            console.error(`❌ Socket connection error: ${error.message}`);
             setConnectionState(CONNECTION_STATE.ERROR);
 
             // Check if this is an authentication error
@@ -229,10 +240,6 @@ export const SocketProvider = ({ children }) => {
         onMoodUpdatedRef.current = callback;
     }, []);
 
-    // Function to clear partner scribble (used after sending your own scribble)
-    const clearPartnerScribble = useCallback(() => {
-        setPartnerScribble(null);
-    }, []);
 
     // Context value
     const value = {
@@ -246,7 +253,6 @@ export const SocketProvider = ({ children }) => {
         connect,
         disconnect,
         setOnMoodUpdated,
-        clearPartnerScribble, // New: allows clearing scribble after sending
     };
 
     return (
@@ -274,7 +280,6 @@ export const useSocketContext = () => {
             connect: () => { },
             disconnect: () => { },
             setOnMoodUpdated: () => { },
-            clearPartnerScribble: () => { },
         };
     }
     return context;

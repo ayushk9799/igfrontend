@@ -9,7 +9,6 @@ import {
     PanResponder,
     Dimensions,
     Animated,
-    Alert,
     Modal,
     Platform,
     ScrollView,
@@ -137,8 +136,9 @@ export const ScribbleScreen = ({
     const [sentScribble, setSentScribble] = useState(null); // Store sent scribble for preview
     const [showWidgetTutorial, setShowWidgetTutorial] = useState(false);
     const [tutorialStep, setTutorialStep] = useState(0);
+    const [connectionError, setConnectionError] = useState(false);
     const insets = useSafeAreaInsets();
-    const { socket, isConnected, clearPartnerScribble } = useSocketContext();
+    const { socket, isConnected } = useSocketContext();
     const canvasOpacity = useRef(new Animated.Value(0)).current;
     const modalOpacity = useRef(new Animated.Value(0)).current;
     const modalScale = useRef(new Animated.Value(0.85)).current;
@@ -260,6 +260,8 @@ export const ScribbleScreen = ({
 
     const handleSend = () => {
         if (paths.length === 0) return;
+        console.log(socket);
+        console.log(isConnected);
 
         // Send via socket
         if (socket && isConnected) {
@@ -270,11 +272,6 @@ export const ScribbleScreen = ({
             }));
 
             socket.emit('scribble:send', { paths: pathsToSend });
-
-            // Clear partner scribble from sender's view to prevent showing stale data
-            // This ensures the sender's HomeScreen canvas card shows empty/Lottie animation
-            // instead of any previously received scribble or their own sent scribble
-            clearPartnerScribble();
 
             // Save sent scribble for preview and clear canvas
             setSentScribble({
@@ -287,7 +284,8 @@ export const ScribbleScreen = ({
             // Call parent's onSend if provided
             onSend(pathsToSend);
         } else {
-            Alert.alert('Connection Error', 'Not connected to server. Please try again.');
+            setConnectionError(true);
+            setTimeout(() => setConnectionError(false), 3000);
         }
     };
 
@@ -512,6 +510,11 @@ export const ScribbleScreen = ({
 
                 {/* Send Button */}
                 <View style={styles.sendContainer}>
+                    {connectionError && (
+                        <Text style={styles.connectionErrorText}>
+                            Not connected to server. Please try again.
+                        </Text>
+                    )}
                     {hasPartner ? (
                         <Button
                             title="Send to Your Love"
@@ -992,6 +995,13 @@ const styles = StyleSheet.create({
     sendContainer: {
         marginTop: '0',
         paddingBottom: spacing['2xl'],
+    },
+    connectionErrorText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#EF4444',
+        textAlign: 'center',
+        marginBottom: 8,
     },
     // Sent state - displays inside the canvas
     sentState: {

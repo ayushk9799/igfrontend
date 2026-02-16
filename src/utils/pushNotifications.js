@@ -9,6 +9,7 @@ import {
     getMessaging,
     getToken,
     requestPermission,
+    hasPermission,
     onTokenRefresh,
     onMessage,
     registerDeviceForRemoteMessages,
@@ -25,8 +26,8 @@ import { API_BASE } from '../constants/Api';
 export const checkNotificationPermission = async () => {
     try {
         if (Platform.OS === 'ios') {
-            // On iOS, requestPermission returns current status if already determined
-            const status = await requestPermission(getMessaging(getApp()));
+            // Use hasPermission for a silent check — does NOT trigger the system dialog
+            const status = await hasPermission(getMessaging(getApp()));
             const enabled =
                 status === AuthorizationStatus.AUTHORIZED ||
                 status === AuthorizationStatus.PROVISIONAL;

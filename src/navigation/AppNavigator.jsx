@@ -27,6 +27,7 @@ import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
+import { getMoodByLabel, moods } from '../constants/Moods';
 import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
@@ -328,15 +329,9 @@ export const AppNavigator = () => {
             // Handle navigation here if needed
         });
 
-        // 3. Foreground Message Handler
+        // 3. Foreground Message Handler — no alert, notification still shows in system tray
         const unsubscribeForeground = setupForegroundMessageHandler((remoteMessage) => {
-            Alert.alert(
-                remoteMessage.notification?.title || 'New Notification',
-                remoteMessage.notification?.body || 'You have a new message',
-                [
-                    { text: 'OK', onPress: () => { } }
-                ]
-            );
+            console.log('📩 Foreground notification:', remoteMessage.notification?.title);
         });
 
         // 4. Token Refresh Listener - handles token rotation by Firebase
@@ -578,31 +573,27 @@ export const AppNavigator = () => {
         }
 
         startTransition(() => {
-            // Check if already paired
-            if (userData.partnerId) {
-                // Already paired - go to home
-                dispatch(setOnboarded(true));
-                setOnboardedStorage(true);
-                setCurrentScreen('home');
-            } else {
-                // Not paired - navigate to partner code screen
-                setCurrentScreen('partnerCode');
-            }
+            // After nickname, go to avatar selection
+            setCurrentScreen('avatarSelection');
         });
     };
 
     // Handle avatar completion
-    const handleAvatarComplete = () => {
+    const handleAvatarComplete = async () => {
+        // After avatar, go to notification permission (or skip if already granted)
+        const hasPermission = await checkNotificationPermission();
         startTransition(() => {
-            // Check if already paired
-            if (userData.partnerId) {
-                // Already paired - go to home
-                dispatch(setOnboarded(true));
-                setOnboardedStorage(true);
-                setCurrentScreen('home');
+            if (hasPermission) {
+                // Permission already granted, skip to pairing/home
+                if (userData.partnerId) {
+                    dispatch(setOnboarded(true));
+                    setOnboardedStorage(true);
+                    setCurrentScreen('home');
+                } else {
+                    setCurrentScreen('partnerCode');
+                }
             } else {
-                // Not paired - navigate to partner code screen
-                setCurrentScreen('partnerCode');
+                setCurrentScreen('notificationPermission');
             }
         });
     };
@@ -633,25 +624,28 @@ export const AppNavigator = () => {
     };
 
     // Handle skip partner pairing
-    const handleSkipPartner = async () => {
+    const handleSkipPartner = () => {
         dispatch(setOnboarded(true));
         setOnboardedStorage(true);
 
-        // Check if notification permission is already granted
-        const hasPermission = await checkNotificationPermission();
+        // Go directly to home - don't re-check notification permission
+        // since the user already passed through the notification screen
         startTransition(() => {
-            if (hasPermission) {
-                setCurrentScreen('home');
-            } else {
-                setCurrentScreen('notificationPermission');
-            }
+            setCurrentScreen('home');
         });
     };
 
     // Handle notification permission completion (allow or skip)
     const handleNotificationComplete = () => {
         startTransition(() => {
-            setCurrentScreen('home');
+            // After notification permission, check pairing status
+            if (userData.partnerId) {
+                dispatch(setOnboarded(true));
+                setOnboardedStorage(true);
+                setCurrentScreen('home');
+            } else {
+                setCurrentScreen('partnerCode');
+            }
         });
     };
 
@@ -696,6 +690,7 @@ export const AppNavigator = () => {
     // Handle logout - clear auth and go to login
     const handleLogout = () => {
         startTransition(() => {
+            disconnect(); // Explicitly disconnect socket
             clearAuth();
             dispatch(logout());
             setPendingInvite(null);
@@ -722,6 +717,7 @@ export const AppNavigator = () => {
             if (data.success) {
                 // Clear all local storage and navigate to login
                 startTransition(() => {
+                    disconnect(); // Explicitly disconnect socket
                     clearAuth();
                     dispatch(logout());
                     setPendingInvite(null);
@@ -740,12 +736,13 @@ export const AppNavigator = () => {
     const handleAuthError = useCallback((error) => {
         // Directly navigate to login without showing alert
         startTransition(() => {
+            disconnect(); // Explicitly disconnect socket
             clearAuth();
             dispatch(logout());
             setPendingInvite(null);
             setCurrentScreen('login');
         });
-    }, [dispatch]);
+    }, [dispatch, disconnect]);
 
     // Set up the global auth error handler
     useEffect(() => {
@@ -801,7 +798,7 @@ export const AppNavigator = () => {
                 return (
                     <AvatarSelectionScreen
                         onComplete={handleAvatarComplete}
-                        onBack={() => navigate('home')}
+                        onBack={() => navigate('nickname')}
                     />
                 );
 
@@ -878,8 +875,8 @@ export const AppNavigator = () => {
             case 'mood':
                 return (
                     <MoodScreen
-                        currentMood={{ id: 'happy', ...yourMood, color: colors.moodHappy, gradient: ['#FFD60A40', '#FFD60A10'] }}
-                        partnerMood={{ id: 'love', ...partnerMood, color: colors.moodLove, gradient: ['#FF2D7840', '#FF2D7810'] }}
+                        currentMood={getMoodByLabel(yourMood?.label) || moods[0]}
+                        partnerMood={partnerMood ? getMoodByLabel(partnerMood.label) : null}
                         partnerName={userData.partnerUsername || null}
                         onMoodSelect={handleMoodSelect}
                         onBack={() => navigate('home')}

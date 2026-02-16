@@ -9,7 +9,10 @@ import {
     Animated,
     TextInput,
     Keyboard,
+    ScrollView,
+    Platform,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing } from '../theme';
@@ -502,205 +505,216 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     return (
         <GradientBackground variant="warm">
             <SafeAreaView style={styles.container} edges={['top']}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
-                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                            <Path
-                                d="M19 12H5M12 19l-7-7 7-7"
-                                stroke={colors.text}
-                                strokeWidth={2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </Svg>
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Wordle</Text>
-                    <View style={styles.headerRight}>
-                        {partnerOnline && (
-                            <View style={styles.onlineIndicator}>
-                                <View style={styles.onlineDot} />
-                                <Text style={styles.onlineText}>Online</Text>
-                            </View>
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                >
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
+                            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M19 12H5M12 19l-7-7 7-7"
+                                    stroke={colors.text}
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
+                        </TouchableOpacity>
+                        <Text style={styles.headerTitle}>Wordle</Text>
+                        <View style={styles.headerRight}>
+                            {partnerOnline && (
+                                <View style={styles.onlineIndicator}>
+                                    <View style={styles.onlineDot} />
+                                    <Text style={styles.onlineText}>Online</Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+
+                    {/* Status Text */}
+                    <View style={styles.statusContainer}>
+                        {mode === 'create' && (
+                            <Text style={styles.statusText}>Set a word for {partnerName} to guess</Text>
+                        )}
+                        {mode === 'guess' && (
+                            <Text style={styles.statusText}>
+                                Guess the word! ({attemptsRemaining} attempts left)
+                            </Text>
+                        )}
+                        {/* Creator views - different states */}
+                        {mode === 'complete' && isCreator && successMessage && status === 'pending' && (
+                            <Text style={[styles.statusText, styles.statusSuccess]}>
+                                {successMessage}
+                            </Text>
+                        )}
+                        {mode === 'complete' && isCreator && !successMessage && status === 'pending' && (
+                            <Text style={styles.statusText}>
+                                Waiting for {partnerName} to start guessing...
+                            </Text>
+                        )}
+                        {mode === 'complete' && isCreator && status === 'in_progress' && (
+                            <Text style={styles.statusText}>
+                                {partnerName} is guessing... ({guesses.length}/{maxAttempts} tries used)
+                            </Text>
+                        )}
+                        {mode === 'complete' && isCreator && status === 'won' && (
+                            <Text style={[styles.statusText, styles.statusWin]}>
+                                {partnerName} guessed it in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!
+                            </Text>
+                        )}
+                        {mode === 'complete' && isCreator && status === 'lost' && (
+                            <Text style={[styles.statusText, styles.statusLose]}>
+                                {partnerName} couldn't guess "{secretWord}"
+                            </Text>
+                        )}
+                        {/* Guesser views */}
+                        {mode === 'complete' && !isCreator && status === 'won' && (
+                            <Text style={[styles.statusText, styles.statusWin]}>You Won in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!</Text>
+                        )}
+                        {mode === 'complete' && !isCreator && status === 'lost' && (
+                            <Text style={[styles.statusText, styles.statusLose]}>
+                                Game Over - The word was "{revealedWord}"
+                            </Text>
                         )}
                     </View>
-                </View>
 
-                {/* Status Text */}
-                <View style={styles.statusContainer}>
-                    {mode === 'create' && (
-                        <Text style={styles.statusText}>Set a word for {partnerName} to guess</Text>
-                    )}
-                    {mode === 'guess' && (
-                        <Text style={styles.statusText}>
-                            Guess the word! ({attemptsRemaining} attempts left)
-                        </Text>
-                    )}
-                    {/* Creator views - different states */}
-                    {mode === 'complete' && isCreator && successMessage && status === 'pending' && (
-                        <Text style={[styles.statusText, styles.statusSuccess]}>
-                            {successMessage}
-                        </Text>
-                    )}
-                    {mode === 'complete' && isCreator && !successMessage && status === 'pending' && (
-                        <Text style={styles.statusText}>
-                            Waiting for {partnerName} to start guessing...
-                        </Text>
-                    )}
-                    {mode === 'complete' && isCreator && status === 'in_progress' && (
-                        <Text style={styles.statusText}>
-                            {partnerName} is guessing... ({guesses.length}/{maxAttempts} tries used)
-                        </Text>
-                    )}
-                    {mode === 'complete' && isCreator && status === 'won' && (
-                        <Text style={[styles.statusText, styles.statusWin]}>
-                            {partnerName} guessed it in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!
-                        </Text>
-                    )}
-                    {mode === 'complete' && isCreator && status === 'lost' && (
-                        <Text style={[styles.statusText, styles.statusLose]}>
-                            {partnerName} couldn't guess "{secretWord}"
-                        </Text>
-                    )}
-                    {/* Guesser views */}
-                    {mode === 'complete' && !isCreator && status === 'won' && (
-                        <Text style={[styles.statusText, styles.statusWin]}>You Won in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!</Text>
-                    )}
-                    {mode === 'complete' && !isCreator && status === 'lost' && (
-                        <Text style={[styles.statusText, styles.statusLose]}>
-                            Game Over - The word was "{revealedWord}"
-                        </Text>
-                    )}
-                </View>
+                    {/* Notify Message */}
+                    {notifyMessage ? (
+                        <View style={styles.notifyMessageContainer}>
+                            <Text style={styles.notifyMessageText}>{notifyMessage}</Text>
+                        </View>
+                    ) : null}
 
-                {/* Notify Message */}
-                {notifyMessage ? (
-                    <View style={styles.notifyMessageContainer}>
-                        <Text style={styles.notifyMessageText}>{notifyMessage}</Text>
-                    </View>
-                ) : null}
+                    {/* Error Message */}
+                    {errorMessage ? (
+                        <View style={styles.errorContainer}>
+                            <Text style={styles.errorText}>{errorMessage}</Text>
+                        </View>
+                    ) : null}
 
-                {/* Error Message */}
-                {errorMessage ? (
-                    <View style={styles.errorContainer}>
-                        <Text style={styles.errorText}>{errorMessage}</Text>
-                    </View>
-                ) : null}
-
-                {/* Game Grid */}
-                <View style={styles.gridContainer}>
-                    {mode === 'create' && (
-                        <>
-                            {renderCurrentRow()}
-                            {!showLinkPartner && (
-                                <Text style={styles.hintText}>Type a 5-letter word</Text>
-                            )}
-                            {showLinkPartner && (
-                                <View style={styles.linkPartnerContainer}>
-                                    <Text style={styles.linkPartnerText}>
-                                        Link a partner to send this word
-                                    </Text>
-                                    <TouchableOpacity
-                                        style={styles.linkPartnerButton}
-                                        onPress={onLinkPartner}
-                                    >
-                                        <Text style={styles.linkPartnerButtonText}>
-                                            Link Partner 🔗
+                    {/* Game Grid */}
+                    <ScrollView
+                        style={{ flex: 1 }}
+                        contentContainerStyle={styles.gridContainer}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {mode === 'create' && (
+                            <>
+                                {renderCurrentRow()}
+                                {!showLinkPartner && (
+                                    <Text style={styles.hintText}>Type a 5-letter word</Text>
+                                )}
+                                {showLinkPartner && (
+                                    <View style={styles.linkPartnerContainer}>
+                                        <Text style={styles.linkPartnerText}>
+                                            Link a partner to send this word
                                         </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </>
-                    )}
-
-                    {mode === 'guess' && (
-                        <>
-                            {guesses.map((guess, i) => renderGuessRow(guess, i))}
-                            {!isGameOver && renderCurrentRow()}
-                            {renderEmptyRows(maxAttempts - attemptsUsed - 1)}
-                        </>
-                    )}
-
-                    {mode === 'complete' && isCreator && (
-                        <>
-                            {/* Show the secret word */}
-                            <View style={styles.secretWordContainer}>
-                                {secretWord.split('').map((letter, i) => (
-                                    <View key={i} style={[styles.tile, styles.tileSecret]}>
-                                        <Text style={[styles.tileText, { color: '#FFFFFF' }]}>
-                                            {letter.toUpperCase()}
-                                        </Text>
+                                        <TouchableOpacity
+                                            style={styles.linkPartnerButton}
+                                            onPress={onLinkPartner}
+                                        >
+                                            <Text style={styles.linkPartnerButtonText}>
+                                                Link Partner 🔗
+                                            </Text>
+                                        </TouchableOpacity>
                                     </View>
-                                ))}
-                            </View>
+                                )}
+                            </>
+                        )}
 
-                            {/* Show partner's guesses if any */}
-                            {guesses.length > 0 && (
-                                <View style={styles.creatorGuessesContainer}>
-                                    <Text style={styles.creatorGuessesTitle}>
-                                        {partnerName}'s guesses:
-                                    </Text>
-                                    {guesses.map((guess, i) => renderGuessRow(guess, i))}
+                        {mode === 'guess' && (
+                            <>
+                                {guesses.map((guess, i) => renderGuessRow(guess, i))}
+                                {!isGameOver && renderCurrentRow()}
+                                {renderEmptyRows(maxAttempts - attemptsUsed - 1)}
+                            </>
+                        )}
+
+                        {mode === 'complete' && isCreator && (
+                            <>
+                                {/* Show the secret word */}
+                                <View style={styles.secretWordContainer}>
+                                    {secretWord.split('').map((letter, i) => (
+                                        <View key={i} style={[styles.tile, styles.tileSecret]}>
+                                            <Text style={[styles.tileText, { color: '#FFFFFF' }]}>
+                                                {letter.toUpperCase()}
+                                            </Text>
+                                        </View>
+                                    ))}
                                 </View>
-                            )}
 
-                            {/* Waiting message when no guesses yet */}
-                            {guesses.length === 0 && status === 'pending' && (
-                                <Text style={styles.waitingText}>Waiting for {partnerName} to start...</Text>
-                            )}
-                        </>
+                                {/* Show partner's guesses if any */}
+                                {guesses.length > 0 && (
+                                    <View style={styles.creatorGuessesContainer}>
+                                        <Text style={styles.creatorGuessesTitle}>
+                                            {partnerName}'s guesses:
+                                        </Text>
+                                        {guesses.map((guess, i) => renderGuessRow(guess, i))}
+                                    </View>
+                                )}
+
+                                {/* Waiting message when no guesses yet */}
+                                {guesses.length === 0 && status === 'pending' && (
+                                    <Text style={styles.waitingText}>Waiting for {partnerName} to start...</Text>
+                                )}
+                            </>
+                        )}
+
+                        {mode === 'complete' && !isCreator && (
+                            <>
+                                {guesses.map((guess, i) => renderGuessRow(guess, i))}
+                            </>
+                        )}
+                    </ScrollView>
+
+                    {/* Hidden TextInput for native keyboard */}
+                    {(mode === 'create' || mode === 'guess') && (
+                        <TextInput
+                            ref={inputRef}
+                            style={styles.hiddenInput}
+                            value={mode === 'create' ? secretWord : currentGuess}
+                            onChangeText={handleTextChange}
+                            maxLength={5}
+                            autoCapitalize="characters"
+                            autoCorrect={false}
+                            autoComplete="off"
+                            keyboardType="default"
+                            autoFocus={true}
+                        />
+                    )}
+
+                    {/* Action Buttons */}
+                    {mode === 'complete' && isCreator && gameId && partnerOnline !== true && (status === 'pending' || status === 'in_progress') && (
+                        <View style={styles.actionButtons}>
+                            <TouchableOpacity
+                                style={styles.notifyButton}
+                                onPress={notifyPartner}
+                                disabled={notifying}
+                            >
+                                {notifying ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={styles.notifyButtonText}>Nudge {partnerName}</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                     )}
 
                     {mode === 'complete' && !isCreator && (
-                        <>
-                            {guesses.map((guess, i) => renderGuessRow(guess, i))}
-                        </>
+                        <View style={styles.actionButtons}>
+                            <TouchableOpacity
+                                style={styles.backHomeButton}
+                                onPress={() => navigation?.goBack?.()}
+                            >
+                                <Text style={styles.backHomeText}>Back to Home</Text>
+                            </TouchableOpacity>
+                        </View>
                     )}
-                </View>
-
-                {/* Hidden TextInput for native keyboard */}
-                {(mode === 'create' || mode === 'guess') && (
-                    <TextInput
-                        ref={inputRef}
-                        style={styles.hiddenInput}
-                        value={mode === 'create' ? secretWord : currentGuess}
-                        onChangeText={handleTextChange}
-                        maxLength={5}
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        autoComplete="off"
-                        keyboardType="default"
-                        autoFocus={true}
-                    />
-                )}
-
-                {/* Action Buttons */}
-                {mode === 'complete' && isCreator && gameId && partnerOnline !== true && (status === 'pending' || status === 'in_progress') && (
-                    <View style={styles.actionButtons}>
-                        <TouchableOpacity
-                            style={styles.notifyButton}
-                            onPress={notifyPartner}
-                            disabled={notifying}
-                        >
-                            {notifying ? (
-                                <ActivityIndicator size="small" color="#FFF" />
-                            ) : (
-                                <Text style={styles.notifyButtonText}>Nudge {partnerName}</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {mode === 'complete' && !isCreator && (
-                    <View style={styles.actionButtons}>
-                        <TouchableOpacity
-                            style={styles.backHomeButton}
-                            onPress={() => navigation?.goBack?.()}
-                        >
-                            <Text style={styles.backHomeText}>Back to Home</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
+                </KeyboardAvoidingView>
             </SafeAreaView>
         </GradientBackground>
     );
@@ -801,10 +815,10 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     gridContainer: {
-        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 20,
+        flexGrow: 1,
     },
     guessRow: {
         flexDirection: 'row',

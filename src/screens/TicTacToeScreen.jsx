@@ -6,7 +6,6 @@ import {
     StyleSheet,
     TouchableOpacity,
     ActivityIndicator,
-    Alert,
     Animated,
     Easing,
 } from 'react-native';
@@ -36,6 +35,15 @@ const TicTacToeScreen = ({ navigation, route }) => {
     const [loading, setLoading] = useState(true);
     const [notifying, setNotifying] = useState(false);
     const [lastNotifyTime, setLastNotifyTime] = useState(0);
+    const [statusMessage, setStatusMessage] = useState(null);
+    const statusTimerRef = useRef(null);
+
+    // Show inline status message that auto-clears after 3 seconds
+    const showStatus = useCallback((message, type = 'error') => {
+        if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+        setStatusMessage({ text: message, type });
+        statusTimerRef.current = setTimeout(() => setStatusMessage(null), 3000);
+    }, []);
 
     // Game start animation state
     const [countdown, setCountdown] = useState(0);
@@ -260,12 +268,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
             if (data.success) {
                 loadGameFromData(data.data);
             } else {
-                Alert.alert('Error', 'Failed to load game');
+                showStatus('Failed to load game');
                 navigation?.goBack?.();
             }
         } catch (error) {
             console.error('Fetch game error:', error);
-            Alert.alert('Error', 'Failed to load game');
+            showStatus('Failed to load game');
             navigation?.goBack?.();
         }
     };
@@ -321,17 +329,17 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
                 // If it's an existing game (not what we expected), show alert
                 if (data.isExisting) {
-                    Alert.alert('Game Found', 'An active game already exists. Loading it now.');
+                    showStatus('An active game already exists. Loading it now.', 'info');
                 }
             } else {
                 // Revert optimistic update
                 setBoard(Array(9).fill(null));
-                Alert.alert('Error', data.message || 'Failed to create game');
+                showStatus(data.message || 'Failed to create game');
             }
         } catch (error) {
             setBoard(Array(9).fill(null));
             console.error('Create game error:', error);
-            Alert.alert('Error', 'Failed to create game');
+            showStatus('Failed to create game');
         }
     };
 
@@ -382,12 +390,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 // Trigger game start animation for creator
                 startGameAnimation('Game Started Again! 🎮');
             } else {
-                Alert.alert('Error', data.message || 'Failed to create game');
+                showStatus(data.message || 'Failed to create game');
                 navigation?.goBack?.();
             }
         } catch (error) {
             console.error('Create game error:', error);
-            Alert.alert('Error', 'Failed to create game');
+            showStatus('Failed to create game');
             navigation?.goBack?.();
         }
     };
@@ -448,7 +456,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
             } else {
                 // Revert optimistic update
                 setBoard(board);
-                Alert.alert('Error', data.message || 'Invalid move');
+                showStatus(data.message || 'Invalid move');
             }
         } catch (error) {
             setBoard(board);
@@ -461,7 +469,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
         const now = Date.now();
         if (now - lastNotifyTime < 5 * 60 * 1000) {
             const remaining = Math.ceil((5 * 60 * 1000 - (now - lastNotifyTime)) / 60000);
-            Alert.alert('Please wait', `You can notify again in ${remaining} minute(s)`);
+            showStatus(`You can notify again in ${remaining} minute(s)`, 'info');
             return;
         }
 
@@ -475,12 +483,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
             const data = await response.json();
             if (data.success) {
                 setLastNotifyTime(now);
-                Alert.alert('Sent!', `${partnerName} has been notified`);
+                showStatus(`${partnerName} has been notified ✓`, 'success');
             } else {
-                Alert.alert('Error', 'Failed to send notification');
+                showStatus('Failed to send notification');
             }
         } catch (error) {
-            Alert.alert('Error', 'Failed to send notification');
+            showStatus('Failed to send notification');
         } finally {
             setNotifying(false);
         }
@@ -598,6 +606,15 @@ const TicTacToeScreen = ({ navigation, route }) => {
                     ]}>
                         {getStatusText()}
                     </Text>
+                    {statusMessage && (
+                        <Text style={[
+                            styles.inlineStatus,
+                            statusMessage.type === 'success' && styles.inlineStatusSuccess,
+                            statusMessage.type === 'info' && styles.inlineStatusInfo,
+                        ]}>
+                            {statusMessage.text}
+                        </Text>
+                    )}
                 </View>
 
                 {/* Game Board */}
@@ -801,6 +818,19 @@ const styles = StyleSheet.create({
         color: colors.secondary,
         textAlign: 'center',
         lineHeight: 40,
+    },
+    inlineStatus: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#EF4444',
+        marginTop: 6,
+        textAlign: 'center',
+    },
+    inlineStatusSuccess: {
+        color: colors.success,
+    },
+    inlineStatusInfo: {
+        color: colors.accent,
     },
     boardContainer: {
         flex: 1,

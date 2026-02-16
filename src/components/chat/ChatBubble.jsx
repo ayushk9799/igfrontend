@@ -102,31 +102,42 @@ const ChatBubble = ({
                         </Text>
                     )}
                     {message.answerType === 'voice' ? (
-                        <VoiceBubble audioUri={messageContent} isSent={isSent} />
+                        <>
+                            <VoiceBubble audioUri={messageContent} isSent={isSent} />
+                            <View style={styles.metaRow}>
+                                <Text style={styles.metaText}>{formatTime(message.createdAt)}</Text>
+                                {isSent && isRead && <DoubleCheck color="#007AFF" size={12} />}
+                            </View>
+                        </>
                     ) : message.answerType === 'photo' ? (
-                        <Image
-                            source={{ uri: messageContent }}
-                            style={styles.messageImage}
-                            resizeMode="cover"
-                        />
+                        <>
+                            <Image
+                                source={{ uri: messageContent }}
+                                style={styles.messageImage}
+                                resizeMode="cover"
+                            />
+                            <View style={styles.metaRow}>
+                                <Text style={styles.metaText}>{formatTime(message.createdAt)}</Text>
+                                {isSent && isRead && <DoubleCheck color="#007AFF" size={12} />}
+                            </View>
+                        </>
                     ) : (
-                        <Text style={styles.messageText}>{messageContent}</Text>
+                        <View style={styles.textWithMeta}>
+                            <Text style={styles.messageText}>
+                                {messageContent}
+                                {/* Invisible spacer to reserve space for time+tick */}
+                                <Text style={styles.metaSpacer}>
+                                    {'  ' + formatTime(message.createdAt) + (isSent && isRead ? ' ✓✓' : '  ')}
+                                </Text>
+                            </Text>
+                            {/* Absolutely positioned time + tick */}
+                            <View style={styles.metaAbsolute}>
+                                <Text style={styles.metaText}>{formatTime(message.createdAt)}</Text>
+                                {isSent && isRead && <DoubleCheck color="#007AFF" size={12} />}
+                            </View>
+                        </View>
                     )}
                 </View>
-            </View>
-
-            {/* Timestamp and read receipt */}
-            <View style={[styles.metaRow, isSent ? styles.metaRowSent : styles.metaRowReceived]}>
-                {isSent ? (
-                    <View style={styles.readReceiptContainer}>
-                        <Text style={styles.metaText}>
-                            {isRead ? 'Read now!' : formatTime(message.createdAt)}
-                        </Text>
-                        {isRead && <DoubleCheck color="#007AFF" size={12} />}
-                    </View>
-                ) : (
-                    <Text style={styles.metaText}>{formatTime(message.createdAt)}</Text>
-                )}
             </View>
         </View>
     );
@@ -185,23 +196,28 @@ const styles = StyleSheet.create({
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 4,
-        paddingHorizontal: 4,
-    },
-    metaRowSent: {
         justifyContent: 'flex-end',
-    },
-    metaRowReceived: {
-        justifyContent: 'flex-start',
-    },
-    readReceiptContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        marginTop: 4,
         gap: 4,
     },
     metaText: {
         fontSize: 10,
-        color: '#6B7280',
+        color: 'rgba(31, 41, 55, 0.5)',
+    },
+    textWithMeta: {
+        position: 'relative',
+    },
+    metaSpacer: {
+        fontSize: 10,
+        color: 'transparent',
+    },
+    metaAbsolute: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
     },
     messageImage: {
         width: 220,

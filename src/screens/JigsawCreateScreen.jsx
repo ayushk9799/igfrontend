@@ -24,6 +24,7 @@ import { ImageManipulator, FlipType, SaveFormat } from 'expo-image-manipulator';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { usePuzzle } from '../hooks/usePuzzle';
+import Button from '../components/Button';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -34,7 +35,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
 
-    const [hasPermission, setHasPermission] = useState(Platform.OS === 'ios');
+    const [hasPermission, setHasPermission] = useState(false);
     const [previewUri, setPreviewUri] = useState(null);
     const [showCamera, setShowCamera] = useState(true);
     const [isSending, setIsSending] = useState(false);
@@ -54,7 +55,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     useEffect(() => {
         const task = InteractionManager.runAfterInteractions(() => {
             setIsCameraInitialized(true);
-            requestCameraPermission();
+            checkCameraPermission();
         });
 
         return () => task.cancel();
@@ -82,6 +83,15 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
         Animated.loop(Animated.timing(piece2Rotate, { toValue: -1, duration: 10000, useNativeDriver: true })).start();
         Animated.loop(Animated.timing(piece3Rotate, { toValue: 1, duration: 6000, useNativeDriver: true })).start();
     }, [showCamera, previewUri]);
+
+    const checkCameraPermission = async () => {
+        if (Platform.OS === 'ios') {
+            setHasPermission(true);
+            return;
+        }
+        const granted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
+        setHasPermission(granted);
+    };
 
     const requestCameraPermission = async () => {
         if (Platform.OS === 'ios') {
@@ -341,31 +351,29 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                 {/* Footer with Send Button */}
                 <View style={styles.footer}>
                     {partnerId ? (
-                        <TouchableOpacity
+                        <Button
+                            title={`Send to ${partnerName} 🧩`}
                             onPress={handleSendPuzzle}
-                            style={[styles.nextButton, (!previewUri && !isSending) && styles.nextButtonDisabled]}
+                            variant="glow"
+                            size="xl"
+                            fullWidth
                             disabled={!previewUri || isSending}
-                        >
-                            {isSending ? (
-                                <ActivityIndicator color="#fff" size="small" />
-                            ) : (
-                                <Text style={styles.nextButtonText}>Send to {partnerName} 🧩</Text>
-                            )}
-                        </TouchableOpacity>
+                            loading={isSending}
+                        />
                     ) : (
-                        <TouchableOpacity
+                        <Button
+                            title="Link Partner to Send 🔗"
                             onPress={() => {
-                                // Use onLinkPartner callback if available, otherwise goBack
                                 if (onLinkPartner) {
                                     onLinkPartner();
                                 } else {
                                     navigation.goBack();
                                 }
                             }}
-                            style={styles.nextButton}
-                        >
-                            <Text style={styles.nextButtonText}>Link Partner to Send 🔗</Text>
-                        </TouchableOpacity>
+                            variant="primary"
+                            size="xl"
+                            fullWidth
+                        />
                     )}
                 </View>
             </SafeAreaView>
@@ -389,7 +397,10 @@ const BigPuzzleIcon = () => (
 );
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
+    container: {
+        flex: 1,
+        paddingHorizontal: spacing.xl,
+    },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.glass, alignItems: 'center', justifyContent: 'center' },
     headerTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
@@ -480,23 +491,10 @@ const styles = StyleSheet.create({
     // Footer / Send
     footer: {
         width: '100%',
-        paddingVertical: spacing.md,
+        marginTop: 0,
+        paddingBottom: spacing['2xl'],
     },
-    nextButton: {
-        height: 56,
-        backgroundColor: colors.primary,
-        borderRadius: 28,
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 6,
-    },
-    nextButtonDisabled: { opacity: 0.6 },
-    nextButtonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+
 
     // Grid Overlay
     gridOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flexDirection: 'row', flexWrap: 'wrap' },

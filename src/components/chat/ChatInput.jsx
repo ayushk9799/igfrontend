@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
         marginBottom: Platform.OS === 'android' ? 8 : 0,
     },
     wrapperKeyboardActive: {
-        marginBottom: -20,
+        marginBottom: 0,
     },
     container: {
         flexDirection: 'row',

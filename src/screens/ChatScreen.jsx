@@ -379,6 +379,8 @@ export default function ChatScreen({
         }
     }, [allMessages.length]);
 
+
+
     const renderMessage = ({ item, index }) => {
         const isSent = item.senderId === userId || item.senderId?._id === userId;
         const showAvatar = index === 0 ||
@@ -462,90 +464,87 @@ export default function ChatScreen({
         );
     }
 
-    const content = (
-        <>
-            {/* Header matching screenshot - Back text with centered avatar */}
-            <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                        <Path
-                            d="M15 18l-6-6 6-6"
-                            stroke="#007AFF"
-                            strokeWidth={2.5}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
-                    </Svg>
-                    <Text style={styles.backText}>Back</Text>
-                </TouchableOpacity>
-
-                {/* Centered avatar and name - horizontal layout */}
-                <View style={styles.headerCenter}>
-                    <View style={styles.headerAvatar}>
-                        <Text style={styles.headerAvatarText}>
-                            {partnerName?.charAt(0)?.toUpperCase() || '?'}
-                        </Text>
-                    </View>
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.headerName}>{partnerName}</Text>
-                        {partnerTyping && (
-                            <Text style={styles.headerTypingText}>typing...</Text>
-                        )}
-                    </View>
-                </View>
-
-                {/* Spacer for centering */}
-                <View style={styles.headerSpacer} />
-            </View>
-
-            {/* Question card */}
-            {renderQuestionCard()}
-
-            {/* Messages */}
-            <FlatList
-                ref={flatListRef}
-                data={allMessages}
-                renderItem={renderMessage}
-                keyExtractor={(item) => item._id}
-                contentContainerStyle={styles.messagesContent}
-                showsVerticalScrollIndicator={false}
-                onContentSizeChange={() => {
-                    flatListRef.current?.scrollToEnd({ animated: false });
-                }}
-                ListEmptyComponent={
-                    <View style={styles.emptyMessages}>
-                        <View style={[styles.emptyIconContainer, { backgroundColor: categoryConfig.lightColor }]}>
-                            <CategoryIcon category={chat?.questionSource} size={40} color={categoryConfig.color} />
-                        </View>
-                        <Text style={styles.emptyTitle}>Time to connect! 💕</Text>
-                        <Text style={styles.emptyText}>
-                            Share what's on your mind about this {categoryConfig.label.toLowerCase()} topic — your partner is waiting to hear from you
-                        </Text>
-                    </View>
-                }
-                ListFooterComponent={renderTypingIndicator}
-            />
-
-            {/* Input */}
-            <View style={{ paddingBottom: insets.bottom }}>
-                <ChatInput
-                    onSend={handleSend}
-                    onTyping={handleTyping}
-                    partnerName={partnerName}
-                    disabled={sending}
-                />
-            </View>
-        </>
-    );
-
     return (
         <View style={styles.container}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior="padding"
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={0}
             >
-                {content}
+                {/* Header */}
+                <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="M15 18l-6-6 6-6"
+                                stroke="#007AFF"
+                                strokeWidth={2.5}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
+                        <Text style={styles.backText}>Back</Text>
+                    </TouchableOpacity>
+
+                    {/* Centered avatar and name */}
+                    <View style={styles.headerCenter}>
+                        <View style={styles.headerAvatar}>
+                            <Text style={styles.headerAvatarText}>
+                                {partnerName?.charAt(0)?.toUpperCase() || '?'}
+                            </Text>
+                        </View>
+                        <View style={styles.headerTextContainer}>
+                            <Text style={styles.headerName}>{partnerName}</Text>
+                            {partnerTyping && (
+                                <Text style={styles.headerTypingText}>typing...</Text>
+                            )}
+                        </View>
+                    </View>
+
+                    {/* Spacer for centering */}
+                    <View style={styles.headerSpacer} />
+                </View>
+
+                {/* Question card */}
+                {renderQuestionCard()}
+
+                {/* Messages */}
+                <FlatList
+                    ref={flatListRef}
+                    data={allMessages}
+                    renderItem={renderMessage}
+                    keyExtractor={(item) => item._id}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={styles.messagesContent}
+                    showsVerticalScrollIndicator={false}
+                    onContentSizeChange={() => {
+                        flatListRef.current?.scrollToEnd({ animated: false });
+                    }}
+                    ListEmptyComponent={
+                        <View style={styles.emptyMessages}>
+                            <View style={[styles.emptyIconContainer, { backgroundColor: categoryConfig.lightColor }]}>
+                                <CategoryIcon category={chat?.questionSource} size={40} color={categoryConfig.color} />
+                            </View>
+                            <Text style={styles.emptyTitle}>Time to connect! 💕</Text>
+                            <Text style={styles.emptyText}>
+                                Share what's on your mind about this {categoryConfig.label.toLowerCase()} topic — your partner is waiting to hear from you
+                            </Text>
+                        </View>
+                    }
+                    ListFooterComponent={renderTypingIndicator}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="interactive"
+                />
+
+                {/* Input */}
+                <View style={{ marginBottom: 15 }}>
+                    <ChatInput
+                        onSend={handleSend}
+                        onTyping={handleTyping}
+                        partnerName={partnerName}
+                        disabled={sending}
+                    />
+                </View>
             </KeyboardAvoidingView>
         </View>
     );
