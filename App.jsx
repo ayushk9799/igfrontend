@@ -17,7 +17,7 @@ function App() {
     return (
         <Provider store={store}>
             <SafeAreaProvider>
-                <KeyboardProvider>
+                <KeyboardProvider statusBarTranslucent>
                     <SocketProvider>
                         <StatusBar
                             barStyle="light-content"

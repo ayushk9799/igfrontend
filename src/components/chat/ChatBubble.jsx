@@ -125,13 +125,8 @@ const ChatBubble = ({
                         <View style={styles.textWithMeta}>
                             <Text style={styles.messageText}>
                                 {messageContent}
-                                {/* Invisible spacer to reserve space for time+tick */}
-                                <Text style={styles.metaSpacer}>
-                                    {'  ' + formatTime(message.createdAt) + (isSent && isRead ? ' ✓✓' : '  ')}
-                                </Text>
                             </Text>
-                            {/* Absolutely positioned time + tick */}
-                            <View style={styles.metaAbsolute}>
+                            <View style={styles.metaContainer}>
                                 <Text style={styles.metaText}>{formatTime(message.createdAt)}</Text>
                                 {isSent && isRead && <DoubleCheck color="#007AFF" size={12} />}
                             </View>
@@ -205,19 +200,17 @@ const styles = StyleSheet.create({
         color: 'rgba(31, 41, 55, 0.5)',
     },
     textWithMeta: {
-        position: 'relative',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'flex-end',
     },
-    metaSpacer: {
-        fontSize: 10,
-        color: 'transparent',
-    },
-    metaAbsolute: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
+    metaContainer: {
+        marginLeft: 'auto',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 3,
+        paddingLeft: 8,
+        paddingBottom: 2,
     },
     messageImage: {
         width: 220,

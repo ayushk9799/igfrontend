@@ -365,24 +365,19 @@ export default function ChatScreen({
         }
     }, [socket, chatId]);
 
-    // Build messages list
+    // Build messages list - Reversed for Inverted FlatList
     const allMessages = React.useMemo(() => {
-        return messages;
+        return [...messages].reverse();
     }, [messages]);
 
-    // Scroll to bottom when new message arrives
-    useEffect(() => {
-        if (allMessages.length > 0 && flatListRef.current) {
-            setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
-            }, 100);
-        }
-    }, [allMessages.length]);
+
 
 
 
     const renderMessage = ({ item, index }) => {
         const isSent = item.senderId === userId || item.senderId?._id === userId;
+        // For Inverted list: Check previous index (which is visually 'below') or if first index (bottom-most)
+        // This places avatar at the BOTTOM of the message group
         const showAvatar = index === 0 ||
             (allMessages[index - 1]?.senderId !== item.senderId);
 
@@ -466,44 +461,45 @@ export default function ChatScreen({
 
     return (
         <View style={styles.container}>
+            {/* Header */}
+            <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                        <Path
+                            d="M15 18l-6-6 6-6"
+                            stroke="#007AFF"
+                            strokeWidth={2.5}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                    </Svg>
+                    <Text style={styles.backText}>Back</Text>
+                </TouchableOpacity>
+
+                {/* Centered avatar and name */}
+                <View style={styles.headerCenter}>
+                    <View style={styles.headerAvatar}>
+                        <Text style={styles.headerAvatarText}>
+                            {partnerName?.charAt(0)?.toUpperCase() || '?'}
+                        </Text>
+                    </View>
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerName}>{partnerName}</Text>
+                        {partnerTyping && (
+                            <Text style={styles.headerTypingText}>typing...</Text>
+                        )}
+                    </View>
+                </View>
+
+                {/* Spacer for centering */}
+                <View style={styles.headerSpacer} />
+            </View>
+
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={0}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
-                {/* Header */}
-                <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                            <Path
-                                d="M15 18l-6-6 6-6"
-                                stroke="#007AFF"
-                                strokeWidth={2.5}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </Svg>
-                        <Text style={styles.backText}>Back</Text>
-                    </TouchableOpacity>
-
-                    {/* Centered avatar and name */}
-                    <View style={styles.headerCenter}>
-                        <View style={styles.headerAvatar}>
-                            <Text style={styles.headerAvatarText}>
-                                {partnerName?.charAt(0)?.toUpperCase() || '?'}
-                            </Text>
-                        </View>
-                        <View style={styles.headerTextContainer}>
-                            <Text style={styles.headerName}>{partnerName}</Text>
-                            {partnerTyping && (
-                                <Text style={styles.headerTypingText}>typing...</Text>
-                            )}
-                        </View>
-                    </View>
-
-                    {/* Spacer for centering */}
-                    <View style={styles.headerSpacer} />
-                </View>
 
                 {/* Question card */}
                 {renderQuestionCard()}
@@ -515,22 +511,10 @@ export default function ChatScreen({
                     renderItem={renderMessage}
                     keyExtractor={(item) => item._id}
                     style={{ flex: 1 }}
+                    inverted
                     contentContainerStyle={styles.messagesContent}
                     showsVerticalScrollIndicator={false}
-                    onContentSizeChange={() => {
-                        flatListRef.current?.scrollToEnd({ animated: false });
-                    }}
-                    ListEmptyComponent={
-                        <View style={styles.emptyMessages}>
-                            <View style={[styles.emptyIconContainer, { backgroundColor: categoryConfig.lightColor }]}>
-                                <CategoryIcon category={chat?.questionSource} size={40} color={categoryConfig.color} />
-                            </View>
-                            <Text style={styles.emptyTitle}>Time to connect! 💕</Text>
-                            <Text style={styles.emptyText}>
-                                Share what's on your mind about this {categoryConfig.label.toLowerCase()} topic — your partner is waiting to hear from you
-                            </Text>
-                        </View>
-                    }
+                   
                     ListFooterComponent={renderTypingIndicator}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
