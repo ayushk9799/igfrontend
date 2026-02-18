@@ -497,7 +497,7 @@ export default function ChatScreen({
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior="padding"
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
 
@@ -514,7 +514,7 @@ export default function ChatScreen({
                     inverted
                     contentContainerStyle={styles.messagesContent}
                     showsVerticalScrollIndicator={false}
-                   
+
                     ListFooterComponent={renderTypingIndicator}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
