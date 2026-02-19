@@ -1,5 +1,5 @@
 // Premium Mood Screen - Share Your Vibes
-// Simplified version - removed animations to prevent iOS Fabric crash
+// Updated: 96 animated Lottie emojis in a 10-column grid
 import React, { useState } from 'react';
 import {
     StyleSheet,
@@ -10,67 +10,41 @@ import {
     Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import LottieView from 'lottie-react-native';
 import GradientBackground from '../components/GradientBackground';
-import Card from '../components/Card';
 import { colors, spacing, borderRadius } from '../theme';
-import { moods } from '../constants/Moods';
+import { emojis } from '../constants/Moods';
 
 const { width } = Dimensions.get('window');
 
-// Mood Orb Component - Completely static to prevent iOS Fabric crash
-// No Animated components at all
-const MoodOrb = ({ mood, index, isSelected, onSelect }) => {
-    // Always render all views - use opacity instead of conditional rendering
-    // This prevents iOS Fabric "Attempt to recycle a mounted view" crash
+// Grid config: 10 emojis per row
+const GRID_COLUMNS = 10;
+const GRID_GAP = 4;
+const GRID_PADDING = spacing.lg;
+const ITEM_SIZE = (width - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
+
+// Single Emoji Item
+const EmojiItem = ({ mood, isSelected, onSelect }) => {
     return (
-        <View style={styles.moodItemWrapper}>
-            {/* Selection glow - always rendered, opacity controlled */}
-            <View
-                style={[
-                    styles.selectionGlow,
-                    {
-                        backgroundColor: mood.color,
-                        opacity: isSelected ? 0.4 : 0,
-                    },
-                ]}
-            />
-
-            <TouchableOpacity
-                onPress={() => onSelect(mood, index)}
-                activeOpacity={0.85}
-            >
-                <LinearGradient
-                    colors={isSelected ? mood.gradient : [colors.glass, colors.glass]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[
-                        styles.moodItem,
-                        {
-                            borderColor: isSelected ? mood.color : 'transparent',
-                            borderWidth: 2,
-                        },
-                    ]}
-                >
-                    {/* Inner glow - always rendered, opacity controlled */}
-                    <View style={[
-                        styles.innerGlow,
-                        {
-                            backgroundColor: mood.color,
-                            opacity: isSelected ? 0.1 : 0,
-                        }
-                    ]} />
-
-                    <Text style={styles.moodEmoji}>{mood.emoji}</Text>
-                    <Text style={[
-                        styles.moodLabel,
-                        { color: isSelected ? colors.text : colors.textSecondary, fontWeight: isSelected ? '700' : '600' }
-                    ]}>
-                        {mood.label}
-                    </Text>
-                </LinearGradient>
-            </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+            onPress={() => onSelect(mood)}
+            activeOpacity={0.7}
+            style={[
+                styles.emojiItem,
+                isSelected && styles.emojiItemSelected,
+            ]}
+        >
+            {mood.lottieSource ? (
+                <LottieView
+                    source={mood.lottieSource}
+                    autoPlay
+                    loop
+                    style={{ width: ITEM_SIZE - 8, height: ITEM_SIZE - 8 }}
+                />
+            ) : (
+                <Text style={styles.emojiText}>{mood.emoji}</Text>
+            )}
+        </TouchableOpacity>
     );
 };
 
@@ -85,18 +59,14 @@ export const MoodScreen = ({
     const [isNavigating, setIsNavigating] = useState(false);
     const insets = useSafeAreaInsets();
 
-    const handleSelectMood = (mood, index) => {
+    const handleSelectMood = (mood) => {
         if (isNavigating) return;
         setSelectedMood(mood);
     };
 
     const handleShare = () => {
         if (!selectedMood || isNavigating) return;
-        //setIsNavigating(true);
         onMoodSelect(selectedMood);
-
-        // Simple timeout to allow React to settle before navigation
-
     };
 
     return (
@@ -106,7 +76,7 @@ export const MoodScreen = ({
                 contentContainerStyle={[
                     styles.contentContainer,
                     {
-                        paddingTop: insets.top + spacing.lg,
+                        paddingTop: insets.top + spacing.md,
                         paddingBottom: insets.bottom + spacing.xl
                     }
                 ]}
@@ -117,7 +87,7 @@ export const MoodScreen = ({
                     <TouchableOpacity onPress={onBack} style={styles.backButton}>
                         <Text style={styles.backIcon}>←</Text>
                     </TouchableOpacity>
-                    <View>
+                    <View style={{ flex: 1 }}>
                         <Text style={styles.title}>How are you feeling?</Text>
                         <Text style={styles.subtitle}>Let {partnerName} know your vibe ✨</Text>
                     </View>
@@ -125,56 +95,34 @@ export const MoodScreen = ({
 
                 {/* Selected Mood Preview */}
                 {selectedMood && (
-                    <View>
-                        <View style={styles.selectedCard}>
-                            <LinearGradient
-                                colors={selectedMood.gradient}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={StyleSheet.absoluteFill}
+                    <View style={styles.selectedCard}>
+                        {selectedMood.lottieSource ? (
+                            <LottieView
+                                source={selectedMood.lottieSource}
+                                autoPlay
+                                loop
+                                style={{ width: 80, height: 80 }}
                             />
-                            {/* Decorative particles */}
-                            <View style={styles.particleContainer}>
-                                {[...Array(6)].map((_, i) => (
-                                    <View
-                                        key={i}
-                                        style={[
-                                            styles.decorParticle,
-                                            {
-                                                left: `${15 + i * 15}%`,
-                                                top: `${20 + (i % 3) * 25}%`,
-                                                backgroundColor: selectedMood.color,
-                                                opacity: 0.3 + (i % 3) * 0.1,
-                                                width: 4 + (i % 3) * 2,
-                                                height: 4 + (i % 3) * 2,
-                                            }
-                                        ]}
-                                    />
-                                ))}
-                            </View>
-
+                        ) : (
                             <Text style={styles.selectedEmoji}>{selectedMood.emoji}</Text>
-                            <Text style={styles.selectedLabel}>{selectedMood.label}</Text>
-                            <View style={[styles.selectedGlow, { backgroundColor: selectedMood.color }]} />
-                        </View>
+                        )}
+                        <Text style={styles.selectedLabel}>{selectedMood.label}</Text>
                     </View>
                 )}
 
-                {/* Mood Grid */}
-                <Text style={styles.gridTitle}>Choose your mood</Text>
-                <View style={styles.moodGrid}>
-                    {moods.map((mood, index) => (
-                        <MoodOrb
+                {/* Emoji Grid - 10 per row */}
+                <View style={styles.emojiGrid}>
+                    {emojis.map((mood) => (
+                        <EmojiItem
                             key={mood.id}
                             mood={mood}
-                            index={index}
                             isSelected={selectedMood?.id === mood.id}
                             onSelect={handleSelectMood}
                         />
                     ))}
                 </View>
 
-                {/* Share Button - Using plain TouchableOpacity to avoid Fabric crash */}
+                {/* Share Button */}
                 <View style={styles.buttonContainer}>
                     <TouchableOpacity
                         onPress={handleShare}
@@ -193,47 +141,47 @@ export const MoodScreen = ({
 
                 {/* Partner's Mood */}
                 {partnerMood && (
-                    <Card variant="glass" padding="lg" style={styles.partnerCard} glowOnMount>
-                        <View style={styles.partnerHeader}>
-                            <Text style={styles.partnerTitle}>{partnerName} is feeling</Text>
-                            <Text style={styles.partnerTime}>2h ago</Text>
-                        </View>
+                    <View style={styles.partnerCard}>
+                        <Text style={styles.partnerTitle}>{partnerName} is feeling</Text>
                         <View style={styles.partnerContent}>
-                            <View style={[styles.partnerEmojiContainer, { backgroundColor: partnerMood.color + '20' }]}>
-                                <Text style={styles.partnerEmoji}>{partnerMood.emoji}</Text>
+                            <View style={styles.partnerEmojiContainer}>
+                                {partnerMood.lottieSource ? (
+                                    <LottieView
+                                        source={partnerMood.lottieSource}
+                                        autoPlay
+                                        loop
+                                        style={{ width: 40, height: 40 }}
+                                    />
+                                ) : (
+                                    <Text style={styles.partnerEmoji}>{partnerMood.emoji}</Text>
+                                )}
                             </View>
-                            <View>
-                                <Text style={styles.partnerLabel}>{partnerMood.label}</Text>
-                                <Text style={styles.partnerHint}>Tap to send a reaction</Text>
-                            </View>
+                            <Text style={styles.partnerLabel}>{partnerMood.label}</Text>
                         </View>
-                    </Card>
+                    </View>
                 )}
             </ScrollView>
         </GradientBackground>
     );
 };
 
-const GRID_GAP = spacing.md;
-const ITEM_WIDTH = (width - spacing.xl * 2 - GRID_GAP * 2) / 3;
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
     contentContainer: {
-        paddingHorizontal: spacing.xl,
+        paddingHorizontal: GRID_PADDING,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.lg,
-        marginBottom: spacing['2xl'],
+        gap: spacing.md,
+        marginBottom: spacing.lg,
     },
     backButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: colors.glass,
         justifyContent: 'center',
         alignItems: 'center',
@@ -245,105 +193,55 @@ const styles = StyleSheet.create({
         color: colors.text,
     },
     title: {
-        fontSize: 26,
+        fontSize: 24,
         fontWeight: '800',
         color: colors.text,
         letterSpacing: -0.5,
     },
     subtitle: {
-        fontSize: 14,
+        fontSize: 13,
         color: colors.textSecondary,
-        marginTop: 4,
+        marginTop: 2,
     },
     selectedCard: {
         alignItems: 'center',
         justifyContent: 'center',
-        padding: spacing.xl,
+        paddingVertical: spacing.lg,
+        marginBottom: spacing.md,
         borderRadius: borderRadius['2xl'],
-        marginBottom: spacing.lg,
+        backgroundColor: 'rgba(255,255,255,0.05)',
         borderWidth: 1,
-        borderColor: colors.glassBorderLight,
-        overflow: 'hidden',
-        position: 'relative',
-    },
-    particleContainer: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    decorParticle: {
-        position: 'absolute',
-        borderRadius: 10,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     selectedEmoji: {
-        fontSize: 80,
-        marginBottom: spacing.sm,
-    },
-    selectedLabel: {
-        fontSize: 26,
-        fontWeight: '800',
-        color: colors.text,
-        letterSpacing: -0.5,
-    },
-    selectedGlow: {
-        position: 'absolute',
-        width: 250,
-        height: 250,
-        borderRadius: 125,
-        opacity: 0.12,
-        bottom: -125,
-    },
-    gridTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: colors.textSecondary,
-        marginBottom: spacing.md,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    moodGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        marginBottom: spacing.lg,
-    },
-    moodItemWrapper: {
-        width: ITEM_WIDTH,
-        marginBottom: GRID_GAP,
-        position: 'relative',
-    },
-    selectionGlow: {
-        position: 'absolute',
-        top: -8,
-        left: -8,
-        right: -8,
-        bottom: -8,
-        borderRadius: borderRadius.xl + 8,
-    },
-    moodItem: {
-        aspectRatio: 1,
-        borderRadius: borderRadius.xl,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: colors.glassBorder,
-        overflow: 'hidden',
-        position: 'relative',
-    },
-    innerGlow: {
-        position: 'absolute',
-        width: '120%',
-        height: '120%',
-        borderRadius: 100,
-        opacity: 0.1,
-    },
-    moodEmoji: {
-        fontSize: 36,
+        fontSize: 64,
         marginBottom: spacing.xs,
     },
-    moodLabel: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: colors.textSecondary,
-        textAlign: 'center',
+    selectedLabel: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: colors.text,
+        marginTop: spacing.xs,
+    },
+    emojiGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: GRID_GAP,
+        marginBottom: spacing.lg,
+    },
+    emojiItem: {
+        width: ITEM_SIZE,
+        height: ITEM_SIZE,
+        borderRadius: ITEM_SIZE / 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    emojiItemSelected: {
+        backgroundColor: 'rgba(255,255,255,0.15)',
+    },
+    emojiText: {
+        fontSize: ITEM_SIZE * 0.6,
     },
     buttonContainer: {
         marginBottom: spacing.xl,
@@ -365,49 +263,40 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     partnerCard: {
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderRadius: borderRadius.xl,
+        padding: spacing.lg,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
         marginBottom: spacing.xl,
-    },
-    partnerHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.md,
     },
     partnerTitle: {
         fontSize: 14,
         fontWeight: '600',
         color: colors.textSecondary,
-    },
-    partnerTime: {
-        fontSize: 12,
-        color: colors.textMuted,
+        marginBottom: spacing.sm,
     },
     partnerContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.lg,
+        gap: spacing.md,
     },
     partnerEmojiContainer: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.08)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     partnerEmoji: {
-        fontSize: 36,
+        fontSize: 28,
     },
     partnerLabel: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
         color: colors.text,
-    },
-    partnerHint: {
-        fontSize: 12,
-        color: colors.textMuted,
-        marginTop: 2,
     },
 });
 
 export default MoodScreen;
-

@@ -210,24 +210,20 @@ export default function DailyChallengeScreen({
 
   if (loading) {
     return (
-      <GradientBackground variant="warm">
-        <View style={[styles.center, { paddingTop: insets.top }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </GradientBackground>
+      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
     );
   }
 
   if (!challenge || tasks.length === 0) {
     return (
-      <GradientBackground variant="warm">
-        <View style={[styles.center, { paddingTop: insets.top }]}>
-          <Text style={styles.emptyText}>No Challenge Today</Text>
-          <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-            <Text style={styles.backBtnText}>← Back Home</Text>
-          </TouchableOpacity>
-        </View>
-      </GradientBackground>
+      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+        <Text style={styles.emptyText}>No Challenge Today</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+          <Text style={styles.backBtnText}>← Back Home</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
@@ -272,7 +268,7 @@ export default function DailyChallengeScreen({
           <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
             <TouchableOpacity onPress={onBack} style={styles.headerBackBtn}>
               <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M15 18l-6-6 6-6" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </TouchableOpacity>
             <View style={styles.headerContent}>
@@ -311,11 +307,11 @@ export default function DailyChallengeScreen({
 /* ===================== STYLES ===================== */
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: '#000000' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { fontSize: 18, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.lg },
-  backBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.surface, borderRadius: borderRadius.lg },
-  backBtnText: { fontSize: 16, fontWeight: '600', color: colors.primary },
+  emptyText: { fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.6)', marginBottom: spacing.lg },
+  backBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: '#1A1A1A', borderRadius: borderRadius.lg },
+  backBtnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 
   header: {
     flexDirection: 'row',
@@ -327,24 +323,20 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.surface,
+    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
   headerContent: { marginLeft: spacing.md, flex: 1 },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: colors.text },
-  headerSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   viewAnswersBtn: {
-    backgroundColor: colors.primary + '20',
+    backgroundColor: '#1A1A1A',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.primary + '40',
   },
-  viewAnswersBtnText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  viewAnswersBtnText: { fontSize: 12, fontWeight: '600', color: '#FFFFFF' },
 
   cardsContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: spacing.sm, paddingHorizontal: spacing.md },
 
@@ -358,13 +350,13 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.borderLight,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   progressDotCompleted: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#FFFFFF',
   },
   progressDotActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#FFFFFF',
     width: 20,
   },
 });

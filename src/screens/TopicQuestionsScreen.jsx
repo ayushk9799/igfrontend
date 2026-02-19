@@ -288,7 +288,7 @@ export default function TopicQuestionsScreen({
     if (loading) {
         return (
             <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color="#FFFFFF" />
                 <Text style={styles.loadingText}>Loading {topicTitle} questions...</Text>
             </View>
         );
@@ -339,7 +339,7 @@ export default function TopicQuestionsScreen({
                     <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
                         <TouchableOpacity onPress={onBack} style={styles.headerBackBtn}>
                             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                <Path d="M15 18l-6-6 6-6" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                             </Svg>
                         </TouchableOpacity>
                         <View style={styles.headerContent}>
@@ -386,30 +386,30 @@ export default function TopicQuestionsScreen({
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: '#000000' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
 
     loadingText: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         marginTop: spacing.lg
     },
 
     errorEmoji: { fontSize: 48, marginBottom: spacing.md },
     errorText: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         textAlign: 'center',
         marginBottom: spacing.lg
     },
     retryBtn: {
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.md,
-        backgroundColor: colors.primary,
+        backgroundColor: '#1A1A1A',
         borderRadius: borderRadius.lg,
         marginBottom: spacing.md,
     },
-    retryBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+    retryBtnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 
     emptyEmoji: { fontSize: 48, marginBottom: spacing.md },
     emptyImage: {
@@ -420,16 +420,16 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 18,
         fontWeight: '600',
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         marginBottom: spacing.lg
     },
     backBtn: {
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.md,
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderRadius: borderRadius.lg
     },
-    backBtnText: { fontSize: 16, fontWeight: '600', color: colors.primary },
+    backBtnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 
     header: {
         flexDirection: 'row',
@@ -441,11 +441,9 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: colors.borderLight,
     },
     headerContent: { marginLeft: spacing.md, flex: 1 },
     headerTitleRow: {
@@ -461,8 +459,8 @@ const styles = StyleSheet.create({
         fontSize: 24,
         marginRight: 8,
     },
-    headerTitle: { fontSize: 22, fontWeight: '600', color: colors.text, letterSpacing: -0.5 },
-    headerSubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+    headerTitle: { fontSize: 22, fontWeight: '600', color: '#FFFFFF', letterSpacing: -0.5 },
+    headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
 
     cardsContainer: {
         flex: 1,

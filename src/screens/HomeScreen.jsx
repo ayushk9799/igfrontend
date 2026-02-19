@@ -17,6 +17,7 @@ import GradientBackground from '../components/GradientBackground';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 import { API_BASE } from '../constants/Api';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
+import { getEmojiById } from '../constants/Moods';
 
 const HomeScreen = ({
     partnerName = 'Partner',
@@ -97,25 +98,12 @@ const HomeScreen = ({
         return userName.split(' ')[0];
     };
 
-    // Mood colors from MoodScreen - consistent mapping
-    const moodColorMap = {
-        'Happy': colors.moodHappy,
-        'In Love': colors.moodLove,
-        'Playful': colors.moodPlayful,
-        'Calm': colors.moodCalm,
-        'Excited': colors.moodExcited,
-        'Grateful': colors.moodGrateful,
-        'Missing You': colors.moodMissing,
-        'Tired': colors.moodTired,
-        'Romantic': colors.primary,
-    };
-
-    // Get blob colors based on actual mood
-    const yourMoodColor = yourMood?.label ? (moodColorMap[yourMood.label] || '#8AB7A7') : '#8AB7A7';
-    const partnerMoodColor = partnerMood?.label ? (moodColorMap[partnerMood.label] || '#E5C368') : '#E5C368';
+    // Get Lottie sources for animated emoji rendering
+    const yourLottie = yourMood?.id ? getEmojiById(yourMood.id)?.lottieSource : null;
+    const partnerLottie = partnerMood?.id ? getEmojiById(partnerMood.id)?.lottieSource : null;
 
     return (
-        <GradientBackground variant="warm">
+        <View style={{ flex: 1, backgroundColor: '#000000' }}>
             <SafeAreaView style={styles.container} edges={['top']}>
                 <ScrollView
                     style={styles.scrollView}
@@ -136,14 +124,14 @@ const HomeScreen = ({
                             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M12 15a3 3 0 100-6 3 3 0 000 6z"
-                                    stroke={colors.text}
+                                    stroke="#FFFFFF"
                                     strokeWidth={2}
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                 />
                                 <Path
                                     d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
-                                    stroke={colors.text}
+                                    stroke="#FFFFFF"
                                     strokeWidth={2}
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -159,13 +147,31 @@ const HomeScreen = ({
                         {/* Mood Card */}
                         <View style={styles.moodCard}>
                             {/* Partner's large emoji in the center */}
-                            <View style={[styles.partnerEmojiContainer, { borderColor: partnerMoodColor }]}>
-                                <Text style={styles.partnerEmojiLarge}>{partnerMood?.emoji || '😊'}</Text>
+                            <View style={styles.partnerEmojiContainer}>
+                                {partnerLottie ? (
+                                    <LottieView
+                                        source={partnerLottie}
+                                        autoPlay
+                                        loop
+                                        style={{ width: 140, height: 140 }}
+                                    />
+                                ) : (
+                                    <Text style={styles.partnerEmojiLarge}>{partnerMood?.emoji || '😊'}</Text>
+                                )}
                             </View>
 
                             {/* Your emoji badge on the boundary of partner's circle */}
-                            <View style={[styles.yourEmojiBadge, { borderColor: yourMoodColor }]}>
-                                <Text style={styles.yourEmojiSmall}>{yourMood?.emoji || '😊'}</Text>
+                            <View style={styles.yourEmojiBadge}>
+                                {yourLottie ? (
+                                    <LottieView
+                                        source={yourLottie}
+                                        autoPlay
+                                        loop
+                                        style={{ width: 44, height: 44 }}
+                                    />
+                                ) : (
+                                    <Text style={styles.yourEmojiSmall}>{yourMood?.emoji || '😊'}</Text>
+                                )}
                             </View>
                         </View>
 
@@ -262,7 +268,7 @@ const HomeScreen = ({
                                         />
                                     </Svg>
                                 </View>
-                                <Text style={styles.updateMoodText}>Link Partner </Text>
+                                <Text style={[styles.updateMoodText, { color: '#FFFFFF' }]}>Link Partner </Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -356,9 +362,9 @@ const HomeScreen = ({
                             ) : (
                                 <View style={styles.canvasLottieContainer}>
                                     <LottieView
-                                        source={require('../../assets/canvas.lottie')}
+                                        source={require('../../assets/canvas2.lottie')}
                                         autoPlay
-
+                                        loop={false}
                                         style={styles.canvasLottie}
                                     />
                                 </View>
@@ -654,7 +660,7 @@ const HomeScreen = ({
                     )}
                 </ScrollView>
             </SafeAreaView>
-        </GradientBackground>
+        </View>
     );
 };
 
@@ -682,11 +688,11 @@ const styles = StyleSheet.create({
     brandName: {
         fontSize: 28,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: -0.5,
     },
     connectionBadge: {
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
@@ -699,7 +705,7 @@ const styles = StyleSheet.create({
     connectionText: {
         fontSize: 13,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     settingsButton: {
         padding: 8,
@@ -724,14 +730,13 @@ const styles = StyleSheet.create({
         width: 180,
         height: 180,
         borderRadius: 90,
-        backgroundColor: 'white',
+        backgroundColor: '#1A1A1A',
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
+        shadowColor: 'rgba(255, 255, 255, 0.08)',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 20,
         elevation: 6,
     },
     partnerEmojiLarge: {
@@ -740,7 +745,7 @@ const styles = StyleSheet.create({
     partnerNameLabel: {
         fontSize: 18,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         marginTop: 12,
         opacity: 0.9,
     },
@@ -753,15 +758,13 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: 'white',
+        backgroundColor: '#1A1A1A',
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 3,
-        borderColor: colors.surface,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowColor: 'rgba(255, 255, 255, 0.06)',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 10,
         elevation: 5,
     },
     yourEmojiSmall: {
@@ -769,7 +772,7 @@ const styles = StyleSheet.create({
     },
     moodDescription: {
         fontSize: 15,
-        color: colors.text,
+        color: 'rgba(255, 255, 255, 0.8)',
         textAlign: 'center',
         marginBottom: 16,
         paddingHorizontal: 24,
@@ -777,15 +780,15 @@ const styles = StyleSheet.create({
     },
     moodName: {
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     updateMoodButton: {
-        backgroundColor: '#000000',
+        backgroundColor: '#1A1A1A',
         paddingHorizontal: 32,
         paddingVertical: 12,
         borderRadius: 24,
         marginTop: 20,
-        shadowColor: '#000',
+        shadowColor: '#FFF',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -794,7 +797,7 @@ const styles = StyleSheet.create({
     updateMoodText: {
         fontSize: 16,
         fontWeight: '700',
-        color: colors.surface,
+        color: 'white',
     },
     cardsContainer: {
         flexDirection: 'row',
@@ -804,16 +807,16 @@ const styles = StyleSheet.create({
     },
     card: {
         width: (Dimensions.get('window').width - 40 - 12) / 2, // 40 = horizontal padding (20*2), 12 = gap
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderRadius: 20,
         padding: 14,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
+        shadowColor: 'rgba(255, 255, 255, 0.05)',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 12,
         elevation: 8,
         borderWidth: 1,
-        borderColor: 'rgba(0, 0, 0, 0.04)',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
     },
     questionCard: {
         backgroundColor: '#4A2C6A',
@@ -905,12 +908,12 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     canvasCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#1A1A1A',
         overflow: 'hidden',
         position: 'relative',
         padding: 0,
         borderWidth: 1,
-        borderColor: 'rgba(229, 168, 95, 0.2)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         minHeight: 200,
     },
     canvasIconContainer: {
@@ -951,18 +954,18 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 17,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         marginBottom: 6,
     },
     questionText: {
         fontSize: 13,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         marginBottom: 10,
         lineHeight: 18,
     },
     canvasText: {
         fontSize: 13,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         marginBottom: 10,
         lineHeight: 18,
     },
@@ -995,7 +998,7 @@ const styles = StyleSheet.create({
     canvasPreviewContainer: {
         flex: 1,
         width: '100%',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#1A1A1A',
         overflow: 'hidden',
     },
     canvasLottieContainer: {
@@ -1003,7 +1006,7 @@ const styles = StyleSheet.create({
         width: '100%',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#1A1A1A',
     },
     canvasLottie: {
         width: '100%',
@@ -1068,12 +1071,12 @@ const styles = StyleSheet.create({
     noPartnerTitle: {
         fontSize: 24,
         fontWeight: '800',
-        color: colors.text,
+        color: '#FFFFFF',
         marginBottom: 12,
     },
     noPartnerText: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.7)',
         textAlign: 'center',
         marginBottom: 24,
         lineHeight: 24,
@@ -1140,7 +1143,7 @@ const styles = StyleSheet.create({
     topicSectionTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     topicPlayButton: {
         flexDirection: 'row',
@@ -1217,7 +1220,7 @@ const styles = StyleSheet.create({
     arcadeSectionTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     allGamesButton: {
         flexDirection: 'row',
@@ -1225,12 +1228,12 @@ const styles = StyleSheet.create({
     },
     allGamesText: {
         fontSize: 14,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         fontWeight: '500',
     },
     allGamesArrow: {
         fontSize: 18,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         marginLeft: 2,
         fontWeight: '600',
     },

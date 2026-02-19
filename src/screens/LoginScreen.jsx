@@ -47,7 +47,7 @@ const SocialButton = ({ icon, label, onPress, loading, variant = 'default' }) =>
                 disabled={loading}
             >
                 {loading ? (
-                    <ActivityIndicator color={isApple ? '#FFFFFF' : colors.text} />
+                    <ActivityIndicator color={isApple ? '#FFFFFF' : '#FFFFFF'} />
                 ) : (
                     <View style={styles.socialButtonContent}>
                         <View style={styles.socialIconContainer}>
@@ -195,7 +195,7 @@ export const LoginScreen = ({
     };
 
     return (
-        <GradientBackground variant="warm">
+        <View style={{ flex: 1, backgroundColor: '#000000' }}>
             <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
                 {/* App Name - Top Left */}
                 <View style={styles.brandContainer}>
@@ -255,7 +255,7 @@ export const LoginScreen = ({
                     </View>
                 </View>
             </View>
-        </GradientBackground>
+        </View>
     );
 };
 
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     brandName: {
         fontSize: 28,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: -0.5,
     },
     spacer: {
@@ -283,12 +283,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 34,
         fontWeight: '800',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         marginTop: spacing.xs,
     },
     socialButtons: {
@@ -301,13 +301,13 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 20,
         borderRadius: borderRadius.xl,
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: '#2A2A2A',
     },
     appleButton: {
-        backgroundColor: '#000000',
-        borderColor: '#000000',
+        backgroundColor: '#1A1A1A',
+        borderColor: '#2A2A2A',
     },
     socialButtonContent: {
         flexDirection: 'row',
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     socialButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     appleButtonText: {
         color: '#FFFFFF',
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     },
     termsText: {
         fontSize: 12,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.5)',
         textAlign: 'center',
     },
     termsLinks: {
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     },
     termsLink: {
         fontSize: 12,
-        color: colors.text,
+        color: '#FFFFFF',
         fontWeight: '600',
     },
 });

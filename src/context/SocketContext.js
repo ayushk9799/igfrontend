@@ -153,7 +153,7 @@ export const SocketProvider = ({ children }) => {
                 setPartnerOnline(data.isOnline);
             } else {
                 // Partner has no mood set - use default
-                setPartnerMood({ emoji: '😊', label: 'Happy', updatedAt: null });
+                setPartnerMood({ id: 'blush', emoji: '😊', label: 'Blush', updatedAt: null });
             }
         });
 

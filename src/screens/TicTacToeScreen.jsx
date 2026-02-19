@@ -546,19 +546,19 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
     if (loading) {
         return (
-            <GradientBackground variant="warm">
+            <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
                 <SafeAreaView style={styles.container}>
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.primary} />
                         <Text style={styles.loadingText}>Setting up game...</Text>
                     </View>
                 </SafeAreaView>
-            </GradientBackground>
+            </View>
         );
     }
 
     return (
-        <GradientBackground variant="warm">
+        <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
             <SafeAreaView style={styles.container} edges={['top']}>
                 {/* Header */}
                 <View style={styles.header}>
@@ -566,7 +566,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                         <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                             <Path
                                 d="M19 12H5M12 19l-7-7 7-7"
-                                stroke={colors.text}
+                                stroke="#FFFFFF"
                                 strokeWidth={2}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -697,7 +697,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                     </View>
                 )}
             </SafeAreaView>
-        </GradientBackground>
+        </View>
     );
 };
 
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 16,
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.7)',
     },
     header: {
         flexDirection: 'row',
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     headerRight: {
         width: 80,
@@ -763,16 +763,13 @@ const styles = StyleSheet.create({
     },
     playerCard: {
         alignItems: 'center',
-        backgroundColor: colors.surface,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         paddingHorizontal: 24,
         paddingVertical: 16,
         borderRadius: 16,
         minWidth: 100,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     activePlayer: {
         borderWidth: 2,
@@ -783,17 +780,17 @@ const styles = StyleSheet.create({
     playerSymbol: {
         fontSize: 32,
         fontWeight: '800',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     playerName: {
         fontSize: 14,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         marginTop: 4,
     },
     vsText: {
         fontSize: 16,
         fontWeight: '600',
-        color: colors.textMuted,
+        color: 'rgba(255, 255, 255, 0.4)',
     },
     statusContainer: {
         alignItems: 'center',
@@ -802,7 +799,7 @@ const styles = StyleSheet.create({
     statusText: {
         fontSize: 20,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     statusWin: {
         color: colors.success,
@@ -839,18 +836,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     board: {
-        width: 300,
-        height: 300,
+        width: 304,
+        height: 304,
         flexDirection: 'row',
         flexWrap: 'wrap',
-        backgroundColor: colors.surface,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
         borderRadius: 20,
         overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 24,
-        elevation: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     cell: {
         width: 100,
@@ -859,12 +853,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cellBorderRight: {
-        borderRightWidth: 2,
-        borderRightColor: colors.border,
+        borderRightWidth: 1,
+        borderRightColor: 'rgba(255, 255, 255, 0.1)',
     },
     cellBorderBottom: {
-        borderBottomWidth: 2,
-        borderBottomColor: colors.border,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     },
     cellWinning: {
         backgroundColor: 'rgba(72, 187, 120, 0.15)',
@@ -931,17 +925,17 @@ const styles = StyleSheet.create({
         color: '#FFF',
     },
     backHomeButton: {
-        backgroundColor: colors.surface,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
         paddingVertical: 14,
         borderRadius: 24,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     backHomeText: {
         fontSize: 16,
         fontWeight: '600',
-        color: colors.text,
+        color: 'rgba(255, 255, 255, 0.8)',
     },
     linkPartnerContainer: {
         paddingHorizontal: 40,

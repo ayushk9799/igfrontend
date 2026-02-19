@@ -413,9 +413,9 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Render a single tile
     const renderTile = (letter, status, index) => {
-        let bgColor = colors.surface;
-        let textColor = colors.text;
-        let borderColor = '#D3D6DA';
+        let bgColor = 'rgba(255, 255, 255, 0.05)';
+        let textColor = '#FFFFFF';
+        let borderColor = 'rgba(255, 255, 255, 0.15)';
 
         if (status === 'correct') {
             bgColor = '#6AAA64'; // Green
@@ -487,14 +487,14 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     if (loading) {
         return (
-            <GradientBackground variant="warm">
+            <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
                 <SafeAreaView style={styles.container}>
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.primary} />
                         <Text style={styles.loadingText}>Loading...</Text>
                     </View>
                 </SafeAreaView>
-            </GradientBackground>
+            </View>
         );
     }
 
@@ -503,7 +503,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     const attemptsRemaining = maxAttempts - attemptsUsed;
 
     return (
-        <GradientBackground variant="warm">
+        <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
             <SafeAreaView style={styles.container} edges={['top']}>
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
@@ -516,7 +516,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M19 12H5M12 19l-7-7 7-7"
-                                    stroke={colors.text}
+                                    stroke="#FFFFFF"
                                     strokeWidth={2}
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -537,10 +537,10 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     {/* Status Text */}
                     <View style={styles.statusContainer}>
                         {mode === 'create' && (
-                            <Text style={styles.statusText}>Set a word for {partnerName} to guess</Text>
+                            <Text style={[styles.statusText, { color: '#FFFFFF' }]}>Set a word for {partnerName} to guess</Text>
                         )}
                         {mode === 'guess' && (
-                            <Text style={styles.statusText}>
+                            <Text style={[styles.statusText, { color: '#FFFFFF' }]}>
                                 Guess the word! ({attemptsRemaining} attempts left)
                             </Text>
                         )}
@@ -716,7 +716,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     )}
                 </KeyboardAvoidingView>
             </SafeAreaView>
-        </GradientBackground>
+        </View>
     );
 };
 
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 16,
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.7)',
     },
     header: {
         flexDirection: 'row',
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 24,
         fontWeight: '800',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: 2,
     },
     headerRight: {
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
     statusText: {
         fontSize: 16,
         fontWeight: '600',
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.7)',
         textAlign: 'center',
     },
     statusWin: {
@@ -828,12 +828,12 @@ const styles = StyleSheet.create({
     tile: {
         width: 56,
         height: 56,
-        borderWidth: 2,
-        borderColor: '#D3D6DA',
-        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.surface,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
     },
     tileSecret: {
         backgroundColor: '#6AAA64',
@@ -842,12 +842,12 @@ const styles = StyleSheet.create({
     tileText: {
         fontSize: 28,
         fontWeight: '800',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     hintText: {
         marginTop: 16,
         fontSize: 14,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.5)',
     },
     secretWordContainer: {
         flexDirection: 'row',
@@ -856,7 +856,7 @@ const styles = StyleSheet.create({
     },
     waitingText: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         marginTop: 12,
     },
     creatorGuessesContainer: {
@@ -864,12 +864,12 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.1)',
+        borderTopColor: 'rgba(255, 255, 255, 0.1)',
     },
     creatorGuessesTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.5)',
         marginBottom: 12,
     },
     inputContainer: {
@@ -891,7 +891,7 @@ const styles = StyleSheet.create({
     },
     linkPartnerText: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.7)',
         textAlign: 'center',
         marginBottom: 20,
         lineHeight: 24,
@@ -926,15 +926,17 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     backHomeButton: {
-        backgroundColor: colors.text,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
         paddingHorizontal: 32,
         paddingVertical: 16,
         borderRadius: 30,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     backHomeText: {
         fontSize: 16,
         fontWeight: '700',
-        color: colors.surface,
+        color: '#FFFFFF',
     },
 });
 

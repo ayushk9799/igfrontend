@@ -170,7 +170,7 @@ export default function ChatListScreen({
     if (loading) {
         return (
             <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color="#FFFFFF" />
                 <Text style={styles.loadingText}>Loading chats...</Text>
             </View>
         );
@@ -184,7 +184,7 @@ export default function ChatListScreen({
                     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                         <Path
                             d="M15 18l-6-6 6-6"
-                            stroke={colors.text}
+                            stroke="#FFFFFF"
                             strokeWidth={2}
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -221,7 +221,7 @@ export default function ChatListScreen({
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={handleRefresh}
-                        tintColor={colors.primary}
+                        tintColor="#FFFFFF"
                     />
                 }
                 showsVerticalScrollIndicator={false}
@@ -233,7 +233,7 @@ export default function ChatListScreen({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background,
+        backgroundColor: '#000000',
     },
     centerContent: {
         justifyContent: 'center',
@@ -246,27 +246,27 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: colors.borderLight,
-        backgroundColor: colors.surface,
+        borderBottomColor: '#2A2A2A',
+        backgroundColor: '#000000',
     },
     backButton: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: colors.backgroundAlt,
+        backgroundColor: '#1A1A1A',
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: 0.5,
     },
     loadingText: {
         marginTop: spacing.md,
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
     },
     errorContainer: {
         padding: spacing.lg,
@@ -297,12 +297,12 @@ const styles = StyleSheet.create({
     chatItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderRadius: borderRadius.lg,
         padding: spacing.md,
         marginBottom: spacing.sm,
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: '#2A2A2A',
     },
     chatItemUnread: {
         borderColor: colors.primary,
@@ -340,15 +340,15 @@ const styles = StyleSheet.create({
     chatSource: {
         fontSize: 14,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     chatTime: {
         fontSize: 12,
-        color: colors.textMuted,
+        color: 'rgba(255,255,255,0.5)',
     },
     questionText: {
         fontSize: 15,
-        color: colors.text,
+        color: '#FFFFFF',
         lineHeight: 20,
         marginBottom: 4,
     },
@@ -358,12 +358,12 @@ const styles = StyleSheet.create({
     },
     lastMessage: {
         fontSize: 13,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.5)',
         flex: 1,
     },
     statusText: {
         fontSize: 13,
-        color: colors.textMuted,
+        color: 'rgba(255,255,255,0.4)',
         fontStyle: 'italic',
     },
     unreadBadge: {
@@ -394,12 +394,12 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         marginBottom: spacing.sm,
     },
     emptyText: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         textAlign: 'center',
         lineHeight: 22,
     },

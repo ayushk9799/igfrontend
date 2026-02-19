@@ -454,7 +454,7 @@ export default function ChatScreen({
     if (loading) {
         return (
             <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color="#FFFFFF" />
             </View>
         );
     }
@@ -467,13 +467,13 @@ export default function ChatScreen({
                     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                         <Path
                             d="M15 18l-6-6 6-6"
-                            stroke="#007AFF"
+                            stroke="#FFFFFF"
                             strokeWidth={2.5}
                             strokeLinecap="round"
                             strokeLinejoin="round"
                         />
                     </Svg>
-                    <Text style={styles.backText}>Back</Text>
+                    <Text style={styles.backText}>Chats</Text>
                 </TouchableOpacity>
 
                 {/* Centered avatar and name */}
@@ -537,7 +537,7 @@ export default function ChatScreen({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#000000',
     },
     centerContent: {
         justifyContent: 'center',
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: spacing.md,
         paddingVertical: 8,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#000000',
     },
     backButton: {
         flexDirection: 'row',
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     },
     backText: {
         fontSize: 17,
-        color: '#007AFF',
+        color: '#FFFFFF',
         marginLeft: 2,
     },
     headerCenter: {
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#4A90A4',
+        backgroundColor: '#1A1A1A',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
     headerName: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#1A1A2E',
+        color: '#FFFFFF',
     },
     headerTextContainer: {
         flexDirection: 'column',
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
     },
     headerTypingText: {
         fontSize: 12,
-        color: '#6B7280',
+        color: 'rgba(255,255,255,0.5)',
         fontStyle: 'italic',
     },
     headerSpacer: {
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 12,
         paddingBottom: 8,
-        backgroundColor: '#F0F4FF',
+        backgroundColor: '#1A1A1A',
         borderRadius: 12,
     },
     questionCardCollapsed: {
@@ -621,19 +621,19 @@ const styles = StyleSheet.create({
     questionLabel: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#374151',
+        color: 'rgba(255,255,255,0.6)',
         marginBottom: 8,
     },
     questionText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#111827',
+        color: '#FFFFFF',
         lineHeight: 22,
         marginBottom: 6,
     },
     tapHint: {
         fontSize: 11,
-        color: '#9CA3AF',
+        color: 'rgba(255,255,255,0.4)',
         textAlign: 'center',
         marginTop: 4,
     },
@@ -642,12 +642,12 @@ const styles = StyleSheet.create({
     },
     collapseHint: {
         fontSize: 12,
-        color: '#6B7280',
+        color: 'rgba(255,255,255,0.5)',
         fontWeight: '500',
     },
     answersContainer: {
         borderTopWidth: 1,
-        borderTopColor: colors.borderLight,
+        borderTopColor: '#2A2A2A',
         paddingTop: spacing.md,
         marginTop: spacing.xs,
         gap: spacing.sm,
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
     answerAvatarText: {
         fontSize: 14,
         fontWeight: '700',
-        color: colors.primary,
+        color: '#FFFFFF',
     },
     answerContent: {
         flex: 1,
@@ -675,14 +675,14 @@ const styles = StyleSheet.create({
     answerLabel: {
         fontSize: 11,
         fontWeight: '600',
-        color: colors.textMuted,
+        color: 'rgba(255,255,255,0.5)',
         marginBottom: 2,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     answerText: {
         fontSize: 14,
-        color: colors.text,
+        color: '#FFFFFF',
         lineHeight: 20,
     },
     messagesContent: {
@@ -707,12 +707,12 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         marginBottom: spacing.xs,
     },
     emptyText: {
         fontSize: 14,
-        color: colors.textMuted,
+        color: 'rgba(255,255,255,0.5)',
         textAlign: 'center',
         lineHeight: 20,
     },
@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: colors.textMuted,
+        backgroundColor: 'rgba(255,255,255,0.5)',
     },
     typingDot1: {
         opacity: 0.4,
@@ -744,7 +744,7 @@ const styles = StyleSheet.create({
     },
     typingText: {
         fontSize: 13,
-        color: colors.textMuted,
+        color: 'rgba(255,255,255,0.5)',
     },
     // Answer message styles
     answerMessageContainer: {
@@ -765,23 +765,23 @@ const styles = StyleSheet.create({
     },
     answerReceived: {
         alignSelf: 'flex-start',
-        backgroundColor: colors.surface,
-        borderColor: colors.borderLight,
+        backgroundColor: '#1A1A1A',
+        borderColor: '#2A2A2A',
     },
     answerMessageLabel: {
         fontSize: 11,
         fontWeight: '700',
-        color: colors.textMuted,
+        color: 'rgba(255,255,255,0.5)',
         marginBottom: 4,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     answerMessageText: {
         fontSize: 15,
-        color: colors.text,
+        color: '#FFFFFF',
         lineHeight: 21,
     },
     answerTextSent: {
-        color: colors.text,
+        color: '#FFFFFF',
     },
 });

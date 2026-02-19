@@ -210,9 +210,9 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderTopWidth: 1,
-        borderTopColor: colors.borderLight,
+        borderTopColor: 'rgba(255, 255, 255, 0.08)',
         ...Platform.select({
             ios: {
                 shadowColor: '#000',

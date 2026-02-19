@@ -175,7 +175,7 @@ const ChatInput = ({
                         value={message}
                         onChangeText={handleChangeText}
                         placeholder={`Message ${partnerName}...`}
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="rgba(255,255,255,0.4)"
                         multiline
                         maxLength={maxLength}
                         onContentSizeChange={handleContentSizeChange}
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        backgroundColor: '#1A1A1A',
         borderRadius: 50,
         paddingHorizontal: 8,
         paddingVertical: 8,
@@ -230,13 +230,13 @@ const styles = StyleSheet.create({
         shadowRadius: 15,
         elevation: 8,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.5)',
+        borderColor: '#2A2A2A',
     },
     plusButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#2A2A2A',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     },
     input: {
         fontSize: 16,
-        color: '#374151',
+        color: '#FFFFFF',
         paddingVertical: Platform.OS === 'ios' ? 6 : 6,
         lineHeight: 20,
 
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#9B8AFB',
     },
     sendButtonDisabled: {
-        backgroundColor: '#D1D5DB',
+        backgroundColor: '#2A2A2A',
     },
 });
 

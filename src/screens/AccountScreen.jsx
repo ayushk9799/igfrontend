@@ -184,7 +184,7 @@ export const AccountScreen = ({
     };
 
     return (
-        <GradientBackground variant="warm">
+        <View style={{ flex: 1, backgroundColor: '#000000' }}>
             <ScrollView
                 style={styles.container}
                 contentContainerStyle={[
@@ -349,7 +349,7 @@ export const AccountScreen = ({
 
                 <Text style={styles.versionText}>penguin</Text>
             </ScrollView>
-        </GradientBackground>
+        </View>
     );
 };
 
@@ -371,6 +371,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: spacing.md,
+        backgroundColor: '#1A1A1A',
     },
     avatarEmoji: {
         fontSize: 48,
@@ -427,19 +428,19 @@ const styles = StyleSheet.create({
     profileNickname: {
         fontSize: 15,
         fontWeight: '600',
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         fontStyle: 'italic',
         marginBottom: 4,
         letterSpacing: -0.5
     },
     profileEmail: {
         fontSize: 14,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.5)',
         marginBottom: spacing.lg,
     },
     partnerText: {
         fontSize: 14,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.5)',
         marginBottom: spacing.md,
     },
     menuSection: {
@@ -448,7 +449,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 13,
         fontWeight: '700',
-        color: colors.textMuted,
+        color: 'rgba(255, 255, 255, 0.3)',
         textTransform: 'uppercase',
         letterSpacing: 1,
         marginBottom: spacing.md,
@@ -457,15 +458,12 @@ const styles = StyleSheet.create({
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderRadius: borderRadius.lg,
         padding: spacing.md,
-        marginBottom: spacing.sm,
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
         marginBottom: spacing.sm,
-        borderWidth: 1,
-        borderColor: colors.borderLight,
     },
 
     menuContent: {
@@ -475,7 +473,7 @@ const styles = StyleSheet.create({
     menuTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     menuTitleDanger: {
         color: colors.error,
@@ -488,18 +486,17 @@ const styles = StyleSheet.create({
     versionText: {
         textAlign: 'center',
         fontSize: 12,
-        color: colors.textMuted,
+        color: 'rgba(255, 255, 255, 0.2)',
         marginTop: spacing.lg,
         marginBottom: spacing.xl,
     },
     // Premium section styles
     premiumCard: {
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderRadius: borderRadius.lg,
         padding: spacing.md,
         borderWidth: 1,
-        borderColor: colors.accentGold + '40',
-        backgroundColor: colors.accentSoft,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     premiumCardHeader: {
         flexDirection: 'row',
@@ -510,7 +507,7 @@ const styles = StyleSheet.create({
         marginLeft: spacing.sm,
         fontSize: 16,
         fontWeight: '800',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     premiumCardDetails: {
         flexDirection: 'row',
@@ -519,12 +516,12 @@ const styles = StyleSheet.create({
     premiumCardLabel: {
         fontSize: 12,
         fontWeight: '600',
-        color: colors.textMuted,
+        color: 'rgba(255, 255, 255, 0.4)',
     },
     premiumCardValue: {
         fontSize: 14,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         marginTop: 2,
     },
     premiumCoupleSubtext: {

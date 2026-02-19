@@ -27,7 +27,7 @@ import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
-import { getMoodByLabel, moods } from '../constants/Moods';
+import { getEmojiByLabel, emojis } from '../constants/Moods';
 import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
@@ -49,7 +49,7 @@ export const AppNavigator = () => {
 
     // Local state (navigation & UI only)
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
-    const [yourMood, setYourMood] = useState({ emoji: '😊', label: 'Happy' });
+    const [yourMood, setYourMood] = useState({ id: 'blush', emoji: '😊', label: 'Blush' });
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
@@ -236,7 +236,7 @@ export const AppNavigator = () => {
     // Sync local yourMood state with socket userMood when it loads
     useEffect(() => {
         if (userMood) {
-            setYourMood({ emoji: userMood.emoji, label: userMood.label });
+            setYourMood({ id: userMood.id, emoji: userMood.emoji, label: userMood.label });
         }
     }, [userMood]);
 
@@ -651,11 +651,11 @@ export const AppNavigator = () => {
 
     const handleMoodSelect = (mood) => {
         // Update local mood state immediately
-        setYourMood({ emoji: mood.emoji, label: mood.label });
+        setYourMood({ id: mood.id, emoji: mood.emoji, label: mood.label });
 
         // Send mood to backend via WebSocket (fire and forget - don't wait for response)
         if (socket) {
-            socket.emit('mood:update', { emoji: mood.emoji, label: mood.label });
+            socket.emit('mood:update', { id: mood.id, emoji: mood.emoji, label: mood.label });
         }
 
         // Navigate back to home screen
@@ -875,8 +875,8 @@ export const AppNavigator = () => {
             case 'mood':
                 return (
                     <MoodScreen
-                        currentMood={getMoodByLabel(yourMood?.label) || moods[0]}
-                        partnerMood={partnerMood ? getMoodByLabel(partnerMood.label) : null}
+                        currentMood={getEmojiByLabel(yourMood?.label) || emojis[0]}
+                        partnerMood={partnerMood ? getEmojiByLabel(partnerMood.label) : null}
                         partnerName={userData.partnerUsername || null}
                         onMoodSelect={handleMoodSelect}
                         onBack={() => navigate('home')}

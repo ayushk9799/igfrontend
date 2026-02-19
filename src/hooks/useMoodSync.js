@@ -16,13 +16,13 @@ export const useMoodSync = () => {
     /**
      * Update your mood and broadcast to partner
      */
-    const updateMood = useCallback((emoji, label) => {
+    const updateMood = useCallback((id, emoji, label) => {
         if (!socket || !isConnected) {
             console.warn('Socket not connected, cannot update mood');
             return;
         }
 
-        socket.emit('mood:update', { emoji, label });
+        socket.emit('mood:update', { id, emoji, label });
     }, [socket, isConnected]);
 
     /**
