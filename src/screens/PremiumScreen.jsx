@@ -12,6 +12,7 @@ import {
     Animated,
     StyleSheet,
     Linking,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -25,9 +26,9 @@ import { API_URL } from '../constants/Api';
 // RevenueCat is configured once in AppNavigator.jsx on app startup.
 // No need to configure again here — just use the SDK directly.
 
-const HERO_HEIGHT = 320;
-const HERO_GRADIENT_HEIGHT = 180;
-const HERO_PLACEHOLDER_HEIGHT = HERO_HEIGHT - 10;
+const HERO_HEIGHT = 280;
+const HERO_GRADIENT_HEIGHT = 160;
+const HERO_PLACEHOLDER_HEIGHT = HERO_HEIGHT - 20;
 
 // Crown icon component
 const CrownIcon = ({ size = 22, color = colors.primary }) => (
@@ -97,6 +98,7 @@ export default function PremiumScreen({ onBack }) {
     const [offerings, setOfferings] = useState(null);
     const [entitlements, setEntitlements] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [purchasing, setPurchasing] = useState(false);
 
     const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -207,38 +209,57 @@ export default function PremiumScreen({ onBack }) {
     const handlePurchase = async (pkg) => {
         try {
             setLoading(true);
+            setPurchasing(true);
 
             const { customerInfo } = await Purchases.purchasePackage(pkg);
             dispatch(setCustomerInfo(customerInfo));
-            await checkEntitlements();
 
-            if (Platform.OS === 'android') {
-                ToastAndroid.show('Purchase successful!', ToastAndroid.SHORT);
+            // ── Optimistic update: show premium card instantly ──
+            const active = customerInfo?.entitlements?.active || {};
+            const activeList = Object.values(active);
+            if (activeList.length > 0) {
+                const maxDate = activeList.reduce((acc, e) => {
+                    const d = e?.expirationDate ? new Date(e.expirationDate) : null;
+                    if (!d) return acc;
+                    if (!acc) return d;
+                    return d > acc ? d : acc;
+                }, null);
+                dispatch(setPremiumStatus({
+                    isPremium: true,
+                    premiumExpiresAt: maxDate ? maxDate.toISOString() : null,
+                    premiumPlan: activeList[0]?.productIdentifier || selectedPlan || null,
+                    premiumSource: 'self',
+                }));
+                setEntitlements(active);
             }
+
+            // Sync with backend in the background (don't await)
+            syncServerPremium(customerInfo).catch(err =>
+                console.error('Background premium sync failed:', err),
+            );
         } catch (e) {
-            const errorCode = e?.code;
-            const errorMessage = e?.message || e?.underlyingErrorMessage || String(e);
-
             if (e?.userCancelled) {
-                if (Platform.OS === 'android') {
-                    ToastAndroid.show('Purchase cancelled', ToastAndroid.SHORT);
-                } else {
-                    Alert.alert('Purchase cancelled');
-                }
-            } else if (errorCode === 5 || errorCode === 6) { // DEVELOPER_ERROR or PRODUCT_NOT_AVAILABLE_ERROR
-                console.error(`❌ Store Error (Code ${errorCode}). Attempting to refresh offerings...`);
-                Alert.alert(
-                    'Purchase Sync Error',
-                    'The store is temporarily out of sync or reported a developer error. We are refreshing the catalog, please try again in a moment.',
-                    [{ text: 'OK', onPress: () => getOfferingsAndEntitlements() }]
-                );
+                // User cancelled — do nothing, silently return
             } else {
+                const errorCode = e?.code;
+                const errorMessage = e?.message || e?.underlyingErrorMessage || String(e);
                 console.error(`❌ Purchase error (Code: ${errorCode}):`, errorMessage);
-                Alert.alert(
-                    'Purchase Failed',
-                    `Something went wrong with the purchase.\n\nError: ${errorMessage}${errorCode ? ` (Code: ${errorCode})` : ''}`
-                );
             }
+        } finally {
+            setLoading(false);
+            setPurchasing(false);
+        }
+    };
+
+    const handleRestore = async () => {
+        try {
+            setLoading(true);
+            const customerInfo = await Purchases.restorePurchases();
+            dispatch(setCustomerInfo(customerInfo));
+            await checkEntitlements();
+            // If active, the "You're Premium" card will appear automatically
+        } catch (e) {
+            console.error('Error restoring purchases:', e);
         } finally {
             setLoading(false);
         }
@@ -356,17 +377,17 @@ export default function PremiumScreen({ onBack }) {
                     ]}
                 >
                     <LinearGradient
-                        colors={[colors.primaryLight, colors.secondaryLight]}
+                        colors={['#1A1A1A', '#000000']}
                         style={styles.heroGradient}
                     >
                         <Text style={styles.heroEmoji}>👑</Text>
                     </LinearGradient>
                     <LinearGradient
-                        colors={['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.4)']}
+                        colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.4)']}
                         style={StyleSheet.absoluteFillObject}
                     />
                     <LinearGradient
-                        colors={['rgba(255,255,255,0)', '#FFFFFF']}
+                        colors={['rgba(0,0,0,0)', '#000000']}
                         style={styles.heroFade}
                     />
                     <View style={styles.heroBadgeContainer}>
@@ -385,7 +406,7 @@ export default function PremiumScreen({ onBack }) {
                         onPress={onBack}
                         style={styles.backButton}
                     >
-                        <ArrowLeftIcon size={22} color="#222222" />
+                        <ArrowLeftIcon size={22} color="#FFFFFF" />
                     </TouchableOpacity>
                 </View>
 
@@ -560,6 +581,15 @@ export default function PremiumScreen({ onBack }) {
                             </View>
                         )}
 
+                        {/* Couples Note */}
+                        {!isPremium && (
+                            <View style={styles.couplesNoteContainer}>
+                                <Text style={styles.couplesNoteText}>
+                                    💕 One subscription covers both you & your partner — only one of you needs to pay!
+                                </Text>
+                            </View>
+                        )}
+
                         {/* Subscribe Button */}
                         {!isPremium && (
                             <View style={styles.subscribeContainer}>
@@ -582,9 +612,19 @@ export default function PremiumScreen({ onBack }) {
                             </View>
                         )}
 
-                        {/* Cancel Anytime */}
-                        <View style={styles.cancelContainer}>
+                        {/* Cancel Anytime & Restore Purchase */}
+                        <View style={styles.cancelRestoreRow}>
                             <Text style={styles.cancelText}>Cancel anytime</Text>
+                            <Text style={styles.cancelDot}>·</Text>
+                            <TouchableOpacity
+                                onPress={handleRestore}
+                                disabled={loading}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.cancelText}>
+                                    {loading ? 'Restoring...' : 'Restore Purchase'}
+                                </Text>
+                            </TouchableOpacity>
                         </View>
 
                         {/* Terms */}
@@ -609,6 +649,17 @@ export default function PremiumScreen({ onBack }) {
                         </View>
                     </View>
                 </Animated.ScrollView>
+
+                {/* Processing overlay */}
+                {purchasing && (
+                    <View style={styles.processingOverlay}>
+                        <View style={styles.processingCard}>
+                            <ActivityIndicator size="large" color={colors.primary} />
+                            <Text style={styles.processingText}>Processing purchase…</Text>
+                            <Text style={styles.processingSubtext}>Please wait while we activate your premium.</Text>
+                        </View>
+                    </View>
+                )}
             </View>
         </SafeAreaView>
     );
@@ -617,7 +668,7 @@ export default function PremiumScreen({ onBack }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#000000',
     },
     heroContainer: {
         position: 'absolute',
@@ -653,12 +704,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     heroBadge: {
-        backgroundColor: 'rgba(255,255,255,0.95)',
+        backgroundColor: 'rgba(26,26,26,0.95)',
         paddingVertical: 7,
         paddingHorizontal: 20,
         borderRadius: 20,
         shadowColor: '#000',
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.2,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 4 },
         elevation: 2,
@@ -672,7 +723,7 @@ const styles = StyleSheet.create({
     heroBadgeSubtitle: {
         fontSize: 12,
         fontWeight: '500',
-        color: '#4A4A4A',
+        color: '#AAAAAA',
         marginTop: 4,
         textAlign: 'center',
     },
@@ -693,11 +744,11 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#1A1A1A',
         borderWidth: 1,
-        borderColor: '#E8E8E8',
+        borderColor: '#333333',
         shadowColor: '#000',
-        shadowOpacity: 0.06,
+        shadowOpacity: 0.2,
         shadowRadius: 6,
         shadowOffset: { width: 0, height: 3 },
         elevation: 2,
@@ -712,26 +763,50 @@ const styles = StyleSheet.create({
         paddingBottom: 28,
     },
     contentCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#000000',
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         marginTop: -62,
         paddingTop: 4,
         paddingBottom: 24,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: -2 },
+    },
+    processingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.75)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 100,
+    },
+    processingCard: {
+        backgroundColor: '#1A1A1A',
+        borderRadius: 20,
+        paddingVertical: 32,
+        paddingHorizontal: 40,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#333333',
+    },
+    processingText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
+        marginTop: 16,
+    },
+    processingSubtext: {
+        color: '#888888',
+        fontSize: 13,
+        marginTop: 6,
+        textAlign: 'center',
     },
     premiumStatusContainer: {
         paddingHorizontal: 16,
         marginTop: 4,
     },
     premiumStatusCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#1A1A1A',
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#EDEDED',
+        borderColor: '#333333',
         padding: 16,
     },
     premiumStatusHeader: {
@@ -743,19 +818,19 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontSize: 18,
         fontWeight: '900',
-        color: '#1E1E1E',
+        color: '#FFFFFF',
     },
     premiumStatusDetails: {
         flexDirection: 'row',
         justifyContent: 'space-between',
     },
     premiumStatusLabel: {
-        color: '#6C6C6C',
+        color: '#888888',
         fontSize: 12,
         fontWeight: '700',
     },
     premiumStatusValue: {
-        color: '#1E1E1E',
+        color: '#FFFFFF',
         fontSize: 14,
         fontWeight: '800',
         marginTop: 2,
@@ -765,10 +840,10 @@ const styles = StyleSheet.create({
         marginTop: 0,
     },
     featureTable: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#1A1A1A',
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#EDEDED',
+        borderColor: '#333333',
         overflow: 'hidden',
     },
     featureTableHeader: {
@@ -776,9 +851,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 6,
         paddingHorizontal: 14,
-        backgroundColor: '#FAFAFA',
+        backgroundColor: '#111111',
         borderBottomWidth: 1,
-        borderBottomColor: '#F2F2F2',
+        borderBottomColor: '#2A2A2A',
     },
     featureTableHeaderCell: {
         width: 56,
@@ -788,7 +863,7 @@ const styles = StyleSheet.create({
     featureTableHeaderText: {
         fontSize: 12,
         fontWeight: '800',
-        color: '#6C6C6C',
+        color: '#888888',
     },
     proBadge: {
         backgroundColor: colors.primary,
@@ -808,14 +883,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         backgroundColor: 'transparent',
         borderTopWidth: 1,
-        borderTopColor: '#F2F2F2',
+        borderTopColor: '#2A2A2A',
     },
     featureLabelContainer: {
         flex: 1,
         paddingRight: 10,
     },
     featureLabel: {
-        color: '#24323D',
+        color: '#FFFFFF',
         fontSize: 14,
         fontWeight: '700',
     },
@@ -829,10 +904,10 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     planCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#1A1A1A',
         borderRadius: 16,
         borderWidth: 2,
-        borderColor: '#EDEDED',
+        borderColor: '#333333',
         padding: 14,
         marginBottom: 12,
     },
@@ -853,12 +928,12 @@ const styles = StyleSheet.create({
     planCardTitle: {
         fontSize: 18,
         fontWeight: '900',
-        color: '#1E1E1E',
+        color: '#FFFFFF',
     },
     planCardDescription: {
         fontSize: 11,
         fontWeight: '600',
-        color: '#65727E',
+        color: '#888888',
         marginTop: 2,
     },
     planCardMonthly: {
@@ -873,11 +948,11 @@ const styles = StyleSheet.create({
     planCardPrice: {
         fontSize: 18,
         fontWeight: '900',
-        color: '#1E1E1E',
+        color: '#FFFFFF',
     },
     planCardStrikethrough: {
         fontSize: 12,
-        color: '#9AA3AB',
+        color: '#666666',
         textDecorationLine: 'line-through',
     },
     bestValueBadge: {
@@ -899,7 +974,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     noPackagesText: {
-        color: '#6C6C6C',
+        color: '#888888',
     },
     subscribeContainer: {
         paddingHorizontal: 16,
@@ -912,7 +987,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: colors.primary,
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 6 },
         elevation: 3,
@@ -930,14 +1005,21 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginRight: 6,
     },
-    cancelContainer: {
+    cancelRestoreRow: {
         paddingHorizontal: 16,
         marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     cancelText: {
-        textAlign: 'center',
-        color: '#4A5564',
+        color: '#AAAAAA',
         fontWeight: '700',
+    },
+    cancelDot: {
+        color: '#AAAAAA',
+        fontWeight: '700',
+        marginHorizontal: 8,
     },
     termsContainer: {
         paddingHorizontal: 16,
@@ -945,12 +1027,25 @@ const styles = StyleSheet.create({
     },
     termsText: {
         textAlign: 'center',
-        color: '#6B7280',
+        color: '#666666',
         fontSize: 12,
     },
     termsLink: {
         color: colors.primary,
         fontWeight: '800',
         textDecorationLine: 'underline',
+    },
+    couplesNoteContainer: {
+        paddingHorizontal: 20,
+        marginTop: 4,
+        marginBottom: 2,
+        alignItems: 'center',
+    },
+    couplesNoteText: {
+        textAlign: 'center',
+        color: '#AAAAAA',
+        fontSize: 12.5,
+        fontWeight: '500',
+        lineHeight: 18,
     },
 });

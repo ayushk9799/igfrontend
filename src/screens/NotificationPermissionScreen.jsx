@@ -162,7 +162,7 @@ const NotificationPermissionScreen = ({ onComplete }) => {
     };
 
     return (
-        <GradientBackground variant="warm">
+        <View style={{ flex: 1, backgroundColor: '#000000' }}>
             <View style={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
                 {/* Hero Section */}
                 <Animated.View
@@ -242,7 +242,7 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                     </TouchableOpacity>
                 </View>
             </View>
-        </GradientBackground>
+        </View>
     );
 };
 
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: Platform.OS === 'android' ? '#FDE8DA' : 'rgba(232, 138, 76, 0.15)',
+        backgroundColor: Platform.OS === 'android' ? '#2A2018' : 'rgba(232, 138, 76, 0.15)',
         justifyContent: 'center',
         alignItems: 'center',
         ...shadows.md,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     },
     floatingBadge: {
         position: 'absolute',
-        backgroundColor: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: Platform.OS === 'android' ? '#1A1A1A' : 'rgba(26, 26, 26, 0.95)',
         borderRadius: 20,
         padding: 8,
         ...shadows.sm,
@@ -296,24 +296,24 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 30,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         textAlign: 'center',
         letterSpacing: -0.5,
         marginBottom: spacing.sm,
     },
     subtitle: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         textAlign: 'center',
         lineHeight: 23,
         paddingHorizontal: spacing.md,
     },
     featuresContainer: {
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderRadius: borderRadius.xl,
         padding: spacing.xl,
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255,255,255,0.1)',
         gap: spacing.lg,
     },
     featureRow: {
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
         height: 44,
         textAlign: 'center',
         lineHeight: 44,
-        backgroundColor: Platform.OS === 'android' ? '#FFF5EE' : 'rgba(232, 138, 76, 0.08)',
+        backgroundColor: Platform.OS === 'android' ? '#2A2018' : 'rgba(232, 138, 76, 0.12)',
         borderRadius: 12,
         overflow: 'hidden',
     },
@@ -337,12 +337,12 @@ const styles = StyleSheet.create({
     featureTitle: {
         fontSize: 15,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: -0.2,
     },
     featureSubtitle: {
         fontSize: 13,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.5)',
         marginTop: 2,
     },
     bottomSection: {
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     allowButton: {
         width: '100%',
         borderRadius: borderRadius.xl,
-        backgroundColor: '#E08545',
+        backgroundColor: '#FFFFFF',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     allowButtonText: {
         fontSize: 17,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: '#000000',
         letterSpacing: -0.2,
     },
     allowButtonIcon: {
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     },
     skipText: {
         fontSize: 15,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.5)',
         fontWeight: '500',
         paddingVertical: spacing.sm,
     },

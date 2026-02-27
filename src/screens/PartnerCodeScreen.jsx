@@ -161,7 +161,7 @@ export const PartnerCodeScreen = ({
     // If already paired, show connected text instead of pairing UI
     if (isAlreadyPaired) {
         return (
-            <GradientBackground variant="warm">
+            <View style={{ flex: 1, backgroundColor: '#000000' }}>
                 <View style={styles.connectedContainer}>
                     <Animated.View style={[styles.connectedContent, { transform: [{ scale: connectedScale }] }]}>
                         <Text style={styles.connectedEmoji}>💕</Text>
@@ -173,7 +173,7 @@ export const PartnerCodeScreen = ({
                         )}
                     </Animated.View>
                 </View>
-            </GradientBackground>
+            </View>
         );
     }
 
@@ -203,7 +203,6 @@ export const PartnerCodeScreen = ({
             });
 
             const data = await response.json();
-            console.log(data);
 
             if (data.success) {
                 setPairingStatus('Paired! 💕');
@@ -234,7 +233,7 @@ export const PartnerCodeScreen = ({
     };
 
     return (
-        <GradientBackground variant="warm">
+        <View style={{ flex: 1, backgroundColor: '#000000' }}>
             <KeyboardAwareScrollView
                 style={styles.scrollView}
                 contentContainerStyle={[
@@ -307,7 +306,7 @@ export const PartnerCodeScreen = ({
                             value={enteredCode}
                             onChangeText={(text) => setEnteredCode(text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
                             placeholder="ABC123"
-                            placeholderTextColor={colors.textMuted}
+                            placeholderTextColor="rgba(255,255,255,0.35)"
                             maxLength={6}
                             autoCapitalize="characters"
                             autoCorrect={false}
@@ -317,7 +316,7 @@ export const PartnerCodeScreen = ({
                         {/* Loading State */}
                         {isPairing && (
                             <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="small" color={colors.primary} />
+                                <ActivityIndicator size="small" color="#FFFFFF" />
                                 <Text style={styles.loadingText}>{pairingStatus}</Text>
                             </View>
                         )}
@@ -340,7 +339,7 @@ export const PartnerCodeScreen = ({
                     </TouchableOpacity>
                 </Animated.View>
             </KeyboardAwareScrollView>
-        </GradientBackground>
+        </View>
     );
 };
 
@@ -368,17 +367,17 @@ const styles = StyleSheet.create({
     },
     pulsingCircle: {
         position: 'absolute',
-        backgroundColor: colors.primary,
+        backgroundColor: 'rgba(255,255,255,0.08)',
     },
     imageWrapper: {
         width: IMAGE_SIZE,
         height: IMAGE_SIZE,
         borderRadius: IMAGE_SIZE / 2,
-        backgroundColor: colors.surface,
+        backgroundColor: '#3A3A3A',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 3,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255,255,255,0.15)',
         overflow: 'hidden',
         ...shadows.md,
     },
@@ -389,14 +388,14 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         textAlign: 'center',
         letterSpacing: -0.5,
         marginBottom: spacing.sm,
     },
     subtitle: {
         fontSize: 15,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         textAlign: 'center',
     },
     codeSection: {
@@ -404,17 +403,17 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     yourCodeCard: {
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderRadius: borderRadius.xl,
         padding: spacing.xl,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     cardLabel: {
         fontSize: 13,
         fontWeight: '600',
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.5)',
         marginBottom: spacing.md,
         letterSpacing: 0.5,
     },
@@ -428,7 +427,7 @@ const styles = StyleSheet.create({
     codeText: {
         fontSize: 24,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: 4,
     },
     copyButton: {
@@ -436,13 +435,13 @@ const styles = StyleSheet.create({
         right: 0,
         width: 40,
         height: 40,
-        backgroundColor: colors.primarySoft,
+        backgroundColor: 'rgba(255,255,255,0.1)',
         borderRadius: borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
     },
     copyButtonCopied: {
-        backgroundColor: colors.secondarySoft,
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     copyIcon: {
         fontSize: 18,
@@ -455,33 +454,33 @@ const styles = StyleSheet.create({
     dividerLine: {
         flex: 1,
         height: 1,
-        backgroundColor: colors.borderLight,
+        backgroundColor: 'rgba(255,255,255,0.15)',
     },
     dividerText: {
         fontSize: 12,
         fontWeight: '600',
-        color: colors.textMuted,
+        color: 'rgba(255,255,255,0.35)',
         paddingHorizontal: spacing.lg,
     },
     enterCodeCard: {
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         borderRadius: borderRadius.xl,
         padding: spacing.xl,
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     codeInput: {
-        backgroundColor: colors.backgroundAlt,
+        backgroundColor: '#111111',
         borderRadius: borderRadius.lg,
         padding: spacing.lg,
         fontSize: 24,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         textAlign: 'center',
         letterSpacing: 8,
         marginBottom: spacing.lg,
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255,255,255,0.15)',
     },
     codeInputDisabled: {
         opacity: 0.6,
@@ -495,7 +494,7 @@ const styles = StyleSheet.create({
     },
     loadingText: {
         fontSize: 14,
-        color: colors.primary,
+        color: '#FFFFFF',
         fontWeight: '600',
     },
     skipContainer: {
@@ -504,7 +503,7 @@ const styles = StyleSheet.create({
     },
     skipText: {
         fontSize: 15,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.5)',
         fontWeight: '500',
     },
     connectedContainer: {
@@ -523,13 +522,13 @@ const styles = StyleSheet.create({
     connectedTitle: {
         fontSize: 28,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         textAlign: 'center',
         marginBottom: spacing.sm,
     },
     connectedSubtitle: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         textAlign: 'center',
         fontWeight: '500',
     },

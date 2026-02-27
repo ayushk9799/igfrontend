@@ -1,7 +1,7 @@
 // Main Tab Navigator - Home with Bottom Tabs
 // Now uses Redux for global state instead of prop drilling
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, BackHandler } from 'react-native';
 import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
@@ -9,11 +9,13 @@ import ScribbleScreen from '../screens/ScribbleScreen';
 import DailyChallengeScreen from '../screens/DailyChallengeScreen';
 import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
 import ChatListScreen from '../screens/ChatListScreen';
+import NotificationCenterScreen from '../screens/NotificationCenterScreen';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
-import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether } from '../store/slices/userSlice';
+import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether, selectIsPremium } from '../store/slices/userSlice';
 import { selectGames } from '../store/slices/gamesSlice';
+import { selectDuelBadgeCount } from '../store/slices/notificationsSlice';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { API_BASE } from '../constants/Api';
 
@@ -21,6 +23,7 @@ export const MainTabNavigator = ({
     // Only keep essential callbacks that navigate outside this component
     yourMood,
     pendingInvite,
+    initialTab,
     onMoodPress,
     onQuestionPress,
     onEditProfile,
@@ -35,7 +38,7 @@ export const MainTabNavigator = ({
     onLogout,
     onDeleteAccount,
 }) => {
-    const [currentTab, setCurrentTab] = useState('home');
+    const [currentTab, setCurrentTab] = useState(initialTab || 'home');
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
@@ -45,8 +48,12 @@ export const MainTabNavigator = ({
     const hasPartner = useSelector(selectHasPartner);
     const partnerName = useSelector(selectPartnerName);
     const daysTogether = useSelector(selectDaysTogether);
+    const isPremium = useSelector(selectIsPremium);
     const games = useSelector(selectGames);
     const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle } = games;
+
+    // Duel notification badge count
+    const duelBadgeCount = useSelector(selectDuelBadgeCount);
 
     // Socket context for real-time data
     const { socket, partnerMood, partnerOnline, partnerScribble } = useSocketContext();
@@ -96,6 +103,20 @@ export const MainTabNavigator = ({
         }
     }, [currentTab]);
 
+    // Handle Android back button/gesture - navigate to home tab from sub-tabs
+    useEffect(() => {
+        const backAction = () => {
+            if (currentTab !== 'home') {
+                setCurrentTab('home');
+                return true; // Prevent default (app exit)
+            }
+            return false; // Let AppNavigator or OS handle it
+        };
+
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+        return () => backHandler.remove();
+    }, [currentTab]);
+
     const renderScreen = () => {
         switch (currentTab) {
             case 'home':
@@ -139,6 +160,8 @@ export const MainTabNavigator = ({
                         pendingWordle={pendingWordle}
                         activeWordle={activeWordle}
                         onWordlePress={onWordlePress}
+                        duelBadgeCount={duelBadgeCount}
+                        onNotificationPress={() => setCurrentTab('notificationCenter')}
                     />
                 );
             case 'canvas':
@@ -186,15 +209,25 @@ export const MainTabNavigator = ({
                     />
                 );
             case 'account':
+                // Derive correct premium info accounting for partner premium
+                const effectivePremiumSource = userData?.premiumSource ||
+                    (userData?.premiumExpiresAt && new Date(userData.premiumExpiresAt) > new Date() ? 'self' :
+                        (userData?.partnerPremiumExpiresAt && new Date(userData.partnerPremiumExpiresAt) > new Date() ? 'partner' : null));
+                const effectivePremiumExpiresAt = effectivePremiumSource === 'partner'
+                    ? userData?.partnerPremiumExpiresAt
+                    : userData?.premiumExpiresAt;
+                const effectivePremiumPlan = effectivePremiumSource === 'partner'
+                    ? userData?.partnerPremiumPlan
+                    : userData?.premiumPlan;
                 return (
                     <AccountScreen
                         userData={userData}
                         partnerName={partnerName}
                         hasPartner={hasPartner}
-                        isPremium={userData?.isPremium}
-                        premiumPlan={userData?.premiumPlan}
-                        premiumExpiresAt={userData?.premiumExpiresAt}
-                        premiumSource={userData?.premiumSource}
+                        isPremium={isPremium}
+                        premiumPlan={effectivePremiumPlan}
+                        premiumExpiresAt={effectivePremiumExpiresAt}
+                        premiumSource={effectivePremiumSource}
                         daysTogether={daysTogether}
                         onLogout={onLogout}
                         onDeleteAccount={onDeleteAccount}
@@ -218,6 +251,21 @@ export const MainTabNavigator = ({
                             }
                         }}
                         onBack={() => setCurrentTab('home')}
+                    />
+                );
+            case 'notificationCenter':
+                return (
+                    <NotificationCenterScreen
+                        onBack={() => setCurrentTab('home')}
+                        onJigsawPlay={(game) => {
+                            onJigsawPlay?.(game);
+                        }}
+                        onTicTacToePress={(game) => {
+                            onTicTacToePress?.(game);
+                        }}
+                        onWordlePress={(game) => {
+                            onWordlePress?.(game);
+                        }}
                     />
                 );
             default:

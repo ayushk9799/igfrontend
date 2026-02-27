@@ -250,7 +250,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
 
 
     return (
-        <GradientBackground variant="warm">
+        <View style={{ flex: 1, backgroundColor: '#000000' }}>
             <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
                 {/* Brand Name */}
                 <View style={styles.brandContainer}>
@@ -260,7 +260,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                 {/* Skip Button (Cross) */}
                 <TouchableOpacity onPress={onComplete} style={styles.skipButton}>
                     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                        <Path d="M18 6L6 18M6 6l12 12" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                        <Path d="M18 6L6 18M6 6l12 12" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                     </Svg>
                 </TouchableOpacity>
 
@@ -302,19 +302,19 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                             />
                         ) : !hasPermission && isCameraInitialized ? (
                             <View style={styles.loadingContainer}>
-                                <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16, paddingHorizontal: 20 }}>
+                                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 16, textAlign: 'center', marginBottom: 16, paddingHorizontal: 20 }}>
                                     Camera access is needed to take your profile photo
                                 </Text>
                                 <TouchableOpacity
                                     onPress={requestCameraPermission}
-                                    style={{ backgroundColor: '#000000', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 }}
+                                    style={{ backgroundColor: '#FFFFFF', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 }}
                                 >
-                                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Grant Camera Access</Text>
+                                    <Text style={{ color: '#000', fontWeight: '600', fontSize: 15 }}>Grant Camera Access</Text>
                                 </TouchableOpacity>
                             </View>
                         ) : (
                             <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color={colors.primary} />
+                                <ActivityIndicator size="large" color="#FFFFFF" />
                             </View>
                         )
                     ) : (
@@ -335,7 +335,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                         <>
                             <TouchableOpacity onPress={handlePickFromGallery} style={styles.controlBtnSecondary}>
                                 <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke={colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                                    <Path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                                 </Svg>
                             </TouchableOpacity>
 
@@ -345,8 +345,8 @@ const AvatarSelectionScreen = ({ onComplete }) => {
 
                             <TouchableOpacity onPress={toggleCamera} style={styles.controlBtnSecondary}>
                                 <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M1 4v6h6" stroke={colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                                    <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke={colors.text} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                                    <Path d="M1 4v6h6" stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                                    <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
                                 </Svg>
                             </TouchableOpacity>
                         </>
@@ -369,7 +369,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                         activeOpacity={0.9}
                     >
                         {isUploading ? (
-                            <ActivityIndicator color="#FFFFFF" />
+                            <ActivityIndicator color="#000000" />
                         ) : (
                             <Text style={[
                                 styles.continueButtonText,
@@ -381,7 +381,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                     </TouchableOpacity>
                 </View>
             </View>
-        </GradientBackground>
+        </View>
     );
 };
 
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     brandName: {
         fontSize: 28,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: -0.5,
     },
     skipButton: {
@@ -412,12 +412,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 34,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         marginTop: spacing.xs,
     },
     cameraBoxContainer: {
@@ -425,10 +425,10 @@ const styles = StyleSheet.create({
         aspectRatio: 1,
         borderRadius: borderRadius['2xl'],
         overflow: 'hidden',
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         marginBottom: spacing.xl,
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255,255,255,0.1)',
         ...shadows.sm,
     },
     camera: {
@@ -456,32 +456,32 @@ const styles = StyleSheet.create({
         width: 52,
         height: 52,
         borderRadius: 26,
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255,255,255,0.15)',
         ...shadows.xs,
     },
     controlBtnPrimary: {
         width: 72,
         height: 72,
         borderRadius: 36,
-        backgroundColor: colors.surface,
+        backgroundColor: '#1A1A1A',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 3,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255,255,255,0.15)',
     },
     captureInner: {
         width: 58,
         height: 58,
         borderRadius: 29,
-        backgroundColor: '#000000',
+        backgroundColor: '#FFFFFF',
     },
     retakeText: {
         fontSize: 15,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         fontWeight: '500',
         paddingVertical: spacing.sm,
     },
@@ -495,20 +495,20 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 20,
         borderRadius: borderRadius.xl,
-        backgroundColor: '#000000',
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
     },
     continueButtonDisabled: {
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
     },
     continueButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: '#000000',
     },
     continueButtonTextDisabled: {
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: 'rgba(0, 0, 0, 0.4)',
     },
 });
 

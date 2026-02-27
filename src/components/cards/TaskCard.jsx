@@ -33,7 +33,7 @@ const PremiumLockedCard = ({ task, onNavigateToPremium }) => {
                     {/* Question text (visible but dimmed) */}
                     <View style={lockedStyles.questionSection}>
                         <Text style={lockedStyles.questionText} numberOfLines={4}>
-                            "{task.taskstatement}"
+                            {task.taskstatement}
                         </Text>
                     </View>
 
@@ -70,7 +70,7 @@ const PremiumLockedCard = ({ task, onNavigateToPremium }) => {
 
                     {/* Unlock Button */}
                     <TouchableOpacity
-                        style={lockedStyles.unlockButtonWrapper}
+                        style={lockedStyles.unlockButton}
                         onPress={onNavigateToPremium}
                         activeOpacity={0.85}
                     >
@@ -78,8 +78,9 @@ const PremiumLockedCard = ({ task, onNavigateToPremium }) => {
                             colors={['#FFD700', '#FFA500']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
-                            style={lockedStyles.unlockButton}
-                        >
+                            style={StyleSheet.absoluteFill}
+                        />
+                        <View style={lockedStyles.unlockButtonContent}>
                             <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
                                 <Path
                                     d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
@@ -87,7 +88,7 @@ const PremiumLockedCard = ({ task, onNavigateToPremium }) => {
                                 />
                             </Svg>
                             <Text style={lockedStyles.unlockButtonText}>Unlock Now</Text>
-                        </LinearGradient>
+                        </View>
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
@@ -167,23 +168,24 @@ const lockedStyles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.75)',
         textAlign: 'center',
     },
-    unlockButtonWrapper: {
+    unlockButton: {
         borderRadius: 24,
         overflow: 'hidden',
         alignSelf: 'center',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 32,
         shadowColor: '#FFD700',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.4,
         shadowRadius: 12,
         elevation: 8,
     },
-    unlockButton: {
+    unlockButtonContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 32,
-        borderRadius: 24,
     },
     unlockButtonText: {
         color: '#FFFFFF',

@@ -21,7 +21,7 @@ function App() {
                     <SocketProvider>
                         <StatusBar
                             barStyle="light-content"
-                            backgroundColor={colors.background}
+                            backgroundColor="transparent"
                             translucent
                         />
                         <View style={styles.container}>

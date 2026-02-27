@@ -36,7 +36,7 @@ const SelectableAvatar = ({ name, isYou, isSelected, onSelect, disabled, categor
                             resizeMode="cover"
                         />
                     ) : (
-                        <Text style={styles.avatarEmoji}>{isYou ? '🙋' : '💕'}</Text>
+                        <Text style={styles.avatarEmoji}>{isYou ? 'ME' : 'You'}</Text>
                     )}
                 </View>
             </View>
@@ -128,7 +128,7 @@ const LikelyToCard = React.memo(({
 
                 <View style={styles.questionSection}>
                     {locked && <Text style={styles.submittedText}>Submitted ✓</Text>}
-                    <Text style={styles.questionText}>"{task.taskstatement}"</Text>
+                    <Text style={styles.questionText}>{task.taskstatement}</Text>
                 </View>
 
                 {/* Bottom Bar - Avatar Left, Skip Center, Avatar Right */}

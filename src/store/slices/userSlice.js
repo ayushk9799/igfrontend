@@ -38,7 +38,9 @@ const userSlice = createSlice({
             return { ...state, ...action.payload };
         },
         setPartner: (state, action) => {
-            const partnerPremium = action.payload.isPremium || false;
+            const partnerExpiresAt = action.payload.premiumExpiresAt || null;
+            const partnerPremium = !!(partnerExpiresAt && new Date(partnerExpiresAt) > new Date());
+            const userPremium = !!(state.premiumExpiresAt && new Date(state.premiumExpiresAt) > new Date());
             return {
                 ...state,
                 partnerId: action.payload.id,
@@ -47,10 +49,10 @@ const userSlice = createSlice({
                 connectionDate: action.payload.connectionDate,
                 partnerIsPremium: partnerPremium,
                 partnerPremiumPlan: action.payload.premiumPlan || null,
-                partnerPremiumExpiresAt: action.payload.premiumExpiresAt || null,
+                partnerPremiumExpiresAt: partnerExpiresAt,
                 // Activate couple premium if partner is premium but user isn't
-                isPremium: state.isPremium || partnerPremium,
-                premiumSource: state.isPremium ? (state.premiumSource || 'self') : (partnerPremium ? 'partner' : state.premiumSource),
+                isPremium: userPremium || partnerPremium,
+                premiumSource: userPremium ? (state.premiumSource || 'self') : (partnerPremium ? 'partner' : state.premiumSource),
                 isOnboarded: true,
             };
         },
@@ -80,7 +82,10 @@ export const selectIsAuthenticated = (state) => state.user.isAuthenticated;
 export const selectIsOnboarded = (state) => state.user.isOnboarded;
 export const selectHasPartner = (state) => !!state.user.partnerId;
 export const selectPartnerName = (state) => state.user.partnerUsername;
-export const selectIsPremium = (state) => state.user.isPremium || state.user.partnerIsPremium;
+const isDateActive = (dateStr) => !!(dateStr && new Date(dateStr) > new Date());
+export const selectIsPremium = (state) => {
+    return isDateActive(state.user.premiumExpiresAt) || isDateActive(state.user.partnerPremiumExpiresAt);
+}
 export const selectDaysTogether = (state) => {
     if (!state.user.connectionDate) return 0;
     return Math.floor((new Date() - new Date(state.user.connectionDate)) / (1000 * 60 * 60 * 24));

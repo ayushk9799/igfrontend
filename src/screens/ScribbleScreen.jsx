@@ -260,8 +260,7 @@ export const ScribbleScreen = ({
 
     const handleSend = () => {
         if (paths.length === 0) return;
-        console.log(socket);
-        console.log(isConnected);
+     
 
         // Send via socket
         if (socket && isConnected) {

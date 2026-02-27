@@ -46,6 +46,8 @@ const HomeScreen = ({
     onTicTacToePress,
     onWordlePress,
     onRefreshPuzzle,
+    duelBadgeCount = 0,
+    onNotificationPress,
 }) => {
     // Topic-based categories - only questions come from backend
     const categories = Object.values(TOPIC_CATEGORIES);
@@ -119,25 +121,45 @@ const HomeScreen = ({
 
 
 
-                        {/* Settings Icon */}
-                        <TouchableOpacity style={styles.settingsButton} onPress={onSettingsPress}>
-                            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                <Path
-                                    d="M12 15a3 3 0 100-6 3 3 0 000 6z"
-                                    stroke="#FFFFFF"
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                <Path
-                                    d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
-                                    stroke="#FFFFFF"
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </Svg>
-                        </TouchableOpacity>
+                        <View style={styles.headerRight}>
+                            {/* Bell / Notification Icon */}
+                            <TouchableOpacity style={styles.settingsButton} onPress={onNotificationPress}>
+                                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
+                                        stroke="#FFFFFF"
+                                        strokeWidth={2}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </Svg>
+                                {duelBadgeCount > 0 && (
+                                    <View style={styles.bellBadge}>
+                                        <Text style={styles.bellBadgeText}>{duelBadgeCount > 9 ? '9+' : duelBadgeCount}</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            {/* Settings Icon */}
+                            <TouchableOpacity style={styles.settingsButton} onPress={onSettingsPress}>
+                                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M12 15a3 3 0 100-6 3 3 0 000 6z"
+                                        stroke="#FFFFFF"
+                                        strokeWidth={2}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                    <Path
+                                        d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
+                                        stroke="#FFFFFF"
+                                        strokeWidth={2}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </Svg>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Names Section - Removed names, keeping Link Partner if needed */}
@@ -707,8 +729,31 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FFFFFF',
     },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
     settingsButton: {
         padding: 8,
+        position: 'relative',
+    },
+    bellBadge: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#FF3B30',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 3,
+    },
+    bellBadgeText: {
+        fontSize: 9,
+        fontWeight: '800',
+        color: '#FFFFFF',
     },
     moodSection: {
         alignItems: 'center',

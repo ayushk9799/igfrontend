@@ -30,7 +30,7 @@ const NicknameScreen = ({ onComplete, onBack }) => {
     const isValid = nickname.trim().length > 0;
 
     return (
-        <GradientBackground variant="warm">
+        <View style={{ flex: 1, backgroundColor: '#000000' }}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardView}
@@ -64,7 +64,7 @@ const NicknameScreen = ({ onComplete, onBack }) => {
                             <TextInput
                                 style={styles.input}
                                 placeholder="e.g., Honey, Babe, Love..."
-                                placeholderTextColor={colors.textMuted}
+                                placeholderTextColor="rgba(255,255,255,0.35)"
                                 value={nickname}
                                 onChangeText={setNickname}
                                 onFocus={() => setIsFocused(true)}
@@ -103,7 +103,7 @@ const NicknameScreen = ({ onComplete, onBack }) => {
 
                 </View>
             </KeyboardAvoidingView>
-        </GradientBackground>
+        </View>
     );
 };
 
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     brandName: {
         fontSize: 28,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: -0.5,
     },
     spacer: {
@@ -134,12 +134,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 34,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         marginTop: spacing.xs,
     },
     inputWrapper: {
@@ -166,14 +166,14 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 24,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         padding: 0,
         letterSpacing: -0.5,
     },
     charCount: {
         fontSize: 13,
         fontWeight: '500',
-        color: colors.textMuted,
+        color: 'rgba(255,255,255,0.35)',
         textAlign: 'right',
         marginTop: spacing.sm,
         marginRight: spacing.xs,
@@ -185,20 +185,20 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 20,
         borderRadius: borderRadius.xl,
-        backgroundColor: '#000000',
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
     },
     continueButtonDisabled: {
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
     },
     continueButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: '#000000',
     },
     continueButtonTextDisabled: {
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: 'rgba(0, 0, 0, 0.4)',
     },
     footer: {
         alignItems: 'center',
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     },
     skipText: {
         fontSize: 15,
-        color: colors.text,
+        color: '#FFFFFF',
         fontWeight: '700',
         marginBottom: spacing.xl,
     },
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     },
     hintText: {
         fontSize: 12,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         textAlign: 'center',
     },
 });

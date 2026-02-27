@@ -77,7 +77,7 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
                 {questionText ? (
                     <View style={styles.questionPreview}>
                         <Text style={styles.questionText} numberOfLines={3}>
-                            "{questionText}"
+                            {questionText}
                         </Text>
                     </View>
                 ) : null}
@@ -89,7 +89,7 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
 
                 {/* Unlock Button with gradient */}
                 <TouchableOpacity
-                    style={styles.unlockButtonWrapper}
+                    style={styles.unlockButton}
                     onPress={onPress}
                     activeOpacity={0.85}
                 >
@@ -97,8 +97,9 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
                         colors={['#FFD700', '#FFA500']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={styles.unlockButton}
-                    >
+                        style={StyleSheet.absoluteFill}
+                    />
+                    <View style={styles.unlockButtonContent}>
                         <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
                             <Path
                                 d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
@@ -106,7 +107,7 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
                             />
                         </Svg>
                         <Text style={styles.unlockButtonText}>Unlock Now</Text>
-                    </LinearGradient>
+                    </View>
                 </TouchableOpacity>
             </View>
         </TouchableOpacity>
@@ -216,22 +217,23 @@ const styles = StyleSheet.create({
         lineHeight: 20,
     },
     // Unlock button
-    unlockButtonWrapper: {
+    unlockButton: {
         borderRadius: 28,
         overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 36,
         shadowColor: '#FFD700',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.4,
         shadowRadius: 12,
         elevation: 8,
     },
-    unlockButton: {
+    unlockButtonContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 36,
-        borderRadius: 28,
     },
     unlockButtonText: {
         color: '#FFFFFF',

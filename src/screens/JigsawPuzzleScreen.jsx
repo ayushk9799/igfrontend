@@ -11,9 +11,7 @@ import {
     PanResponder,
 } from 'react-native';
 import Svg, { Path, Line } from 'react-native-svg';
-import LinearGradient from 'react-native-linear-gradient';
-
-import GradientBackground from '../components/GradientBackground';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import { colors, spacing, borderRadius } from '../theme';
 import { usePuzzle } from '../hooks/usePuzzle';
@@ -510,37 +508,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
     if (!puzzle) {
         return (
-            <GradientBackground>
-                <View style={styles.loadingContainer}>
-                    {/* Outer glow ring */}
-                    <Animated.View style={[
-                        styles.loadingGlowOuter,
-                        { opacity: glowAnim }
-                    ]}>
-                        <LinearGradient
-                            colors={['rgba(91, 181, 166, 0.3)', 'rgba(255, 107, 157, 0.3)', 'rgba(229, 195, 104, 0.3)']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.loadingGlowGradient}
-                        />
-                    </Animated.View>
-
-                    {/* Inner glow */}
-                    <Animated.View style={[
-                        styles.loadingGlowInner,
-                        {
-                            opacity: glowAnim,
-                            transform: [{ scale: pulseAnim }]
-                        }
-                    ]}>
-                        <LinearGradient
-                            colors={['rgba(91, 181, 166, 0.5)', 'rgba(255, 107, 157, 0.4)']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.loadingGlowGradientInner}
-                        />
-                    </Animated.View>
-
+            <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
+                <SafeAreaView style={styles.loadingContainer}>
                     {/* Emoji container with pulse */}
                     <Animated.View style={[
                         styles.loadingEmojiContainer,
@@ -552,19 +521,19 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                     {/* Loading text */}
                     <Text style={styles.loadingText}>Preparing your puzzle...</Text>
                     <Text style={styles.loadingSubtext}>Almost there!</Text>
-                </View>
-            </GradientBackground>
+                </SafeAreaView>
+            </View>
         );
     }
 
     return (
-        <GradientBackground>
-            <View style={styles.container}>
+        <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
+            <SafeAreaView style={styles.container} edges={['top']}>
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                         <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                            <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                            <Path d="M15 18l-6-6 6-6" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                         </Svg>
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Solve Puzzle 🧩</Text>
@@ -575,7 +544,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                         >
                             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                 <Path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z"
-                                    stroke={showGridLines ? colors.primary : colors.textSecondary}
+                                    stroke={showGridLines ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)'}
                                     strokeWidth={2}
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -740,8 +709,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                     </Animated.View>
                 )}
 
-            </View>
-        </GradientBackground>
+            </SafeAreaView>
+        </View>
     );
 };
 
@@ -754,36 +723,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    loadingGlowOuter: {
-        position: 'absolute',
-        width: 200,
-        height: 200,
-        borderRadius: 100,
-        overflow: 'hidden',
-    },
-    loadingGlowGradient: {
-        flex: 1,
-        borderRadius: 100,
-    },
-    loadingGlowInner: {
-        position: 'absolute',
-        width: 140,
-        height: 140,
-        borderRadius: 70,
-        overflow: 'hidden',
-    },
-    loadingGlowGradientInner: {
-        flex: 1,
-        borderRadius: 70,
-    },
     loadingEmojiContainer: {
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: colors.surface,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: colors.primary,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.4,
         shadowRadius: 20,
@@ -796,12 +743,12 @@ const styles = StyleSheet.create({
     loadingText: {
         fontSize: 18,
         fontWeight: '600',
-        color: colors.text,
+        color: '#FFFFFF',
         marginTop: 32,
     },
     loadingSubtext: {
         fontSize: 14,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.5)',
         marginTop: 8,
     },
     header: {
@@ -809,21 +756,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: spacing.lg,
-        paddingTop: Platform.OS === 'ios' ? 60 : 20,
+        paddingTop: 12,
         paddingBottom: spacing.md,
     },
     backBtn: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: colors.glass,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
     },
     headerRight: {
         flexDirection: 'row',
@@ -834,16 +781,16 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: colors.glass,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     gridToggleBtnActive: {
-        backgroundColor: colors.primaryLight + '30',
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
     },
     moveCounter: {
         alignItems: 'center',
-        backgroundColor: colors.glass,
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.xs,
         borderRadius: borderRadius.lg,
@@ -851,11 +798,11 @@ const styles = StyleSheet.create({
     moveText: {
         fontSize: 20,
         fontWeight: '800',
-        color: colors.primary,
+        color: '#FFFFFF',
     },
     moveLabel: {
         fontSize: 10,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.5)',
         textTransform: 'uppercase',
     },
     instructionContainer: {
@@ -864,7 +811,7 @@ const styles = StyleSheet.create({
     },
     instructionText: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         fontWeight: '500',
     },
     puzzleContainer: {
@@ -875,11 +822,11 @@ const styles = StyleSheet.create({
         width: ACTUAL_PUZZLE_SIZE,
         height: ACTUAL_PUZZLE_SIZE,
         position: 'relative',
-        backgroundColor: colors.surface,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
         borderRadius: borderRadius.lg,
-        shadowColor: colors.shadowDark,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 16,
         elevation: 8,
         overflow: 'hidden',
@@ -922,12 +869,12 @@ const styles = StyleSheet.create({
     celebrateTitle: {
         fontSize: 24,
         fontWeight: '800',
-        color: colors.text,
+        color: '#FFFFFF',
         marginBottom: spacing.xs,
     },
     celebrateSubtitle: {
         fontSize: 14,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.6)',
         marginBottom: spacing.md,
     },
     referenceOverlay: {
@@ -944,7 +891,7 @@ const styles = StyleSheet.create({
     referencePreviewLabel: {
         fontSize: 18,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         marginBottom: spacing.md,
     },
     referenceImageWrapper: {
@@ -952,10 +899,10 @@ const styles = StyleSheet.create({
         height: ACTUAL_PUZZLE_SIZE,
         borderRadius: borderRadius.lg,
         overflow: 'hidden',
-        backgroundColor: colors.surface,
-        shadowColor: colors.shadowDark,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 16,
         elevation: 8,
     },
@@ -970,7 +917,7 @@ const styles = StyleSheet.create({
     },
     referencePreviewHint: {
         fontSize: 14,
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.5)',
         marginTop: spacing.md,
         fontStyle: 'italic',
     },

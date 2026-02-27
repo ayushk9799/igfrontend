@@ -28,7 +28,7 @@ const FEATURES = [
         emoji: '😊',
         secondaryEmojis: ['❤️', '😴', '🥰', '✨'],
         gradient: ['#D4763B', '#8B4513'],
-        iconBg: Platform.OS === 'android' ? '#FDE8DA' : 'rgba(249, 145, 87, 0.25)',
+        iconBg: Platform.OS === 'android' ? '#2A2018' : 'rgba(249, 145, 87, 0.15)',
         nodeColor: '#E88A4C',
     },
     {
@@ -39,7 +39,7 @@ const FEATURES = [
         image: require('../../assets/pencilicon.png'),
         secondaryEmojis: ['💕', '🎨', '✨', '💌'],
         gradient: ['#A67C52', '#6B4423'],
-        iconBg: Platform.OS === 'android' ? '#E8D9C8' : 'rgba(200, 150, 100, 0.3)',
+        iconBg: Platform.OS === 'android' ? '#2A2218' : 'rgba(200, 150, 100, 0.15)',
         nodeColor: '#C8965A',
     },
     {
@@ -48,7 +48,7 @@ const FEATURES = [
         subtitle: 'Challenge your partner in fun duels',
         assetType: 'svg',
         gradient: ['#C92A2A', '#A61C1C'],
-        iconBg: Platform.OS === 'android' ? '#F5CECE' : 'rgba(220, 80, 80, 0.3)',
+        iconBg: Platform.OS === 'android' ? '#2A1818' : 'rgba(220, 80, 80, 0.15)',
         nodeColor: '#DC4040',
     },
     {
@@ -63,7 +63,7 @@ const FEATURES = [
             { source: require('../../assets/dreamsfuture.png'), position: { bottom: -5, right: -20 } },
         ],
         gradient: ['#8B2252', '#5C1637'],
-        iconBg: Platform.OS === 'android' ? '#FFCFD9' : 'rgba(255, 80, 120, 0.3)',
+        iconBg: Platform.OS === 'android' ? '#2A1820' : 'rgba(255, 80, 120, 0.15)',
         nodeColor: '#E84580',
     },
 ];
@@ -373,7 +373,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         styles.nodeCircle,
                         {
                             // Completed nodes get white bg, active/upcoming keep iconBg
-                            backgroundColor: isCompleted ? '#FFFFFF' : feature.iconBg,
+                            backgroundColor: isCompleted ? '#1A1A1A' : feature.iconBg,
                             borderColor: feature.nodeColor,
                             borderWidth: isActive ? 3 : 2,
                             width: nodeSize,
@@ -546,9 +546,9 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                 {/* Gradient definition for 3D depth effect */}
                 <Defs>
                     <SvgGradient id="pathDepthGradient" x1="0" y1="0" x2="0" y2="1">
-                        <Stop offset="0%" stopColor="rgba(0,0,0,0.05)" />
-                        <Stop offset="50%" stopColor="rgba(0,0,0,0.12)" />
-                        <Stop offset="100%" stopColor="rgba(0,0,0,0.2)" />
+                        <Stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
+                        <Stop offset="50%" stopColor="rgba(255,255,255,0.15)" />
+                        <Stop offset="100%" stopColor="rgba(255,255,255,0.25)" />
                     </SvgGradient>
                     <SvgGradient id="progressDepthGradient" x1="0" y1="0" x2="0" y2="1">
                         <Stop offset="0%" stopColor={FEATURES[0].nodeColor} stopOpacity="0.4" />
@@ -615,20 +615,13 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
 
     return (
         <View style={styles.container}>
-            <LinearGradient
-                colors={['#FFF9F5', '#FFE4E4']}
-                style={styles.gradient}
+            <View
+                style={[styles.gradient, { backgroundColor: '#000000' }]}
             />
 
             {/* 3D Perspective depth overlay - subtle gradient reinforces depth (lighter top, slightly darker bottom) */}
             {/* Disabled on Android due to transparency rendering issues */}
-            {Platform.OS !== 'android' && (
-                <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.08)']}
-                    style={styles.depthOverlay}
-                    pointerEvents="none"
-                />
-            )}
+            {/* Depth overlay removed for dark theme */}
 
             {/* Header */}
             <View style={[styles.header, { top: insets.top + 16 }]}>
@@ -693,7 +686,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 22,
         fontWeight: '600',
-        color: 'black',
+        color: '#FFFFFF',
         letterSpacing: -0.5,
     },
     // Node styles
@@ -712,7 +705,7 @@ const styles = StyleSheet.create({
     nodeCircle: {
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'white',
+        backgroundColor: '#1A1A1A',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
@@ -748,18 +741,18 @@ const styles = StyleSheet.create({
     nodeLabel: {
         fontSize: 16,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         letterSpacing: -0.3,
     },
     nodeSublabel: {
         fontSize: 12,
         fontWeight: '500',
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         marginTop: 2,
     },
     floatingEmoji: {
         position: 'absolute',
-        backgroundColor: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: Platform.OS === 'android' ? '#1A1A1A' : 'rgba(26, 26, 26, 0.95)',
         borderRadius: 16,
         padding: 6,
         shadowColor: '#000',
@@ -775,7 +768,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: 40,
         height: 40,
-        backgroundColor: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: Platform.OS === 'android' ? '#1A1A1A' : 'rgba(26, 26, 26, 0.95)',
         borderRadius: 20,
         padding: 4,
         justifyContent: 'center',
@@ -801,14 +794,14 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: '800',
-        color: colors.text,
+        color: '#FFFFFF',
         textAlign: 'center',
         marginBottom: 8,
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         textAlign: 'center',
         lineHeight: 24,
     },
@@ -832,7 +825,7 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: 2,
         overflow: 'hidden',
-        backgroundColor: Platform.OS === 'android' ? '#E5E5E5' : 'rgba(0, 0, 0, 0.1)',
+        backgroundColor: Platform.OS === 'android' ? '#333333' : 'rgba(255, 255, 255, 0.15)',
     },
     dot: {
         ...StyleSheet.absoluteFillObject,
@@ -845,14 +838,14 @@ const styles = StyleSheet.create({
     },
     ctaButton: {
         width: '100%',
-        backgroundColor: colors.primary,
+        backgroundColor: '#FFFFFF',
         paddingVertical: 18,
         borderRadius: 32,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         gap: 8,
-        shadowColor: colors.primary,
+        shadowColor: '#FFFFFF',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
@@ -862,11 +855,11 @@ const styles = StyleSheet.create({
     ctaText: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: '#000000',
     },
     arrowIcon: {
         fontSize: 20,
-        color: '#FFFFFF',
+        color: '#000000',
     },
     socialProof: {
         flexDirection: 'row',
@@ -881,11 +874,11 @@ const styles = StyleSheet.create({
         height: 28,
         borderRadius: 14,
         borderWidth: 2,
-        borderColor: 'white',
+        borderColor: '#1A1A1A',
     },
     socialText: {
         fontSize: 14,
-        color: colors.textSecondary,
+        color: 'rgba(255,255,255,0.6)',
         fontWeight: '500',
     },
 });

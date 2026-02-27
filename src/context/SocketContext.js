@@ -71,13 +71,11 @@ export const SocketProvider = ({ children }) => {
                 return;
             }
             // Otherwise, we have a stale connection (e.g. after logout/login)
-            console.log(`🔄 User ID changed from ${socketRef.current.auth?.userId} to ${user.id}, reconnecting...`);
             socketRef.current.disconnect();
         }
 
         setConnectionState(CONNECTION_STATE.CONNECTING);
 
-        console.log(`📡 Attempting socket connection for user: ${user.id}`);
 
         // Create socket connection with auth
         const socketInstance = io(API_BASE, {
@@ -94,7 +92,6 @@ export const SocketProvider = ({ children }) => {
 
         // Connection events
         socketInstance.on('connect', () => {
-            console.log(`✅ Socket connected with ID: ${socketInstance.id}`);
             setConnectionState(CONNECTION_STATE.CONNECTED);
 
             // Request current moods and status
@@ -105,7 +102,6 @@ export const SocketProvider = ({ children }) => {
         });
 
         socketInstance.on('disconnect', (reason) => {
-            console.log(`🔌 Socket disconnected: ${reason}`);
             setConnectionState(CONNECTION_STATE.DISCONNECTED);
         });
 

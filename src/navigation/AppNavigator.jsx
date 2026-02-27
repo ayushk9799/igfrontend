@@ -1,6 +1,6 @@
 // Updated Navigator with premium theme and auth persistence
 import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Alert, Platform } from 'react-native';
+import { View, StyleSheet, Alert, Platform, BackHandler } from 'react-native';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
@@ -53,6 +53,7 @@ export const AppNavigator = () => {
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
+    const [homeInitialTab, setHomeInitialTab] = useState(null); // Track which tab to open in MainTabNavigator
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -60,6 +61,7 @@ export const AppNavigator = () => {
     // In-app update instance (debug flag mirrors __DEV__)
     const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
 
+    const pendingNotificationRef = React.useRef(null); // Store notification that launched the app from quit state
     const purchasesConfiguredRef = React.useRef(false);
     const initPurchases = React.useCallback(async () => {
         try {
@@ -138,7 +140,7 @@ export const AppNavigator = () => {
 
             if (!userId) return;
 
-            // Update backend
+            // Update backend with the user's own RevenueCat status
             await fetch(`${API_BASE}/api/user/premium`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -150,18 +152,27 @@ export const AppNavigator = () => {
                 }),
             });
 
-            // Update local storage
+            // Compute effective couple premium: user's own OR partner's
+            const storedUser = getUser();
+            const isDateActive = (d) => d && new Date(d) > new Date();
+            const partnerPremium = isDateActive(storedUser?.partnerPremiumExpiresAt);
+            const effectivePremium = hasActive || partnerPremium;
+            const premiumSource = hasActive ? 'self' : (partnerPremium ? 'partner' : null);
+
+            // Update local storage (preserve couple premium)
             updateUserStorage({
-                isPremium: hasActive,
+                isPremium: effectivePremium,
                 premiumExpiresAt: hasActive ? premiumExpiresAt : null,
                 premiumPlan: hasActive ? premiumPlan : null,
+                premiumSource,
             });
 
-            // Update Redux state
+            // Update Redux state (preserve couple premium)
             dispatch(setPremiumStatus({
-                isPremium: hasActive,
+                isPremium: effectivePremium,
                 premiumExpiresAt: hasActive ? premiumExpiresAt : null,
                 premiumPlan: hasActive ? premiumPlan : null,
+                premiumSource,
             }));
 
         } catch (e) {
@@ -261,6 +272,29 @@ export const AppNavigator = () => {
         };
     }, [socket, userData?.id]);
 
+    // Listen for TicTacToe socket events for real-time updates
+    useEffect(() => {
+        if (!socket || !userData?.id) return;
+
+        const handleTicTacToeUpdate = () => {
+            fetchPendingTicTacToe(userData.id);
+        };
+
+        socket.on('tictactoe:invited', handleTicTacToeUpdate);
+        socket.on('tictactoe:update', handleTicTacToeUpdate);
+        socket.on('tictactoe:moveReceived', handleTicTacToeUpdate);
+        socket.on('tictactoe:newGame', handleTicTacToeUpdate);
+        socket.on('tictactoe:gameComplete', handleTicTacToeUpdate);
+
+        return () => {
+            socket.off('tictactoe:invited', handleTicTacToeUpdate);
+            socket.off('tictactoe:update', handleTicTacToeUpdate);
+            socket.off('tictactoe:moveReceived', handleTicTacToeUpdate);
+            socket.off('tictactoe:newGame', handleTicTacToeUpdate);
+            socket.off('tictactoe:gameComplete', handleTicTacToeUpdate);
+        };
+    }, [socket, userData?.id]);
+
     // Listen for partner:paired socket event (when someone pairs with us in real-time)
     useEffect(() => {
         if (!socket || !userData?.id) return;
@@ -281,8 +315,9 @@ export const AppNavigator = () => {
                         partnerPremiumPlan: statusData.partner.premiumPlan || null,
                         partnerPremiumExpiresAt: statusData.partner.premiumExpiresAt || null,
                     };
-                    const userPremium = userData.isPremium;
-                    const partnerPremium = statusData.partner.isPremium || false;
+                    const isDateActive = (d) => d && new Date(d) > new Date();
+                    const userPremium = isDateActive(userData.premiumExpiresAt);
+                    const partnerPremium = isDateActive(statusData.partner.premiumExpiresAt);
                     const effectivePremium = userPremium || partnerPremium;
                     const premiumSource = userPremium ? (userData.premiumSource || 'self') : (partnerPremium ? 'partner' : null);
 
@@ -315,23 +350,41 @@ export const AppNavigator = () => {
         };
     }, [socket, userData?.id, userData?.isPremium, currentScreen, dispatch]);
 
+    // Navigate to the correct screen based on push notification data
+    const handleNotificationNavigation = async (remoteMessage) => {
+        const data = remoteMessage?.data;
+        if (!data || data.type !== 'chat' || !data.chatId) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/api/chat/${data.chatId}`);
+            const json = await response.json();
+            if (json.success) {
+                setSelectedChat(json.data.chat || json.data);
+                setCurrentScreen('chat');
+            }
+        } catch (err) {
+            console.error('❌ Failed to navigate from notification:', err);
+        }
+    };
+
     // Setup Notification Listeners
     useEffect(() => {
         // 1. Initial Notification (App opened from quit state)
+        //    Store it in ref — we process it after auth check completes
         getInitialNotification(getMessaging(getApp())).then(remoteMessage => {
             if (remoteMessage) {
-                // Handle navigation here if needed, e.g. navigate('chat')
+                pendingNotificationRef.current = remoteMessage;
             }
         });
 
         // 2. Notification Opened App (App opened from background state)
+        //    App is already initialized, navigate immediately
         const unsubscribeOpenedApp = onNotificationOpenedApp(getMessaging(getApp()), remoteMessage => {
-            // Handle navigation here if needed
+            handleNotificationNavigation(remoteMessage);
         });
 
         // 3. Foreground Message Handler — no alert, notification still shows in system tray
         const unsubscribeForeground = setupForegroundMessageHandler((remoteMessage) => {
-            console.log('📩 Foreground notification:', remoteMessage.notification?.title);
         });
 
         // 4. Token Refresh Listener - handles token rotation by Firebase
@@ -380,8 +433,9 @@ export const AppNavigator = () => {
                                 partnerPremiumExpiresAt: statusData.partner.premiumExpiresAt || null,
                             };
                             // Compute couple premium
-                            const userPremium = storedUser.isPremium;
-                            const partnerPremium = statusData.partner.isPremium || false;
+                            const isDateActive = (d) => d && new Date(d) > new Date();
+                            const userPremium = isDateActive(storedUser.premiumExpiresAt);
+                            const partnerPremium = isDateActive(statusData.partner.premiumExpiresAt);
                             const effectivePremium = userPremium || partnerPremium;
                             const premiumSource = userPremium ? (storedUser.premiumSource || 'self') : (partnerPremium ? 'partner' : null);
                             updateUserStorage({ ...partnerData, isPremium: effectivePremium, premiumSource });
@@ -396,6 +450,26 @@ export const AppNavigator = () => {
                                 fetchPendingWordle(storedUser.id);
                                 return;
                             }
+                        } else if (statusData.success && !statusData.isPaired && storedUser.partnerId) {
+                            // Partner was deleted or unpaired — clear stale local data
+                            const clearedData = {
+                                partnerId: null,
+                                partnerUsername: null,
+                                partnerAvatar: null,
+                                connectionDate: null,
+                                partnerIsPremium: false,
+                                partnerPremiumPlan: null,
+                                partnerPremiumExpiresAt: null,
+                            };
+                            // If premium was from partner, revoke it
+                            if (storedUser.premiumSource === 'partner') {
+                                clearedData.isPremium = false;
+                                clearedData.premiumSource = null;
+                            }
+                            updateUserStorage(clearedData);
+                            dispatch(updateUser(clearedData));
+                            setCurrentScreen('partnerCode');
+                            return;
                         }
                     } catch (err) {
                         // Continue with local data if server check fails
@@ -409,7 +483,16 @@ export const AppNavigator = () => {
                         // Has nickname and is paired - go to home
                         dispatch(setOnboarded(true));
                         setOnboardedStorage(true);
-                        setCurrentScreen('home');
+
+                        // Check if a push notification launched the app from quit state
+                        if (pendingNotificationRef.current) {
+                            const pending = pendingNotificationRef.current;
+                            pendingNotificationRef.current = null;
+                            // Navigate to notification target instead of home
+                            handleNotificationNavigation(pending);
+                        } else {
+                            setCurrentScreen('home');
+                        }
 
                         // Fetch pending puzzles and TicTacToe games
                         fetchPendingPuzzle(storedUser.id);
@@ -463,6 +546,11 @@ export const AppNavigator = () => {
                 fetchPendingPuzzle(userData.id);
                 fetchPendingTicTacToe(userData.id);
                 fetchPendingWordle(userData.id);
+            }
+
+            // Reset homeInitialTab after navigating away from home
+            if (screen !== 'home') {
+                setHomeInitialTab(null);
             }
         });
     };
@@ -750,6 +838,34 @@ export const AppNavigator = () => {
         return () => setAuthErrorHandler(null);
     }, [handleAuthError]);
 
+    // Handle Android back button/gesture - prevent app from closing on sub-screens
+    useEffect(() => {
+        const backAction = () => {
+            const homeSubScreens = [
+                'mood', 'scribble', 'questions', 'jigsawCreate',
+                'jigsawPuzzle', 'ticTacToe', 'wordle', 'chat',
+                'premium', 'dailyChallenge', 'questionCategories',
+            ];
+
+            if (currentScreen === 'chat') {
+                setHomeInitialTab('chats');
+                navigate('home');
+                return true;
+            }
+
+            if (homeSubScreens.includes(currentScreen)) {
+                navigate('home');
+                return true; // Prevent default (app exit)
+            }
+
+            // On home or onboarding screens, let OS handle normally
+            return false;
+        };
+
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+        return () => backHandler.remove();
+    }, [currentScreen]);
+
     // Handle onboarding completion
     const handleOnboardingComplete = () => {
         startTransition(() => {
@@ -835,6 +951,7 @@ export const AppNavigator = () => {
                     <MainTabNavigator
                         yourMood={yourMood}
                         pendingInvite={pendingInvite}
+                        initialTab={homeInitialTab}
                         onMoodPress={() => navigate('mood')}
                         onQuestionPress={(category) => {
                             if (category) {
@@ -1051,7 +1168,10 @@ export const AppNavigator = () => {
                         userId={userData?.id}
                         userName={userData?.name || 'You'}
                         partnerName={userData?.partnerUsername || 'Partner'}
-                        onBack={() => navigate('home')}
+                        onBack={() => {
+                            setHomeInitialTab('chats');
+                            navigate('home');
+                        }}
                     />
                 );
 
