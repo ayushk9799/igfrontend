@@ -8,125 +8,53 @@ import {
     Animated,
     Dimensions,
     Platform,
+    Image,
+    StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 
-import GradientBackground from '../components/GradientBackground';
-import { colors, spacing, borderRadius, shadows } from '../theme';
 import { requestNotificationPermission, registerFCMToken } from '../utils/pushNotifications';
 
 const { width, height } = Dimensions.get('window');
+const isCompactHeight = height < 760;
+const navy = '#050E3E';
 
-// Animated bell component
-const AnimatedBell = () => {
-    const swing = useRef(new Animated.Value(0)).current;
-    const scale = useRef(new Animated.Value(0.8)).current;
+// --- SVG Components ---
+const TitleBurst = () => (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+        <Path d="M6 16L9 14" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" />
+        <Path d="M4 8L8 10" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" />
+        <Path d="M12 4L13 8" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" />
+    </Svg>
+);
 
-    useEffect(() => {
-        // Scale in
-        Animated.spring(scale, {
-            toValue: 1,
-            friction: 6,
-            tension: 40,
-            useNativeDriver: true,
-        }).start();
+const ButtonBurst = () => (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+        <Path d="M18 8L15 10" stroke="#FF5E97" strokeWidth={2.5} strokeLinecap="round" />
+        <Path d="M20 16L16 14" stroke="#FF5E97" strokeWidth={2.5} strokeLinecap="round" />
+        <Path d="M12 20L11 16" stroke="#FF5E97" strokeWidth={2.5} strokeLinecap="round" />
+    </Svg>
+);
 
-        // Continuous swing
-        const swingAnimation = Animated.loop(
-            Animated.sequence([
-                Animated.timing(swing, { toValue: 1, duration: 400, useNativeDriver: true }),
-                Animated.timing(swing, { toValue: -1, duration: 400, useNativeDriver: true }),
-                Animated.timing(swing, { toValue: 0.6, duration: 300, useNativeDriver: true }),
-                Animated.timing(swing, { toValue: -0.6, duration: 300, useNativeDriver: true }),
-                Animated.timing(swing, { toValue: 0, duration: 200, useNativeDriver: true }),
-                Animated.delay(2000),
-            ])
-        );
-        swingAnimation.start();
-        return () => swingAnimation.stop();
-    }, [swing, scale]);
+const TinyHeart = ({ color = "#FF8FAB" }) => (
+    <Svg width={18} height={16} viewBox="0 0 14 12" fill="none">
+        <Path d="M7 12L6.0125 11.0825C2.4 7.755 0 5.5425 0 2.8425C0 0.81 1.575 -0.75 3.5 -0.75C4.585 -0.75 5.6175 -0.255 6.265 0.4425C6.545 0.705 6.7825 1.0125 7 1.3425C7.2175 1.0125 7.455 0.705 7.735 0.4425C8.3825 -0.255 9.415 -0.75 10.5 -0.75C12.425 -0.75 14 0.81 14 2.8425C14 5.5425 11.6 7.755 7.9875 11.09L7 12Z" fill={color} />
+    </Svg>
+);
 
-    const rotate = swing.interpolate({
-        inputRange: [-1, 0, 1],
-        outputRange: ['-20deg', '0deg', '20deg'],
-    });
+const ChevronRight = () => (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+        <Path d="M9 18L15 12L9 6" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+);
 
-    return (
-        <Animated.View style={{ transform: [{ scale }, { rotate }] }}>
-            <Text style={styles.bellEmoji}>🔔</Text>
-        </Animated.View>
-    );
-};
-
-// Pulsing ring behind the bell
-const PulsingRing = () => {
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const opacityAnim = useRef(new Animated.Value(0.3)).current;
-
-    useEffect(() => {
-        const animation = Animated.loop(
-            Animated.sequence([
-                Animated.parallel([
-                    Animated.timing(scaleAnim, { toValue: 1.3, duration: 1500, useNativeDriver: true }),
-                    Animated.timing(opacityAnim, { toValue: 0, duration: 1500, useNativeDriver: true }),
-                ]),
-                Animated.parallel([
-                    Animated.timing(scaleAnim, { toValue: 1, duration: 0, useNativeDriver: true }),
-                    Animated.timing(opacityAnim, { toValue: 0.3, duration: 0, useNativeDriver: true }),
-                ]),
-            ])
-        );
-        animation.start();
-        return () => animation.stop();
-    }, [scaleAnim, opacityAnim]);
-
-    return (
-        <Animated.View
-            style={[
-                styles.pulsingRing,
-                {
-                    opacity: opacityAnim,
-                    transform: [{ scale: scaleAnim }],
-                },
-            ]}
-        />
-    );
-};
-
-// Floating notification badges
-const FloatingBadge = ({ emoji, delay, position }) => {
-    const translateY = useRef(new Animated.Value(30)).current;
-    const opacity = useRef(new Animated.Value(0)).current;
-    const scale = useRef(new Animated.Value(0.5)).current;
-
-    useEffect(() => {
-        const animation = Animated.sequence([
-            Animated.delay(delay),
-            Animated.parallel([
-                Animated.spring(translateY, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
-                Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-                Animated.spring(scale, { toValue: 1, friction: 6, tension: 50, useNativeDriver: true }),
-            ]),
-        ]);
-        animation.start();
-        return () => animation.stop();
-    }, [delay, translateY, opacity, scale]);
-
-    return (
-        <Animated.View
-            style={[
-                styles.floatingBadge,
-                position,
-                {
-                    opacity,
-                    transform: [{ translateY }, { scale }],
-                },
-            ]}
-        >
-            <Text style={styles.badgeEmoji}>{emoji}</Text>
-        </Animated.View>
-    );
-};
+const BellIcon = () => (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+        <Path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z" fill="#FFFFFF" />
+    </Svg>
+);
 
 const NotificationPermissionScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
@@ -151,7 +79,6 @@ const NotificationPermissionScreen = ({ onComplete }) => {
     const handleAllowNotifications = async () => {
         const granted = await requestNotificationPermission();
         if (granted) {
-            // Now that permission is granted, register FCM token with backend
             await registerFCMToken();
         }
         onComplete?.();
@@ -162,219 +89,350 @@ const NotificationPermissionScreen = ({ onComplete }) => {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#000000' }}>
-            <View style={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
-                {/* Hero Section */}
-                <Animated.View
-                    style={[
-                        styles.heroSection,
-                        {
-                            opacity: fadeAnim,
-                            transform: [{ translateY: slideAnim }],
-                        },
-                    ]}
-                >
-                    <View style={styles.iconContainer}>
-                        <PulsingRing />
-                        <View style={styles.bellCircle}>
-                            <AnimatedBell />
-                        </View>
-
-                        {/* Floating badges around bell */}
-                        <FloatingBadge emoji="💌" delay={400} position={{ top: -10, right: -20 }} />
-                        <FloatingBadge emoji="🎨" delay={700} position={{ top: 20, left: -25 }} />
-                        <FloatingBadge emoji="🎮" delay={1000} position={{ bottom: -5, right: -15 }} />
-                        <FloatingBadge emoji="💕" delay={1300} position={{ bottom: 10, left: -20 }} />
-                    </View>
-
-                    <Text style={styles.title}>Stay Connected</Text>
-                    <Text style={styles.subtitle}>
-                        Get notified when your partner sends you love notes, scribbles, and game invites
-                    </Text>
-                </Animated.View>
-
-                {/* Feature list */}
-                <Animated.View
-                    style={[
-                        styles.featuresContainer,
-                        {
-                            opacity: fadeAnim,
-                            transform: [{ translateY: slideAnim }],
-                        },
-                    ]}
-                >
-                    <View style={styles.featureRow}>
-                        <Text style={styles.featureEmoji}>💬</Text>
-                        <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle}>Partner Messages</Text>
-                            <Text style={styles.featureSubtitle}>Never miss a sweet message</Text>
-                        </View>
-                    </View>
-                    <View style={styles.featureRow}>
-                        <Text style={styles.featureEmoji}>🖌️</Text>
-                        <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle}>New Scribbles</Text>
-                            <Text style={styles.featureSubtitle}>See their drawings right away</Text>
-                        </View>
-                    </View>
-                    <View style={styles.featureRow}>
-                        <Text style={styles.featureEmoji}>🧩</Text>
-                        <View style={styles.featureTextContainer}>
-                            <Text style={styles.featureTitle}>Game Invites</Text>
-                            <Text style={styles.featureSubtitle}>Jump into fun challenges together</Text>
-                        </View>
-                    </View>
-                </Animated.View>
-
-                {/* Bottom actions */}
-                <View style={styles.bottomSection}>
-                    <TouchableOpacity
-                        style={styles.allowButton}
-                        onPress={handleAllowNotifications}
-                        activeOpacity={0.85}
+        <View style={styles.root}>
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+            <LinearGradient
+                colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+                locations={[0, 0.34, 0.72, 1]}
+                start={{ x: 0.25, y: 0 }}
+                end={{ x: 0.75, y: 1 }}
+                style={styles.gradient}
+            >
+                <View style={[styles.container, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 10 }]}>
+                    
+                    {/* Hero Section */}
+                    <Animated.View
+                        style={[
+                            styles.heroSection,
+                            {
+                                opacity: fadeAnim,
+                                transform: [{ translateY: slideAnim }],
+                            },
+                        ]}
                     >
-                        <Text style={styles.allowButtonText}>Allow Notifications</Text>
-                        <Text style={styles.allowButtonIcon}>🔔</Text>
-                    </TouchableOpacity>
+                        <View style={styles.mascotContainer}>
+                            <View style={styles.mascotBackgroundCircle} />
+                            <Image 
+                                source={require('../../assets/images/notification-muscot.png')} 
+                                style={styles.mascotImage} 
+                                resizeMode="contain" 
+                            />
+                        </View>
 
-                    <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
-                        <Text style={styles.skipText}>Maybe Later →</Text>
-                    </TouchableOpacity>
+                        <View style={styles.titleRow}>
+                            <View style={styles.titleBurstContainer}>
+                                <TitleBurst />
+                            </View>
+                            <Text style={styles.title}>Stay Connected</Text>
+                            <View style={styles.titleHeartContainer}>
+                                <TinyHeart color="#FF8FAB" />
+                            </View>
+                        </View>
+                        <Text style={styles.subtitle}>
+                            Get notified when your partner sends you love notes, scribbles, and game invites.
+                        </Text>
+                    </Animated.View>
+
+                    {/* Features Card */}
+                    <Animated.View
+                        style={[
+                            styles.featuresCard,
+                            {
+                                opacity: fadeAnim,
+                                transform: [{ translateY: slideAnim }],
+                            },
+                        ]}
+                    >
+                        {/* Feature 1 */}
+                        <View style={styles.featureRow}>
+                            <View style={[styles.featureIconBox, { backgroundColor: '#FFEAF2' }]}>
+                                <Text style={styles.featureEmoji}>💬</Text>
+                            </View>
+                            <View style={styles.featureTextContainer}>
+                                <Text style={styles.featureTitle}>Partner Messages</Text>
+                                <Text style={styles.featureSubtitle}>Never miss a sweet message</Text>
+                            </View>
+                            <ChevronRight />
+                        </View>
+                        
+                        <View style={styles.divider} />
+
+                        {/* Feature 2 */}
+                        <View style={styles.featureRow}>
+                            <View style={[styles.featureIconBox, { backgroundColor: '#F0EFFF' }]}>
+                                <Text style={styles.featureEmoji}>🖍️</Text>
+                            </View>
+                            <View style={styles.featureTextContainer}>
+                                <Text style={styles.featureTitle}>New Scribbles</Text>
+                                <Text style={styles.featureSubtitle}>See their drawings right away</Text>
+                            </View>
+                            <ChevronRight />
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        {/* Feature 3 */}
+                        <View style={styles.featureRow}>
+                            <View style={[styles.featureIconBox, { backgroundColor: '#EAF4FF' }]}>
+                                <Text style={styles.featureEmoji}>🎮</Text>
+                            </View>
+                            <View style={styles.featureTextContainer}>
+                                <Text style={styles.featureTitle}>Game Invites</Text>
+                                <Text style={styles.featureSubtitle}>Jump into fun challenges together</Text>
+                            </View>
+                            <ChevronRight />
+                        </View>
+                    </Animated.View>
+
+                    <View style={styles.spacer} />
+
+                    {/* Bottom Actions */}
+                    <View style={styles.bottomSection}>
+                        <View style={styles.buttonContainer}>
+                            <View style={styles.buttonBurstContainer}>
+                                <ButtonBurst />
+                            </View>
+                            <TouchableOpacity
+                                style={styles.allowButtonWrapper}
+                                onPress={handleAllowNotifications}
+                                activeOpacity={0.85}
+                            >
+                                <LinearGradient
+                                    colors={['#FF5E97', '#FFA1C9']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.allowButtonGradient}
+                                >
+                                    <BellIcon />
+                                    <Text style={styles.allowButtonText}>Allow Notifications</Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity onPress={handleSkip} activeOpacity={0.7} style={styles.skipButton}>
+                            <Text style={styles.skipText}>Maybe Later →</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
+
+                {/* Bottom Clouds background decoration */}
+                <View style={styles.cloudsContainer}>
+                    <View style={[styles.cloud, styles.cloudOne]} />
+                    <View style={[styles.cloud, styles.cloudTwo]} />
+                    <View style={[styles.cloud, styles.cloudThree]} />
+                    <View style={[styles.cloud, styles.cloudFour]} />
+                </View>
+            </LinearGradient>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
+    root: {
+        flex: 1,
+    },
+    gradient: {
+        flex: 1,
+    },
     container: {
         flex: 1,
-        paddingHorizontal: spacing.xl,
-        justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        zIndex: 2,
     },
     heroSection: {
         alignItems: 'center',
-        marginTop: spacing.xl * 2,
+        marginTop: isCompactHeight ? 0 : 20,
+        marginBottom: isCompactHeight ? 15 : 30,
     },
-    iconContainer: {
-        width: 160,
-        height: 160,
+    mascotContainer: {
+        width: isCompactHeight ? 240 : 280,
+        height: isCompactHeight ? 240 : 280,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: spacing.xl,
+        marginBottom: -20,
+        position: 'relative',
     },
-    pulsingRing: {
+    mascotBackgroundCircle: {
         position: 'absolute',
-        width: 140,
-        height: 140,
-        borderRadius: 70,
-        borderWidth: 2,
-        borderColor: '#E88A4C',
+        width: isCompactHeight ? 190 : 230,
+        height: isCompactHeight ? 190 : 230,
+        borderRadius: isCompactHeight ? 95 : 115,
+        backgroundColor: '#FFE4EC',
+        opacity: 0.8,
     },
-    bellCircle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: Platform.OS === 'android' ? '#2A2018' : 'rgba(232, 138, 76, 0.15)',
-        justifyContent: 'center',
+    mascotImage: {
+        width: '100%',
+        height: '100%',
+    },
+    titleRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        ...shadows.md,
+        position: 'relative',
+        marginBottom: 8,
     },
-    bellEmoji: {
-        fontSize: 56,
-    },
-    floatingBadge: {
+    titleBurstContainer: {
         position: 'absolute',
-        backgroundColor: Platform.OS === 'android' ? '#1A1A1A' : 'rgba(26, 26, 26, 0.95)',
-        borderRadius: 20,
-        padding: 8,
-        ...shadows.sm,
+        left: -25,
+        top: -8,
     },
-    badgeEmoji: {
-        fontSize: 20,
+    titleHeartContainer: {
+        position: 'absolute',
+        right: -25,
+        top: -2,
     },
     title: {
-        fontSize: 30,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        fontSize: isCompactHeight ? 28 : 34,
+        fontWeight: '800',
+        color: navy,
         textAlign: 'center',
-        letterSpacing: -0.5,
-        marginBottom: spacing.sm,
+        letterSpacing: -0.4,
     },
     subtitle: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
+        fontSize: isCompactHeight ? 13 : 14,
+        color: '#7380A1',
         textAlign: 'center',
-        lineHeight: 23,
-        paddingHorizontal: spacing.md,
+        marginTop: isCompactHeight ? 6 : 10,
+        lineHeight: 20,
+        paddingHorizontal: 10,
+        fontWeight: '500',
     },
-    featuresContainer: {
-        backgroundColor: '#1A1A1A',
-        borderRadius: borderRadius.xl,
-        padding: spacing.xl,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-        gap: spacing.lg,
+    featuresCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        paddingHorizontal: isCompactHeight ? 16 : 24,
+        paddingVertical: isCompactHeight ? 2 : 6,
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 6,
     },
     featureRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.md,
+        paddingVertical: isCompactHeight ? 10 : 12,
+    },
+    featureIconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
     },
     featureEmoji: {
-        fontSize: 28,
-        width: 44,
-        height: 44,
-        textAlign: 'center',
-        lineHeight: 44,
-        backgroundColor: Platform.OS === 'android' ? '#2A2018' : 'rgba(232, 138, 76, 0.12)',
-        borderRadius: 12,
-        overflow: 'hidden',
+        fontSize: 24,
     },
     featureTextContainer: {
         flex: 1,
     },
     featureTitle: {
         fontSize: 15,
-        fontWeight: '600',
-        color: '#FFFFFF',
-        letterSpacing: -0.2,
+        fontWeight: '700',
+        color: navy,
+        letterSpacing: -0.3,
     },
     featureSubtitle: {
-        fontSize: 13,
-        color: 'rgba(255,255,255,0.5)',
+        fontSize: 12,
+        color: '#7380A1',
         marginTop: 2,
+        fontWeight: '500',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#FFEAF2',
+        marginHorizontal: 10,
+    },
+    spacer: {
+        flex: 1,
+        minHeight: isCompactHeight ? 15 : 30,
     },
     bottomSection: {
         alignItems: 'center',
-        gap: spacing.lg,
+        marginBottom: isCompactHeight ? 10 : 20,
     },
-    allowButton: {
+    buttonContainer: {
         width: '100%',
-        borderRadius: borderRadius.xl,
-        backgroundColor: '#FFFFFF',
+        position: 'relative',
+    },
+    buttonBurstContainer: {
+        position: 'absolute',
+        right: -10,
+        top: -15,
+        zIndex: 3,
+    },
+    allowButtonWrapper: {
+        width: '100%',
+        height: isCompactHeight ? 44 : 48,
+        borderRadius: 24,
+        overflow: 'hidden',
+        shadowColor: '#FF5E97',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 5,
+    },
+    allowButtonGradient: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: spacing.xl,
-        gap: spacing.sm,
-        ...shadows.md,
+        gap: 10,
     },
     allowButtonText: {
-        fontSize: 17,
-        fontWeight: '700',
-        color: '#000000',
-        letterSpacing: -0.2,
+        fontSize: isCompactHeight ? 14 : 15,
+        fontWeight: '800',
+        color: '#FFFFFF',
     },
-    allowButtonIcon: {
-        fontSize: 18,
+    skipButton: {
+        marginTop: 20,
+        paddingVertical: 10,
     },
     skipText: {
         fontSize: 15,
-        color: 'rgba(255,255,255,0.5)',
-        fontWeight: '500',
-        paddingVertical: spacing.sm,
+        color: '#7380A1',
+        fontWeight: '600',
+    },
+    cloudsContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 150,
+        zIndex: 1,
+        pointerEvents: 'none',
+    },
+    cloud: {
+        position: 'absolute',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 100,
+        opacity: 0.6,
+    },
+    cloudOne: {
+        width: 120,
+        height: 120,
+        bottom: -60,
+        left: -40,
+    },
+    cloudTwo: {
+        width: 180,
+        height: 180,
+        bottom: -90,
+        left: 60,
+        opacity: 0.8,
+    },
+    cloudThree: {
+        width: 150,
+        height: 150,
+        bottom: -70,
+        right: -30,
+    },
+    cloudFour: {
+        width: 100,
+        height: 100,
+        bottom: -40,
+        right: 80,
+        opacity: 0.5,
     },
 });
 
