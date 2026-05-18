@@ -98,8 +98,8 @@ const HomeScreen = ({
     const blinkAnim = useRef(new Animated.Value(1)).current;
     const categories = Object.values(TOPIC_CATEGORIES).slice(0, 6);
     const partnerMoodLabel = partnerMood?.label || partnerMood?.mood || 'Waiting';
-    const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
-
+    // const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
+const penguinMoodImage= require("../../assets/penguinmoods/check.png")
     useEffect(() => {
         onRefreshPuzzle?.();
     }, [onRefreshPuzzle]);
