@@ -9,6 +9,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import LottieView from 'lottie-react-native';
@@ -153,6 +154,7 @@ const HomeScreen = ({
 
     return (
         <GradientBackground variant="light" showOrbs={true} showParticles={true}>
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <SafeAreaView style={styles.container} edges={['top']}>
                 <ScrollView
                     style={styles.scrollView}
@@ -160,12 +162,12 @@ const HomeScreen = ({
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.header}>
-                        <View style={styles.brandRow}>
-                            <Image source={require('../../assets/splashscreen.png')} style={styles.logo} />
-                            <View>
-                                <Text style={styles.brandName}>Penguin</Text>
-                                <Text style={styles.tagline}>Stay connected. Grow together.</Text>
-                            </View>
+                        <View style={styles.brandContainer}>
+                            <Image 
+                                source={require('../../assets/images/penguin-text-logo.png')} 
+                                style={styles.brandLogo} 
+                                resizeMode="contain" 
+                            />
                         </View>
 
                         <View style={styles.headerActions}>
@@ -365,26 +367,14 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 18,
     },
-    brandRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
+    brandContainer: {
+        flexDirection: 'column',
+        alignItems: 'flex-start',
     },
-    logo: {
-        width: 56,
-        height: 56,
-        resizeMode: 'contain',
-    },
-    brandName: {
-        fontSize: 32,
-        fontWeight: '900',
-        color: '#171B44',
-    },
-    tagline: {
-        color: '#6F6998',
-        fontSize: 13,
-        fontWeight: '600',
-        marginTop: 1,
+    brandLogo: {
+        width: 135,
+        height: 40,
+        marginLeft: -12,
     },
     headerActions: {
         flexDirection: 'row',
