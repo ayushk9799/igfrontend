@@ -1,28 +1,27 @@
-// Premium Mood Screen - Share Your Vibes
-// Optimised: static emoji grid with FlatList virtualisation, Lottie only for selected preview
 import React, { useState, useCallback, memo } from 'react';
 import {
+    Image,
     StyleSheet,
     Text,
     View,
     TouchableOpacity,
     FlatList,
     Dimensions,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LottieView from 'lottie-react-native';
 import { colors, spacing, borderRadius } from '../theme';
 import { emojis } from '../constants/Moods';
+import GradientBackground from '../components/GradientBackground';
+import { getPenguinMoodImage } from '../constants/PenguinMoods';
 
 const { width } = Dimensions.get('window');
 
-// Grid config: 10 emojis per row
-const GRID_COLUMNS = 8;
-const GRID_GAP = 0;
-const GRID_PADDING = 4;
+const GRID_COLUMNS = 2;
+const GRID_GAP = 12;
+const GRID_PADDING = 18;
 const ITEM_SIZE = (width - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
-// Single Emoji Item — static text only for performance (no Lottie in grid)
 const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
     return (
         <TouchableOpacity
@@ -33,10 +32,39 @@ const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
                 isSelected && styles.emojiItemSelected,
             ]}
         >
-            <Text style={styles.emojiText}>{mood.emoji}</Text>
+            <Image source={mood.imageSource} style={styles.emojiImage} />
+            <Text style={styles.emojiLabel}>{mood.label}</Text>
         </TouchableOpacity>
     );
 });
+
+const MoodListHeader = ({ onBack, partnerName, selectedMood, partnerMood }) => {
+    const partnerMoodId = partnerMood?.id || 'relaxed';
+    const penguinMoodImage = getPenguinMoodImage(partnerMoodId, selectedMood?.id);
+
+    return (
+        <>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <Text style={styles.backIcon}>←</Text>
+                </TouchableOpacity>
+                <View style={styles.headerText}>
+                    <Text style={styles.title}>How are you feeling?</Text>
+                    <Text style={styles.subtitle}>Let {partnerName} know your vibe ✨</Text>
+                </View>
+            </View>
+
+            {selectedMood && (
+                <View style={styles.selectedCard}>
+                    <Image source={penguinMoodImage} style={styles.selectedImage} />
+                    <Text style={styles.selectedLabel}>{selectedMood.label}</Text>
+                </View>
+            )}
+        </>
+    );
+};
+
+const ListFooter = () => <View style={styles.listFooter} />;
 
 export const MoodScreen = ({
     currentMood = null,
@@ -67,88 +95,62 @@ export const MoodScreen = ({
 
     const keyExtractor = useCallback((item) => item.id, []);
 
-    // Header component (selected preview + title)
-    const ListHeader = () => (
-        <>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Text style={styles.backIcon}>←</Text>
-                </TouchableOpacity>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.title}>How are you feeling?</Text>
-                    <Text style={styles.subtitle}>Let {partnerName} know your vibe ✨</Text>
-                </View>
-            </View>
-
-            {/* Selected Mood Preview — only Lottie instance on screen */}
-            {selectedMood && (
-                <View style={styles.selectedCard}>
-                    {selectedMood.lottieSource ? (
-                        <LottieView
-                            source={selectedMood.lottieSource}
-                            autoPlay
-                            loop
-                            style={{ width: 80, height: 80 }}
-                        />
-                    ) : (
-                        <Text style={styles.selectedEmoji}>{selectedMood.emoji}</Text>
-                    )}
-                    <Text style={styles.selectedLabel}>{selectedMood.label}</Text>
-                </View>
-            )}
-        </>
-    );
-
-    // Footer spacer so content doesn't hide behind fixed button
-    const ListFooter = () => <View style={{ height: 80 }} />;
-
     return (
-        <View style={[styles.outerContainer, { backgroundColor: '#000000' }]}>
-            <FlatList
-                data={emojis}
-                renderItem={renderEmoji}
-                keyExtractor={keyExtractor}
-                numColumns={GRID_COLUMNS}
-                columnWrapperStyle={styles.gridRow}
-                contentContainerStyle={[
-                    styles.contentContainer,
-                    {
-                        paddingTop: insets.top + spacing.md,
-                        paddingBottom: insets.bottom + spacing.xl,
-                    },
-                ]}
-                ListHeaderComponent={ListHeader}
-                ListFooterComponent={ListFooter}
-                showsVerticalScrollIndicator={false}
-                initialNumToRender={40}
-                maxToRenderPerBatch={20}
-                windowSize={5}
-                removeClippedSubviews={true}
-                getItemLayout={(data, index) => ({
-                    length: ITEM_SIZE + GRID_GAP,
-                    offset: (ITEM_SIZE + GRID_GAP) * Math.floor(index / GRID_COLUMNS),
-                    index,
-                })}
-            />
-
-            {/* Fixed Share Button — always visible */}
-            <View style={[styles.stickyButtonContainer, { paddingBottom: insets.bottom + spacing.sm }]}>
-                <TouchableOpacity
-                    onPress={handleShare}
-                    disabled={!selectedMood}
-                    style={[
-                        styles.shareButton,
-                        !selectedMood && styles.shareButtonDisabled
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
+            <View style={styles.outerContainer}>
+                <FlatList
+                    data={emojis}
+                    renderItem={renderEmoji}
+                    keyExtractor={keyExtractor}
+                    numColumns={GRID_COLUMNS}
+                    columnWrapperStyle={styles.gridRow}
+                    extraData={selectedMood}
+                    contentContainerStyle={[
+                        styles.contentContainer,
+                        {
+                            paddingTop: insets.top + spacing.md,
+                            paddingBottom: insets.bottom + spacing.xl + 60,
+                        },
                     ]}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.shareButtonText}>
-                        Share My Vibe 💫
-                    </Text>
-                </TouchableOpacity>
+                    ListHeaderComponent={(
+                        <MoodListHeader
+                            onBack={onBack}
+                            partnerName={partnerName}
+                            selectedMood={selectedMood}
+                            partnerMood={partnerMood}
+                        />
+                    )}
+                    ListFooterComponent={ListFooter}
+                    showsVerticalScrollIndicator={false}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                    getItemLayout={(data, index) => ({
+                        length: ITEM_SIZE + GRID_GAP,
+                        offset: (ITEM_SIZE + GRID_GAP) * Math.floor(index / GRID_COLUMNS),
+                        index,
+                    })}
+                />
+
+                {/* Fixed Share Button — always visible */}
+                <View style={[styles.stickyButtonContainer, { paddingBottom: insets.bottom + spacing.sm }]}>
+                    <TouchableOpacity
+                        onPress={handleShare}
+                        disabled={!selectedMood}
+                        style={[
+                            styles.shareButton,
+                            !selectedMood && styles.shareButtonDisabled
+                        ]}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.shareButtonText}>
+                            Share My Vibe
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
-        </View>
+        </GradientBackground>
     );
 };
 
@@ -159,35 +161,52 @@ const styles = StyleSheet.create({
     contentContainer: {
         paddingHorizontal: GRID_PADDING,
     },
+    listFooter: {
+        height: 80,
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.md,
         marginBottom: spacing.lg,
     },
+    headerText: {
+        flex: 1,
+    },
     backButton: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: '#FAE8FF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.08,
+                shadowRadius: 6,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
     },
     backIcon: {
         fontSize: 22,
-        color: '#FFFFFF',
+        color: colors.text,
     },
     title: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#FFFFFF',
+        color: colors.text,
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         marginTop: 2,
     },
     selectedCard: {
@@ -196,37 +215,75 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.lg,
         marginBottom: spacing.md,
         borderRadius: borderRadius['2xl'],
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.06,
+                shadowRadius: 16,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     },
-    selectedEmoji: {
-        fontSize: 64,
+    selectedImage: {
+        width: 200,
+        height: 135,
+        resizeMode: 'contain',
         marginBottom: spacing.xs,
     },
     selectedLabel: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
         marginTop: spacing.xs,
     },
     gridRow: {
         gap: GRID_GAP,
-        marginBottom: 0,
+        marginBottom: GRID_GAP,
     },
     emojiItem: {
         width: ITEM_SIZE,
-        height: ITEM_SIZE,
-        borderRadius: ITEM_SIZE / 2,
+        minHeight: ITEM_SIZE * 0.92,
+        borderRadius: borderRadius.xl,
         justifyContent: 'center',
         alignItems: 'center',
-        overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#FAE8FF',
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.sm,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.06,
+                shadowRadius: 10,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
     },
     emojiItemSelected: {
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: '#FFEBF0',
+        borderWidth: 2,
+        borderColor: '#FF758F',
     },
-    emojiText: {
-        fontSize: ITEM_SIZE * 0.6,
+    emojiImage: {
+        width: ITEM_SIZE * 0.54,
+        height: ITEM_SIZE * 0.54,
+        resizeMode: 'contain',
+    },
+    emojiLabel: {
+        color: colors.text,
+        fontSize: 14,
+        fontWeight: '700',
+        marginTop: spacing.sm,
     },
     stickyButtonContainer: {
         position: 'absolute',
@@ -234,8 +291,10 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         paddingHorizontal: spacing.md,
-        paddingTop: spacing.sm,
-        backgroundColor: '#000000',
+        paddingTop: spacing.md,
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+        borderTopWidth: 1,
+        borderTopColor: '#FAE8FF',
     },
     shareButton: {
         backgroundColor: colors.primary,
@@ -244,27 +303,39 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.xl,
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     shareButtonDisabled: {
-        opacity: 0.5,
+        backgroundColor: '#E2E8F0',
+        shadowOpacity: 0,
+        elevation: 0,
     },
     shareButtonText: {
         color: '#FFFFFF',
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: '700',
     },
     partnerCard: {
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: '#FFFFFF',
         borderRadius: borderRadius.xl,
         padding: spacing.lg,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: '#FAE8FF',
         marginBottom: spacing.xl,
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
     partnerTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         marginBottom: spacing.sm,
     },
     partnerContent: {
@@ -276,7 +347,7 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: 'rgba(255,255,255,0.08)',
+        backgroundColor: '#FFF0F3',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -286,7 +357,7 @@ const styles = StyleSheet.create({
     partnerLabel: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
     },
 });
 

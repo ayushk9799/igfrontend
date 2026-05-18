@@ -187,7 +187,7 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
     ];
 
     return (
-        <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+        <View style={[styles.container, { bottom: Math.max(insets.bottom, 12) }]}>
             <View style={styles.tabBar}>
                 {tabs.map((tab) => (
                     <TabItem
@@ -207,18 +207,19 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: '#1A1A1A',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255, 255, 255, 0.08)',
+        left: 20,
+        right: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 24,
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        paddingVertical: 4,
         ...Platform.select({
             ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: -4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 12,
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.12,
+                shadowRadius: 16,
             },
             android: {
                 elevation: 8,

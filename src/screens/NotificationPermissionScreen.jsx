@@ -162,7 +162,7 @@ const NotificationPermissionScreen = ({ onComplete }) => {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#000000' }}>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             <View style={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
                 {/* Hero Section */}
                 <Animated.View
@@ -242,7 +242,7 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+        </GradientBackground>
     );
 };
 
@@ -268,53 +268,86 @@ const styles = StyleSheet.create({
         width: 140,
         height: 140,
         borderRadius: 70,
-        borderWidth: 2,
-        borderColor: '#E88A4C',
+        borderWidth: 2.5,
+        borderColor: colors.primaryLight,
     },
     bellCircle: {
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: Platform.OS === 'android' ? '#2A2018' : 'rgba(232, 138, 76, 0.15)',
+        backgroundColor: '#FFF0F3',
         justifyContent: 'center',
         alignItems: 'center',
-        ...shadows.md,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.08,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     },
     bellEmoji: {
         fontSize: 56,
     },
     floatingBadge: {
         position: 'absolute',
-        backgroundColor: Platform.OS === 'android' ? '#1A1A1A' : 'rgba(26, 26, 26, 0.95)',
+        backgroundColor: '#FFFFFF',
         borderRadius: 20,
         padding: 8,
-        ...shadows.sm,
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
     },
     badgeEmoji: {
         fontSize: 20,
     },
     title: {
         fontSize: 30,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.text,
         textAlign: 'center',
         letterSpacing: -0.5,
         marginBottom: spacing.sm,
     },
     subtitle: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 23,
         paddingHorizontal: spacing.md,
     },
     featuresContainer: {
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         borderRadius: borderRadius.xl,
         padding: spacing.xl,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
         gap: spacing.lg,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.05,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
     },
     featureRow: {
         flexDirection: 'row',
@@ -327,7 +360,7 @@ const styles = StyleSheet.create({
         height: 44,
         textAlign: 'center',
         lineHeight: 44,
-        backgroundColor: Platform.OS === 'android' ? '#2A2018' : 'rgba(232, 138, 76, 0.12)',
+        backgroundColor: '#FFF0F3',
         borderRadius: 12,
         overflow: 'hidden',
     },
@@ -336,13 +369,13 @@ const styles = StyleSheet.create({
     },
     featureTitle: {
         fontSize: 15,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '700',
+        color: colors.text,
         letterSpacing: -0.2,
     },
     featureSubtitle: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         marginTop: 2,
     },
     bottomSection: {
@@ -352,19 +385,23 @@ const styles = StyleSheet.create({
     allowButton: {
         width: '100%',
         borderRadius: borderRadius.xl,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.primary,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 16,
         paddingHorizontal: spacing.xl,
         gap: spacing.sm,
-        ...shadows.md,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     allowButtonText: {
         fontSize: 17,
         fontWeight: '700',
-        color: '#000000',
+        color: '#FFFFFF',
         letterSpacing: -0.2,
     },
     allowButtonIcon: {
@@ -372,8 +409,8 @@ const styles = StyleSheet.create({
     },
     skipText: {
         fontSize: 15,
-        color: 'rgba(255,255,255,0.5)',
-        fontWeight: '500',
+        color: colors.textSecondary,
+        fontWeight: '700',
         paddingVertical: spacing.sm,
     },
 });

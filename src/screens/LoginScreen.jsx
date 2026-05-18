@@ -195,11 +195,11 @@ export const LoginScreen = ({
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#000000' }}>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
                 {/* App Name - Top Left */}
                 <View style={styles.brandContainer}>
-                    <Text style={styles.brandName}>penguin.</Text>
+                    <Text style={styles.brandName}>🐧 Penguin</Text>
                 </View>
 
                 {/* Spacer to push content down */}
@@ -237,8 +237,6 @@ export const LoginScreen = ({
 
                 {/* Footer */}
                 <View style={styles.footer}>
-
-
                     <View style={styles.termsContainer}>
                         <Text style={styles.termsText}>
                             By signing up for Penguin, you agree to our
@@ -255,7 +253,7 @@ export const LoginScreen = ({
                     </View>
                 </View>
             </View>
-        </View>
+        </GradientBackground>
     );
 };
 
@@ -269,8 +267,8 @@ const styles = StyleSheet.create({
     },
     brandName: {
         fontSize: 28,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.primary,
         letterSpacing: -0.5,
     },
     spacer: {
@@ -283,12 +281,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 34,
         fontWeight: '800',
-        color: '#FFFFFF',
+        color: colors.text,
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         marginTop: spacing.xs,
     },
     socialButtons: {
@@ -301,13 +299,36 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 20,
         borderRadius: borderRadius.xl,
-        backgroundColor: '#1A1A1A',
-        borderWidth: 1,
-        borderColor: '#2A2A2A',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
     },
     appleButton: {
-        backgroundColor: '#1A1A1A',
-        borderColor: '#2A2A2A',
+        backgroundColor: colors.text,
+        borderColor: colors.text,
+        borderWidth: 0,
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.text,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
     },
     socialButtonContent: {
         flexDirection: 'row',
@@ -320,8 +341,8 @@ const styles = StyleSheet.create({
     },
     socialButtonText: {
         fontSize: 16,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '700',
+        color: colors.text,
     },
     appleButtonText: {
         color: '#FFFFFF',
@@ -335,7 +356,7 @@ const styles = StyleSheet.create({
     },
     termsText: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         textAlign: 'center',
     },
     termsLinks: {
@@ -345,8 +366,8 @@ const styles = StyleSheet.create({
     },
     termsLink: {
         fontSize: 12,
-        color: '#FFFFFF',
-        fontWeight: '600',
+        color: colors.primary,
+        fontWeight: '700',
     },
 });
 

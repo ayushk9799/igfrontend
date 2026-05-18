@@ -161,7 +161,7 @@ export const PartnerCodeScreen = ({
     // If already paired, show connected text instead of pairing UI
     if (isAlreadyPaired) {
         return (
-            <View style={{ flex: 1, backgroundColor: '#000000' }}>
+            <GradientBackground variant="light" showOrbs={true} showParticles={true}>
                 <View style={styles.connectedContainer}>
                     <Animated.View style={[styles.connectedContent, { transform: [{ scale: connectedScale }] }]}>
                         <Text style={styles.connectedEmoji}>💕</Text>
@@ -173,7 +173,7 @@ export const PartnerCodeScreen = ({
                         )}
                     </Animated.View>
                 </View>
-            </View>
+            </GradientBackground>
         );
     }
 
@@ -233,7 +233,7 @@ export const PartnerCodeScreen = ({
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#000000' }}>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             <KeyboardAwareScrollView
                 style={styles.scrollView}
                 contentContainerStyle={[
@@ -339,7 +339,7 @@ export const PartnerCodeScreen = ({
                     </TouchableOpacity>
                 </Animated.View>
             </KeyboardAwareScrollView>
-        </View>
+        </GradientBackground>
     );
 };
 
@@ -367,19 +367,29 @@ const styles = StyleSheet.create({
     },
     pulsingCircle: {
         position: 'absolute',
-        backgroundColor: 'rgba(255,255,255,0.08)',
+        backgroundColor: colors.primarySoft,
     },
     imageWrapper: {
         width: IMAGE_SIZE,
         height: IMAGE_SIZE,
         borderRadius: IMAGE_SIZE / 2,
-        backgroundColor: '#3A3A3A',
+        backgroundColor: '#FFF0F3',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 3,
-        borderColor: 'rgba(255,255,255,0.15)',
+        borderWidth: 2,
+        borderColor: '#FAE8FF',
         overflow: 'hidden',
-        ...shadows.md,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.08,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     },
     girlImage: {
         width: IMAGE_SIZE * 0.9,
@@ -387,15 +397,15 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 28,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.text,
         textAlign: 'center',
         letterSpacing: -0.5,
         marginBottom: spacing.sm,
     },
     subtitle: {
         fontSize: 15,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         textAlign: 'center',
     },
     codeSection: {
@@ -403,17 +413,28 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     yourCodeCard: {
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         borderRadius: borderRadius.xl,
         padding: spacing.xl,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.05,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
     },
     cardLabel: {
         fontSize: 13,
-        fontWeight: '600',
-        color: 'rgba(255,255,255,0.5)',
+        fontWeight: '700',
+        color: colors.textSecondary,
         marginBottom: spacing.md,
         letterSpacing: 0.5,
     },
@@ -426,8 +447,8 @@ const styles = StyleSheet.create({
     },
     codeText: {
         fontSize: 24,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.primary,
         letterSpacing: 4,
     },
     copyButton: {
@@ -435,13 +456,13 @@ const styles = StyleSheet.create({
         right: 0,
         width: 40,
         height: 40,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: '#FFF0F3',
         borderRadius: borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
     },
     copyButtonCopied: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: '#FFE1E6',
     },
     copyIcon: {
         fontSize: 18,
@@ -453,34 +474,45 @@ const styles = StyleSheet.create({
     },
     dividerLine: {
         flex: 1,
-        height: 1,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        height: 1.5,
+        backgroundColor: '#FAE8FF',
     },
     dividerText: {
         fontSize: 12,
-        fontWeight: '600',
-        color: 'rgba(255,255,255,0.35)',
+        fontWeight: '700',
+        color: colors.textSecondary,
         paddingHorizontal: spacing.lg,
     },
     enterCodeCard: {
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         borderRadius: borderRadius.xl,
         padding: spacing.xl,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.05,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
     },
     codeInput: {
-        backgroundColor: '#111111',
+        backgroundColor: '#FFF6F6',
         borderRadius: borderRadius.lg,
         padding: spacing.lg,
         fontSize: 24,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.text,
         textAlign: 'center',
         letterSpacing: 8,
         marginBottom: spacing.lg,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.15)',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
     },
     codeInputDisabled: {
         opacity: 0.6,
@@ -494,7 +526,7 @@ const styles = StyleSheet.create({
     },
     loadingText: {
         fontSize: 14,
-        color: '#FFFFFF',
+        color: colors.textSecondary,
         fontWeight: '600',
     },
     skipContainer: {
@@ -503,8 +535,8 @@ const styles = StyleSheet.create({
     },
     skipText: {
         fontSize: 15,
-        color: 'rgba(255,255,255,0.5)',
-        fontWeight: '500',
+        color: colors.primary,
+        fontWeight: '700',
     },
     connectedContainer: {
         flex: 1,
@@ -521,16 +553,16 @@ const styles = StyleSheet.create({
     },
     connectedTitle: {
         fontSize: 28,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.text,
         textAlign: 'center',
         marginBottom: spacing.sm,
     },
     connectedSubtitle: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         textAlign: 'center',
-        fontWeight: '500',
+        fontWeight: '600',
     },
 });
 

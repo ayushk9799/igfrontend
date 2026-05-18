@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, borderRadius } from '../theme';
+import GradientBackground from '../components/GradientBackground';
 import { API_BASE } from '../constants/Api';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 
@@ -169,71 +170,75 @@ export default function ChatListScreen({
 
     if (loading) {
         return (
-            <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
-                <ActivityIndicator size="large" color="#FFFFFF" />
-                <Text style={styles.loadingText}>Loading chats...</Text>
-            </View>
+            <GradientBackground variant="light" showOrbs={true} showParticles={true}>
+                <View style={[styles.container, styles.centerContent, { paddingTop: insets.top, backgroundColor: 'transparent' }]}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={styles.loadingText}>Loading chats...</Text>
+                </View>
+            </GradientBackground>
         );
     }
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                        <Path
-                            d="M15 18l-6-6 6-6"
-                            stroke="#FFFFFF"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
-                    </Svg>
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}> Chats</Text>
-                <View style={{ width: 44 }} />
-            </View>
-
-            {/* Error state */}
-            {error && (
-                <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity style={styles.retryButton} onPress={fetchChats}>
-                        <Text style={styles.retryText}>Try Again</Text>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
+            <View style={[styles.container, { paddingTop: insets.top }]}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="M15 18l-6-6 6-6"
+                                stroke={colors.text}
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
                     </TouchableOpacity>
+                    <Text style={styles.headerTitle}> Chats</Text>
+                    <View style={{ width: 44 }} />
                 </View>
-            )}
 
-            {/* Chat list */}
-            <FlatList
-                style={{ flex: 1 }}
-                data={chats}
-                renderItem={renderChatItem}
-                keyExtractor={(item) => item._id}
-                contentContainerStyle={[
-                    styles.listContent,
-                    chats.length === 0 && styles.listEmpty,
-                    { paddingBottom: insets.bottom + 80 }
-                ]}
-                ListEmptyComponent={renderEmpty}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={handleRefresh}
-                        tintColor="#FFFFFF"
-                    />
-                }
-                showsVerticalScrollIndicator={false}
-            />
-        </View>
+                {/* Error state */}
+                {error && (
+                    <View style={styles.errorContainer}>
+                        <Text style={styles.errorText}>{error}</Text>
+                        <TouchableOpacity style={styles.retryButton} onPress={fetchChats}>
+                            <Text style={styles.retryText}>Try Again</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {/* Chat list */}
+                <FlatList
+                    style={{ flex: 1 }}
+                    data={chats}
+                    renderItem={renderChatItem}
+                    keyExtractor={(item) => item._id}
+                    contentContainerStyle={[
+                        styles.listContent,
+                        chats.length === 0 && styles.listEmpty,
+                        { paddingBottom: insets.bottom + 80 }
+                    ]}
+                    ListEmptyComponent={renderEmpty}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            tintColor={colors.primary}
+                        />
+                    }
+                    showsVerticalScrollIndicator={false}
+                />
+            </View>
+        </GradientBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000000',
+        backgroundColor: 'transparent',
     },
     centerContent: {
         justifyContent: 'center',
@@ -245,28 +250,35 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: '#2A2A2A',
-        backgroundColor: '#000000',
+        borderBottomWidth: 1.5,
+        borderBottomColor: '#FAE8FF',
+        backgroundColor: 'transparent',
     },
     backButton: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     headerTitle: {
         fontSize: 20,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.text,
         letterSpacing: 0.5,
     },
     loadingText: {
         marginTop: spacing.md,
         fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
     },
     errorContainer: {
         padding: spacing.lg,
@@ -297,12 +309,17 @@ const styles = StyleSheet.create({
     chatItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         borderRadius: borderRadius.lg,
         padding: spacing.md,
         marginBottom: spacing.sm,
-        borderWidth: 1,
-        borderColor: '#2A2A2A',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
     chatItemUnread: {
         borderColor: colors.primary,
@@ -339,16 +356,16 @@ const styles = StyleSheet.create({
     },
     chatSource: {
         fontSize: 14,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '700',
+        color: colors.text,
     },
     chatTime: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
     },
     questionText: {
         fontSize: 15,
-        color: '#FFFFFF',
+        color: colors.text,
         lineHeight: 20,
         marginBottom: 4,
     },
@@ -358,12 +375,12 @@ const styles = StyleSheet.create({
     },
     lastMessage: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         flex: 1,
     },
     statusText: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
         fontStyle: 'italic',
     },
     unreadBadge: {
@@ -393,13 +410,13 @@ const styles = StyleSheet.create({
     },
     emptyTitle: {
         fontSize: 20,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.text,
         marginBottom: spacing.sm,
     },
     emptyText: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 22,
     },

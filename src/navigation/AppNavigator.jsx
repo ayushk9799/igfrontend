@@ -27,7 +27,7 @@ import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
-import { getEmojiByLabel, emojis } from '../constants/Moods';
+import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
@@ -49,7 +49,7 @@ export const AppNavigator = () => {
 
     // Local state (navigation & UI only)
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
-    const [yourMood, setYourMood] = useState({ id: 'blush', emoji: '😊', label: 'Blush' });
+    const [yourMood, setYourMood] = useState(emojis[0]);
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
@@ -992,9 +992,9 @@ export const AppNavigator = () => {
             case 'mood':
                 return (
                     <MoodScreen
-                        currentMood={getEmojiByLabel(yourMood?.label) || emojis[0]}
-                        partnerMood={partnerMood ? getEmojiByLabel(partnerMood.label) : null}
-                        partnerName={userData.partnerUsername || null}
+                        currentMood={getEmojiById(yourMood?.id) || getEmojiByLabel(yourMood?.label) || emojis[0]}
+                        partnerMood={partnerMood ? (getEmojiById(partnerMood.id) || getEmojiByLabel(partnerMood.label)) : null}
+                        partnerName={userData.partnerUsername || 'Your Love'}
                         onMoodSelect={handleMoodSelect}
                         onBack={() => navigate('home')}
                     />

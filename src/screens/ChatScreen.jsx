@@ -13,6 +13,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
+import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { API_BASE } from '../constants/Api';
 import { ChatBubble, ChatInput } from '../components/chat';
@@ -453,21 +454,23 @@ export default function ChatScreen({
 
     if (loading) {
         return (
-            <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
-                <ActivityIndicator size="large" color="#FFFFFF" />
-            </View>
+            <GradientBackground variant="light" showOrbs={true} showParticles={true}>
+                <View style={[styles.container, styles.centerContent, { paddingTop: insets.top, backgroundColor: 'transparent' }]}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            </GradientBackground>
         );
     }
 
     return (
-        <View style={styles.container}>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             {/* Header */}
             <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
                     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                         <Path
                             d="M15 18l-6-6 6-6"
-                            stroke="#FFFFFF"
+                            stroke={colors.text}
                             strokeWidth={2.5}
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -530,14 +533,14 @@ export default function ChatScreen({
                     />
                 </View>
             </KeyboardAvoidingView>
-        </View>
+        </GradientBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000000',
+        backgroundColor: 'transparent',
     },
     centerContent: {
         justifyContent: 'center',
@@ -549,7 +552,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: spacing.md,
         paddingVertical: 8,
-        backgroundColor: '#000000',
+        backgroundColor: 'transparent',
     },
     backButton: {
         flexDirection: 'row',
@@ -558,7 +561,7 @@ const styles = StyleSheet.create({
     },
     backText: {
         fontSize: 17,
-        color: '#FFFFFF',
+        color: colors.text,
         marginLeft: 2,
     },
     headerCenter: {
@@ -572,19 +575,26 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
     },
     headerAvatarText: {
         fontSize: 14,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '700',
+        color: colors.primary,
     },
     headerName: {
         fontSize: 16,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.text,
     },
     headerTextContainer: {
         flexDirection: 'column',
@@ -592,7 +602,7 @@ const styles = StyleSheet.create({
     },
     headerTypingText: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         fontStyle: 'italic',
     },
     headerSpacer: {
@@ -602,18 +612,23 @@ const styles = StyleSheet.create({
     questionCard: {
         borderRadius: 12,
         overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 3,
+        marginHorizontal: spacing.md,
+        marginTop: spacing.xs,
+        marginBottom: spacing.xs,
     },
     questionCardGradient: {
         paddingHorizontal: 16,
         paddingTop: 12,
         paddingBottom: 8,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
     },
     questionCardCollapsed: {
         maxHeight: 80,
@@ -621,19 +636,19 @@ const styles = StyleSheet.create({
     questionLabel: {
         fontSize: 12,
         fontWeight: '600',
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         marginBottom: 8,
     },
     questionText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: colors.text,
         lineHeight: 22,
         marginBottom: 6,
     },
     tapHint: {
         fontSize: 11,
-        color: 'rgba(255,255,255,0.4)',
+        color: colors.textSecondary,
         textAlign: 'center',
         marginTop: 4,
     },
@@ -642,12 +657,12 @@ const styles = StyleSheet.create({
     },
     collapseHint: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         fontWeight: '500',
     },
     answersContainer: {
         borderTopWidth: 1,
-        borderTopColor: '#2A2A2A',
+        borderTopColor: '#FAE8FF',
         paddingTop: spacing.md,
         marginTop: spacing.xs,
         gap: spacing.sm,
@@ -667,7 +682,7 @@ const styles = StyleSheet.create({
     answerAvatarText: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.primary,
     },
     answerContent: {
         flex: 1,
@@ -675,14 +690,14 @@ const styles = StyleSheet.create({
     answerLabel: {
         fontSize: 11,
         fontWeight: '600',
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         marginBottom: 2,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     answerText: {
         fontSize: 14,
-        color: '#FFFFFF',
+        color: colors.text,
         lineHeight: 20,
     },
     messagesContent: {
@@ -707,12 +722,12 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
         marginBottom: spacing.xs,
     },
     emptyText: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
     },
@@ -731,7 +746,7 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: 'rgba(255,255,255,0.5)',
+        backgroundColor: colors.textSecondary,
     },
     typingDot1: {
         opacity: 0.4,
@@ -744,7 +759,7 @@ const styles = StyleSheet.create({
     },
     typingText: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
     },
     // Answer message styles
     answerMessageContainer: {
@@ -765,23 +780,23 @@ const styles = StyleSheet.create({
     },
     answerReceived: {
         alignSelf: 'flex-start',
-        backgroundColor: '#1A1A1A',
-        borderColor: '#2A2A2A',
+        backgroundColor: '#FFFFFF',
+        borderColor: '#FAE8FF',
     },
     answerMessageLabel: {
         fontSize: 11,
         fontWeight: '700',
-        color: 'rgba(255,255,255,0.5)',
+        color: colors.textSecondary,
         marginBottom: 4,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     answerMessageText: {
         fontSize: 15,
-        color: '#FFFFFF',
+        color: colors.text,
         lineHeight: 21,
     },
     answerTextSent: {
-        color: '#FFFFFF',
+        color: colors.text,
     },
 });

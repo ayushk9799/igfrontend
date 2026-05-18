@@ -2,122 +2,122 @@
 // Clean, light, and beautiful without being overly romantic
 
 const colors = {
-    // Primary - Soft coral/peach instead of hot pink
-    primary: '#F97068',
-    primaryLight: '#FFB5B0',
-    primarySoft: 'rgba(249, 112, 104, 0.12)',
-    primaryGlow: 'rgba(249, 112, 104, 0.25)',
+    // Primary - Gorgeous Warm Pink/Strawberry
+    primary: '#FF758F',
+    primaryLight: '#FFB3C1',
+    primarySoft: 'rgba(255, 117, 143, 0.12)',
+    primaryGlow: 'rgba(255, 117, 143, 0.25)',
 
-    // Secondary - Soft teal instead of purple
-    secondary: '#5BB5A6',
-    secondaryLight: '#8DD5C7',
-    secondarySoft: 'rgba(91, 181, 166, 0.12)',
-    secondaryGlow: 'rgba(91, 181, 166, 0.25)',
+    // Secondary - Sweet Lilac / Pastel Lavender
+    secondary: '#C084FC',
+    secondaryLight: '#E9D5FF',
+    secondarySoft: 'rgba(192, 132, 252, 0.12)',
+    secondaryGlow: 'rgba(192, 132, 252, 0.25)',
 
-    // Accent - Warm gold
-    accent: '#F4A261',
-    accentGold: '#F4A261',
-    accentSoft: 'rgba(244, 162, 97, 0.15)',
+    // Accent - Soft Sky Blue
+    accent: '#93C5FD',
+    accentBlue: '#93C5FD',
+    accentSoft: 'rgba(147, 197, 253, 0.15)',
 
-    // Heart - Soft coral
-    heart: '#FF6B6B',
-    heartGlow: 'rgba(255, 107, 107, 0.3)',
+    // Heart - Bright Sweet Pink
+    heart: '#FF4D6D',
+    heartGlow: 'rgba(255, 77, 109, 0.3)',
 
-    // Backgrounds - Light and airy
-    background: '#FAFBFC',
-    backgroundAlt: '#F5F7FA',
+    // Backgrounds - Dreamy Soft Warm Whites / Pastel Pinks
+    background: '#FFF6F6',
+    backgroundAlt: '#F5F3FF',
     surface: '#FFFFFF',
     surfaceLight: '#FFFFFF',
     surfaceElevated: '#FFFFFF',
 
-    // Cards - Clean whites
+    // Cards - Clean Whites
     card: '#FFFFFF',
-    cardHover: '#FAFBFC',
+    cardHover: '#FFF9FB',
 
-    // Text - Warm grays
-    text: '#2D3748',
-    textSecondary: '#718096',
-    textMuted: '#A0AEC0',
-    textLight: '#CBD5E0',
+    // Text - Deep Premium Charcoal-Indigo (Excellent readability, romantic feel)
+    text: '#2E1E3C',
+    textSecondary: '#7C6E8F',
+    textMuted: '#A396B2',
+    textLight: '#D0C8D9',
 
-    // Borders
-    border: '#E2E8F0',
-    borderLight: '#EDF2F7',
-    borderFocus: '#5BB5A6',
+    // Borders - Soft Violet / Pink borders
+    border: '#FAE8FF',
+    borderLight: '#F5E1FD',
+    borderFocus: '#FF758F',
 
     // Glass effects - Light and subtle
     glass: 'rgba(255, 255, 255, 0.85)',
-    glassBorder: 'rgba(226, 232, 240, 0.8)',
-    glassBorderLight: 'rgba(237, 242, 247, 0.6)',
+    glassBorder: 'rgba(250, 232, 255, 0.8)',
+    glassBorderLight: 'rgba(245, 225, 253, 0.6)',
     glassBorderBright: 'rgba(255, 255, 255, 0.9)',
     glassLight: 'rgba(255, 255, 255, 0.95)',
-    glassDark: 'rgba(45, 55, 72, 0.03)',
+    glassDark: 'rgba(46, 30, 60, 0.03)',
 
     // Status colors
-    success: '#48BB78',
-    successSoft: 'rgba(72, 187, 120, 0.12)',
-    successGlow: 'rgba(72, 187, 120, 0.25)',
-    warning: '#F6AD55',
-    warningSoft: 'rgba(246, 173, 85, 0.15)',
-    error: '#FC8181',
-    errorSoft: 'rgba(252, 129, 129, 0.15)',
-    info: '#63B3ED',
-    infoSoft: 'rgba(99, 179, 237, 0.15)',
+    success: '#4ADE80',
+    successSoft: 'rgba(74, 222, 128, 0.12)',
+    successGlow: 'rgba(74, 222, 128, 0.25)',
+    warning: '#FBBF24',
+    warningSoft: 'rgba(251, 191, 36, 0.15)',
+    error: '#F87171',
+    errorSoft: 'rgba(248, 113, 113, 0.15)',
+    info: '#60A5FA',
+    infoSoft: 'rgba(96, 165, 250, 0.15)',
 
-    // Mood colors - Softer, pastel-like
-    moodHappy: '#FFD93D',
-    moodLove: '#FF8FAB',
-    moodPlayful: '#B388FF',
-    moodCalm: '#81D4FA',
-    moodExcited: '#FF7043',
-    moodGrateful: '#69F0AE',
-    moodMissing: '#FFAB91',
-    moodTired: '#B0BEC5',
+    // Mood colors - Sweet and playful
+    moodHappy: '#FDE047',
+    moodLove: '#FF85A1',
+    moodPlayful: '#C084FC',
+    moodCalm: '#93C5FD',
+    moodExcited: '#FFA07A',
+    moodGrateful: '#86EFAC',
+    moodMissing: '#FF9E80',
+    moodTired: '#94A3B8',
 
-    // Gradients - Light and elegant
-    gradientPrimary: ['#F97068', '#F4A261'],
-    gradientSecondary: ['#5BB5A6', '#81D4FA'],
-    gradientAccent: ['#F4A261', '#FFD93D'],
-    gradientWarm: ['#FFF5F5', '#FED7D7'],
-    gradientCool: ['#E6FFFA', '#B2F5EA'],
-    gradientNeutral: ['#FAFBFC', '#EDF2F7'],
+    // Gradients - Pastel dream sky
+    gradientPrimary: ['#FF758F', '#F4A261'],
+    gradientSecondary: ['#C084FC', '#93C5FD'],
+    gradientAccent: ['#FFA07A', '#FDE047'],
+    gradientWarm: ['#FFF5F5', '#FFE4E6'],
+    gradientCool: ['#F5F3FF', '#E0F2FE'],
+    gradientNeutral: ['#FFF6F6', '#FFF0F5'],
 
-    // Aurora/Ambient colors - Softer pastels
-    auroraBlue: '#81D4FA',
-    auroraPurple: '#CE93D8',
-    auroraGreen: '#A5D6A7',
-    auroraPink: '#F8BBD9',
-    auroraOrange: '#FFCC80',
+    // Aurora/Ambient colors - Sweet pastels
+    auroraBlue: '#93C5FD',
+    auroraPurple: '#E9D5FF',
+    auroraGreen: '#A7F3D0',
+    auroraPink: '#FCE7F3',
+    auroraOrange: '#FEF3C7',
 
-    // Shimmer - Subtle
-    shimmerBase: 'rgba(255, 255, 255, 0.4)',
-    shimmerHighlight: 'rgba(255, 255, 255, 0.8)',
+    // Shimmer - Soft
+    shimmerBase: 'rgba(255, 255, 255, 0.5)',
+    shimmerHighlight: 'rgba(255, 255, 255, 0.9)',
 
-    // Shadows - Soft
-    shadowLight: 'rgba(45, 55, 72, 0.04)',
-    shadowMedium: 'rgba(45, 55, 72, 0.08)',
-    shadowDark: 'rgba(45, 55, 72, 0.12)',
+    // Shadows - Lavender-colored premium shadows
+    shadowLight: 'rgba(192, 132, 252, 0.05)',
+    shadowMedium: 'rgba(192, 132, 252, 0.09)',
+    shadowDark: 'rgba(192, 132, 252, 0.13)',
 
     // Depth colors
-    depthShadow1: 'rgba(45, 55, 72, 0.03)',
-    depthShadow2: 'rgba(45, 55, 72, 0.06)',
-    depthShadow3: 'rgba(45, 55, 72, 0.1)',
+    depthShadow1: 'rgba(192, 132, 252, 0.04)',
+    depthShadow2: 'rgba(192, 132, 252, 0.07)',
+    depthShadow3: 'rgba(192, 132, 252, 0.12)',
 
     // Frosted glass - Light
-    frostedWhite: 'rgba(255, 255, 255, 0.9)',
-    frostedLight: 'rgba(255, 255, 255, 0.75)',
-    frostedSubtle: 'rgba(255, 255, 255, 0.6)',
+    frostedWhite: 'rgba(255, 255, 255, 0.92)',
+    frostedLight: 'rgba(255, 255, 255, 0.8)',
+    frostedSubtle: 'rgba(255, 255, 255, 0.65)',
 
     // Particle effects
-    particlePrimary: '#F97068',
-    particleSecondary: '#5BB5A6',
-    particleGold: '#F4A261',
+    particlePrimary: '#FF758F',
+    particleSecondary: '#C084FC',
+    particleGold: '#FBBF24',
     particleWhite: '#FFFFFF',
-    particlePink: '#FFB5B0',
+    particlePink: '#FFB3C1',
 
     // Overlay
-    overlay: 'rgba(45, 55, 72, 0.5)',
-    overlayLight: 'rgba(45, 55, 72, 0.3)',
+    overlay: 'rgba(46, 30, 60, 0.4)',
+    overlayLight: 'rgba(46, 30, 60, 0.2)',
 };
 
 export default colors;

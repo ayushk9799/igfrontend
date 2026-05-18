@@ -289,7 +289,7 @@ export const ScribbleScreen = ({
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#000000' }}>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             <View style={[styles.container, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg }]}>
                 {/* Header */}
                 <View style={styles.header}>
@@ -297,7 +297,7 @@ export const ScribbleScreen = ({
                         <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
                             <Path
                                 d="M19 12H5M12 19l-7-7 7-7"
-                                stroke="#FFFFFF"
+                                stroke={colors.text}
                                 strokeWidth={2.5}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -312,7 +312,7 @@ export const ScribbleScreen = ({
                             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5"
-                                    stroke="#FFFFFF"
+                                    stroke={colors.text}
                                     strokeWidth={2}
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -323,7 +323,7 @@ export const ScribbleScreen = ({
                             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
-                                    stroke="#FFFFFF"
+                                    stroke={colors.text}
                                     strokeWidth={2}
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -335,7 +335,7 @@ export const ScribbleScreen = ({
                             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
-                                    stroke="#FFFFFF"
+                                    stroke={colors.text}
                                     strokeWidth={2}
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -348,7 +348,7 @@ export const ScribbleScreen = ({
                 {/* Canvas */}
                 <Animated.View style={[styles.canvasContainer, { opacity: canvasOpacity }]}>
                     <LinearGradient
-                        colors={['#1A1A1A', '#1A1A1A']}
+                        colors={['#FFFFFF', '#FFF9FB']}
                         style={styles.canvasGradient}
                     >
                         <View
@@ -828,7 +828,7 @@ export const ScribbleScreen = ({
                     </View>
                 </Modal>
             </View>
-        </View>
+        </GradientBackground>
     );
 
 };
@@ -847,11 +847,16 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
+        elevation: 3,
     },
     backIcon: {
         fontSize: 22,
@@ -864,12 +869,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#FFFFFF',
+        color: colors.text,
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: colors.textSecondary,
         fontWeight: '500',
         marginTop: 2,
     },
@@ -881,11 +886,16 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: 2,
     },
     actionIcon: {
         fontSize: 18,
@@ -895,11 +905,13 @@ const styles = StyleSheet.create({
         height: CANVAS_SIZE + 2,
         borderRadius: 24,
         overflow: 'hidden',
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         alignSelf: 'center',
-        shadowColor: 'rgba(255, 255, 255, 0.05)',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 1,
+        shadowOpacity: 0.12,
         shadowRadius: 20,
         elevation: 8,
         marginBottom: spacing.xl,
@@ -946,7 +958,7 @@ const styles = StyleSheet.create({
     toolLabel: {
         fontSize: 13,
         fontWeight: '700',
-        color: 'rgba(255, 255, 255, 0.5)',
+        color: colors.textSecondary,
         textTransform: 'uppercase',
         letterSpacing: 1,
         marginBottom: spacing.md,
@@ -985,11 +997,16 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 48,
         borderRadius: borderRadius.lg,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1.5,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     sizeSelected: {
         borderColor: colors.primary,
@@ -1014,7 +1031,7 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
         borderRadius: 24,
     },
     sentSuccessBadge: {
@@ -1033,34 +1050,34 @@ const styles = StyleSheet.create({
     },
     sentTitle: {
         fontSize: 20,
-        color: '#FFFFFF',
+        color: colors.text,
         fontWeight: '700',
         marginBottom: spacing.lg,
     },
     sentPreviewInCanvas: {
         width: 140,
         height: 140,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         borderRadius: borderRadius.xl,
         overflow: 'hidden',
         marginBottom: spacing.lg,
-        borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        shadowColor: '#000',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 4,
     },
     sentHint: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: colors.textSecondary,
         fontWeight: '500',
     },
     // Widget button style
     widgetButton: {
-        backgroundColor: '#1A1A1A',
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: '#FFFFFF',
+        borderColor: '#FAE8FF',
     },
     // Modal styles
     modalOverlay: {
@@ -1073,9 +1090,11 @@ const styles = StyleSheet.create({
     modalContainer: {
         width: '98%',
         maxWidth: 500,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         borderRadius: borderRadius['2xl'],
         overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
         ...shadows.xl,
     },
     modalHeader: {
@@ -1114,13 +1133,13 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
         marginBottom: spacing.xs,
         textAlign: 'center',
     },
     modalSubtitle: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: colors.textSecondary,
         textAlign: 'center',
         marginBottom: spacing.lg,
         lineHeight: 20,
@@ -1159,7 +1178,7 @@ const styles = StyleSheet.create({
     },
     instructionText: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.8)',
+        color: colors.text,
         flex: 1,
         lineHeight: 20,
     },
@@ -1219,8 +1238,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.md,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-        backgroundColor: '#1A1A1A',
+        borderBottomColor: '#FAE8FF',
+        backgroundColor: '#FFFFFF',
     },
     timelineCloseX: {
         width: 40,
@@ -1233,7 +1252,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 16,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
     },
     timelineContent: {
         paddingTop: spacing.xl,
@@ -1247,13 +1266,13 @@ const styles = StyleSheet.create({
     timelineIntroTitle: {
         fontSize: 28,
         fontWeight: '800',
-        color: '#FFFFFF',
+        color: colors.text,
         textAlign: 'center',
         marginBottom: spacing.sm,
     },
     timelineIntroSubtitle: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 20,
     },
@@ -1322,22 +1341,22 @@ const styles = StyleSheet.create({
     timelineStepTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
         marginBottom: spacing.xs,
     },
     timelineStepDesc: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: colors.textSecondary,
         lineHeight: 20,
         marginBottom: spacing.md,
     },
     mockupContainer1: {
         width: '100%',
         aspectRatio: 4 / 3,
-        backgroundColor: '#eef4ff',
+        backgroundColor: '#FFF5F7',
         borderRadius: borderRadius['2xl'],
-        borderWidth: 1,
-        borderColor: '#dbeafe',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
         justifyContent: 'center',
         alignItems: 'center',
         padding: spacing.md,
@@ -1350,7 +1369,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.borderLight,
         padding: 12,
-        shadowColor: '#000',
+        shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -1377,7 +1396,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+        backgroundColor: 'rgba(236, 72, 153, 0.15)',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1393,28 +1412,28 @@ const styles = StyleSheet.create({
         position: 'absolute',
         borderRadius: 100,
         borderWidth: 2,
-        borderColor: 'rgba(59, 130, 246, 0.3)',
+        borderColor: 'rgba(236, 72, 153, 0.3)',
     },
     fingerPressRingOuter: {
         width: 70,
         height: 70,
-        borderColor: 'rgba(59, 130, 246, 0.15)',
+        borderColor: 'rgba(236, 72, 153, 0.15)',
     },
     fingerPressRingMiddle: {
         width: 50,
         height: 50,
-        borderColor: 'rgba(59, 130, 246, 0.25)',
+        borderColor: 'rgba(236, 72, 153, 0.25)',
     },
     fingerPressRingInner: {
         width: 30,
         height: 30,
-        borderColor: 'rgba(59, 130, 246, 0.4)',
+        borderColor: 'rgba(236, 72, 153, 0.4)',
     },
     fingerIcon: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+        backgroundColor: 'rgba(236, 72, 153, 0.15)',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1447,7 +1466,7 @@ const styles = StyleSheet.create({
         bottom: -4,
         borderRadius: 20,
         borderWidth: 2,
-        borderColor: '#3b82f6',
+        borderColor: colors.primary,
         opacity: 0.5,
     },
     mockupSearchBar: {
@@ -1469,17 +1488,17 @@ const styles = StyleSheet.create({
     mockupCursor: {
         width: 1.5,
         height: 14,
-        backgroundColor: '#3b82f6',
+        backgroundColor: colors.primary,
         marginLeft: 2,
     },
     mockupAppResult: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 8,
-        backgroundColor: '#eef4ff',
+        backgroundColor: '#FFF5F7',
         borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#dbeafe',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
     },
     mockupAppLogo: {
         width: 32,
@@ -1508,12 +1527,12 @@ const styles = StyleSheet.create({
     mockupWidgetPreview: {
         width: 100,
         height: 60,
-        backgroundColor: '#f8fafc',
+        backgroundColor: '#FFFFFF',
         borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
         padding: 8,
-        shadowColor: '#000',
+        shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 4,
@@ -1527,7 +1546,7 @@ const styles = StyleSheet.create({
     },
     mockupWidgetContent: {
         flex: 1,
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        backgroundColor: 'rgba(236, 72, 153, 0.1)',
         borderRadius: 6,
     },
     mockupDotsIndicator: {
@@ -1543,7 +1562,7 @@ const styles = StyleSheet.create({
     mockupAddWidgetBtn: {
         width: '100%',
         height: 28,
-        backgroundColor: '#3b82f6',
+        backgroundColor: colors.primary,
         borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
@@ -1559,24 +1578,25 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         padding: spacing.xl,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderTopWidth: 1.5,
+        borderTopColor: '#FAE8FF',
     },
     timelineReadyBtn: {
         width: '100%',
         height: 56,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.primary,
         borderRadius: borderRadius.xl,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#FFFFFF',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        elevation: 6,
     },
     timelineReadyBtnText: {
-        color: '#000000',
+        color: '#FFFFFF',
         fontSize: 18,
         fontWeight: '800',
     },

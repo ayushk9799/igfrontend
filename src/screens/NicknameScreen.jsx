@@ -30,7 +30,7 @@ const NicknameScreen = ({ onComplete, onBack }) => {
     const isValid = nickname.trim().length > 0;
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#000000' }}>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardView}
@@ -38,7 +38,7 @@ const NicknameScreen = ({ onComplete, onBack }) => {
                 <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
                     {/* App Name - Top Left */}
                     <View style={styles.brandContainer}>
-                        <Text style={styles.brandName}>penguin.</Text>
+                        <Text style={styles.brandName}>🐧 Penguin</Text>
                     </View>
 
                     {/* Spacer to push content down */}
@@ -48,7 +48,7 @@ const NicknameScreen = ({ onComplete, onBack }) => {
                     <View
                         style={styles.nicknameSection}
                     >
-                        <Text style={styles.title}>choose a nickname</Text>
+                        <Text style={styles.title}>Choose a nickname</Text>
                         <Text style={styles.subtitle}>What should your partner call you?</Text>
                     </View>
 
@@ -64,7 +64,7 @@ const NicknameScreen = ({ onComplete, onBack }) => {
                             <TextInput
                                 style={styles.input}
                                 placeholder="e.g., Honey, Babe, Love..."
-                                placeholderTextColor="rgba(255,255,255,0.35)"
+                                placeholderTextColor={colors.textLight}
                                 value={nickname}
                                 onChangeText={setNickname}
                                 onFocus={() => setIsFocused(true)}
@@ -103,7 +103,7 @@ const NicknameScreen = ({ onComplete, onBack }) => {
 
                 </View>
             </KeyboardAvoidingView>
-        </View>
+        </GradientBackground>
     );
 };
 
@@ -120,8 +120,8 @@ const styles = StyleSheet.create({
     },
     brandName: {
         fontSize: 28,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.primary,
         letterSpacing: -0.5,
     },
     spacer: {
@@ -133,13 +133,13 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 34,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        fontWeight: '800',
+        color: colors.text,
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         marginTop: spacing.xs,
     },
     inputWrapper: {
@@ -148,32 +148,45 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 0,
-        backgroundColor: 'transparent',
+        paddingVertical: 14,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: '#FFFFFF',
+        borderRadius: borderRadius.xl,
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
     },
     inputContainerFocused: {
-        // No visible change on focus
+        borderColor: colors.primary,
     },
     inputIconContainer: {
-        width: 40,
-        alignItems: 'flex-start',
+        width: 10,
     },
     inputIcon: {
         fontSize: 20,
     },
     input: {
         flex: 1,
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
         padding: 0,
         letterSpacing: -0.5,
     },
     charCount: {
         fontSize: 13,
         fontWeight: '500',
-        color: 'rgba(255,255,255,0.35)',
+        color: colors.textSecondary,
         textAlign: 'right',
         marginTop: spacing.sm,
         marginRight: spacing.xs,
@@ -185,20 +198,27 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 20,
         borderRadius: borderRadius.xl,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     continueButtonDisabled: {
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        backgroundColor: '#E2E8F0',
+        shadowOpacity: 0,
+        elevation: 0,
     },
     continueButtonText: {
         fontSize: 16,
-        fontWeight: '600',
-        color: '#000000',
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     continueButtonTextDisabled: {
-        color: 'rgba(0, 0, 0, 0.4)',
+        color: '#A0AEC0',
     },
     footer: {
         alignItems: 'center',
@@ -206,7 +226,7 @@ const styles = StyleSheet.create({
     },
     skipText: {
         fontSize: 15,
-        color: '#FFFFFF',
+        color: colors.primary,
         fontWeight: '700',
         marginBottom: spacing.xl,
     },
@@ -215,7 +235,7 @@ const styles = StyleSheet.create({
     },
     hintText: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         textAlign: 'center',
     },
 });

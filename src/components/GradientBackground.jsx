@@ -152,73 +152,69 @@ const Sparkle = ({ delay = 0, x, y }) => {
 };
 
 const gradientPresets = {
-    // Light and clean
+    // Cute Penguin - Soft warm pink to pastel lavender to sweet baby blue
     light: {
-        colors: [colors.background, colors.backgroundAlt],
+        colors: ['#FFF6F8', '#FFF0F5', '#F5F3FF'],
         orbs: [
-            { color: colors.primarySoft, size: 300, x: -100, y: -50 },
-            { color: colors.secondarySoft, size: 250, x: width - 80, y: height * 0.4 },
+            { color: 'rgba(255, 117, 143, 0.08)', size: 350, x: -100, y: -50 },
+            { color: 'rgba(192, 132, 252, 0.06)', size: 300, x: width - 100, y: height * 0.35 },
+            { color: 'rgba(147, 197, 253, 0.05)', size: 250, x: -50, y: height * 0.7 },
         ],
     },
-    // Warm coral tones
+    // Warm - Soft peach and strawberry pink tones
     warm: {
-        colors: ['#FFF5F5', '#FED7D7', '#FEEBC8'],
+        colors: ['#FFF5F5', '#FFE4E6', '#FFF0F3'],
         orbs: [
-            { color: 'rgba(249, 112, 104, 0.15)', size: 320, x: -100, y: -80 },
-            { color: 'rgba(244, 162, 97, 0.12)', size: 280, x: width - 100, y: height * 0.5 },
+            { color: 'rgba(255, 117, 143, 0.1)', size: 320, x: -100, y: -80 },
+            { color: 'rgba(251, 191, 36, 0.06)', size: 280, x: width - 100, y: height * 0.5 },
         ],
     },
-    // Cool teal tones
+    // Cool - Minty lavender and baby blue sky
     cool: {
-        colors: ['#E6FFFA', '#B2F5EA', '#E6FFFA'],
+        colors: ['#F0FDFA', '#E0F2FE', '#EEF2FF'],
         orbs: [
-            { color: 'rgba(91, 181, 166, 0.15)', size: 300, x: -80, y: 100 },
-            { color: 'rgba(129, 212, 250, 0.12)', size: 260, x: width - 60, y: height * 0.3 },
+            { color: 'rgba(147, 197, 253, 0.08)', size: 300, x: -80, y: 100 },
+            { color: 'rgba(192, 132, 252, 0.06)', size: 260, x: width - 60, y: height * 0.3 },
         ],
     },
-    // Soft neutral
+    // Soft neutral - Airy whipped-cream whites
     neutral: {
-        colors: [colors.background, '#F7FAFC', colors.backgroundAlt],
+        colors: ['#FFFDFD', '#FDFBF7', '#FFFDFD'],
         orbs: [
-            { color: 'rgba(160, 174, 192, 0.08)', size: 280, x: -60, y: 50 },
-            { color: 'rgba(203, 213, 224, 0.1)', size: 240, x: width - 80, y: height * 0.6 },
+            { color: 'rgba(192, 132, 252, 0.04)', size: 280, x: -60, y: 50 },
+            { color: 'rgba(147, 197, 253, 0.04)', size: 240, x: width - 80, y: height * 0.6 },
         ],
     },
-    // Sunrise - warm and inviting
+    // Sunrise - warm and inviting peach-pink sky
     sunrise: {
-        colors: ['#FFF5F5', '#FFFAF0', '#FEFCBF'],
+        colors: ['#FFF5F5', '#FFFBF2', '#FEFCE8'],
         orbs: [
-            { color: 'rgba(249, 112, 104, 0.12)', size: 350, x: -120, y: -100 },
-            { color: 'rgba(244, 162, 97, 0.1)', size: 300, x: width - 50, y: height * 0.4 },
+            { color: 'rgba(255, 117, 143, 0.08)', size: 350, x: -120, y: -100 },
+            { color: 'rgba(251, 191, 36, 0.06)', size: 300, x: width - 50, y: height * 0.4 },
         ],
     },
-    // For compatibility - map old names to new light versions
-    midnight: {
-        colors: [colors.background, colors.backgroundAlt, '#F7FAFC'],
-        orbs: [
-            { color: 'rgba(249, 112, 104, 0.1)', size: 300, x: -80, y: -50 },
-            { color: 'rgba(91, 181, 166, 0.08)', size: 280, x: width - 60, y: height * 0.5 },
-        ],
-    },
+    // Romantic - Sweet strawberry-cream pink dream
     romantic: {
-        colors: ['#FFF5F5', '#FED7E2', '#FFF5F5'],
+        colors: ['#FFF0F3', '#FFE4E6', '#FFF0F5'],
         orbs: [
-            { color: 'rgba(255, 143, 171, 0.15)', size: 320, x: -100, y: -60 },
-            { color: 'rgba(249, 112, 104, 0.1)', size: 280, x: width - 80, y: height * 0.4 },
+            { color: 'rgba(255, 117, 143, 0.12)', size: 320, x: -100, y: -60 },
+            { color: 'rgba(192, 132, 252, 0.08)', size: 280, x: width - 80, y: height * 0.4 },
         ],
     },
+    // Cosmic - Playful starry lavender-violet gradient
     cosmic: {
-        colors: ['#E6FFFA', '#EBF8FF', '#E9D8FD'],
+        colors: ['#FAF5FF', '#F3E8FF', '#EBE9FE'],
         orbs: [
-            { color: 'rgba(129, 212, 250, 0.12)', size: 300, x: -60, y: -40 },
-            { color: 'rgba(206, 147, 216, 0.1)', size: 260, x: width - 70, y: height * 0.5 },
+            { color: 'rgba(192, 132, 252, 0.08)', size: 300, x: -60, y: -40 },
+            { color: 'rgba(147, 197, 253, 0.08)', size: 260, x: width - 70, y: height * 0.5 },
         ],
     },
+    // Aurora - Magic soft pastel mint-teal gradient
     aurora: {
-        colors: ['#E6FFFA', '#C6F6D5', '#E6FFFA'],
+        colors: ['#F0FDF4', '#ECFDF5', '#F5F3FF'],
         orbs: [
-            { color: 'rgba(165, 214, 167, 0.15)', size: 320, x: -80, y: 0 },
-            { color: 'rgba(129, 212, 250, 0.1)', size: 280, x: width - 100, y: height * 0.35 },
+            { color: 'rgba(110, 231, 183, 0.06)', size: 320, x: -80, y: 0 },
+            { color: 'rgba(147, 197, 253, 0.06)', size: 280, x: width - 100, y: height * 0.35 },
         ],
     },
 };
