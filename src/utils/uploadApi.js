@@ -80,6 +80,7 @@ export const uploadAudioToS3 = async (localUri, folder = 'voice-recordings') => 
         const { presignedUrl, publicUrl } = presignedData.data;
 
         // Step 2: Read the file and upload to S3
+        const fileResponse = await fetch(localUri);
         const blob = await fileResponse.blob();
 
         const uploadResponse = await fetch(presignedUrl, {

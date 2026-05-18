@@ -13,6 +13,7 @@ import {
     Alert,
     Clipboard,
     ActivityIndicator,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
