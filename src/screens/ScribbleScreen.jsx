@@ -19,7 +19,6 @@ import penguinLogo from '../../assets/splashscreen.png';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
-import GradientBackground from '../components/GradientBackground';
 import Button from '../components/Button';
 import { colors, spacing, borderRadius, shadows, timing } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
@@ -412,7 +411,13 @@ export const ScribbleScreen = ({
     };
 
     return (
-        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
+        <LinearGradient
+            colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+            locations={[0, 0.34, 0.72, 1]}
+            start={{ x: 0.25, y: 0 }}
+            end={{ x: 0.75, y: 1 }}
+            style={{ flex: 1 }}
+        >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.lg }]}>
                 {/* Header */}
@@ -927,7 +932,7 @@ export const ScribbleScreen = ({
                     </View>
                 </Modal>
             </View>
-        </GradientBackground>
+        </LinearGradient>
     );
 
 };

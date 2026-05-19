@@ -224,10 +224,7 @@ const HomeScreen = ({
                         </View>
                     </View>
 
-                    <View style={styles.quoteCard}>
-                        <Text style={styles.quoteText}>"Small moments, big impact."</Text>
-                        <Text style={styles.quoteSub}>Keep showing up for each other.</Text>
-                    </View>
+                   
 
                     <TouchableOpacity style={styles.todayCard} onPress={() => onQuestionPress?.()} activeOpacity={0.9}>
                         <View style={styles.todayTopRow}>

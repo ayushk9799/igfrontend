@@ -93,6 +93,21 @@ const ChatIcon = ({ color, size = 24, filled = false }) => (
     </Svg>
 );
 
+const GameIcon = ({ color, size = 24, filled = false }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M21 11.5c0-4.14-3.36-7.5-7.5-7.5H10.5C6.36 4 3 7.36 3 11.5V13c0 2.21 1.79 4 4 4h.5c.83 0 1.5.67 1.5 1.5v.5c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2v-.5c0-.83.67-1.5 1.5-1.5H17c2.21 0 4-1.79 4-4v-1.5z"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill={filled ? color : 'none'}
+        />
+        <Path d="M7 11h2M8 10v2" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M15.5 11h.01M16.5 10h.01M15.5 12h.01" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+);
+
 
 
 const TabItem = ({ icon: Icon, label, isActive, onPress, badge = 0 }) => {
@@ -182,8 +197,9 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
     const tabs = [
         { key: 'home', label: 'Home', icon: HomeIcon },
         { key: 'canvas', label: 'Canvas', icon: PencilIcon },
-        { key: 'chats', label: 'Chats', icon: ChatIcon, badge: chatBadge },
         { key: 'dailyChallenge', label: 'Today', icon: SparkIcon },
+        { key: 'games', label: 'Games', icon: GameIcon },
+        { key: 'chats', label: 'Chats', icon: ChatIcon, badge: chatBadge },
     ];
 
     return (

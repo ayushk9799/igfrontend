@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
+import GamesScreen from '../screens/GamesScreen';
 import DailyChallengeScreen from '../screens/DailyChallengeScreen';
 import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
 import ChatListScreen from '../screens/ChatListScreen';
@@ -197,6 +198,22 @@ export const MainTabNavigator = ({
                         hasPartner={hasPartner}
                         onLinkPartner={onFindPartner}
                         onBack={() => setCurrentTab('home')}
+                    />
+                );
+            case 'games':
+                return (
+                    <GamesScreen
+                        partnerName={partnerName}
+                        pendingPuzzle={pendingPuzzle}
+                        activeTicTacToe={activeTicTacToe}
+                        pendingTicTacToe={pendingTicTacToe}
+                        activeWordle={activeWordle}
+                        pendingWordle={pendingWordle}
+                        onJigsawCreate={onJigsawCreate}
+                        onJigsawPlay={onJigsawPlay}
+                        onTicTacToePress={onTicTacToePress}
+                        onWordlePress={onWordlePress}
+                        onRefreshPuzzle={onRefreshPuzzle}
                     />
                 );
             case 'topicQuestions':
