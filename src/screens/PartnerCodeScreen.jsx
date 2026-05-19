@@ -13,108 +13,66 @@ import {
     Alert,
     Clipboard,
     ActivityIndicator,
-    Platform,
+    StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import LinearGradient from 'react-native-linear-gradient';
-import GradientBackground from '../components/GradientBackground';
-import Button from '../components/Button';
-import { colors, spacing, borderRadius, shadows } from '../theme';
+import Svg, { Path } from 'react-native-svg';
 import { API_BASE } from '../constants/Api';
 import { updateUser } from '../utils/authStorage';
-import penguinImage from '../../assets/splashscreen.png';
 
 const { width, height } = Dimensions.get('window');
-const IMAGE_SIZE = Math.min(width * 0.45, 180);
+const isCompactHeight = height < 760;
+const navy = '#050E3E';
 
-// Floating butterfly animation
-const FloatingButterfly = ({ delay = 0, startX, startY }) => {
-    const translateX = useRef(new Animated.Value(0)).current;
-    const translateY = useRef(new Animated.Value(0)).current;
-    const rotate = useRef(new Animated.Value(0)).current;
+// --- SVG Icons ---
+const TinyHeart = ({ color = "#FF8FAB" }) => (
+    <Svg width={18} height={16} viewBox="0 0 14 12" fill="none">
+        <Path d="M7 12L6.0125 11.0825C2.4 7.755 0 5.5425 0 2.8425C0 0.81 1.575 -0.75 3.5 -0.75C4.585 -0.75 5.6175 -0.255 6.265 0.4425C6.545 0.705 6.7825 1.0125 7 1.3425C7.2175 1.0125 7.455 0.705 7.735 0.4425C8.3825 -0.255 9.415 -0.75 10.5 -0.75C12.425 -0.75 14 0.81 14 2.8425C14 5.5425 11.6 7.755 7.9875 11.09L7 12Z" fill={color} />
+    </Svg>
+);
+
+const TitleBurst = () => (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+        <Path d="M6 16L9 14" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" />
+        <Path d="M4 8L8 10" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" />
+        <Path d="M12 4L13 8" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" />
+    </Svg>
+);
+
+const CopyIcon = () => (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+        <Path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="#FF5E97" />
+    </Svg>
+);
+
+const CheckIcon = () => (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+        <Path d="M9 16.17L4.83 12L3.41 13.41L9 19L21 7L19.59 5.59L9 16.17Z" fill="#FF5E97" />
+    </Svg>
+);
+
+const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
     const opacity = useRef(new Animated.Value(0)).current;
-
     useEffect(() => {
-        const animation = Animated.loop(
+        const animate = Animated.loop(
             Animated.sequence([
                 Animated.delay(delay),
-                Animated.parallel([
-                    Animated.timing(opacity, { toValue: 0.6, duration: 500, useNativeDriver: true }),
-                    Animated.timing(translateX, { toValue: 30, duration: 3000, useNativeDriver: true }),
-                    Animated.timing(translateY, { toValue: -20, duration: 3000, useNativeDriver: true }),
-                    Animated.timing(rotate, { toValue: 1, duration: 3000, useNativeDriver: true }),
-                ]),
-                Animated.parallel([
-                    Animated.timing(translateX, { toValue: 0, duration: 3000, useNativeDriver: true }),
-                    Animated.timing(translateY, { toValue: 0, duration: 3000, useNativeDriver: true }),
-                    Animated.timing(rotate, { toValue: 0, duration: 3000, useNativeDriver: true }),
-                ]),
-                Animated.timing(opacity, { toValue: 0, duration: 500, useNativeDriver: true }),
-                Animated.delay(2000),
-            ])
+                Animated.timing(opacity, { toValue: 0.7, duration: 1200, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 0.1, duration: 1200, useNativeDriver: true }),
+                Animated.delay(800),
+            ]),
         );
-        animation.start();
-        return () => animation.stop();
-    }, [delay, translateX, translateY, rotate, opacity]);
-
-    const rotateInterpolate = rotate.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['-15deg', '15deg'],
-    });
-
+        animate.start();
+        return () => animate.stop();
+    }, [opacity, delay]);
     return (
-        <Animated.Text
-            style={[
-                styles.butterfly,
-                {
-                    left: startX,
-                    top: startY,
-                    opacity,
-                    transform: [{ translateX }, { translateY }, { rotate: rotateInterpolate }],
-                },
-            ]}
-        >
-            🦋
-        </Animated.Text>
-    );
-};
-
-// Pulsing circle around image
-const PulsingCircle = ({ size }) => {
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const opacityAnim = useRef(new Animated.Value(0.3)).current;
-
-    useEffect(() => {
-        const animation = Animated.loop(
-            Animated.sequence([
-                Animated.parallel([
-                    Animated.timing(scaleAnim, { toValue: 1.15, duration: 1500, useNativeDriver: true }),
-                    Animated.timing(opacityAnim, { toValue: 0.1, duration: 1500, useNativeDriver: true }),
-                ]),
-                Animated.parallel([
-                    Animated.timing(scaleAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
-                    Animated.timing(opacityAnim, { toValue: 0.3, duration: 1500, useNativeDriver: true }),
-                ]),
-            ])
-        );
-        animation.start();
-        return () => animation.stop();
-    }, [scaleAnim, opacityAnim]);
-
-    return (
-        <Animated.View
-            style={[
-                styles.pulsingCircle,
-                {
-                    width: size + 40,
-                    height: size + 40,
-                    borderRadius: (size + 40) / 2,
-                    opacity: opacityAnim,
-                    transform: [{ scale: scaleAnim }],
-                },
-            ]}
-        />
+        <Animated.View style={{ position: 'absolute', left: x, top: y, opacity, zIndex: 1 }}>
+            <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+                <Path d="M8 0C8 4.418 4.418 8 0 8C4.418 8 8 11.582 8 16C8 11.582 11.582 8 16 8C11.582 8 8 4.418 8 0Z" fill="#FFB5D0" />
+            </Svg>
+        </Animated.View>
     );
 };
 
@@ -132,6 +90,7 @@ export const PartnerCodeScreen = ({
     const [copied, setCopied] = useState(false);
     const [isAlreadyPaired, setIsAlreadyPaired] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(40)).current;
     const connectedScale = useRef(new Animated.Value(0)).current;
     const insets = useSafeAreaInsets();
 
@@ -139,7 +98,6 @@ export const PartnerCodeScreen = ({
     useEffect(() => {
         if (partnerId) {
             setIsAlreadyPaired(true);
-            // Animate the connected screen
             Animated.spring(connectedScale, {
                 toValue: 1,
                 friction: 5,
@@ -151,30 +109,46 @@ export const PartnerCodeScreen = ({
 
     useEffect(() => {
         if (!isAlreadyPaired) {
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true
-            }).start();
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 600,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 600,
+                    useNativeDriver: true,
+                }),
+            ]).start();
         }
-    }, [fadeAnim, isAlreadyPaired]);
+    }, [fadeAnim, slideAnim, isAlreadyPaired]);
 
-    // If already paired, show connected text instead of pairing UI
+    // If already paired, show connected screen
     if (isAlreadyPaired) {
         return (
-            <GradientBackground variant="light" showOrbs={true} showParticles={true}>
-                <View style={styles.connectedContainer}>
-                    <Animated.View style={[styles.connectedContent, { transform: [{ scale: connectedScale }] }]}>
-                        <Text style={styles.connectedEmoji}>💕</Text>
-                        <Text style={styles.connectedTitle}>You're Connected!</Text>
-                        {partnerUsername && (
-                            <Text style={styles.connectedSubtitle}>
-                                {partnerUsername} just paired with you
-                            </Text>
-                        )}
-                    </Animated.View>
-                </View>
-            </GradientBackground>
+            <View style={styles.root}>
+                <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+                <LinearGradient
+                    colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+                    locations={[0, 0.34, 0.72, 1]}
+                    start={{ x: 0.25, y: 0 }}
+                    end={{ x: 0.75, y: 1 }}
+                    style={styles.gradient}
+                >
+                    <View style={styles.connectedContainer}>
+                        <Animated.View style={[styles.connectedContent, { transform: [{ scale: connectedScale }] }]}>
+                            <Text style={styles.connectedEmoji}>💕</Text>
+                            <Text style={styles.connectedTitle}>You're Connected!</Text>
+                            {partnerUsername && (
+                                <Text style={styles.connectedSubtitle}>
+                                    {partnerUsername} just paired with you
+                                </Text>
+                            )}
+                        </Animated.View>
+                    </View>
+                </LinearGradient>
+            </View>
         );
     }
 
@@ -234,210 +208,275 @@ export const PartnerCodeScreen = ({
     };
 
     return (
-        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
-            <KeyboardAwareScrollView
-                style={styles.scrollView}
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    {
-                        paddingTop: insets.top + spacing.lg,
-                        paddingBottom: insets.bottom + spacing.xl + 20
-                    }
-                ]}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                bottomOffset={100}
+        <View style={styles.root}>
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+            <LinearGradient
+                colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+                locations={[0, 0.34, 0.72, 1]}
+                start={{ x: 0.25, y: 0 }}
+                end={{ x: 0.75, y: 1 }}
+                style={styles.gradient}
             >
-                {/* Floating butterflies */}
-                <FloatingButterfly delay={0} startX={width * 0.1} startY={height * 0.15} />
-                <FloatingButterfly delay={2000} startX={width * 0.75} startY={height * 0.2} />
-                <FloatingButterfly delay={4000} startX={width * 0.6} startY={height * 0.08} />
+                {/* Background sparkles */}
+                <Sparkle x={width * 0.08} y={height * 0.06} size={7} delay={0} />
+                <Sparkle x={width * 0.85} y={height * 0.1} size={9} delay={600} />
+                <Sparkle x={width * 0.9} y={height * 0.35} size={7} delay={1200} />
+                <Sparkle x={width * 0.05} y={height * 0.45} size={6} delay={800} />
 
-                {/* Hero Section with Girl Image */}
-                <Animated.View
-                    style={[
-                        styles.heroSection,
-                        { opacity: fadeAnim },
+                {/* Brand Logo - fixed at top */}
+                <View style={[styles.brandContainer, { paddingTop: insets.top + 10 }]}>
+                    <Image
+                        source={require('../../assets/images/penguin-text-logo.png')}
+                        style={styles.brandLogo}
+                        resizeMode="contain"
+                    />
+                </View>
+
+                <KeyboardAwareScrollView
+                    style={[styles.scrollView, { backgroundColor: 'transparent' }]}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        {
+                            paddingTop: insets.top + (isCompactHeight ? 36 : 42),
+                            paddingBottom: insets.bottom + 20,
+                        }
                     ]}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    bottomOffset={100}
                 >
-                    <View style={styles.imageContainer}>
-                        <PulsingCircle size={IMAGE_SIZE} />
-                        <View style={styles.imageWrapper}>
-                            <Image source={penguinImage} style={styles.girlImage} resizeMode="contain" />
+                    {/* Hero Section */}
+                    <Animated.View
+                        style={[
+                            styles.heroSection,
+                            {
+                                opacity: fadeAnim,
+                                transform: [{ translateY: slideAnim }],
+                            },
+                        ]}
+                    >
+                        <View style={styles.mascotContainer}>
+                            <View style={styles.mascotBackgroundCircle} />
+                            <Image
+                                source={require('../../assets/images/connect-couple.png')}
+                                style={styles.mascotImage}
+                                resizeMode="contain"
+                            />
                         </View>
-                    </View>
 
-                    <Text style={styles.title}>connect with your Love </Text>
-                    <Text style={styles.subtitle}>Share your code or enter theirs to pair</Text>
-                </Animated.View>
+                        <View style={styles.titleRow}>
+                            <View style={styles.titleBurstLeft}>
+                                <TitleBurst />
+                            </View>
+                            <Text style={styles.title}>Connect with Love</Text>
+                            <View style={styles.titleHeartRight}>
+                                <TinyHeart color="#FF8FAB" />
+                            </View>
+                        </View>
+                        <Text style={styles.subtitle}>Share your code or enter theirs to pair</Text>
+                    </Animated.View>
 
-                {/* Your Code Section */}
-                <Animated.View
-                    style={[
-                        styles.codeSection,
-                        { opacity: fadeAnim }
-                    ]}
-                >
-                    <View style={styles.yourCodeCard}>
-                        <Text style={styles.cardLabel}>Share this Code</Text>
-                        <View style={styles.codeRow}>
-                            <Text style={styles.codeText}>{partnerCode}</Text>
+                    {/* Share Code Card */}
+                    <Animated.View
+                        style={[
+                            styles.codeSection,
+                            {
+                                opacity: fadeAnim,
+                                transform: [{ translateY: slideAnim }],
+                            },
+                        ]}
+                    >
+                        {/* Enter Partner Code Card */}
+                        <View style={styles.enterCodeCard}>
+                            <Text style={styles.cardLabel}>Enter Partner's Code</Text>
+                            <TextInput
+                                style={[styles.codeInput, isPairing && styles.codeInputDisabled]}
+                                value={enteredCode}
+                                onChangeText={(text) => setEnteredCode(text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                                placeholder="ABC123"
+                                placeholderTextColor="#D1A3B8"
+                                maxLength={6}
+                                autoCapitalize="characters"
+                                autoCorrect={false}
+                                editable={!isPairing}
+                            />
+
+                            {/* Loading State */}
+                            {isPairing && (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="small" color="#FF5E97" />
+                                    <Text style={styles.loadingText}>{pairingStatus}</Text>
+                                </View>
+                            )}
+
                             <TouchableOpacity
-                                style={[styles.copyButton, copied && styles.copyButtonCopied]}
-                                onPress={handleCopyCode}
-                                activeOpacity={0.7}
+                                style={[
+                                    styles.connectButtonWrapper,
+                                    (enteredCode.length !== 6 || isPairing) && styles.connectButtonDisabled,
+                                ]}
+                                onPress={handlePair}
+                                disabled={enteredCode.length !== 6 || isPairing}
+                                activeOpacity={0.85}
                             >
-                                <Text style={styles.copyIcon}>{copied ? '✓' : '📋'}</Text>
+                                <LinearGradient
+                                    colors={['#FF5E97', '#FFA1C9']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.connectButtonGradient}
+                                >
+                                    <Text style={styles.connectButtonText}>
+                                        {isPairing ? 'Connecting...' : 'Connect 💫'}
+                                    </Text>
+                                </LinearGradient>
                             </TouchableOpacity>
                         </View>
-                    </View>
 
-                    {/* Divider */}
-                    <View style={styles.divider}>
-                        <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>OR</Text>
-                        <View style={styles.dividerLine} />
-                    </View>
+                        {/* OR Divider */}
+                        <View style={styles.divider}>
+                            <View style={styles.dividerLine} />
+                            <Text style={styles.dividerText}>OR</Text>
+                            <View style={styles.dividerLine} />
+                        </View>
 
-                    {/* Enter Partner Code Section */}
-                    <View style={styles.enterCodeCard}>
-                        <Text style={styles.cardLabel}>Enter Partner's Code</Text>
-                        <TextInput
-                            style={[styles.codeInput, isPairing && styles.codeInputDisabled]}
-                            value={enteredCode}
-                            onChangeText={(text) => setEnteredCode(text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-                            placeholder="ABC123"
-                            placeholderTextColor="rgba(255,255,255,0.35)"
-                            maxLength={6}
-                            autoCapitalize="characters"
-                            autoCorrect={false}
-                            editable={!isPairing}
-                        />
-
-                        {/* Loading State */}
-                        {isPairing && (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="small" color="#FFFFFF" />
-                                <Text style={styles.loadingText}>{pairingStatus}</Text>
+                        {/* Share Code Card */}
+                        <View style={styles.shareCodeCard}>
+                            <Text style={styles.cardLabel}>Share this Code</Text>
+                            <View style={styles.codeRow}>
+                                <Text style={styles.codeText}>{partnerCode}</Text>
+                                <TouchableOpacity
+                                    style={[styles.copyButton, copied && styles.copyButtonCopied]}
+                                    onPress={handleCopyCode}
+                                    activeOpacity={0.7}
+                                >
+                                    {copied ? <CheckIcon /> : <CopyIcon />}
+                                </TouchableOpacity>
                             </View>
-                        )}
+                        </View>
+                    </Animated.View>
 
-                        <Button
-                            title={isPairing ? 'Connecting...' : 'Connect 💫'}
-                            onPress={handlePair}
-                            variant="primary"
-                            size="lg"
-                            fullWidth
-                            disabled={enteredCode.length !== 6 || isPairing}
-                        />
-                    </View>
-                </Animated.View>
+                    {/* Skip Button */}
+                    <Animated.View style={[styles.skipContainer, { opacity: fadeAnim }]}>
+                        <TouchableOpacity onPress={onSkip} activeOpacity={0.7}>
+                            <Text style={styles.skipText}>I'll do this later →</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </KeyboardAwareScrollView>
 
-                {/* Skip Button */}
-                <Animated.View style={[styles.skipContainer, { opacity: fadeAnim }]}>
-                    <TouchableOpacity onPress={onSkip} activeOpacity={0.7}>
-                        <Text style={styles.skipText}>I'll do this later →</Text>
-                    </TouchableOpacity>
-                </Animated.View>
-            </KeyboardAwareScrollView>
-        </GradientBackground>
+                {/* Bottom Clouds */}
+                <View style={styles.cloudsContainer}>
+                    <View style={[styles.cloud, styles.cloudOne]} />
+                    <View style={[styles.cloud, styles.cloudTwo]} />
+                    <View style={[styles.cloud, styles.cloudThree]} />
+                </View>
+            </LinearGradient>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    root: {
+        flex: 1,
+    },
+    gradient: {
+        flex: 1,
+    },
     scrollView: {
         flex: 1,
+        zIndex: 2,
     },
     scrollContent: {
         flexGrow: 1,
-        paddingHorizontal: spacing.xl,
+        paddingHorizontal: 24,
     },
-    butterfly: {
+    brandContainer: {
         position: 'absolute',
-        fontSize: 24,
+        top: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 24,
         zIndex: 10,
+    },
+    brandLogo: {
+        width: isCompactHeight ? 100 : 120,
+        height: isCompactHeight ? 30 : 36,
+        marginLeft: -10,
     },
     heroSection: {
         alignItems: 'center',
-        marginBottom: spacing.xl,
+        marginBottom: isCompactHeight ? 10 : 20,
     },
-    imageContainer: {
+    mascotContainer: {
+        width: isCompactHeight ? 200 : 240,
+        height: isCompactHeight ? 200 : 240,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: spacing.lg,
+        marginBottom: -15,
+        position: 'relative',
     },
-    pulsingCircle: {
+    mascotBackgroundCircle: {
         position: 'absolute',
-        backgroundColor: colors.primarySoft,
+        width: isCompactHeight ? 170 : 210,
+        height: isCompactHeight ? 170 : 210,
+        borderRadius: isCompactHeight ? 85 : 105,
+        backgroundColor: '#FFE4EC',
+        opacity: 0.8,
     },
-    imageWrapper: {
-        width: IMAGE_SIZE,
-        height: IMAGE_SIZE,
-        borderRadius: IMAGE_SIZE / 2,
-        backgroundColor: '#FFF0F3',
-        justifyContent: 'center',
+    mascotImage: {
+        width: '100%',
+        height: '100%',
+    },
+    titleRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#FAE8FF',
-        overflow: 'hidden',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.08,
-                shadowRadius: 12,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
+        position: 'relative',
+        marginBottom: 6,
     },
-    girlImage: {
-        width: IMAGE_SIZE * 0.9,
-        height: IMAGE_SIZE * 1.2,
+    titleBurstLeft: {
+        position: 'absolute',
+        left: -25,
+        top: -8,
+    },
+    titleHeartRight: {
+        position: 'absolute',
+        right: -25,
+        top: -2,
     },
     title: {
-        fontSize: 28,
+        fontSize: isCompactHeight ? 24 : 28,
         fontWeight: '800',
-        color: colors.text,
+        color: navy,
         textAlign: 'center',
-        letterSpacing: -0.5,
-        marginBottom: spacing.sm,
+        letterSpacing: -0.4,
     },
     subtitle: {
-        fontSize: 15,
-        color: colors.textSecondary,
+        fontSize: isCompactHeight ? 13 : 14,
+        color: '#7380A1',
         textAlign: 'center',
+        marginTop: isCompactHeight ? 4 : 8,
+        fontWeight: '500',
     },
     codeSection: {
-        flex: 1,
-        justifyContent: 'center',
+        gap: 0,
     },
-    yourCodeCard: {
+    shareCodeCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: borderRadius.xl,
-        padding: spacing.xl,
+        borderRadius: 24,
+        paddingHorizontal: 24,
+        paddingVertical: isCompactHeight ? 14 : 18,
         alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.05,
-                shadowRadius: 12,
-            },
-            android: {
-                elevation: 2,
-            },
-        }),
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 6,
     },
     cardLabel: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '700',
-        color: colors.textSecondary,
-        marginBottom: spacing.md,
+        color: '#7380A1',
+        marginBottom: 10,
         letterSpacing: 0.5,
+        textTransform: 'uppercase',
     },
     codeRow: {
         flexDirection: 'row',
@@ -447,73 +486,64 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     codeText: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: '800',
-        color: colors.primary,
-        letterSpacing: 4,
+        color: '#FF5E97',
+        letterSpacing: 6,
     },
     copyButton: {
         position: 'absolute',
         right: 0,
-        width: 40,
-        height: 40,
-        backgroundColor: '#FFF0F3',
-        borderRadius: borderRadius.lg,
+        width: 38,
+        height: 38,
+        backgroundColor: '#FFF0F5',
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },
     copyButtonCopied: {
-        backgroundColor: '#FFE1E6',
-    },
-    copyIcon: {
-        fontSize: 18,
+        backgroundColor: '#FFE4EC',
     },
     divider: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: spacing.lg,
+        marginVertical: isCompactHeight ? 12 : 16,
     },
     dividerLine: {
         flex: 1,
-        height: 1.5,
-        backgroundColor: '#FAE8FF',
+        height: 1,
+        backgroundColor: '#FFD1E3',
     },
     dividerText: {
         fontSize: 12,
         fontWeight: '700',
-        color: colors.textSecondary,
-        paddingHorizontal: spacing.lg,
+        color: '#7380A1',
+        paddingHorizontal: 16,
     },
     enterCodeCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: borderRadius.xl,
-        padding: spacing.xl,
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.05,
-                shadowRadius: 12,
-            },
-            android: {
-                elevation: 2,
-            },
-        }),
+        borderRadius: 24,
+        paddingHorizontal: 24,
+        paddingVertical: isCompactHeight ? 14 : 18,
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 6,
     },
     codeInput: {
-        backgroundColor: '#FFF6F6',
-        borderRadius: borderRadius.lg,
-        padding: spacing.lg,
-        fontSize: 24,
+        backgroundColor: '#FFF5F8',
+        borderRadius: 16,
+        paddingVertical: isCompactHeight ? 12 : 14,
+        paddingHorizontal: 16,
+        fontSize: 20,
         fontWeight: '800',
-        color: colors.text,
+        color: navy,
         textAlign: 'center',
-        letterSpacing: 8,
-        marginBottom: spacing.lg,
+        letterSpacing: 6,
+        marginBottom: isCompactHeight ? 12 : 16,
         borderWidth: 1.5,
-        borderColor: '#FAE8FF',
+        borderColor: '#FFE4EC',
     },
     codeInputDisabled: {
         opacity: 0.6,
@@ -522,48 +552,107 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: spacing.md,
-        gap: spacing.sm,
+        marginBottom: 12,
+        gap: 8,
     },
     loadingText: {
-        fontSize: 14,
-        color: colors.textSecondary,
+        fontSize: 13,
+        color: '#7380A1',
         fontWeight: '600',
+    },
+    connectButtonWrapper: {
+        width: '100%',
+        height: isCompactHeight ? 44 : 48,
+        borderRadius: 24,
+        overflow: 'hidden',
+        shadowColor: '#FF5E97',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 5,
+    },
+    connectButtonDisabled: {
+        opacity: 0.5,
+    },
+    connectButtonGradient: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    connectButtonText: {
+        fontSize: isCompactHeight ? 14 : 15,
+        fontWeight: '800',
+        color: '#FFFFFF',
     },
     skipContainer: {
         alignItems: 'center',
-        paddingVertical: spacing.lg,
+        marginTop: isCompactHeight ? 16 : 24,
+        paddingVertical: 10,
     },
     skipText: {
-        fontSize: 15,
-        color: colors.primary,
-        fontWeight: '700',
+        fontSize: 14,
+        color: '#7380A1',
+        fontWeight: '600',
     },
     connectedContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: spacing.xl,
+        paddingHorizontal: 24,
     },
     connectedContent: {
         alignItems: 'center',
     },
     connectedEmoji: {
         fontSize: 64,
-        marginBottom: spacing.lg,
+        marginBottom: 20,
     },
     connectedTitle: {
-        fontSize: 28,
+        fontSize: isCompactHeight ? 28 : 34,
         fontWeight: '800',
-        color: colors.text,
+        color: navy,
         textAlign: 'center',
-        marginBottom: spacing.sm,
+        marginBottom: 8,
     },
     connectedSubtitle: {
-        fontSize: 16,
-        color: colors.textSecondary,
+        fontSize: isCompactHeight ? 13 : 14,
+        color: '#7380A1',
         textAlign: 'center',
         fontWeight: '600',
+    },
+    cloudsContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 150,
+        zIndex: 1,
+        pointerEvents: 'none',
+    },
+    cloud: {
+        position: 'absolute',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 100,
+        opacity: 0.6,
+    },
+    cloudOne: {
+        width: 120,
+        height: 120,
+        bottom: -60,
+        left: -40,
+    },
+    cloudTwo: {
+        width: 180,
+        height: 180,
+        bottom: -90,
+        left: 60,
+        opacity: 0.8,
+    },
+    cloudThree: {
+        width: 150,
+        height: 150,
+        bottom: -70,
+        right: -30,
     },
 });
 

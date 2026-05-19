@@ -1,7 +1,7 @@
 // Main Tab Navigator - Home with Bottom Tabs
 // Now uses Redux for global state instead of prop drilling
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, BackHandler } from 'react-native';
+import { View, StyleSheet, BackHandler, Modal } from 'react-native';
 import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
@@ -42,6 +42,8 @@ export const MainTabNavigator = ({
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
+    const [isAccountVisible, setIsAccountVisible] = useState(false);
+    const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
     // Redux state
     const userData = useSelector(selectUser);
@@ -49,6 +51,16 @@ export const MainTabNavigator = ({
     const partnerName = useSelector(selectPartnerName);
     const daysTogether = useSelector(selectDaysTogether);
     const isPremium = useSelector(selectIsPremium);
+
+    const effectivePremiumSource = userData?.premiumSource ||
+        (userData?.premiumExpiresAt && new Date(userData.premiumExpiresAt) > new Date() ? 'self' :
+            (userData?.partnerPremiumExpiresAt && new Date(userData.partnerPremiumExpiresAt) > new Date() ? 'partner' : null));
+    const effectivePremiumExpiresAt = effectivePremiumSource === 'partner'
+        ? userData?.partnerPremiumExpiresAt
+        : userData?.premiumExpiresAt;
+    const effectivePremiumPlan = effectivePremiumSource === 'partner'
+        ? userData?.partnerPremiumPlan
+        : userData?.premiumPlan;
     const games = useSelector(selectGames);
     const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle } = games;
 
@@ -149,7 +161,7 @@ export const MainTabNavigator = ({
                             }
                         }}
                         onFindPartner={onFindPartner}
-                        onSettingsPress={() => setCurrentTab('account')}
+                        onSettingsPress={() => setIsAccountVisible(true)}
                         onJigsawCreate={onJigsawCreate}
                         onJigsawPlay={onJigsawPlay}
                         pendingPuzzle={pendingPuzzle}
@@ -161,7 +173,7 @@ export const MainTabNavigator = ({
                         activeWordle={activeWordle}
                         onWordlePress={onWordlePress}
                         duelBadgeCount={duelBadgeCount}
-                        onNotificationPress={() => setCurrentTab('notificationCenter')}
+                        onNotificationPress={() => setIsNotificationVisible(true)}
                     />
                 );
             case 'canvas':
@@ -209,35 +221,7 @@ export const MainTabNavigator = ({
                     />
                 );
             case 'account':
-                // Derive correct premium info accounting for partner premium
-                const effectivePremiumSource = userData?.premiumSource ||
-                    (userData?.premiumExpiresAt && new Date(userData.premiumExpiresAt) > new Date() ? 'self' :
-                        (userData?.partnerPremiumExpiresAt && new Date(userData.partnerPremiumExpiresAt) > new Date() ? 'partner' : null));
-                const effectivePremiumExpiresAt = effectivePremiumSource === 'partner'
-                    ? userData?.partnerPremiumExpiresAt
-                    : userData?.premiumExpiresAt;
-                const effectivePremiumPlan = effectivePremiumSource === 'partner'
-                    ? userData?.partnerPremiumPlan
-                    : userData?.premiumPlan;
-                return (
-                    <AccountScreen
-                        userData={userData}
-                        partnerName={partnerName}
-                        hasPartner={hasPartner}
-                        isPremium={isPremium}
-                        premiumPlan={effectivePremiumPlan}
-                        premiumExpiresAt={effectivePremiumExpiresAt}
-                        premiumSource={effectivePremiumSource}
-                        daysTogether={daysTogether}
-                        onLogout={onLogout}
-                        onDeleteAccount={onDeleteAccount}
-                        onEditProfile={onEditProfile}
-                        onAvatarPress={onAvatarPress}
-                        onFindPartner={onFindPartner}
-                        onNavigateToPremium={onPremiumPress}
-                        onBack={() => setCurrentTab('home')}
-                    />
-                );
+                return null;
             case 'chats':
                 return (
                     <ChatListScreen
@@ -254,20 +238,7 @@ export const MainTabNavigator = ({
                     />
                 );
             case 'notificationCenter':
-                return (
-                    <NotificationCenterScreen
-                        onBack={() => setCurrentTab('home')}
-                        onJigsawPlay={(game) => {
-                            onJigsawPlay?.(game);
-                        }}
-                        onTicTacToePress={(game) => {
-                            onTicTacToePress?.(game);
-                        }}
-                        onWordlePress={(game) => {
-                            onWordlePress?.(game);
-                        }}
-                    />
-                );
+                return null;
             default:
                 return null;
         }
@@ -281,6 +252,51 @@ export const MainTabNavigator = ({
                 onTabChange={setCurrentTab}
                 chatBadge={chatBadge}
             />
+
+            <Modal
+                visible={isAccountVisible}
+                animationType="slide"
+                transparent={false}
+                onRequestClose={() => setIsAccountVisible(false)}
+            >
+                <AccountScreen
+                    userData={userData}
+                    partnerName={partnerName}
+                    hasPartner={hasPartner}
+                    isPremium={isPremium}
+                    premiumPlan={effectivePremiumPlan}
+                    premiumExpiresAt={effectivePremiumExpiresAt}
+                    premiumSource={effectivePremiumSource}
+                    daysTogether={daysTogether}
+                    onLogout={() => {
+                        setIsAccountVisible(false);
+                        onLogout();
+                    }}
+                    onDeleteAccount={() => {
+                        setIsAccountVisible(false);
+                        onDeleteAccount();
+                    }}
+                    onEditProfile={onEditProfile}
+                    onAvatarPress={onAvatarPress}
+                    onFindPartner={onFindPartner}
+                    onNavigateToPremium={onPremiumPress}
+                    onBack={() => setIsAccountVisible(false)}
+                />
+            </Modal>
+
+            <Modal
+                visible={isNotificationVisible}
+                animationType="slide"
+                transparent={false}
+                onRequestClose={() => setIsNotificationVisible(false)}
+            >
+                <NotificationCenterScreen
+                    onBack={() => setIsNotificationVisible(false)}
+                    onJigsawPlay={onJigsawPlay}
+                    onTicTacToePress={onTicTacToePress}
+                    onWordlePress={onWordlePress}
+                />
+            </Modal>
         </View>
     );
 };

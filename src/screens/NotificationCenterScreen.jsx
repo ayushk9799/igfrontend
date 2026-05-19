@@ -7,9 +7,11 @@ import {
     TouchableOpacity,
     FlatList,
     Platform,
+    StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Circle } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSelector } from 'react-redux';
 import { selectDuelNotifications } from '../store/slices/notificationsSlice';
 
@@ -40,13 +42,13 @@ const WordleIcon = ({ size = 22 }) => (
     </View>
 );
 
-// Back arrow icon
-const BackIcon = () => (
-    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+// Close icon for modal dismiss
+const CloseIcon = () => (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
         <Path
-            d="M19 12H5M12 19l-7-7 7-7"
-            stroke="#FFFFFF"
-            strokeWidth={2}
+            d="M18 6L6 18M6 6l12 12"
+            stroke="#050E3E"
+            strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
         />
@@ -58,7 +60,7 @@ const ChevronRight = () => (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
         <Path
             d="M9 18l6-6-6-6"
-            stroke="rgba(255,255,255,0.4)"
+            stroke="#FFB5D0"
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -86,7 +88,7 @@ const NotificationItem = ({ item, onPress }) => (
         activeOpacity={0.7}
     >
         {/* Icon circle */}
-        <View style={[styles.iconCircle, { backgroundColor: item.color }]}>
+        <View style={[styles.iconCircle, { backgroundColor: item.color || '#FF5E97' }]}>
             {getIconForType(item.type)}
         </View>
 
@@ -107,7 +109,7 @@ const EmptyState = () => (
             <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
                 <Path
                     d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
-                    stroke="rgba(255,255,255,0.3)"
+                    stroke="#FF5E97"
                     strokeWidth={2}
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -119,39 +121,55 @@ const EmptyState = () => (
     </View>
 );
 
-const NotificationCenterScreen = ({
+export const NotificationCenterScreen = ({
     onBack,
     onJigsawPlay,
     onTicTacToePress,
     onWordlePress,
 }) => {
     const notifications = useSelector(selectDuelNotifications);
+    const insets = useSafeAreaInsets();
 
     const handleNotificationPress = (item) => {
-        switch (item.type) {
-            case 'puzzle':
-                onJigsawPlay?.(item.game);
-                break;
-            case 'tictactoe':
-                onTicTacToePress?.(item.game);
-                break;
-            case 'wordle':
-                onWordlePress?.(item.game);
-                break;
+        // Dismiss first to return to main tab state before firing sub-flows
+        if (onBack) {
+            onBack();
         }
+        
+        // Wait slightly for modal dismiss transition
+        setTimeout(() => {
+            switch (item.type) {
+                case 'puzzle':
+                    onJigsawPlay?.(item.game);
+                    break;
+                case 'tictactoe':
+                    onTicTacToePress?.(item.game);
+                    break;
+                case 'wordle':
+                    onWordlePress?.(item.game);
+                    break;
+            }
+        }, 300);
     };
 
     return (
         <View style={styles.root}>
-            <SafeAreaView style={styles.container} edges={['top']}>
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+            <LinearGradient
+                colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+                locations={[0, 0.34, 0.72, 1]}
+                start={{ x: 0.25, y: 0 }}
+                end={{ x: 0.75, y: 1 }}
+                style={styles.gradient}
+            >
                 {/* Header */}
-                <View style={styles.header}>
+                <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
                     <TouchableOpacity
-                        style={styles.backButton}
+                        style={styles.closeButton}
                         onPress={onBack}
                         activeOpacity={0.7}
                     >
-                        <BackIcon />
+                        <CloseIcon />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Notifications</Text>
                     <View style={styles.headerSpacer} />
@@ -174,7 +192,7 @@ const NotificationCenterScreen = ({
                         showsVerticalScrollIndicator={false}
                     />
                 )}
-            </SafeAreaView>
+            </LinearGradient>
         </View>
     );
 };
@@ -182,68 +200,61 @@ const NotificationCenterScreen = ({
 const styles = StyleSheet.create({
     root: {
         flex: 1,
-        backgroundColor: '#000000',
     },
-    container: {
+    gradient: {
         flex: 1,
     },
-    // Header
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+        paddingHorizontal: 20,
+        paddingBottom: 12,
     },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: '#1A1A1A',
-        alignItems: 'center',
+    closeButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
         justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 3,
     },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#FFFFFF',
-        letterSpacing: -0.3,
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#050E3E',
+        letterSpacing: -0.5,
     },
     headerSpacer: {
-        width: 40,
+        width: 38,
     },
-    // List
     listContent: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingTop: 16,
-        paddingBottom: 100,
+        paddingBottom: 60,
     },
-    // Notification Item
     notificationItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1A1A1A',
-        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
         padding: 16,
         marginBottom: 12,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.15,
-                shadowRadius: 6,
-            },
-            android: {
-                elevation: 3,
-            },
-        }),
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 3,
     },
     iconCircle: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
+        width: 46,
+        height: 46,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -252,42 +263,47 @@ const styles = StyleSheet.create({
         marginLeft: 14,
     },
     notifTitle: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
-        color: '#FFFFFF',
-        marginBottom: 3,
+        color: '#050E3E',
+        marginBottom: 2,
     },
     notifMessage: {
         fontSize: 13,
         fontWeight: '500',
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: '#7380A1',
     },
-    // Empty state
     emptyContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 40,
+        paddingBottom: 80,
     },
     emptyIconCircle: {
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 3,
     },
     emptyTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#FFFFFF',
-        marginBottom: 8,
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#050E3E',
+        marginBottom: 6,
     },
     emptySubtitle: {
         fontSize: 14,
         fontWeight: '500',
-        color: 'rgba(255, 255, 255, 0.4)',
+        color: '#7380A1',
         textAlign: 'center',
     },
 });
