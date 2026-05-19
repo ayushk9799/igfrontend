@@ -258,7 +258,7 @@ export const AccountScreen = ({
                     style={styles.scrollView}
                     contentContainerStyle={[
                         styles.scrollContent,
-                        { paddingTop: insets.top + (onBack ? 64 : 16), paddingBottom: 100 }
+                        { paddingTop: insets.top + (onBack ? 64 : 16), paddingBottom: 0 }
                     ]}
                     showsVerticalScrollIndicator={false}
                 >
@@ -423,14 +423,14 @@ export const AccountScreen = ({
                     </View>
 
                     <Text style={styles.versionText}>penguin</Text>
-                </ScrollView>
 
-                {/* Bottom Clouds */}
-                <View style={styles.cloudsContainer}>
-                    <View style={[styles.cloud, styles.cloudOne]} />
-                    <View style={[styles.cloud, styles.cloudTwo]} />
-                    <View style={[styles.cloud, styles.cloudThree]} />
-                </View>
+                    {/* Bottom Clouds */}
+                    <View style={styles.cloudsContainer}>
+                        <View style={[styles.cloud, styles.cloudOne]} />
+                        <View style={[styles.cloud, styles.cloudTwo]} />
+                        <View style={[styles.cloud, styles.cloudThree]} />
+                    </View>
+                </ScrollView>
             </LinearGradient>
         </View>
     );
@@ -696,11 +696,12 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     cloudsContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 150,
+        position: 'relative',
+        height: 100,
+        width: width,
+        marginLeft: -24,
+        marginTop: 10,
+        overflow: 'hidden',
         zIndex: 1,
         pointerEvents: 'none',
     },

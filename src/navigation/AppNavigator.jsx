@@ -1,6 +1,6 @@
 // Updated Navigator with premium theme and auth persistence
 import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Alert, Platform, BackHandler } from 'react-native';
+import { View, StyleSheet, Alert, Platform, BackHandler, Modal } from 'react-native';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
@@ -15,6 +15,8 @@ import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
 import ChatScreen from '../screens/ChatScreen';
 import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
+import OnboardingFeaturesScreen from '../screens/OnboardingFeaturesScreen';
+import Onboarding3Screen from '../screens/Onboarding3Screen';
 import NotificationPermissionScreen from '../screens/NotificationPermissionScreen';
 
 import { TOPIC_CATEGORIES } from '../constants/Categories';
@@ -49,6 +51,7 @@ export const AppNavigator = () => {
 
     // Local state (navigation & UI only)
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
+    const [isPremiumVisible, setIsPremiumVisible] = useState(false);
     const [yourMood, setYourMood] = useState(emojis[0]);
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
@@ -538,6 +541,11 @@ export const AppNavigator = () => {
 
     // Use startTransition for non-blocking navigation
     const navigate = (screen) => {
+        if (screen === 'premium') {
+            setIsPremiumVisible(true);
+            return;
+        }
+
         startTransition(() => {
             setCurrentScreen(screen);
 
@@ -841,6 +849,11 @@ export const AppNavigator = () => {
     // Handle Android back button/gesture - prevent app from closing on sub-screens
     useEffect(() => {
         const backAction = () => {
+            if (isPremiumVisible) {
+                setIsPremiumVisible(false);
+                return true;
+            }
+
             const homeSubScreens = [
                 'mood', 'scribble', 'questions', 'jigsawCreate',
                 'jigsawPuzzle', 'ticTacToe', 'wordle', 'chat',
@@ -864,7 +877,7 @@ export const AppNavigator = () => {
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    }, [currentScreen]);
+    }, [currentScreen, isPremiumVisible]);
 
     // Handle onboarding completion
     const handleOnboardingComplete = () => {
@@ -889,6 +902,20 @@ export const AppNavigator = () => {
             case 'onboarding':
                 return (
                     <AnimatedOnboardingScreen
+                        onComplete={() => navigate('onboardingFeatures')}
+                    />
+                );
+
+            case 'onboardingFeatures':
+                return (
+                    <OnboardingFeaturesScreen
+                        onComplete={() => navigate('onboarding3')}
+                    />
+                );
+
+            case 'onboarding3':
+                return (
+                    <Onboarding3Screen
                         onComplete={handleOnboardingComplete}
                     />
                 );
@@ -1175,19 +1202,29 @@ export const AppNavigator = () => {
                     />
                 );
 
-            case 'premium':
-                return (
-                    <PremiumScreen
-                        onBack={() => navigate('home')}
-                    />
-                );
+
 
             default:
                 return null;
         }
     };
 
-    return <View style={styles.container}>{renderScreen()}</View>;
+    return (
+        <View style={styles.container}>
+            {renderScreen()}
+            <Modal
+                visible={isPremiumVisible}
+                animationType="slide"
+                transparent={false}
+                statusBarTranslucent={true}
+                onRequestClose={() => setIsPremiumVisible(false)}
+            >
+                <PremiumScreen
+                    onBack={() => setIsPremiumVisible(false)}
+                />
+            </Modal>
+        </View>
+    );
 };
 
 const styles = StyleSheet.create({

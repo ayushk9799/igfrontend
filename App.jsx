@@ -20,7 +20,7 @@ function App() {
                 <KeyboardProvider statusBarTranslucent>
                     <SocketProvider>
                         <StatusBar
-                            barStyle="light-content"
+                            barStyle="dark-content"
                             backgroundColor="transparent"
                             translucent
                         />
