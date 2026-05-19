@@ -10,6 +10,7 @@ import DailyChallengeScreen from '../screens/DailyChallengeScreen';
 import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
 import ChatListScreen from '../screens/ChatListScreen';
 import NotificationCenterScreen from '../screens/NotificationCenterScreen';
+import PremiumScreen from '../screens/PremiumScreen';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
@@ -43,6 +44,7 @@ export const MainTabNavigator = ({
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
     const [isAccountVisible, setIsAccountVisible] = useState(false);
+    const [isPremiumOpenInAccount, setIsPremiumOpenInAccount] = useState(false);
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
     // Redux state
@@ -257,7 +259,11 @@ export const MainTabNavigator = ({
                 visible={isAccountVisible}
                 animationType="slide"
                 transparent={false}
-                onRequestClose={() => setIsAccountVisible(false)}
+                statusBarTranslucent={true}
+                onRequestClose={() => {
+                    setIsAccountVisible(false);
+                    setIsPremiumOpenInAccount(false);
+                }}
             >
                 <AccountScreen
                     userData={userData}
@@ -270,24 +276,42 @@ export const MainTabNavigator = ({
                     daysTogether={daysTogether}
                     onLogout={() => {
                         setIsAccountVisible(false);
+                        setIsPremiumOpenInAccount(false);
                         onLogout();
                     }}
                     onDeleteAccount={() => {
                         setIsAccountVisible(false);
+                        setIsPremiumOpenInAccount(false);
                         onDeleteAccount();
                     }}
                     onEditProfile={onEditProfile}
                     onAvatarPress={onAvatarPress}
                     onFindPartner={onFindPartner}
-                    onNavigateToPremium={onPremiumPress}
-                    onBack={() => setIsAccountVisible(false)}
+                    onNavigateToPremium={() => setIsPremiumOpenInAccount(true)}
+                    onBack={() => {
+                        setIsAccountVisible(false);
+                        setIsPremiumOpenInAccount(false);
+                    }}
                 />
+
+                <Modal
+                    visible={isPremiumOpenInAccount}
+                    animationType="slide"
+                    transparent={false}
+                    statusBarTranslucent={true}
+                    onRequestClose={() => setIsPremiumOpenInAccount(false)}
+                >
+                    <PremiumScreen
+                        onBack={() => setIsPremiumOpenInAccount(false)}
+                    />
+                </Modal>
             </Modal>
 
             <Modal
                 visible={isNotificationVisible}
                 animationType="slide"
                 transparent={false}
+                statusBarTranslucent={true}
                 onRequestClose={() => setIsNotificationVisible(false)}
             >
                 <NotificationCenterScreen

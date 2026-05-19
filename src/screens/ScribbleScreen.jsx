@@ -13,6 +13,7 @@ import {
     Platform,
     ScrollView,
     Image,
+    StatusBar,
 } from 'react-native';
 import penguinLogo from '../../assets/splashscreen.png';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +25,7 @@ import { colors, spacing, borderRadius, shadows, timing } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 
 const { width } = Dimensions.get('window');
-const CANVAS_SIZE = width - spacing.xl * 2;
+const CANVAS_SIZE = width - 40;
 
 const brushColors = [
     { color: '#FF3B6F', name: 'Pink', glow: 'rgba(255, 59, 111, 0.4)' },
@@ -119,6 +120,128 @@ const ColorBubble = ({ item, isSelected, onSelect, index }) => {
                 />
             </Animated.View>
         </TouchableOpacity>
+    );
+};
+
+const BrushSlider = ({ min = 2, max = 30, value, onChange, selectedColor }) => {
+    const [sliderWidth, setSliderWidth] = useState(0);
+    const [localValue, setLocalValue] = useState(value);
+    
+    const sliderWidthRef = useRef(0);
+    const valueRef = useRef(value);
+    const onChangeRef = useRef(onChange);
+    const minRef = useRef(min);
+    const maxRef = useRef(max);
+
+    // Keep internal values synchronized
+    useEffect(() => {
+        setLocalValue(value);
+        valueRef.current = value;
+    }, [value]);
+
+    useEffect(() => {
+        onChangeRef.current = onChange;
+    }, [onChange]);
+
+    useEffect(() => {
+        sliderWidthRef.current = sliderWidth;
+    }, [sliderWidth]);
+
+    useEffect(() => {
+        minRef.current = min;
+        maxRef.current = max;
+    }, [min, max]);
+
+    const percentage = ((localValue - min) / (max - min)) * 100;
+    const startValue = useRef(value);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => true,
+            onPanResponderGrant: () => {
+                startValue.current = valueRef.current;
+            },
+            onPanResponderMove: (evt, gestureState) => {
+                const sWidth = sliderWidthRef.current;
+                const minimum = minRef.current;
+                const maximum = maxRef.current;
+
+                if (sWidth <= 0) return;
+                const deltaPct = gestureState.dx / sWidth;
+                const deltaVal = deltaPct * (maximum - minimum);
+                const newValue = Math.round(startValue.current + deltaVal);
+                const clamped = Math.max(minimum, Math.min(newValue, maximum));
+                
+                // Update mutable ref immediately so it's always accurate
+                valueRef.current = clamped;
+                
+                // Update local state ONLY for 60fps rendering of the slider itself
+                setLocalValue(clamped);
+            },
+            onPanResponderRelease: () => {
+                // Sync with parent when user finishes dragging (ultra-efficient!)
+                if (onChangeRef.current) {
+                    onChangeRef.current(valueRef.current);
+                }
+            }
+        })
+    ).current;
+
+    return (
+        <View 
+            style={styles.sliderWrapper}
+            onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
+            {...panResponder.panHandlers}
+        >
+            <Text style={styles.sliderValueText}>{localValue}px</Text>
+            
+            <View style={styles.sliderTrackContainer}>
+                <View style={styles.sliderTrackBg}>
+                    <View 
+                        style={[
+                            styles.sliderTrackActive, 
+                            { 
+                                width: `${percentage}%`,
+                                backgroundColor: selectedColor,
+                            }
+                        ]} 
+                    />
+                </View>
+                <View 
+                    style={[
+                        styles.sliderThumb,
+                        {
+                            left: `${percentage}%`,
+                            borderColor: selectedColor,
+                        }
+                    ]}
+                >
+                    <View 
+                        style={[
+                            styles.sliderThumbInner,
+                            {
+                                backgroundColor: selectedColor,
+                            }
+                        ]}
+                    />
+                </View>
+            </View>
+            
+            <View style={styles.sliderPreviewContainer}>
+                <View 
+                    style={[
+                        styles.sliderPreviewDot,
+                        {
+                            width: localValue,
+                            height: localValue,
+                            borderRadius: localValue / 2,
+                            backgroundColor: selectedColor,
+                        }
+                    ]}
+                />
+            </View>
+        </View>
     );
 };
 
@@ -290,26 +413,16 @@ export const ScribbleScreen = ({
 
     return (
         <GradientBackground variant="light" showOrbs={true} showParticles={true}>
-            <View style={[styles.container, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg }]}>
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+            <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.lg }]}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                        <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                            <Path
-                                d="M19 12H5M12 19l-7-7 7-7"
-                                stroke={colors.text}
-                                strokeWidth={2.5}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </Svg>
-                    </TouchableOpacity>
                     <View style={styles.headerContent}>
                         <Text style={styles.title}>Canvas</Text>
                     </View>
                     <View style={styles.headerActions}>
                         <TouchableOpacity style={styles.headerAction} onPress={handleUndo}>
-                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5"
                                     stroke={colors.text}
@@ -320,7 +433,7 @@ export const ScribbleScreen = ({
                             </Svg>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.headerAction} onPress={handleClear}>
-                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
                                     stroke={colors.text}
@@ -332,7 +445,7 @@ export const ScribbleScreen = ({
                         </TouchableOpacity>
                         {/* Widget Button */}
                         <TouchableOpacity style={[styles.headerAction, styles.widgetButton]} onPress={() => setShowWidgetTutorial(true)}>
-                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
                                     stroke={colors.text}
@@ -346,11 +459,12 @@ export const ScribbleScreen = ({
                 </View>
 
                 {/* Canvas */}
-                <Animated.View style={[styles.canvasContainer, { opacity: canvasOpacity }]}>
-                    <LinearGradient
-                        colors={['#FFFFFF', '#FFF9FB']}
-                        style={styles.canvasGradient}
-                    >
+                <Animated.View style={[styles.canvasShadowContainer, { opacity: canvasOpacity }]}>
+                    <View style={styles.canvasClippedContainer}>
+                        <LinearGradient
+                            colors={['#FFFFFF', '#FFF9FB']}
+                            style={styles.canvasGradient}
+                        >
                         <View
                             style={[styles.canvas, { width: CANVAS_SIZE, height: CANVAS_SIZE }]}
                             {...panResponder.panHandlers}
@@ -460,7 +574,8 @@ export const ScribbleScreen = ({
                             <View style={styles.paperTexture} />
                         </View>
                     </LinearGradient>
-                </Animated.View>
+                </View>
+            </Animated.View>
 
                 {/* Color Picker */}
                 <View style={styles.toolSection}>
@@ -480,30 +595,14 @@ export const ScribbleScreen = ({
 
                 {/* Brush Size */}
                 <View style={styles.toolSection}>
-                    <Text style={styles.toolLabel}>Brush</Text>
-                    <View style={styles.sizePicker}>
-                        {brushSizes.map((item) => (
-                            <TouchableOpacity
-                                key={item.size}
-                                style={[
-                                    styles.sizeOption,
-                                    selectedSize === item.size && styles.sizeSelected,
-                                ]}
-                                onPress={() => setSelectedSize(item.size)}
-                            >
-                                <View
-                                    style={[
-                                        styles.sizeDot,
-                                        {
-                                            width: item.size + 4,
-                                            height: item.size + 4,
-                                            backgroundColor: selectedColor,
-                                        }
-                                    ]}
-                                />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <Text style={styles.toolLabel}>Brush Size</Text>
+                    <BrushSlider 
+                        min={2}
+                        max={30}
+                        value={selectedSize}
+                        onChange={setSelectedSize}
+                        selectedColor={selectedColor}
+                    />
                 </View>
 
                 {/* Send Button */}
@@ -836,12 +935,13 @@ export const ScribbleScreen = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingHorizontal: spacing.xl,
+        paddingHorizontal: 20,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: spacing.xl,
+        marginTop: 8,
+        marginBottom: 18,
     },
     backButton: {
         width: 48,
@@ -864,13 +964,13 @@ const styles = StyleSheet.create({
     },
     headerContent: {
         flex: 1,
-        marginLeft: spacing.md,
+        marginLeft: 0,
     },
     title: {
         fontSize: 24,
-        fontWeight: '800',
+        fontWeight: '600',
         color: colors.text,
-        letterSpacing: -0.5,
+        // letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 14,
@@ -880,41 +980,45 @@ const styles = StyleSheet.create({
     },
     headerActions: {
         flexDirection: 'row',
-        gap: spacing.sm,
+        gap: 8,
     },
     headerAction: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#FFFFFF',
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: 'rgba(255,255,255,0.86)',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
+        borderWidth: 1,
+        borderColor: '#F7DDEA',
         shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 2,
+        shadowRadius: 18,
+        elevation: 5,
     },
     actionIcon: {
         fontSize: 18,
     },
-    canvasContainer: {
-        width: CANVAS_SIZE + 2,
-        height: CANVAS_SIZE + 2,
+    canvasShadowContainer: {
+        width: CANVAS_SIZE + 3,
+        height: CANVAS_SIZE + 3,
         borderRadius: 24,
-        overflow: 'hidden',
         backgroundColor: '#FFFFFF',
         alignSelf: 'center',
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
         shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.12,
-        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.18,
+        shadowRadius: 24,
         elevation: 8,
         marginBottom: spacing.xl,
+    },
+    canvasClippedContainer: {
+        flex: 1,
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: '#F7DDEA',
     },
     canvasGradient: {
         flex: 1,
@@ -989,31 +1093,75 @@ const styles = StyleSheet.create({
     colorSelected: {
         transform: [{ scale: 1.2 }],
     },
-    sizePicker: {
+    sliderWrapper: {
         flexDirection: 'row',
-        gap: spacing.md,
-    },
-    sizeOption: {
-        flex: 1,
+        alignItems: 'center',
         height: 48,
-        borderRadius: borderRadius.lg,
+        width: '100%',
+    },
+    sliderValueText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: colors.text,
+        width: 42,
+    },
+    sliderTrackContainer: {
+        flex: 1,
+        height: 24,
+        justifyContent: 'center',
+        position: 'relative',
+        marginHorizontal: 12,
+    },
+    sliderTrackBg: {
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#EAEAEA',
+        width: '100%',
+        overflow: 'hidden',
+    },
+    sliderTrackActive: {
+        height: '100%',
+        borderRadius: 3,
+    },
+    sliderThumb: {
+        position: 'absolute',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         backgroundColor: '#FFFFFF',
+        borderWidth: 2,
+        marginLeft: -12,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1.5,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+        elevation: 3,
+    },
+    sliderThumbInner: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    sliderPreviewContainer: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        borderWidth: 1,
         borderColor: '#FAE8FF',
         shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.08,
         shadowRadius: 4,
-        elevation: 2,
+        elevation: 1,
     },
-    sizeSelected: {
-        borderColor: colors.primary,
-        backgroundColor: colors.primarySoft,
-    },
-    sizeDot: {
-        borderRadius: 50,
+    sliderPreviewDot: {
+        maxHeight: 28,
+        maxWidth: 28,
     },
     sendContainer: {
         marginTop: '0',
@@ -1076,8 +1224,8 @@ const styles = StyleSheet.create({
     },
     // Widget button style
     widgetButton: {
-        backgroundColor: '#FFFFFF',
-        borderColor: '#FAE8FF',
+        backgroundColor: 'rgba(255,255,255,0.86)',
+        borderColor: '#F7DDEA',
     },
     // Modal styles
     modalOverlay: {

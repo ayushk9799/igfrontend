@@ -11,11 +11,46 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
-const AnimatedOnboardingScreen = ({ onComplete }) => {
+const FEATURES = [
+    {
+        id: 'mood',
+        title: 'Mood',
+        copy: 'Share your vibe\nwith penguin moods',
+        icon: '♥',
+        iconColor: '#7855D9',
+        image: require('../../assets/onbording/mood.png'),
+    },
+    {
+        id: 'scribble',
+        title: 'Scribble',
+        copy: 'Send cute scribbles\nand love notes.',
+        icon: '✎',
+        iconColor: '#F15F70',
+        image: require('../../assets/onbording/scribble.png'),
+    },
+    {
+        id: 'games',
+        title: 'Games',
+        copy: 'Wordle, TicTacToe,\nJigsaw and more.',
+        icon: '⌘',
+        iconColor: '#FF844B',
+        image: require('../../assets/onbording/games.png'),
+    },
+    {
+        id: 'questions',
+        title: 'Questions',
+        copy: 'Answer daily questions\nand go deeper.',
+        icon: '?',
+        iconColor: '#8060D7',
+        image: require('../../assets/onbording/questions.png'),
+    },
+];
+
+const OnboardingFeaturesScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -26,10 +61,6 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
             useNativeDriver: true,
         }).start();
     }, [fadeAnim]);
-
-    const handleNext = () => {
-        onComplete?.();
-    };
 
     return (
         <View style={styles.container}>
@@ -52,8 +83,8 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
 
                     <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
                         <View style={styles.titleBlock}>
-                            <Text style={styles.titlePrimary}>Stay close,</Text>
-                            <Svg height={width < 380 ? 42 : 46} width={width - 40}>
+                            <Text style={styles.titlePrimary}>Share little</Text>
+                            <Svg height={width < 380 ? 39 : 43} width={width - 40}>
                                 <Defs>
                                     <SvgGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
                                         <Stop offset="0" stopColor="#F45F83" />
@@ -63,13 +94,13 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                                 </Defs>
                                 <SvgText
                                     fill="url(#titleGrad)"
-                                    fontSize={width < 380 ? 29 : 34}
-                                    fontWeight="800"
+                                    fontSize={width < 380 ? 27 : 31}
+                                    fontWeight="700"
                                     textAnchor="middle"
                                     x={(width - 40) / 2}
-                                    y={width < 380 ? 34 : 39}
+                                    y={width < 380 ? 32 : 36}
                                 >
-                                    even on busy days.
+                                    moments together.
                                 </SvgText>
                             </Svg>
                             <View style={styles.titleDivider}>
@@ -79,43 +110,35 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                             </View>
                         </View>
 
-                        <View style={styles.mascotStage}>
-                            <Svg width="100%" height="100%" viewBox="0 0 330 330" style={StyleSheet.absoluteFill}>
-                                <Circle cx="165" cy="165" r="153" fill="rgba(243, 214, 238, 0.45)" stroke="rgba(255,255,255,0.85)" strokeWidth="2" />
-                                <Circle cx="165" cy="165" r="120" fill="rgba(248, 225, 244, 0.3)" />
-                            </Svg>
-                            <View style={styles.sparkleOne} />
-                            <View style={styles.sparkleTwo} />
-                            <View style={styles.sparkleThree} />
-                            <View style={styles.sparkleFour} />
-
-                            <View style={styles.mascotClip}>
-                                <Image
-                                    source={require('../../assets/onbording/onbording1-muscot.png')}
-                                    style={styles.mascot}
-                                    resizeMode="contain"
-                                />
+                        <View style={styles.featuresContainer}>
+                            <View style={styles.featuresGrid}>
+                                {FEATURES.map((feature) => (
+                                    <View key={feature.id} style={styles.featureCard}>
+                                        <View
+                                            style={[
+                                                styles.featureIconContainer,
+                                                { backgroundColor: feature.iconColor },
+                                            ]}
+                                        >
+                                            <Text style={styles.featureIcon}>{feature.icon}</Text>
+                                        </View>
+                                        <View style={styles.featureImageWrapper}>
+                                            <Image
+                                                source={feature.image}
+                                                style={styles.featureImage}
+                                                resizeMode="contain"
+                                            />
+                                        </View>
+                                        <Text style={styles.featureTitle}>{feature.title}</Text>
+                                        <Text style={styles.featureCopy}>{feature.copy}</Text>
+                                    </View>
+                                ))}
                             </View>
                         </View>
-
-                        <View style={styles.badgeRow}>
-                            <View style={styles.moodBadge}>
-                                <Text style={styles.badgeIcon}>💗</Text>
-                                <Text style={[styles.badgeText, styles.badgeTextYou]}>You: Cuddly</Text>
-                            </View>
-                            <View style={styles.moodBadge}>
-                                <Text style={styles.badgeIcon}>🌸</Text>
-                                <Text style={[styles.badgeText, styles.badgeTextPartner]}>Partner: Relaxed</Text>
-                            </View>
-                        </View>
-
-                        <Text style={styles.copyText}>
-                            Share how you feel and understand{'\n'}each other better, every day. <Text style={styles.copyHeart}>💜</Text>
-                        </Text>
                     </Animated.View>
 
                     <View style={styles.footer}>
-                        <TouchableOpacity activeOpacity={0.86} onPress={handleNext} style={styles.nextButtonShadow}>
+                        <TouchableOpacity activeOpacity={0.86} onPress={onComplete} style={styles.nextButtonShadow}>
                             <LinearGradient
                                 colors={['#FF6B82', '#F45170']}
                                 start={{ x: 0, y: 0 }}
@@ -123,13 +146,12 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                                 style={styles.nextButton}
                             >
                                 <Text style={styles.nextText}>Next</Text>
-                                <Text style={styles.nextArrow}>→</Text>
                             </LinearGradient>
                         </TouchableOpacity>
 
                         <View style={styles.progressRow}>
-                            <View style={[styles.progressSegment, styles.progressSegmentActive]} />
                             <View style={styles.progressSegment} />
+                            <View style={[styles.progressSegment, styles.progressSegmentActive]} />
                             <View style={styles.progressSegment} />
                         </View>
                     </View>
@@ -138,8 +160,6 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
         </View>
     );
 };
-
-const mascotSize = Math.min(width - 24, height * 0.43);
 
 const styles = StyleSheet.create({
     container: {
@@ -174,7 +194,7 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         alignItems: 'center',
-        paddingHorizontal: 24,
+        paddingHorizontal: 20,
     },
     titleBlock: {
         alignItems: 'center',
@@ -182,156 +202,130 @@ const styles = StyleSheet.create({
     },
     titlePrimary: {
         color: '#070E33',
-        fontSize: width < 380 ? 30 : 34,
-        lineHeight: width < 380 ? 37 : 42,
-        fontWeight: '800',
+        fontSize: width < 380 ? 28 : 32,
+        lineHeight: width < 380 ? 35 : 39,
+        fontWeight: '700',
         textAlign: 'center',
         letterSpacing: 0,
     },
     titleAccent: {
         color: '#F45F83',
+        fontSize: width < 380 ? 30 : 33,
         lineHeight: width < 380 ? 36 : 39,
         fontWeight: '800',
         textAlign: 'center',
         letterSpacing: 0,
     },
-
     titleDivider: {
-        marginTop: 9,
+        marginTop: 8,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 14,
+        gap: 15,
     },
     dividerLine: {
-        width: 58,
+        width: 62,
         height: 2,
         borderRadius: 1,
         backgroundColor: 'rgba(255, 143, 171, 0.34)',
     },
     dividerHeart: {
         color: '#FF6B82',
-        fontSize: 20,
-        lineHeight: 22,
+        fontSize: 22,
+        lineHeight: 24,
     },
-    mascotStage: {
-        width: mascotSize,
-        height: mascotSize,
-        borderRadius: mascotSize / 2,
-        marginTop: height < 720 ? 6 : 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-    },
-    mascotClip: {
-        width: '92.5%',
-        aspectRatio: 1,
-        borderRadius: 999,
-        overflow: 'hidden',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    mascot: {
-        width: '100%',
-        height: '100%',
-    },
-    sparkleOne: {
-        position: 'absolute',
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#FFFFFF',
-        right: 42,
-        top: 28,
-        opacity: 0.85,
-    },
-    sparkleTwo: {
-        position: 'absolute',
-        width: 7,
-        height: 7,
-        borderRadius: 4,
-        backgroundColor: '#FFFFFF',
-        right: 24,
-        top: 110,
-        opacity: 0.7,
-    },
-    sparkleThree: {
-        position: 'absolute',
-        width: 5,
-        height: 5,
-        borderRadius: 3,
-        backgroundColor: '#FFFFFF',
-        left: 38,
-        bottom: 72,
-        opacity: 0.9,
-    },
-    sparkleFour: {
-        position: 'absolute',
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#FFFFFF',
-        right: 60,
-        bottom: 52,
-        opacity: 0.65,
-    },
-    badgeRow: {
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 12,
-        marginTop: height < 720 ? 0 : 4,
-    },
-    moodBadge: {
+    featuresContainer: {
         flex: 1,
-        maxWidth: 172,
-        minHeight: 48,
-        borderRadius: 26,
-        backgroundColor: 'rgba(255,255,255,0.72)',
-        borderWidth: 1.4,
-        borderColor: 'rgba(255,255,255,0.95)',
-        flexDirection: 'row',
+        width: '100%',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        justifyContent: 'flex-start',
+        marginTop: height < 720 ? 12 : 20,
+    },
+    featuresGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        rowGap: 16,
+        width: '100%',
+        maxWidth: 392,
+    },
+    featureCard: {
+        width: (Math.min(width, 432) - 56) / 2,
+        height: height < 760 ? 174 : 208,
+        backgroundColor: 'rgba(255, 255, 255, 0.56)',
+        borderRadius: 18,
+        borderWidth: 1.2,
+        borderColor: 'rgba(255, 255, 255, 0.92)',
+        paddingHorizontal: 10,
+        paddingTop: 18,
+        paddingBottom: 12,
+        alignItems: 'center',
         shadowColor: '#B580D9',
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    featureIconContainer: {
+        position: 'absolute',
+        top: 13,
+        left: 13,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
         elevation: 3,
+        zIndex: 2,
     },
-    badgeIcon: {
-        fontSize: 20,
-        marginRight: 6,
-    },
-    badgeText: {
-        fontSize: width < 380 ? 13 : 15,
-        lineHeight: 18,
+    featureIcon: {
+        color: '#FFFFFF',
+        fontSize: 18,
         fontWeight: '700',
+        lineHeight: 22,
     },
-    badgeTextYou: {
-        color: '#F45F83',
+    featureTitle: {
+        marginTop: height < 760 ? 0 : 2,
+        fontSize: width < 380 ? 15 : 17,
+        lineHeight: width < 380 ? 19 : 21,
+        fontWeight: '700',
+        color: '#070E33',
+        textAlign: 'center',
     },
-    badgeTextPartner: {
-        color: '#7B55D9',
+    featureImageWrapper: {
+        width: '100%',
+        height: height < 760 ? 102 : 132,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    copyText: {
-        maxWidth: 340,
-        marginTop: height < 720 ? 12 : 18,
-        color: '#202742',
-        fontSize: width < 380 ? 13 : 15,
-        lineHeight: width < 380 ? 20 : 22,
+    featureImage: {
+        width: '112%',
+        height: '112%',
+    },
+    featureCopy: {
+        fontSize: width < 380 ? 11 : 13,
+        lineHeight: width < 380 ? 15 : 17,
+        color: '#586071',
         textAlign: 'center',
         fontWeight: '500',
-        letterSpacing: 0,
+        marginTop: 4,
+    },
+    featuresFooter: {
+        marginTop: height < 720 ? 12 : 20,
+        color: '#202742',
+        fontSize: width < 380 ? 13 : 15,
+        textAlign: 'center',
+        fontWeight: '600',
     },
     copyHeart: {
-        color: '#7B55D9',
+        color: '#FF6B82',
     },
     footer: {
         paddingHorizontal: 38,
         alignItems: 'center',
-        paddingTop: 8,
     },
     nextButtonShadow: {
         width: '100%',
@@ -355,14 +349,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: 0,
     },
-    nextArrow: {
-        position: 'absolute',
-        right: 18,
-        color: '#FFFFFF',
-        fontSize: 24,
-        lineHeight: 26,
-        fontWeight: '300',
-    },
     progressRow: {
         marginTop: 24,
         flexDirection: 'row',
@@ -380,4 +366,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default AnimatedOnboardingScreen;
+export default OnboardingFeaturesScreen;
