@@ -22,6 +22,7 @@
 		AA1111112EF9000000000001 /* ScribbleWidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1111112EF9000000000002 /* ScribbleWidgetBridge.swift */; };
 		AA1111112EF9000000000003 /* ScribbleWidgetBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = AA1111112EF9000000000004 /* ScribbleWidgetBridge.m */; };
 		BFB424267EEDBFEF3234254E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		F0AA00012F0A000000000001 /* Nunito.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F0AA00022F0A000000000001 /* Nunito.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,6 +81,7 @@
 		AA1111112EF9000000000002 /* ScribbleWidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScribbleWidgetBridge.swift; path = frontend/ScribbleWidgetBridge.swift; sourceTree = "<group>"; };
 		AA1111112EF9000000000004 /* ScribbleWidgetBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ScribbleWidgetBridge.m; path = frontend/ScribbleWidgetBridge.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		F0AA00022F0A000000000001 /* Nunito.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Nunito.ttf; path = frontend/Nunito.ttf; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -170,6 +172,7 @@
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
+				F0AA00022F0A000000000001 /* Nunito.ttf */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				AA1111112EF9000000000002 /* ScribbleWidgetBridge.swift */,
 				AA1111112EF9000000000004 /* ScribbleWidgetBridge.m */,
@@ -369,6 +372,7 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				79DE0ED82EF2D2410075C877 /* GoogleService-Info.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				F0AA00012F0A000000000001 /* Nunito.ttf in Resources */,
 				BFB424267EEDBFEF3234254E /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

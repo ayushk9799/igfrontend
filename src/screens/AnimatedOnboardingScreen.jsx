@@ -12,6 +12,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width, height } = Dimensions.get('window');
 
@@ -53,7 +54,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                     <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
                         <View style={styles.titleBlock}>
                             <Text style={styles.titlePrimary}>Stay close,</Text>
-                            <Svg height={width < 380 ? 42 : 46} width={width - 40}>
+                            <Svg height={width < 380 ? 32 : 36} width={width - 40} style={styles.gradientTitle}>
                                 <Defs>
                                     <SvgGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
                                         <Stop offset="0" stopColor="#F45F83" />
@@ -63,11 +64,14 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                                 </Defs>
                                 <SvgText
                                     fill="url(#titleGrad)"
-                                    fontSize={width < 380 ? 29 : 34}
-                                    fontWeight="800"
+                                    fontFamily={fontFamily.extraBold}
+                                    fontSize={width < 380 ? 27 : 31}
+                                    fontWeight={fontWeight('900')}
+                                    stroke="url(#titleGrad)"
+                                    strokeWidth={1.2}
                                     textAnchor="middle"
                                     x={(width - 40) / 2}
-                                    y={width < 380 ? 34 : 39}
+                                    y={width < 380 ? 27 : 31}
                                 >
                                     even on busy days.
                                 </SvgText>
@@ -168,8 +172,9 @@ const styles = StyleSheet.create({
     },
     skipText: {
         color: '#8A62D9',
+        fontFamily: fontFamily.medium,
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: fontWeight('500'),
     },
     content: {
         flex: 1,
@@ -182,16 +187,22 @@ const styles = StyleSheet.create({
     },
     titlePrimary: {
         color: '#070E33',
-        fontSize: width < 380 ? 30 : 34,
-        lineHeight: width < 380 ? 37 : 42,
-        fontWeight: '800',
+        fontFamily: fontFamily.extraBold,
+        fontSize: width < 380 ? 28 : 32,
+        lineHeight: width < 380 ? 32 : 36,
+        fontWeight: fontWeight('800'),
         textAlign: 'center',
         letterSpacing: 0,
     },
+    gradientTitle: {
+        marginTop: -2,
+    },
     titleAccent: {
         color: '#F45F83',
+        fontFamily: fontFamily.extraBold,
+        fontSize: width < 380 ? 30 : 33,
         lineHeight: width < 380 ? 36 : 39,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         textAlign: 'center',
         letterSpacing: 0,
     },
@@ -210,6 +221,7 @@ const styles = StyleSheet.create({
     },
     dividerHeart: {
         color: '#FF6B82',
+        fontFamily: fontFamily.regular,
         fontSize: 20,
         lineHeight: 22,
     },
@@ -301,13 +313,15 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     badgeIcon: {
+        fontFamily: fontFamily.regular,
         fontSize: 20,
         marginRight: 6,
     },
     badgeText: {
+        fontFamily: fontFamily.bold,
         fontSize: width < 380 ? 13 : 15,
         lineHeight: 18,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
     },
     badgeTextYou: {
         color: '#F45F83',
@@ -319,10 +333,11 @@ const styles = StyleSheet.create({
         maxWidth: 340,
         marginTop: height < 720 ? 12 : 18,
         color: '#202742',
+        fontFamily: fontFamily.medium,
         fontSize: width < 380 ? 13 : 15,
         lineHeight: width < 380 ? 20 : 22,
         textAlign: 'center',
-        fontWeight: '500',
+        fontWeight: fontWeight('500'),
         letterSpacing: 0,
     },
     copyHeart: {
@@ -351,17 +366,19 @@ const styles = StyleSheet.create({
     },
     nextText: {
         color: '#FFFFFF',
+        fontFamily: fontFamily.extraBold,
         fontSize: 18,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         letterSpacing: 0,
     },
     nextArrow: {
         position: 'absolute',
         right: 18,
         color: '#FFFFFF',
+        fontFamily: fontFamily.regular,
         fontSize: 24,
         lineHeight: 26,
-        fontWeight: '300',
+        fontWeight: fontWeight('300'),
     },
     progressRow: {
         marginTop: 24,

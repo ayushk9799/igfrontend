@@ -12,6 +12,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width, height } = Dimensions.get('window');
 
@@ -84,7 +85,7 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                     <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
                         <View style={styles.titleBlock}>
                             <Text style={styles.titlePrimary}>Share little</Text>
-                            <Svg height={width < 380 ? 39 : 43} width={width - 40}>
+                            <Svg height={width < 380 ? 32 : 36} width={width - 40} style={styles.gradientTitle}>
                                 <Defs>
                                     <SvgGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
                                         <Stop offset="0" stopColor="#F45F83" />
@@ -94,11 +95,14 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                                 </Defs>
                                 <SvgText
                                     fill="url(#titleGrad)"
+                                    fontFamily={fontFamily.extraBold}
                                     fontSize={width < 380 ? 27 : 31}
-                                    fontWeight="700"
+                                    fontWeight={fontWeight('900')}
+                                    stroke="url(#titleGrad)"
+                                    strokeWidth={1.2}
                                     textAnchor="middle"
                                     x={(width - 40) / 2}
-                                    y={width < 380 ? 32 : 36}
+                                    y={width < 380 ? 27 : 31}
                                 >
                                     moments together.
                                 </SvgText>
@@ -188,8 +192,9 @@ const styles = StyleSheet.create({
     },
     skipText: {
         color: '#8A62D9',
+        fontFamily: fontFamily.medium,
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: fontWeight('500'),
     },
     content: {
         flex: 1,
@@ -202,17 +207,22 @@ const styles = StyleSheet.create({
     },
     titlePrimary: {
         color: '#070E33',
+        fontFamily: fontFamily.extraBold,
         fontSize: width < 380 ? 28 : 32,
-        lineHeight: width < 380 ? 35 : 39,
-        fontWeight: '700',
+        lineHeight: width < 380 ? 32 : 36,
+        fontWeight: fontWeight('800'),
         textAlign: 'center',
         letterSpacing: 0,
     },
+    gradientTitle: {
+        marginTop: -2,
+    },
     titleAccent: {
         color: '#F45F83',
+        fontFamily: fontFamily.extraBold,
         fontSize: width < 380 ? 30 : 33,
         lineHeight: width < 380 ? 36 : 39,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         textAlign: 'center',
         letterSpacing: 0,
     },
@@ -230,6 +240,7 @@ const styles = StyleSheet.create({
     },
     dividerHeart: {
         color: '#FF6B82',
+        fontFamily: fontFamily.regular,
         fontSize: 22,
         lineHeight: 24,
     },
@@ -283,15 +294,17 @@ const styles = StyleSheet.create({
     },
     featureIcon: {
         color: '#FFFFFF',
+        fontFamily: fontFamily.bold,
         fontSize: 18,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         lineHeight: 22,
     },
     featureTitle: {
         marginTop: height < 760 ? 0 : 2,
+        fontFamily: fontFamily.bold,
         fontSize: width < 380 ? 15 : 17,
         lineHeight: width < 380 ? 19 : 21,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         color: '#070E33',
         textAlign: 'center',
     },
@@ -306,19 +319,21 @@ const styles = StyleSheet.create({
         height: '112%',
     },
     featureCopy: {
+        fontFamily: fontFamily.medium,
         fontSize: width < 380 ? 11 : 13,
         lineHeight: width < 380 ? 15 : 17,
         color: '#586071',
         textAlign: 'center',
-        fontWeight: '500',
+        fontWeight: fontWeight('500'),
         marginTop: 4,
     },
     featuresFooter: {
         marginTop: height < 720 ? 12 : 20,
         color: '#202742',
+        fontFamily: fontFamily.medium,
         fontSize: width < 380 ? 13 : 15,
         textAlign: 'center',
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
     },
     copyHeart: {
         color: '#FF6B82',
@@ -345,8 +360,9 @@ const styles = StyleSheet.create({
     },
     nextText: {
         color: '#FFFFFF',
+        fontFamily: fontFamily.extraBold,
         fontSize: 18,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         letterSpacing: 0,
     },
     progressRow: {
