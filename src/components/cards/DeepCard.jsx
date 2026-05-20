@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 import { categoryConfig, defaultConfig } from './categoryConfig';
 import { cardStyles } from './cardStyles';
 import { spacing } from '../../theme';
+import { fontFamily } from '../../constants/fonts';
 
 
 /**
@@ -152,11 +153,13 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '600',
         fontSize: 14,
+        fontFamily: fontFamily.bold,
     },
     counterText: {
         color: '#FFFFFF',
         fontWeight: '600',
         fontSize: 14,
+        fontFamily: fontFamily.bold,
     },
     questionSection: {
         flex: 1,
@@ -170,6 +173,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontStyle: 'italic',
         lineHeight: 32,
+        fontFamily: fontFamily.extraBold,
     },
     inputContainer: {
         backgroundColor: '#FFFFFF',
@@ -187,6 +191,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         flex: 1,
         textAlignVertical: 'top',
+        fontFamily: fontFamily.medium,
     },
     submitButton: {
         position: 'absolute',
@@ -207,6 +212,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 14,
         fontWeight: '700',
+        fontFamily: fontFamily.bold,
     },
     skipContainer: {
         alignItems: 'center',
@@ -216,6 +222,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
         color: 'rgba(255, 255, 255, 0.6)',
+        fontFamily: fontFamily.medium,
     },
 
 });

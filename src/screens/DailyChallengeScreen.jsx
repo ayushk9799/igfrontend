@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -20,6 +21,7 @@ import GradientBackground from '../components/GradientBackground';
 import { AnimatedCardStack } from '../components/cards';
 import DailyChallengeDoneScreen from './DailyChallengeDoneScreen';
 import { colors, spacing, borderRadius } from '../theme';
+import { fontFamily } from '../constants/fonts';
 import { API_BASE } from '../constants/Api';
 import { submitAnswer, getUserAnswers } from '../utils/answerApi';
 import { useSelector } from 'react-redux';
@@ -74,8 +76,8 @@ export default function DailyChallengeScreen({
     try {
       // Get user's local date in YYYY-MM-DD format (avoids timezone issues with server's "today")
       const now = new Date();
-      const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
+      // const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+       const userLocalDate='2026-05-18'
       const res = await fetch(`${API_BASE}/api/daily-challenge/date/${userLocalDate}`);
       const json = await res.json();
       setChallenge(json.data);
@@ -210,20 +212,30 @@ export default function DailyChallengeScreen({
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
-      </View>
+      <GestureHandlerRootView style={styles.container}>
+        <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+        <GradientBackground variant="light" showOrbs={true}>
+          <View style={[styles.center, { paddingTop: insets.top }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        </GradientBackground>
+      </GestureHandlerRootView>
     );
   }
 
   if (!challenge || tasks.length === 0) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <Text style={styles.emptyText}>No Challenge Today</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backBtnText}>← Back Home</Text>
-        </TouchableOpacity>
-      </View>
+      <GestureHandlerRootView style={styles.container}>
+        <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+        <GradientBackground variant="light" showOrbs={true}>
+          <View style={[styles.center, { paddingTop: insets.top, paddingHorizontal: spacing.lg }]}>
+            <Text style={styles.emptyText}>No Challenge Today</Text>
+            <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+              <Text style={styles.backBtnText}>← Back Home</Text>
+            </TouchableOpacity>
+          </View>
+        </GradientBackground>
+      </GestureHandlerRootView>
     );
   }
 
@@ -260,46 +272,50 @@ export default function DailyChallengeScreen({
       />
     );
   }
+
   return (
     <GestureHandlerRootView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={{ flex: 1 }}>
-          {/* Header */}
-          <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-            <TouchableOpacity onPress={onBack} style={styles.headerBackBtn}>
-              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                <Path d="M15 18l-6-6 6-6" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-              </Svg>
-            </TouchableOpacity>
-            <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>Today's Challenge</Text>
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <GradientBackground variant="light" showOrbs={true}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{ flex: 1 }}>
+            {/* Header */}
+            <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
+              <TouchableOpacity onPress={onBack} style={styles.headerBackBtn}>
+                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                  <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+              </TouchableOpacity>
+              <View style={styles.headerContent}>
+                <Text style={styles.headerTitle}>Today's Challenge</Text>
+              </View>
+              <View style={{ width: 48 }} />
             </View>
-            <View style={{ width: 48 }} />
-          </View>
 
-          {/* Cards Stack - Using AnimatedCardStack for smooth transitions */}
-          {/* Only show unanswered tasks - already answered ones are filtered out */}
-          <View style={[styles.cardsContainer, { paddingBottom: insets.bottom + 80 }]}>
-            <AnimatedCardStack
-              tasks={unansweredTasks}
-              currentIndex={currentIndex}
-              partnerName={partnerName}
-              userName={userName}
-              userAvatar={userData.avatarThumbnail || userData.avatar || userAvatar}
-              partnerAvatar={userData.partnerAvatarThumbnail || userData.partnerAvatar || partnerAvatar}
-              userId={userId}
-              partnerId={userData.partnerId}
-              hasPartner={hasPartner}
-              onLinkPartner={onLinkPartner}
-              onIndexChange={handleIndexChange}
-              onAnswerSubmit={handleAnswerSubmit}
-              challengeId={challenge._id}
-              userAnswers={userAnswers}
-              autoAdvanceOnSubmit={false}
-            />
+            {/* Cards Stack - Using AnimatedCardStack for smooth transitions */}
+            {/* Only show unanswered tasks - already answered ones are filtered out */}
+            <View style={[styles.cardsContainer, { paddingBottom: insets.bottom + 80 }]}>
+              <AnimatedCardStack
+                tasks={unansweredTasks}
+                currentIndex={currentIndex}
+                partnerName={partnerName}
+                userName={userName}
+                userAvatar={userData.avatarThumbnail || userData.avatar || userAvatar}
+                partnerAvatar={userData.partnerAvatarThumbnail || userData.partnerAvatar || partnerAvatar}
+                userId={userId}
+                partnerId={userData.partnerId}
+                hasPartner={hasPartner}
+                onLinkPartner={onLinkPartner}
+                onIndexChange={handleIndexChange}
+                onAnswerSubmit={handleAnswerSubmit}
+                challengeId={challenge._id}
+                userAnswers={userAnswers}
+                autoAdvanceOnSubmit={false}
+              />
+            </View>
           </View>
-        </View>
-      </TouchableWithoutFeedback>
+        </TouchableWithoutFeedback>
+      </GradientBackground>
     </GestureHandlerRootView>
   );
 }
@@ -307,11 +323,21 @@ export default function DailyChallengeScreen({
 /* ===================== STYLES ===================== */
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.6)', marginBottom: spacing.lg },
-  backBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: '#1A1A1A', borderRadius: borderRadius.lg },
-  backBtnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  emptyText: { fontFamily: fontFamily.bold, fontSize: 18, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.lg },
+  backBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  backBtnText: { fontFamily: fontFamily.bold, fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 
   header: {
     flexDirection: 'row',
@@ -323,20 +349,27 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: 'rgba(255, 255, 255, 0.86)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    shadowColor: '#C084FC',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   headerContent: { marginLeft: spacing.md, flex: 1 },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
-  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  headerTitle: { fontFamily: fontFamily.extraBold, fontSize: 22, fontWeight: '800', color: colors.text },
+  headerSubtitle: { fontFamily: fontFamily.medium, fontSize: 14, color: colors.textSecondary, marginTop: 2 },
   viewAnswersBtn: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: 'rgba(255, 255, 255, 0.86)',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
   },
-  viewAnswersBtnText: { fontSize: 12, fontWeight: '600', color: '#FFFFFF' },
+  viewAnswersBtnText: { fontFamily: fontFamily.bold, fontSize: 12, fontWeight: '600', color: colors.text },
 
   cardsContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: spacing.sm, paddingHorizontal: spacing.md },
 
@@ -350,13 +383,13 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: colors.borderLight || 'rgba(192, 132, 252, 0.2)',
   },
   progressDotCompleted: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary || '#FF758F',
   },
   progressDotActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.primary || '#FF758F',
     width: 20,
   },
 });

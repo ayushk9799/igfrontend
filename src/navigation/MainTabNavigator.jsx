@@ -12,6 +12,8 @@ import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
 import ChatListScreen from '../screens/ChatListScreen';
 import NotificationCenterScreen from '../screens/NotificationCenterScreen';
 import PremiumScreen from '../screens/PremiumScreen';
+import MoodScreen from '../screens/MoodScreen';
+import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
@@ -26,7 +28,7 @@ export const MainTabNavigator = ({
     yourMood,
     pendingInvite,
     initialTab,
-    onMoodPress,
+    onMoodSelect,
     onQuestionPress,
     onEditProfile,
     onAvatarPress,
@@ -44,9 +46,11 @@ export const MainTabNavigator = ({
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
+    const [todayChallenge, setTodayChallenge] = useState(null);
     const [isAccountVisible, setIsAccountVisible] = useState(false);
     const [isPremiumOpenInAccount, setIsPremiumOpenInAccount] = useState(false);
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
+    const [isMoodVisible, setIsMoodVisible] = useState(false);
 
     // Redux state
     const userData = useSelector(selectUser);
@@ -92,6 +96,31 @@ export const MainTabNavigator = ({
     useEffect(() => {
         fetchChatBadge();
     }, [fetchChatBadge]);
+
+    // Fetch today's challenge with answers
+    const fetchTodayChallenge = useCallback(async () => {
+        const userId = userData?._id || userData?.id;
+        if (!userId) return;
+
+        try {
+            const now = new Date();
+            const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const response = await fetch(`${API_BASE}/api/daily-challenge/date/${userLocalDate}/with-answers?userId=${userId}`);
+            const json = await response.json();
+            if (json.success) {
+                setTodayChallenge(json.data);
+            }
+        } catch (err) {
+            console.error('Error fetching today\'s challenge:', err);
+        }
+    }, [userData]);
+
+    // Fetch today's challenge when returning to home tab
+    useEffect(() => {
+        if (currentTab === 'home') {
+            fetchTodayChallenge();
+        }
+    }, [fetchTodayChallenge, currentTab]);
 
     // Listen for new chat messages to update badge
     useEffect(() => {
@@ -145,7 +174,8 @@ export const MainTabNavigator = ({
                         partnerOnline={partnerOnline}
                         partnerScribble={partnerScribble}
                         pendingInvite={pendingInvite}
-                        onMoodPress={onMoodPress}
+                        todayChallenge={todayChallenge}
+                        onMoodPress={() => setIsMoodVisible(true)}
                         onScribblePress={() => setCurrentTab('canvas')}
                         onQuestionPress={(category) => {
                             if (category) {
@@ -336,6 +366,25 @@ export const MainTabNavigator = ({
                     onJigsawPlay={onJigsawPlay}
                     onTicTacToePress={onTicTacToePress}
                     onWordlePress={onWordlePress}
+                />
+            </Modal>
+
+            <Modal
+                visible={isMoodVisible}
+                animationType="slide"
+                transparent={true}
+                statusBarTranslucent={true}
+                onRequestClose={() => setIsMoodVisible(false)}
+            >
+                <MoodScreen
+                    currentMood={getEmojiById(yourMood?.id) || getEmojiByLabel(yourMood?.label) || emojis[0]}
+                    partnerMood={partnerMood ? (getEmojiById(partnerMood.id) || getEmojiByLabel(partnerMood.label)) : null}
+                    partnerName={userData?.partnerUsername || partnerName || 'Your Love'}
+                    onMoodSelect={(mood) => {
+                        onMoodSelect?.(mood);
+                        setIsMoodVisible(false);
+                    }}
+                    onBack={() => setIsMoodVisible(false)}
                 />
             </Modal>
         </View>

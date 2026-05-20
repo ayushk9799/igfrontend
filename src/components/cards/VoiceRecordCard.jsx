@@ -23,6 +23,7 @@ import Animated, {
 
 import { categoryConfig } from './categoryConfig';
 import { cardStyles as styles } from './cardStyles';
+import { fontFamily } from '../../constants/fonts';
 import { colors, spacing } from '../../theme';
 import { uploadAudioToS3 } from '../../utils/uploadApi';
 
@@ -535,6 +536,7 @@ const voiceStyles = StyleSheet.create({
         fontSize: 16,
         marginTop: spacing.lg,
         fontWeight: '500',
+        fontFamily: fontFamily.medium,
     },
     timerContainer: {
         flexDirection: 'row',
@@ -557,6 +559,7 @@ const voiceStyles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '600',
         fontVariant: ['tabular-nums'],
+        fontFamily: fontFamily.bold,
     },
     previewContainer: {
         flexDirection: 'row',
@@ -613,6 +616,7 @@ const voiceStyles = StyleSheet.create({
         fontVariant: ['tabular-nums'],
         textAlign: 'center',
         marginTop: spacing.xs,
+        fontFamily: fontFamily.bold,
     },
     actionsRow: {
         flexDirection: 'row',
@@ -636,6 +640,7 @@ const voiceStyles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
         fontSize: 16,
         fontWeight: '600',
+        fontFamily: fontFamily.bold,
     },
     submitButton: {
         flex: 1.3,
@@ -658,6 +663,7 @@ const voiceStyles = StyleSheet.create({
         fontSize: 17,
         fontWeight: '700',
         letterSpacing: 0.5,
+        fontFamily: fontFamily.bold,
     },
     skipContainer: {
         marginTop: 'auto',
@@ -671,6 +677,7 @@ const voiceStyles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 16,
         fontWeight: '500',
+        fontFamily: fontFamily.medium,
     },
 
 });

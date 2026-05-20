@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { fontFamily } from '../../constants/fonts';
 
 import LikelyToCard from './LikelyToCard';
 import NeverHaveIEverCard from './NeverHaveIEverCard';
@@ -122,6 +123,7 @@ const lockedStyles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '600',
         fontSize: 14,
+        fontFamily: fontFamily.bold,
     },
     questionSection: {
         flex: 1,
@@ -135,6 +137,7 @@ const lockedStyles = StyleSheet.create({
         fontStyle: 'italic',
         lineHeight: 30,
         textAlign: 'center',
+        fontFamily: fontFamily.extraBold,
     },
     lockSection: {
         alignItems: 'center',
@@ -162,11 +165,13 @@ const lockedStyles = StyleSheet.create({
         textShadowColor: 'rgba(255, 215, 0, 0.3)',
         textShadowOffset: { width: 0, height: 2 },
         textShadowRadius: 8,
+        fontFamily: fontFamily.extraBold,
     },
     premiumSubtitle: {
         fontSize: 14,
         color: 'rgba(255, 255, 255, 0.75)',
         textAlign: 'center',
+        fontFamily: fontFamily.medium,
     },
     unlockButton: {
         borderRadius: 24,
@@ -192,6 +197,7 @@ const lockedStyles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '800',
         letterSpacing: 0.5,
+        fontFamily: fontFamily.bold,
     },
 });
 

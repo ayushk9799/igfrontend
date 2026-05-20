@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { fontFamily } from '../../constants/fonts';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
@@ -138,6 +139,7 @@ const styles = StyleSheet.create({
         left: -10,
         fontSize: 16,
         color: 'rgba(255, 215, 0, 0.6)',
+        fontFamily: fontFamily.medium,
     },
     sparkleRight: {
         position: 'absolute',
@@ -145,6 +147,7 @@ const styles = StyleSheet.create({
         right: -8,
         fontSize: 12,
         color: 'rgba(255, 215, 0, 0.5)',
+        fontFamily: fontFamily.medium,
     },
     // Lock icon with glow
     lockContainer: {
@@ -188,6 +191,7 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 2 },
         textShadowRadius: 8,
         letterSpacing: 0.5,
+        fontFamily: fontFamily.extraBold,
     },
     // Question preview
     questionPreview: {
@@ -207,6 +211,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontStyle: 'italic',
         lineHeight: 22,
+        fontFamily: fontFamily.bold,
     },
     // Subtitle
     subtitle: {
@@ -215,6 +220,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: 24,
         lineHeight: 20,
+        fontFamily: fontFamily.medium,
     },
     // Unlock button
     unlockButton: {
@@ -240,6 +246,7 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: '800',
         letterSpacing: 0.5,
+        fontFamily: fontFamily.bold,
     },
 });
 

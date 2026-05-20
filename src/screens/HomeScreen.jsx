@@ -12,15 +12,78 @@ import {
     StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import LottieView from 'lottie-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { getPenguinMoodImage } from '../constants/PenguinMoods';
+import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
+import { fontFamily } from '../constants/fonts';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 92) / 4;
+
+const HomeText = ({ children, style, ...props }) => (
+    <Text {...props} style={[{ fontFamily: fontFamily.regular }, style]} allowFontScaling={false}>
+        {children}
+    </Text>
+);
+
+const CONNECTION_TOPICS = [
+    {
+        id: 'future',
+        title: 'Future',
+        subtitle: 'Dream, plan\nand imagine',
+        image: require('../../assets/home/future-crystal.png'),
+        gradient: ['#D9B6FF', '#C79BFF'],
+        textColor: '#7341C8',
+        arrowColor: '#8A58DD',
+    },
+    {
+        id: 'money',
+        title: 'Money',
+        subtitle: 'Build security\ntogether',
+        image: require('../../assets/home/money-bag.png'),
+        gradient: ['#B6EBCF', '#D7F4DE'],
+        textColor: '#087D61',
+        arrowColor: '#13956D',
+    },
+    {
+        id: 'hotspicy',
+        title: 'Hot & Spicy',
+        subtitle: 'Add spark and\nexcitement',
+        image: require('../../assets/home/hot-fire.png'),
+        gradient: ['#FFA8B7', '#FFC3CD'],
+        textColor: '#B63567',
+        arrowColor: '#D94B69',
+    },
+    {
+        id: 'political',
+        title: 'Political',
+        subtitle: 'Share views\nrespectfully',
+        image: require('../../assets/home/political-ballot.png'),
+        gradient: ['#90C8FF', '#AED6FF'],
+        textColor: '#1C6EBB',
+        arrowColor: '#357FD1',
+    },
+    {
+        id: 'fitness',
+        title: 'Lifestyle',
+        subtitle: 'Habits, health\nand routines',
+        image: require('../../assets/home/lifestyle-arm.png'),
+        gradient: ['#7ADCE1', '#B5EEF0'],
+        textColor: '#13788D',
+        arrowColor: '#1897A8',
+    },
+    {
+        id: 'travel',
+        title: 'Travel',
+        subtitle: 'Explore places\ntogether',
+        image: require('../../assets/home/travel-plane.png'),
+        gradient: ['#FFC35C', '#FFD780'],
+        textColor: '#A45B13',
+        arrowColor: '#D78319',
+    },
+];
 
 const IconSvg = ({ type, color = '#7867F6', size = 26 }) => {
     const stroke = color;
@@ -63,6 +126,9 @@ const IconSvg = ({ type, color = '#7867F6', size = 26 }) => {
                     <Path d="M8 3V7M16 3V7M4 10H20" stroke={stroke} strokeWidth={1.8} strokeLinecap="round" />
                 </>
             )}
+            {type === 'arrow' && (
+                <Path d="M5 12H18M13 7L18 12L13 17" stroke={stroke} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            )}
         </Svg>
     );
 };
@@ -96,9 +162,23 @@ const HomeScreen = ({
     onNotificationPress,
 }) => {
     const blinkAnim = useRef(new Animated.Value(1)).current;
-    const categories = Object.values(TOPIC_CATEGORIES).slice(0, 6);
-    const partnerMoodLabel = partnerMood?.label || partnerMood?.mood || 'Waiting';
-     const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
+    const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
+
+    const isChallengeComplete = todayChallenge?.progress?.isComplete || false;
+    const completedCount = todayChallenge?.progress?.completedCount || 0;
+    const totalTasks = todayChallenge?.progress?.totalTasks || 0;
+
+    let currentTask = null;
+    if (todayChallenge?.challenge?.tasks) {
+        const tasks = todayChallenge.challenge.tasks;
+        const savedAnswers = todayChallenge.answers?.answers || [];
+        const firstUnansweredIndex = tasks.findIndex((_, idx) => !savedAnswers[idx]?.value);
+        const targetIndex = firstUnansweredIndex !== -1 ? firstUnansweredIndex : completedCount;
+        if (targetIndex >= 0 && targetIndex < tasks.length) {
+            currentTask = tasks[targetIndex];
+        }
+    }
+
     useEffect(() => {
         onRefreshPuzzle?.();
     }, [onRefreshPuzzle]);
@@ -186,57 +266,146 @@ const HomeScreen = ({
                   
 
                     <View style={styles.twoColumn}>
-                        <TouchableOpacity style={styles.canvasCard} onPress={onScribblePress} activeOpacity={0.9}>
-                            <Text style={styles.smallCardTitle}>Scribble board</Text>
-                            {partnerScribble?.paths?.length > 0 ? (
-                                <Svg width="100%" height={92} viewBox="0 0 320 180">
-                                    {partnerScribble.paths.slice(0, 18).map((path, index) => (
-                                        <Path
-                                            key={`${path.d}-${index}`}
-                                            d={path.d}
-                                            stroke={path.color}
-                                            strokeWidth={path.strokeWidth}
-                                            fill="none"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
+                        <TouchableOpacity onPress={onScribblePress} activeOpacity={0.9} style={styles.featureCardPressable}>
+                            <LinearGradient
+                                colors={['#F4E8FF', '#FFF9FF']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.canvasCard}
+                            >
+                                <View style={styles.featureCardHeader}>
+                                    <HomeText style={styles.smallCardTitle}>Scribble board</HomeText>
+                                    <HomeText style={styles.smallCardSub}>Draw your thoughts</HomeText>
+                                </View>
+
+                                <View style={styles.scribblePaper}>
+                                    {partnerScribble?.paths?.length > 0 ? (
+                                        <Svg width="100%" height="100%" viewBox="0 0 320 180">
+                                            {partnerScribble.paths.slice(0, 18).map((path, index) => (
+                                                <Path
+                                                    key={`${path.d}-${index}`}
+                                                    d={path.d}
+                                                    stroke={path.color}
+                                                    strokeWidth={path.strokeWidth}
+                                                    fill="none"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            ))}
+                                        </Svg>
+                                    ) : (
+                                        <LottieView
+                                            source={require('../../assets/canvas.lottie')}
+                                            autoPlay
+                                            loop={false}
+                                            style={styles.scribbleLottie}
                                         />
-                                    ))}
-                                </Svg>
-                            ) : (
-                                <LottieView source={require('../../assets/canvas2.lottie')} autoPlay loop={false} style={styles.canvasLottie} />
-                            )}
+                                    )}
+                                </View>
+
+                               
+                            </LinearGradient>
                         </TouchableOpacity>
 
-                        <View style={styles.streakCard}>
-                            <Text style={styles.smallCardTitle}>Together</Text>
-                            <Text style={styles.daysText}>{daysTogether || 1}</Text>
-                            <Text style={styles.daysLabel}>{daysTogether === 1 ? 'day' : 'days'}</Text>
-                            <Text style={styles.daysSub}>growing gently</Text>
-                        </View>
+                        {isChallengeComplete ? (
+                            <TouchableOpacity onPress={() => onQuestionPress?.()} activeOpacity={0.9} style={styles.featureCardPressable}>
+                                <LinearGradient
+                                    colors={['#E3F9F0', '#F2FCF8']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={[styles.streakCard, { borderColor: '#D0F2E4' }]}
+                                >
+                                    <View style={styles.featureCardHeader}>
+                                        <HomeText style={[styles.smallCardTitle, { color: '#0A5C43' }]}>Challenge Done! ✨</HomeText>
+                                        <HomeText style={[styles.smallCardSub, { color: '#138A68' }]}>You're all caught up</HomeText>
+                                    </View>
+                                    <View style={styles.challengeContentCompleted}>
+                                        <HomeText style={styles.completedSubText}>
+                                            Great job! Come back tomorrow for new prompts.
+                                        </HomeText>
+                                        <View style={styles.completedBadge}>
+                                            <Image source={require('../../assets/home/together-heart-plant.png')} style={styles.completedImage} />
+                                        </View>
+                                    </View>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity onPress={() => onQuestionPress?.()} activeOpacity={0.9} style={styles.featureCardPressable}>
+                                <LinearGradient
+                                    colors={['#FFF0F2', '#FFE5EA']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.streakCard}
+                                >
+                                    <View style={styles.featureCardHeader}>
+                                        <HomeText style={styles.smallCardTitle}>Daily Ritual</HomeText>
+                                        <HomeText style={styles.smallCardSub}>
+                                            {todayChallenge ? `Task ${Math.min(completedCount + 1, totalTasks || 1)} of ${totalTasks || 3}` : 'Daily Prompts'}
+                                        </HomeText>
+                                    </View>
+                                    <View style={styles.challengeContent}>
+                                        {currentTask ? (
+                                            <View style={styles.challengePromptContainer}>
+                                                <HomeText style={styles.challengeCategory}>
+                                                    {currentTask.category === 'likelyto' && 'Most likely to... 👑'}
+                                                    {currentTask.category === 'neverhaveiever' && 'Never have I ever... 🙈'}
+                                                    {currentTask.category === 'deep' && 'Deep question... 💭'}
+                                                    {currentTask.category === 'takephoto' && 'Photo challenge... 📸'}
+                                                    {!['likelyto', 'neverhaveiever', 'deep', 'takephoto'].includes(currentTask.category) && 'Daily prompt... 📝'}
+                                                </HomeText>
+                                                <HomeText style={styles.challengeQuestion} numberOfLines={3}>
+                                                    {currentTask.taskstatement}
+                                                </HomeText>
+                                            </View>
+                                        ) : (
+                                            <View style={styles.challengePromptContainer}>
+                                                <HomeText style={styles.challengeQuestion} numberOfLines={3}>
+                                                    Tap to answer today's questions and build your bond!
+                                                </HomeText>
+                                            </View>
+                                        )}
+                                    </View>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                 
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Deepen your connection</Text>
+                        <HomeText style={styles.sectionTitle}>Deepen your connection</HomeText>
+                        <HomeText style={styles.sectionSub}>Explore topics that bring you closer</HomeText>
                     </View>
                     <View style={styles.topicGrid}>
-                        {categories.map((cat) => (
+                        {CONNECTION_TOPICS.map((topic) => (
                             <TouchableOpacity
-                                key={cat._id || cat.id}
-                                style={[styles.topicCard, { backgroundColor: cat.color || '#8B7CFF' }]}
-                                onPress={() => onQuestionPress?.(cat)}
+                                key={topic.id}
+                                style={styles.topicPressable}
+                                onPress={() => onQuestionPress?.(TOPIC_CATEGORIES[topic.id])}
                                 activeOpacity={0.88}
                             >
-                                <Text style={styles.topicEmoji}>{cat.emoji || '♡'}</Text>
-                                <Text style={styles.topicTitle} numberOfLines={1}>{cat.title}</Text>
+                                <LinearGradient
+                                    colors={topic.gradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.topicCard}
+                                >
+                                    <Image source={topic.image} style={styles.topicImage} />
+                                    <View style={styles.topicCopy}>
+                                        <HomeText style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{topic.title}</HomeText>
+                                        <HomeText style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{topic.subtitle}</HomeText>
+                                    </View>
+                                    <View style={styles.topicArrow}>
+                                        <IconSvg type="arrow" color={topic.arrowColor} size={18} />
+                                    </View>
+                                </LinearGradient>
                             </TouchableOpacity>
                         ))}
                     </View>
 
                     {!hasPartner && (
                         <TouchableOpacity style={styles.linkPartnerCard} onPress={onFindPartner} activeOpacity={0.9}>
-                            <Text style={styles.linkPartnerTitle}>Find your partner</Text>
-                            <Text style={styles.linkPartnerText}>Connect with someone special and start your Penguin story.</Text>
+                            <HomeText style={styles.linkPartnerTitle}>Find your partner</HomeText>
+                            <HomeText style={styles.linkPartnerText}>Connect with someone special and start your Penguin story.</HomeText>
                         </TouchableOpacity>
                     )}
                 </ScrollView>
@@ -316,6 +485,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 9,
         fontWeight: '900',
+        fontFamily: fontFamily.extraBold,
     },
     greetingBlock: {
         marginBottom: 14,
@@ -324,12 +494,14 @@ const styles = StyleSheet.create({
         fontSize: 25,
         fontWeight: '900',
         color: '#171B44',
+        fontFamily: fontFamily.extraBold,
     },
     greetingSub: {
         color: '#6F6998',
         fontSize: 14,
         fontWeight: '600',
         marginTop: 4,
+        fontFamily: fontFamily.bold,
     },
     partnerMoodCard: {
         flexDirection: 'row',
@@ -348,18 +520,21 @@ const styles = StyleSheet.create({
         color: '#272C57',
         fontSize: 12,
         fontWeight: '800',
+        fontFamily: fontFamily.extraBold,
     },
     partnerMoodText: {
         color: '#FF6F8F',
         fontSize: 20,
         fontWeight: '900',
         marginTop: 5,
+        fontFamily: fontFamily.extraBold,
     },
     cardMeta: {
         color: '#817A9F',
         fontSize: 12,
         fontWeight: '600',
         marginTop: 5,
+        fontFamily: fontFamily.bold,
     },
     moodAvatar: {
         width: 80,
@@ -453,6 +628,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '900',
         marginBottom: 12,
+        fontFamily: fontFamily.extraBold,
     },
     quickGrid: {
         flexDirection: 'row',
@@ -460,7 +636,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     quickCard: {
-        width: CARD_WIDTH,
+        width: (width - 92) / 4,
         minHeight: 76,
         borderRadius: 14,
         alignItems: 'center',
@@ -481,6 +657,7 @@ const styles = StyleSheet.create({
         color: '#272C57',
         fontSize: 11,
         fontWeight: '800',
+        fontFamily: fontFamily.extraBold,
     },
     quoteCard: {
         marginTop: 14,
@@ -496,12 +673,14 @@ const styles = StyleSheet.create({
         color: '#555078',
         fontSize: 15,
         fontWeight: '700',
+        fontFamily: fontFamily.bold,
     },
     quoteSub: {
         color: '#6F6998',
         fontSize: 13,
         fontWeight: '600',
         marginTop: 3,
+        fontFamily: fontFamily.bold,
     },
     todayCard: {
         marginTop: 18,
@@ -522,6 +701,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '900',
         marginTop: 4,
+        fontFamily: fontFamily.extraBold,
     },
     calendarBubble: {
         width: 44,
@@ -537,69 +717,198 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         fontWeight: '600',
         marginTop: 12,
+        fontFamily: fontFamily.bold,
     },
     twoColumn: {
         flexDirection: 'row',
         gap: 12,
-        marginTop: 14,
+        marginTop: 18,
+        marginHorizontal: -20,
+        paddingHorizontal: 20,
+    },
+    featureCardPressable: {
+        flex: 1,
     },
     canvasCard: {
-        flex: 1.35,
-        height: 148,
-        borderRadius: 20,
+        height: 190,
+        borderRadius: 18,
         overflow: 'hidden',
-        padding: 14,
-        backgroundColor: 'rgba(255,255,255,0.9)',
+        padding: 0,
         borderWidth: 1,
-        borderColor: '#F8DDE8',
+        borderColor: 'rgba(255,255,255,0.88)',
         ...cardShadow,
+    },
+    featureCardHeader: {
+        minHeight: 42,
+        zIndex: 2,
+        paddingTop: 16,
+        paddingHorizontal: 16,
     },
     smallCardTitle: {
         color: '#171B44',
         fontSize: 14,
+        lineHeight: 18,
         fontWeight: '900',
-        marginBottom: 6,
+        fontFamily: fontFamily.extraBold,
     },
-    canvasLottie: {
+    smallCardSub: {
+        color: '#766F9B',
+        fontSize: 11,
+        lineHeight: 15,
+        fontWeight: '700',
+        marginTop: 4,
+        fontFamily: fontFamily.bold,
+    },
+    scribblePaper: {
+        flex: 1,
         width: '100%',
-        height: 96,
+        overflow: 'hidden',
+        borderBottomLeftRadius: 18,
+        borderBottomRightRadius: 18,
+    },
+    scribbleDoodles: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    pencilBubble: {
+        position: 'absolute',
+        right: 12,
+        bottom: 12,
+        width: 48,
+        height: 48,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.38)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.58)',
+    },
+    pencilImage: {
+        width: 34,
+        height: 34,
+        resizeMode: 'contain',
     },
     streakCard: {
         flex: 1,
-        height: 148,
-        borderRadius: 20,
-        padding: 14,
-        backgroundColor: 'rgba(255,255,255,0.9)',
+        height: 190,
+        borderRadius: 18,
+        padding: 0,
         borderWidth: 1,
-        borderColor: '#F8DDE8',
+        borderColor: 'rgba(255,255,255,0.9)',
+        overflow: 'hidden',
         ...cardShadow,
+    },
+    scribbleLottie: {
+        width: '100%',
+        height: '100%',
+    },
+    togetherContent: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+    },
+    togetherImage: {
+        width: 78,
+        height: 94,
+        resizeMode: 'contain',
+        marginRight: -10,
+        marginBottom: -8,
     },
     daysText: {
         color: '#FF758F',
-        fontSize: 38,
+        fontSize: 40,
         fontWeight: '900',
-        marginTop: 4,
+        lineHeight: 44,
+        fontFamily: fontFamily.extraBold,
     },
     daysLabel: {
         color: '#171B44',
-        fontSize: 14,
+        fontSize: 15,
+        lineHeight: 19,
         fontWeight: '900',
-        marginTop: -3,
+        fontFamily: fontFamily.extraBold,
     },
     daysSub: {
         color: '#817A9F',
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 11,
+        lineHeight: 14,
+        fontWeight: '800',
         marginTop: 8,
+        fontFamily: fontFamily.extraBold,
+    },
+    challengeContent: {
+        flex: 1,
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        justifyContent: 'space-between',
+    },
+    challengePromptContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        marginTop: 4,
+    },
+    challengeCategory: {
+        color: '#FF6F8F',
+        fontSize: 11,
+        fontWeight: '800',
+        fontFamily: fontFamily.extraBold,
+        textTransform: 'uppercase',
+        marginBottom: 4,
+    },
+    challengeQuestion: {
+        color: '#3C375A',
+        fontSize: 13,
+        lineHeight: 17,
+        fontWeight: '700',
+        fontFamily: fontFamily.bold,
+    },
+    challengeContentCompleted: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+    },
+    completedSubText: {
+        color: '#138A68',
+        fontSize: 12,
+        lineHeight: 16,
+        fontWeight: '600',
+        fontFamily: fontFamily.bold,
+        flex: 1,
+        paddingRight: 8,
+    },
+    completedBadge: {
+        width: 50,
+        height: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    completedImage: {
+        width: 44,
+        height: 52,
+        resizeMode: 'contain',
+        transform: [{ rotate: '5deg' }],
     },
     sectionHeader: {
         marginTop: 24,
-        marginBottom: 12,
+        marginBottom: 14,
     },
     sectionTitle: {
         color: '#171B44',
-        fontSize: 19,
+        fontSize: 20,
         fontWeight: '900',
+        fontFamily: fontFamily.extraBold,
+    },
+    sectionSub: {
+        color: '#766F9B',
+        fontSize: 13,
+        fontWeight: '700',
+        marginTop: 3,
+        fontFamily: fontFamily.bold,
     },
     horizontalList: {
         gap: 12,
@@ -626,6 +935,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 17,
         fontWeight: '900',
+        fontFamily: fontFamily.extraBold,
     },
     gameSubtitle: {
         color: 'rgba(255,255,255,0.86)',
@@ -633,28 +943,67 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         lineHeight: 17,
         marginTop: 6,
+        fontFamily: fontFamily.bold,
     },
     topicGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        justifyContent: 'space-between',
+        rowGap: 12,
+    },
+    topicPressable: {
+        width: (width - 52) / 2,
     },
     topicCard: {
-        width: (width - 50) / 2,
-        minHeight: 76,
-        borderRadius: 18,
-        padding: 14,
-        justifyContent: 'center',
+        height: 86,
+        borderRadius: 16,
+        paddingHorizontal: 0,
+        paddingVertical: 0,
+        flexDirection: 'row',
+        alignItems: 'center',
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.78)',
+        ...cardShadow,
     },
-    topicEmoji: {
-        fontSize: 20,
-        marginBottom: 5,
+    topicImage: {
+        width: 56,
+        height: 62,
+        resizeMode: 'contain',
+        marginLeft: -4,
+        marginRight: 7,
     },
     topicTitle: {
-        color: '#FFFFFF',
-        fontSize: 15,
+        fontSize: 14,
+        lineHeight: 17,
         fontWeight: '900',
+        letterSpacing: 0,
+        fontFamily: fontFamily.extraBold,
+    },
+    topicCopy: {
+        flexShrink: 1,
+        flexGrow: 1,
+        minWidth: 0,
+    },
+    topicSubtitle: {
+        fontSize: 11,
+        lineHeight: 15,
+        fontWeight: '700',
+        marginTop: 4,
+        opacity: 0.85,
+        fontFamily: fontFamily.bold,
+    },
+    topicArrow: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.48)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.62)',
+        flexShrink: 0,
+        marginLeft: 5,
     },
     linkPartnerCard: {
         marginTop: 18,
@@ -670,12 +1019,14 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '900',
         marginBottom: 7,
+        fontFamily: fontFamily.extraBold,
     },
     linkPartnerText: {
         color: '#6F6998',
         fontSize: 14,
         lineHeight: 20,
         fontWeight: '600',
+        fontFamily: fontFamily.bold,
     },
 });
 

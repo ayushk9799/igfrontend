@@ -1,5 +1,6 @@
 import { StyleSheet, Dimensions } from 'react-native';
 import { colors, spacing, borderRadius } from '../../theme';
+import { fontFamily } from '../../constants/fonts';
 
 const { width } = Dimensions.get('window');
 export const AVATAR_SIZE = 85;
@@ -19,13 +20,37 @@ export const cardStyles = StyleSheet.create({
     // Card header
     topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
     categoryBadge: { flexDirection: 'row', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
-    categoryText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
-    counterText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+    categoryText: {
+        color: '#FFFFFF',
+        fontWeight: '600',
+        fontSize: 14,
+        fontFamily: fontFamily.bold,
+    },
+    counterText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.textSecondary,
+        fontFamily: fontFamily.bold,
+    },
 
     // Question area
     questionSection: { flex: 1, justifyContent: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.md },
-    prefixText: { fontSize: 16, fontWeight: '600', marginBottom: spacing.xs, textAlign: 'center' },
-    questionText: { fontSize: 24, fontWeight: '800', textAlign: 'center', lineHeight: 32, color: '#FFFFFF', fontStyle: 'italic' },
+    prefixText: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: spacing.xs,
+        textAlign: 'center',
+        fontFamily: fontFamily.bold,
+    },
+    questionText: {
+        fontSize: 24,
+        fontWeight: '800',
+        textAlign: 'center',
+        lineHeight: 32,
+        color: '#FFFFFF',
+        fontStyle: 'italic',
+        fontFamily: fontFamily.extraBold,
+    },
 
     // Buttons
     submitBtn: {
@@ -34,7 +59,13 @@ export const cardStyles = StyleSheet.create({
         alignItems: 'center',
         marginTop: spacing.md,
     },
-    waitingText: { textAlign: 'center', color: colors.textSecondary, marginTop: spacing.md, fontSize: 15 },
+    waitingText: {
+        textAlign: 'center',
+        color: colors.textSecondary,
+        marginTop: spacing.md,
+        fontSize: 15,
+        fontFamily: fontFamily.medium,
+    },
     cardButtonsRow: {
         flexDirection: 'row',
         justifyContent: 'center',
@@ -51,8 +82,14 @@ export const cardStyles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: "white",
+        fontFamily: fontFamily.bold,
     },
-    selectedCheck: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+    selectedCheck: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        fontFamily: fontFamily.bold,
+    },
 
     // Likely To Card styles
     dropZone: {
@@ -68,8 +105,16 @@ export const cardStyles = StyleSheet.create({
     },
     dropZoneGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
     emptyDropZone: { alignItems: 'center', gap: 4 },
-    dropHint: { fontSize: 14, fontWeight: '700' },
-    selectedText: { fontSize: 20, fontWeight: '800' },
+    dropHint: {
+        fontSize: 14,
+        fontWeight: '700',
+        fontFamily: fontFamily.bold,
+    },
+    selectedText: {
+        fontSize: 20,
+        fontWeight: '800',
+        fontFamily: fontFamily.extraBold,
+    },
 
     avatarsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
     avatarWrapper: { alignItems: 'center' },
@@ -91,7 +136,13 @@ export const cardStyles = StyleSheet.create({
     avatarInner: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     avatarEmoji: { fontSize: 30 },
     avatarImage: { width: '100%', height: '100%', borderRadius: AVATAR_SIZE / 2 },
-    avatarName: { fontSize: 14, fontWeight: '700', color: colors.text, marginTop: spacing.xs },
+    avatarName: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: colors.text,
+        marginTop: spacing.xs,
+        fontFamily: fontFamily.bold,
+    },
     selectedIndicator: {
         position: 'absolute',
         top: -4,
@@ -105,7 +156,12 @@ export const cardStyles = StyleSheet.create({
         borderColor: colors.surface,
     },
     vsContainer: { width: 40, alignItems: 'center', marginHorizontal: spacing.sm },
-    vsText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+    vsText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        fontFamily: fontFamily.extraBold,
+    },
 
     // Never Have I Ever styles
     choicesRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
@@ -122,8 +178,16 @@ export const cardStyles = StyleSheet.create({
     },
     choiceCardSelected: { borderColor: 'transparent' },
     choiceGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-    choiceText: { fontSize: 16, fontWeight: '700', color: colors.text },
-    choiceTextSelected: { color: '#FFFFFF' },
+    choiceText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+        fontFamily: fontFamily.bold,
+    },
+    choiceTextSelected: {
+        color: '#FFFFFF',
+        fontFamily: fontFamily.bold,
+    },
     choiceSelectedBadge: {
         position: 'absolute',
         top: 8,
@@ -239,6 +303,7 @@ export const cardStyles = StyleSheet.create({
     photoOptionText: {
         fontSize: 16,
         fontWeight: '700',
+        fontFamily: fontFamily.bold,
     },
     photoPreviewContainer: {
         flex: 1,
@@ -296,6 +361,7 @@ export const cardStyles = StyleSheet.create({
         fontWeight: '800',
         color: colors.text,
         marginBottom: spacing.xs,
+        fontFamily: fontFamily.extraBold,
     },
     answeredText: {
         fontSize: 16,
@@ -303,11 +369,13 @@ export const cardStyles = StyleSheet.create({
         color: colors.primary,
         marginBottom: spacing.md,
         textAlign: 'center',
+        fontFamily: fontFamily.bold,
     },
     answeredHint: {
         fontSize: 14,
         fontWeight: '500',
         color: colors.textSecondary,
+        fontFamily: fontFamily.medium,
     },
 
     // New DeepCard specific styles
@@ -331,6 +399,7 @@ export const cardStyles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '700',
         fontSize: 14,
+        fontFamily: fontFamily.bold,
     },
     deepShareButton: {
         width: 44,
@@ -352,6 +421,7 @@ export const cardStyles = StyleSheet.create({
         fontWeight: '500',
         textAlignVertical: 'top',
         flex: 1,
+        fontFamily: fontFamily.medium,
     },
     deepSubmitButton: {
         position: 'absolute',
@@ -383,8 +453,6 @@ export const cardStyles = StyleSheet.create({
         letterSpacing: 1,
         textTransform: 'uppercase',
         paddingVertical: spacing.xs,
+        fontFamily: fontFamily.bold,
     },
-
-
-
 });

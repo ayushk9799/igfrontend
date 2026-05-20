@@ -13,6 +13,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
 
 import { colors, spacing, borderRadius } from '../theme';
+import { fontFamily } from '../constants/fonts';
 
 const { width } = Dimensions.get('window');
 
@@ -177,12 +178,14 @@ const styles = StyleSheet.create({
         marginTop: spacing.xl,
     },
     completionTitle: {
+        fontFamily: fontFamily.extraBold,
         fontSize: 28,
         fontWeight: '800',
         color: colors.text,
         marginTop: spacing.md,
     },
     completionSubtitle: {
+        fontFamily: fontFamily.medium,
         fontSize: 16,
         color: colors.textSecondary,
         marginTop: spacing.xs,
@@ -206,17 +209,20 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     progressLabel: {
+        fontFamily: fontFamily.bold,
         fontSize: 14,
         fontWeight: '600',
         color: colors.textSecondary,
         marginBottom: spacing.xs,
     },
     progressCount: {
+        fontFamily: fontFamily.extraBold,
         fontSize: 48,
         fontWeight: '800',
         color: colors.primary,
     },
     progressText: {
+        fontFamily: fontFamily.medium,
         fontSize: 16,
         fontWeight: '500',
         color: colors.textSecondary,
@@ -238,6 +244,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     notifyText: {
+        fontFamily: fontFamily.medium,
         fontSize: 16,
         fontWeight: '500',
         color: colors.text,
@@ -259,6 +266,7 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     compareBtnText: {
+        fontFamily: fontFamily.bold,
         fontSize: 16,
         fontWeight: '700',
         color: '#fff',
@@ -280,6 +288,7 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     remindBtnText: {
+        fontFamily: fontFamily.bold,
         fontSize: 16,
         fontWeight: '700',
         color: '#fff',
@@ -291,6 +300,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     viewAnswersBtnText: {
+        fontFamily: fontFamily.bold,
         fontSize: 14,
         fontWeight: '600',
         color: colors.primary,
@@ -317,12 +327,14 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     answerQuestion: {
+        fontFamily: fontFamily.bold,
         fontSize: 14,
         fontWeight: '600',
         color: colors.text,
         marginBottom: 4,
     },
     answerValue: {
+        fontFamily: fontFamily.medium,
         fontSize: 13,
         color: colors.primary,
         fontWeight: '500',
@@ -333,6 +345,7 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.sm,
     },
     homeLinkText: {
+        fontFamily: fontFamily.bold,
         fontSize: 14,
         fontWeight: '600',
         color: colors.textSecondary,

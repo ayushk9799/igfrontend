@@ -11,7 +11,10 @@ import {
     TouchableWithoutFeedback,
     Keyboard,
     Image,
+    StatusBar,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { fontFamily } from '../constants/fonts';
 
 // Topic image mapping - matches HomeScreen topic images
 const TOPIC_IMAGES = {
@@ -284,62 +287,59 @@ export default function TopicQuestionsScreen({
         }));
     }, [questions]);
 
-    // Loading state
-    if (loading) {
-        return (
-            <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-                <ActivityIndicator size="large" color="#FFFFFF" />
-                <Text style={styles.loadingText}>Loading {topicTitle} questions...</Text>
-            </View>
-        );
-    }
+    const renderContent = () => {
+        if (loading) {
+            return (
+                <View style={[styles.center, { paddingTop: insets.top }]}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={styles.loadingText}>Loading {topicTitle} questions...</Text>
+                </View>
+            );
+        }
 
-    // Error state
-    if (error) {
-        return (
-            <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-                <Text style={styles.errorEmoji}>😕</Text>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity style={styles.retryBtn} onPress={() => fetchQuestions(true)}>
-                    <Text style={styles.retryBtnText}>Try Again</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-                    <Text style={styles.backBtnText}>← Go Back</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
+        if (error) {
+            return (
+                <View style={[styles.center, { paddingTop: insets.top }]}>
+                    <Text style={styles.errorEmoji}>😕</Text>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity style={styles.retryBtn} onPress={() => fetchQuestions(true)}>
+                        <Text style={styles.retryBtnText}>Try Again</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+                        <Text style={styles.backBtnText}>← Go Back</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
 
-    // No questions state
-    if (tasks.length === 0) {
-        return (
-            <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-                {TOPIC_IMAGES[topic] ? (
-                    <Image
-                        source={TOPIC_IMAGES[topic]}
-                        style={styles.emptyImage}
-                        resizeMode="contain"
-                    />
-                ) : (
-                    <Text style={styles.emptyEmoji}>{topicEmoji || '📝'}</Text>
-                )}
-                <Text style={styles.emptyText}>No questions available for {topicTitle}</Text>
-                <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-                    <Text style={styles.backBtnText}>← Go Back</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
+        if (tasks.length === 0) {
+            return (
+                <View style={[styles.center, { paddingTop: insets.top }]}>
+                    {TOPIC_IMAGES[topic] ? (
+                        <Image
+                            source={TOPIC_IMAGES[topic]}
+                            style={styles.emptyImage}
+                            resizeMode="contain"
+                        />
+                    ) : (
+                        <Text style={styles.emptyEmoji}>{topicEmoji || '📝'}</Text>
+                    )}
+                    <Text style={styles.emptyText}>No questions available for {topicTitle}</Text>
+                    <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+                        <Text style={styles.backBtnText}>← Go Back</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
 
-    return (
-        <GestureHandlerRootView style={styles.container}>
+        return (
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={{ flex: 1 }}>
                     {/* Header */}
                     <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
                         <TouchableOpacity onPress={onBack} style={styles.headerBackBtn}>
                             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                <Path d="M15 18l-6-6 6-6" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
                             </Svg>
                         </TouchableOpacity>
                         <View style={styles.headerContent}>
@@ -381,35 +381,68 @@ export default function TopicQuestionsScreen({
                     </View>
                 </View>
             </TouchableWithoutFeedback>
-        </GestureHandlerRootView>
+        );
+    };
+
+    return (
+        <LinearGradient
+            colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+            locations={[0, 0.34, 0.72, 1]}
+            start={{ x: 0.25, y: 0 }}
+            end={{ x: 0.75, y: 1 }}
+            style={{ flex: 1 }}
+        >
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+            <GestureHandlerRootView style={styles.container}>
+                {renderContent()}
+            </GestureHandlerRootView>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#000000' },
+    container: { flex: 1, backgroundColor: 'transparent' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
 
     loadingText: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
-        marginTop: spacing.lg
+        color: colors.textSecondary,
+        marginTop: spacing.lg,
+        fontFamily: fontFamily.medium,
     },
 
     errorEmoji: { fontSize: 48, marginBottom: spacing.md },
     errorText: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.6)',
+        color: colors.textSecondary,
         textAlign: 'center',
-        marginBottom: spacing.lg
+        marginBottom: spacing.lg,
+        fontFamily: fontFamily.medium,
     },
     retryBtn: {
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.md,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: colors.primary,
         borderRadius: borderRadius.lg,
         marginBottom: spacing.md,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#FF758F',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.15,
+                shadowRadius: 10,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     },
-    retryBtnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+    retryBtnText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        fontFamily: fontFamily.bold,
+    },
 
     emptyEmoji: { fontSize: 48, marginBottom: spacing.md },
     emptyImage: {
@@ -420,16 +453,35 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 18,
         fontWeight: '600',
-        color: 'rgba(255,255,255,0.6)',
-        marginBottom: spacing.lg
+        color: colors.textSecondary,
+        marginBottom: spacing.lg,
+        fontFamily: fontFamily.bold,
     },
     backBtn: {
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.md,
-        backgroundColor: '#1A1A1A',
-        borderRadius: borderRadius.lg
+        backgroundColor: 'rgba(255,255,255,0.86)',
+        borderRadius: borderRadius.lg,
+        borderWidth: 1,
+        borderColor: '#F7DDEA',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.1,
+                shadowRadius: 10,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
     },
-    backBtnText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+    backBtnText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+        fontFamily: fontFamily.bold,
+    },
 
     header: {
         flexDirection: 'row',
@@ -438,12 +490,25 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.md,
     },
     headerBackBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#1A1A1A',
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: 'rgba(255,255,255,0.86)',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#F7DDEA',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     },
     headerContent: { marginLeft: spacing.md, flex: 1 },
     headerTitleRow: {
@@ -459,8 +524,19 @@ const styles = StyleSheet.create({
         fontSize: 24,
         marginRight: 8,
     },
-    headerTitle: { fontSize: 22, fontWeight: '600', color: '#FFFFFF', letterSpacing: -0.5 },
-    headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+    headerTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: colors.text,
+        letterSpacing: -0.5,
+        fontFamily: fontFamily.extraBold,
+    },
+    headerSubtitle: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        marginTop: 2,
+        fontFamily: fontFamily.medium,
+    },
 
     cardsContainer: {
         flex: 1,

@@ -169,6 +169,7 @@ const LikelyToCard = React.memo(({
 
 import { StyleSheet } from 'react-native';
 import { spacing } from '../../theme';
+import { fontFamily } from '../../constants/fonts';
 
 const likelyStyles = StyleSheet.create({
     bottomBar: {
@@ -187,6 +188,7 @@ const likelyStyles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 16,
         fontWeight: '500',
+        fontFamily: fontFamily.medium,
     },
 
 });

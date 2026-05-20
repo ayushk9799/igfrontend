@@ -17,9 +17,9 @@ import { getPenguinMoodImage } from '../constants/PenguinMoods';
 
 const { width } = Dimensions.get('window');
 
-const GRID_COLUMNS = 2;
-const GRID_GAP = 12;
-const GRID_PADDING = 18;
+const GRID_COLUMNS = 3;
+const GRID_GAP = 10;
+const GRID_PADDING = 16;
 const ITEM_SIZE = (width - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
 const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
@@ -46,7 +46,7 @@ const MoodListHeader = ({ onBack, partnerName, selectedMood, partnerMood }) => {
         <>
             <View style={styles.header}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Text style={styles.backIcon}>←</Text>
+                    <Text style={styles.backIcon}>×</Text>
                 </TouchableOpacity>
                 <View style={styles.headerText}>
                     <Text style={styles.title}>How are you feeling?</Text>
@@ -96,8 +96,14 @@ export const MoodScreen = ({
     const keyExtractor = useCallback((item) => item.id, []);
 
     return (
-        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
-            <View style={styles.outerContainer}>
+        <View style={styles.overlay}>
+            <TouchableOpacity
+                style={styles.backdropPressable}
+                activeOpacity={1}
+                onPress={onBack}
+            />
+            <View style={styles.sheetContainer}>
+                <View style={styles.dragIndicator} />
                 <FlatList
                     data={emojis}
                     renderItem={renderEmoji}
@@ -108,8 +114,8 @@ export const MoodScreen = ({
                     contentContainerStyle={[
                         styles.contentContainer,
                         {
-                            paddingTop: insets.top + spacing.md,
-                            paddingBottom: insets.bottom + spacing.xl + 60,
+                            paddingTop: spacing.md,
+                            paddingBottom: insets.bottom + spacing.xl + 80,
                         },
                     ]}
                     ListHeaderComponent={(
@@ -150,11 +156,46 @@ export const MoodScreen = ({
                     </TouchableOpacity>
                 </View>
             </View>
-        </GradientBackground>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(5, 14, 62, 0.45)',
+        justifyContent: 'flex-end',
+    },
+    backdropPressable: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    sheetContainer: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        maxHeight: '88%',
+        minHeight: '60%',
+        paddingTop: 10,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: -10 },
+                shadowOpacity: 0.12,
+                shadowRadius: 20,
+            },
+            android: {
+                elevation: 24,
+            },
+        }),
+    },
+    dragIndicator: {
+        width: 44,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: '#E2E8F0',
+        alignSelf: 'center',
+        marginBottom: 8,
+    },
     outerContainer: {
         flex: 1,
     },
@@ -168,15 +209,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.md,
-        marginBottom: spacing.lg,
+        marginBottom: spacing.md,
     },
     headerText: {
         flex: 1,
     },
     backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
@@ -185,21 +226,22 @@ const styles = StyleSheet.create({
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.08,
-                shadowRadius: 6,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 4,
             },
             android: {
-                elevation: 3,
+                elevation: 2,
             },
         }),
     },
     backIcon: {
         fontSize: 22,
         color: colors.text,
+        fontWeight: '600',
     },
     title: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: '800',
         color: colors.text,
         letterSpacing: -0.5,
@@ -207,40 +249,39 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 13,
         color: colors.textSecondary,
-        marginTop: 2,
+        marginTop: 1,
     },
     selectedCard: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: spacing.lg,
-        marginBottom: spacing.md,
-        borderRadius: borderRadius['2xl'],
+        paddingVertical: spacing.sm,
+        marginBottom: spacing.sm,
+        borderRadius: borderRadius.xl,
         backgroundColor: '#FFFFFF',
         borderWidth: 1.5,
         borderColor: '#FAE8FF',
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.06,
-                shadowRadius: 16,
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.05,
+                shadowRadius: 12,
             },
             android: {
-                elevation: 4,
+                elevation: 3,
             },
         }),
     },
     selectedImage: {
-        width: 200,
-        height: 135,
+        width: 170,
+        height: 115,
         resizeMode: 'contain',
-        marginBottom: spacing.xs,
     },
     selectedLabel: {
-        fontSize: 20,
-        fontWeight: '700',
+        fontSize: 18,
+        fontWeight: '800',
         color: colors.text,
-        marginTop: spacing.xs,
+        marginTop: 2,
     },
     gridRow: {
         gap: GRID_GAP,
@@ -248,24 +289,24 @@ const styles = StyleSheet.create({
     },
     emojiItem: {
         width: ITEM_SIZE,
-        minHeight: ITEM_SIZE * 0.92,
-        borderRadius: borderRadius.xl,
+        height: ITEM_SIZE * 0.95,
+        borderRadius: borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#FAE8FF',
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.sm,
+        paddingVertical: 4,
+        paddingHorizontal: 4,
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.06,
-                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.05,
+                shadowRadius: 6,
             },
             android: {
-                elevation: 2,
+                elevation: 1.5,
             },
         }),
     },
@@ -275,15 +316,15 @@ const styles = StyleSheet.create({
         borderColor: '#FF758F',
     },
     emojiImage: {
-        width: ITEM_SIZE * 0.54,
-        height: ITEM_SIZE * 0.54,
+        width: ITEM_SIZE * 0.65,
+        height: ITEM_SIZE * 0.65,
         resizeMode: 'contain',
     },
     emojiLabel: {
         color: colors.text,
-        fontSize: 14,
+        fontSize: 11,
         fontWeight: '700',
-        marginTop: spacing.sm,
+        marginTop: 2,
     },
     stickyButtonContainer: {
         position: 'absolute',

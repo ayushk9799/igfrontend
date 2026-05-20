@@ -17,6 +17,7 @@ import { cardStyles } from './cardStyles';
 import {
     colors, spacing
 } from '../../theme';
+import { fontFamily } from '../../constants/fonts';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -297,6 +298,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '600',
         fontSize: 14,
+        fontFamily: fontFamily.bold,
     },
     questionSection: {
         flex: 1,
@@ -310,6 +312,7 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         lineHeight: 30,
         textAlign: 'center',
+        fontFamily: fontFamily.extraBold,
     },
     valueDisplay: {
         flexDirection: 'row',
@@ -320,12 +323,14 @@ const styles = StyleSheet.create({
     valueText: {
         fontSize: 56,
         fontWeight: '900',
+        fontFamily: fontFamily.extraBold,
     },
     valueMax: {
         fontSize: 24,
         fontWeight: '600',
         color: 'rgba(255, 255, 255, 0.6)',
         marginLeft: 4,
+        fontFamily: fontFamily.bold,
     },
     sliderContainer: {
         height: 60,
@@ -383,6 +388,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '800',
         color: '#333',
+        fontFamily: fontFamily.extraBold,
     },
     labelsRow: {
         flexDirection: 'row',
@@ -395,6 +401,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: 'rgba(255, 255, 255, 0.7)',
+        fontFamily: fontFamily.bold,
     },
     actionRow: {
         flexDirection: 'row',
@@ -410,6 +417,7 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.6)',
         fontSize: 16,
         fontWeight: '500',
+        fontFamily: fontFamily.medium,
     },
     submitButton: {
         paddingVertical: 14,
@@ -428,6 +436,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '700',
+        fontFamily: fontFamily.bold,
     },
 
 });

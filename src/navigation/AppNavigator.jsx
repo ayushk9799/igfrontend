@@ -979,7 +979,7 @@ export const AppNavigator = () => {
                         yourMood={yourMood}
                         pendingInvite={pendingInvite}
                         initialTab={homeInitialTab}
-                        onMoodPress={() => navigate('mood')}
+                        onMoodSelect={handleMoodSelect}
                         onQuestionPress={(category) => {
                             if (category) {
                                 // Handle chat navigation from ChatListScreen

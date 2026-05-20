@@ -19,6 +19,7 @@ import { categoryConfig } from './categoryConfig';
 import { cardStyles as styles } from './cardStyles';
 import { colors } from '../../theme';
 import { uploadImageToS3 } from '../../utils/uploadApi';
+import { fontFamily } from '../../constants/fonts';
 
 
 /**
@@ -259,7 +260,7 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                         </View>
                         <View style={styles.photoActionsRow}>
                             <TouchableOpacity onPress={handleRetake} style={[styles.photoActionBtn, { backgroundColor: colors.borderLight }]}>
-                                <Text style={{ color: colors.text, fontWeight: '600' }}>Retake</Text>
+                                <Text style={{ color: colors.text, fontWeight: '600', fontFamily: fontFamily.bold }}>Retake</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={handleUsePhoto}
@@ -269,7 +270,7 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                                 {isSubmitting ? (
                                     <ActivityIndicator color="#fff" size="small" />
                                 ) : (
-                                    <Text style={{ color: '#fff', fontWeight: '700' }}>Use Photo ✨</Text>
+                                    <Text style={{ color: '#fff', fontWeight: '700', fontFamily: fontFamily.bold }}>Use Photo ✨</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -332,6 +333,7 @@ const photoStyles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 16,
         fontWeight: '500',
+        fontFamily: fontFamily.medium,
     },
     cameraContentArea: {
         flex: 1,
