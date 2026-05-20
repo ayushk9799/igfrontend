@@ -120,35 +120,9 @@ const HomeScreen = ({
         return () => animation.stop();
     }, [pendingTicTacToe, pendingWordle, blinkAnim]);
 
-    const quickActions = [
-        { label: 'Mood', icon: 'mood', color: '#6CB6FF', onPress: onMoodPress },
-        { label: 'Game', icon: 'game', color: '#9B7CFF', onPress: pendingTicTacToe ? () => onTicTacToePress?.(pendingTicTacToe) : onJigsawCreate },
-        { label: 'Scribble', icon: 'scribble', color: '#FF7896', onPress: onScribblePress },
-        { label: 'Questions', icon: 'heart', color: '#FFA651', onPress: () => onQuestionPress?.() },
-    ];
+   
 
-    const games = [
-        {
-            title: pendingPuzzle ? 'Puzzle waiting' : 'Create puzzle',
-            subtitle: 'A tiny photo challenge for two.',
-            color: '#FFA651',
-            onPress: pendingPuzzle ? () => onJigsawPlay?.(pendingPuzzle) : onJigsawCreate,
-        },
-        {
-            title: pendingTicTacToe ? 'Your turn' : activeTicTacToe ? `${partnerName}'s turn` : 'Tic tac toe',
-            subtitle: 'Play a quick little duel.',
-            color: '#7C6BFF',
-            active: !!pendingTicTacToe,
-            onPress: () => onTicTacToePress?.(pendingTicTacToe || activeTicTacToe),
-        },
-        {
-            title: pendingWordle ? 'Guess the word' : activeWordle ? `${partnerName}'s turn` : 'Wordle',
-            subtitle: 'Set a secret word.',
-            color: '#5CCFB8',
-            active: !!pendingWordle,
-            onPress: () => onWordlePress?.(pendingWordle || activeWordle),
-        },
-    ];
+  
 
     return (
         <LinearGradient
@@ -205,41 +179,11 @@ const HomeScreen = ({
                         </View>
                     </TouchableOpacity>
 
-                    <View style={styles.quickPanel}>
-                        <Text style={styles.sectionPrompt}>What shall we do today?</Text>
-                        <View style={styles.quickGrid}>
-                            {quickActions.map((action) => (
-                                <TouchableOpacity
-                                    key={action.label}
-                                    style={styles.quickCard}
-                                    onPress={action.onPress}
-                                    activeOpacity={0.86}
-                                >
-                                    <View style={[styles.quickIcon, { backgroundColor: `${action.color}22` }]}>
-                                        <IconSvg type={action.icon} color={action.color} size={28} />
-                                    </View>
-                                    <Text style={styles.quickLabel}>{action.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
+                   
 
                    
 
-                    <TouchableOpacity style={styles.todayCard} onPress={() => onQuestionPress?.()} activeOpacity={0.9}>
-                        <View style={styles.todayTopRow}>
-                            <View>
-                                <Text style={styles.cardEyebrow}>Today</Text>
-                                <Text style={styles.todayTitle}>Intimate question</Text>
-                            </View>
-                            <View style={styles.calendarBubble}>
-                                <IconSvg type="calendar" color="#7C6BFF" size={22} />
-                            </View>
-                        </View>
-                        <Text style={styles.todayQuestion} numberOfLines={2}>
-                            {todayChallenge?.tasks?.[0]?.taskstatement || "What's one small thing I did this week that made you feel loved?"}
-                        </Text>
-                    </TouchableOpacity>
+                  
 
                     <View style={styles.twoColumn}>
                         <TouchableOpacity style={styles.canvasCard} onPress={onScribblePress} activeOpacity={0.9}>
@@ -271,24 +215,7 @@ const HomeScreen = ({
                         </View>
                     </View>
 
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Playful games</Text>
-                    </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
-                        {games.map((game) => (
-                            <TouchableOpacity
-                                key={game.title}
-                                style={[styles.gameCard, { backgroundColor: game.color }]}
-                                onPress={game.onPress}
-                                activeOpacity={0.9}
-                            >
-                                {game.active && <Animated.View style={[styles.liveDot, { opacity: blinkAnim }]} />}
-                                <Text style={styles.gameTitle}>{game.title}</Text>
-                                <Text style={styles.gameSubtitle}>{game.subtitle}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-
+                
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Deepen your connection</Text>
                     </View>

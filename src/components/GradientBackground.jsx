@@ -154,7 +154,10 @@ const Sparkle = ({ delay = 0, x, y }) => {
 const gradientPresets = {
     // Cute Penguin - Soft warm pink to pastel lavender to sweet baby blue
     light: {
-        colors: ['#FFF6F8', '#FFF0F5', '#F5F3FF'],
+        colors: ['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2'],
+        locations: [0, 0.34, 0.72, 1],
+        start: { x: 0.25, y: 0 },
+        end: { x: 0.75, y: 1 },
         orbs: [
             { color: 'rgba(255, 117, 143, 0.08)', size: 350, x: -100, y: -50 },
             { color: 'rgba(192, 132, 252, 0.06)', size: 300, x: width - 100, y: height * 0.35 },
@@ -165,7 +168,7 @@ const gradientPresets = {
     warm: {
         colors: ['#FFF5F5', '#FFE4E6', '#FFF0F3'],
         orbs: [
-            { color: 'rgba(255, 117, 143, 0.1)', size: 320, x: -100, y: -80 },
+            { color: 'rgba(255, 117, 143, 0.15)', size: 320, x: -100, y: -80 },
             { color: 'rgba(251, 191, 36, 0.06)', size: 280, x: width - 100, y: height * 0.5 },
         ],
     },
@@ -233,8 +236,9 @@ export const GradientBackground = ({
         <View style={[styles.container, style]}>
             <LinearGradient
                 colors={preset.colors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0.3, y: 1 }}
+                locations={preset.locations}
+                start={preset.start || { x: 0, y: 0 }}
+                end={preset.end || { x: 0.3, y: 1 }}
                 style={styles.gradient}
             >
                 {/* Floating Orbs - Subtle */}

@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors, spacing } from '../theme';
 import GradientBackground from '../components/GradientBackground';
+import Button from '../components/Button';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
@@ -370,8 +371,6 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Handle text input change - only allow letters
     const handleTextChange = (text) => {
-        if (submitting) return;
-
         // Filter to only allow letters (A-Z, a-z)
         const lettersOnly = text.replace(/[^a-zA-Z]/g, '').toUpperCase();
 
@@ -382,7 +381,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             setSecretWord(limitedText);
             // Auto-submit when 5 letters entered - pass word directly
             if (limitedText.length === 5) {
-                if (!partnerId) {
+                if (!user?.partnerId) {
                     // Show link partner prompt if no partner
                     setShowLinkPartner(true);
                     Keyboard.dismiss();
@@ -402,7 +401,6 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         setErrorMessage('');
     };
 
-    // Handle submit action
     const handleSubmit = () => {
         if (mode === 'create') {
             createGame();
@@ -413,24 +411,25 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Render a single tile
     const renderTile = (letter, status, index) => {
-        let bgColor = 'rgba(255, 255, 255, 0.05)';
-        let textColor = '#FFFFFF';
-        let borderColor = 'rgba(255, 255, 255, 0.15)';
+        let bgColor = 'rgba(255, 255, 255, 0.65)';
+        let textColor = colors.text;
+        let borderColor = 'rgba(46, 30, 60, 0.12)';
 
         if (status === 'correct') {
-            bgColor = '#6AAA64'; // Green
+            bgColor = colors.success; // Green
             textColor = '#FFFFFF';
-            borderColor = '#6AAA64';
+            borderColor = colors.success;
         } else if (status === 'present') {
-            bgColor = '#C9B458'; // Yellow
+            bgColor = colors.warning; // Yellow
             textColor = '#FFFFFF';
-            borderColor = '#C9B458';
+            borderColor = colors.warning;
         } else if (status === 'absent') {
-            bgColor = '#787C7E'; // Gray
+            bgColor = colors.textMuted; // Gray
             textColor = '#FFFFFF';
-            borderColor = '#787C7E';
+            borderColor = colors.textMuted;
         } else if (letter) {
-            borderColor = '#878A8C';
+            bgColor = '#FFFFFF';
+            borderColor = colors.primary;
         }
 
         return (
@@ -483,18 +482,16 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         return rows;
     };
 
-
-
     if (loading) {
         return (
-            <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
+            <GradientBackground variant="light" showOrbs={true} showParticles={true}>
                 <SafeAreaView style={styles.container}>
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.primary} />
                         <Text style={styles.loadingText}>Loading...</Text>
                     </View>
                 </SafeAreaView>
-            </View>
+            </GradientBackground>
         );
     }
 
@@ -503,7 +500,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     const attemptsRemaining = maxAttempts - attemptsUsed;
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             <SafeAreaView style={styles.container} edges={['top']}>
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
@@ -516,8 +513,8 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                                 <Path
                                     d="M19 12H5M12 19l-7-7 7-7"
-                                    stroke="#FFFFFF"
-                                    strokeWidth={2}
+                                    stroke={colors.text}
+                                    strokeWidth={2.5}
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                 />
@@ -537,10 +534,10 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     {/* Status Text */}
                     <View style={styles.statusContainer}>
                         {mode === 'create' && (
-                            <Text style={[styles.statusText, { color: '#FFFFFF' }]}>Set a word for {partnerName} to guess</Text>
+                            <Text style={styles.statusText}>Set a word for {partnerName} to guess</Text>
                         )}
                         {mode === 'guess' && (
-                            <Text style={[styles.statusText, { color: '#FFFFFF' }]}>
+                            <Text style={styles.statusText}>
                                 Guess the word! ({attemptsRemaining} attempts left)
                             </Text>
                         )}
@@ -609,18 +606,17 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                     <Text style={styles.hintText}>Type a 5-letter word</Text>
                                 )}
                                 {showLinkPartner && (
-                                    <View style={styles.linkPartnerContainer}>
+                                    <View style={styles.linkPartnerCard}>
                                         <Text style={styles.linkPartnerText}>
                                             Link a partner to send this word
                                         </Text>
-                                        <TouchableOpacity
-                                            style={styles.linkPartnerButton}
+                                        <Button
+                                            title="Link Partner 🔗"
                                             onPress={onLinkPartner}
-                                        >
-                                            <Text style={styles.linkPartnerButtonText}>
-                                                Link Partner 🔗
-                                            </Text>
-                                        </TouchableOpacity>
+                                            variant="primary"
+                                            size="xl"
+                                            fullWidth
+                                        />
                                     </View>
                                 )}
                             </>
@@ -640,7 +636,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                 <View style={styles.secretWordContainer}>
                                     {secretWord.split('').map((letter, i) => (
                                         <View key={i} style={[styles.tile, styles.tileSecret]}>
-                                            <Text style={[styles.tileText, { color: '#FFFFFF' }]}>
+                                            <Text style={[styles.tileText, { color: colors.secondary }]}>
                                                 {letter.toUpperCase()}
                                             </Text>
                                         </View>
@@ -655,11 +651,6 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                         </Text>
                                         {guesses.map((guess, i) => renderGuessRow(guess, i))}
                                     </View>
-                                )}
-
-                                {/* Waiting message when no guesses yet */}
-                                {guesses.length === 0 && status === 'pending' && (
-                                    <Text style={styles.waitingText}>Waiting for {partnerName} to start...</Text>
                                 )}
                             </>
                         )}
@@ -690,33 +681,32 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     {/* Action Buttons */}
                     {mode === 'complete' && isCreator && gameId && partnerOnline !== true && (status === 'pending' || status === 'in_progress') && (
                         <View style={styles.actionButtons}>
-                            <TouchableOpacity
-                                style={styles.notifyButton}
+                            <Button
+                                title={`Nudge ${partnerName}`}
                                 onPress={notifyPartner}
+                                variant="primary"
+                                size="xl"
                                 disabled={notifying}
-                            >
-                                {notifying ? (
-                                    <ActivityIndicator size="small" color="#FFF" />
-                                ) : (
-                                    <Text style={styles.notifyButtonText}>Nudge {partnerName}</Text>
-                                )}
-                            </TouchableOpacity>
+                                loading={notifying}
+                                fullWidth
+                            />
                         </View>
                     )}
 
                     {mode === 'complete' && !isCreator && (
                         <View style={styles.actionButtons}>
-                            <TouchableOpacity
-                                style={styles.backHomeButton}
+                            <Button
+                                title="Back to Home"
                                 onPress={() => navigation?.goBack?.()}
-                            >
-                                <Text style={styles.backHomeText}>Back to Home</Text>
-                            </TouchableOpacity>
+                                variant="secondary"
+                                size="xl"
+                                fullWidth
+                            />
                         </View>
                     )}
                 </KeyboardAvoidingView>
             </SafeAreaView>
-        </View>
+        </GradientBackground>
     );
 };
 
@@ -732,7 +722,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 16,
         fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.7)',
+        color: colors.textSecondary,
     },
     header: {
         flexDirection: 'row',
@@ -742,13 +732,31 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     },
     backButton: {
-        padding: 8,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#FAE8FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.08,
+                shadowRadius: 6,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
     },
     headerTitle: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#FFFFFF',
-        letterSpacing: 2,
+        color: colors.text,
+        letterSpacing: 1,
     },
     headerRight: {
         width: 80,
@@ -757,7 +765,7 @@ const styles = StyleSheet.create({
     onlineIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(72, 187, 120, 0.15)',
+        backgroundColor: 'rgba(74, 222, 128, 0.12)',
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 12,
@@ -782,18 +790,18 @@ const styles = StyleSheet.create({
     statusText: {
         fontSize: 16,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.7)',
+        color: colors.textSecondary,
         textAlign: 'center',
     },
     statusWin: {
-        color: '#6AAA64',
+        color: colors.success,
         fontSize: 24,
     },
     statusLose: {
-        color: '#787C7E',
+        color: colors.error,
     },
     statusSuccess: {
-        color: '#6AAA64',
+        color: colors.success,
         fontSize: 18,
     },
     notifyMessageContainer: {
@@ -802,7 +810,7 @@ const styles = StyleSheet.create({
     },
     notifyMessageText: {
         fontSize: 14,
-        color: '#6AAA64',
+        color: colors.success,
         fontWeight: '600',
     },
     errorContainer: {
@@ -811,7 +819,7 @@ const styles = StyleSheet.create({
     },
     errorText: {
         fontSize: 14,
-        color: '#FF6B6B',
+        color: colors.error,
         fontWeight: '600',
     },
     gridContainer: {
@@ -828,26 +836,37 @@ const styles = StyleSheet.create({
     tile: {
         width: 56,
         height: 56,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        borderRadius: 8,
+        borderWidth: 1.5,
+        borderColor: 'rgba(46, 30, 60, 0.12)',
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.04,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 1,
+            },
+        }),
     },
     tileSecret: {
-        backgroundColor: '#6AAA64',
-        borderColor: '#6AAA64',
+        backgroundColor: 'rgba(192, 132, 252, 0.12)',
+        borderColor: '#E9D5FF',
     },
     tileText: {
         fontSize: 28,
         fontWeight: '800',
-        color: '#FFFFFF',
+        color: colors.text,
     },
     hintText: {
         marginTop: 16,
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.5)',
+        color: colors.textMuted,
     },
     secretWordContainer: {
         flexDirection: 'row',
@@ -856,7 +875,7 @@ const styles = StyleSheet.create({
     },
     waitingText: {
         fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: colors.textSecondary,
         marginTop: 12,
     },
     creatorGuessesContainer: {
@@ -864,12 +883,12 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(255, 255, 255, 0.1)',
+        borderTopColor: 'rgba(46, 30, 60, 0.1)',
     },
     creatorGuessesTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.5)',
+        color: colors.textMuted,
         marginBottom: 12,
     },
     inputContainer: {
@@ -884,59 +903,40 @@ const styles = StyleSheet.create({
         height: 0,
         width: 0,
     },
-    linkPartnerContainer: {
+    linkPartnerCard: {
         alignItems: 'center',
-        paddingHorizontal: 40,
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 24,
         paddingVertical: 20,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: '#FAE8FF',
+        marginTop: 20,
+        marginHorizontal: 20,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.06,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
     },
     linkPartnerText: {
         fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.7)',
+        color: colors.textSecondary,
         textAlign: 'center',
         marginBottom: 20,
         lineHeight: 24,
-    },
-    linkPartnerButton: {
-        backgroundColor: colors.primary,
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 30,
-    },
-    linkPartnerButtonText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#FFFFFF',
     },
     actionButtons: {
         alignItems: 'center',
         paddingVertical: 20,
         paddingHorizontal: 40,
-    },
-    notifyButton: {
-        backgroundColor: colors.secondary,
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 30,
-        minWidth: 200,
-        alignItems: 'center',
-    },
-    notifyButtonText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
-    backHomeButton: {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 30,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
-    },
-    backHomeText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        width: '100%',
     },
 });
 

@@ -242,12 +242,12 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     const piece3Spin = piece3Rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             <SafeAreaView style={styles.container} edges={['top']}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                         <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                            <Path d="M15 18l-6-6 6-6" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                            <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
                         </Svg>
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Create Puzzle</Text>
@@ -323,9 +323,9 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                             <>
                                 <TouchableOpacity onPress={handlePickFromGallery} style={styles.controlBtnSecondary}>
                                     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                        <Rect x="3" y="3" width="18" height="18" rx="2" stroke="#FFFFFF" strokeWidth={2} />
-                                        <Path d="M3 15l5-5 4 4 3-3 6 6" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                                        <Circle cx="8.5" cy="8.5" r="1.5" fill="#FFFFFF" />
+                                        <Rect x="3" y="3" width="18" height="18" rx="2" stroke={colors.text} strokeWidth={2} />
+                                        <Path d="M3 15l5-5 4 4 3-3 6 6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                        <Circle cx="8.5" cy="8.5" r="1.5" fill={colors.text} />
                                     </Svg>
                                 </TouchableOpacity>
 
@@ -335,8 +335,8 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
                                 <TouchableOpacity onPress={toggleCamera} style={styles.controlBtnSecondary}>
                                     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                        <Path d="M1 4v6h6" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                                        <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                        <Path d="M1 4v6h6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                        <Path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                                     </Svg>
                                 </TouchableOpacity>
                             </>
@@ -377,7 +377,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                     )}
                 </View>
             </SafeAreaView>
-        </View>
+        </GradientBackground>
     );
 };
 
@@ -402,11 +402,31 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.xl,
     },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md },
-    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.1)', alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#FAE8FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.08,
+                shadowRadius: 6,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
+    },
+    headerTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
     content: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-    title: { color: '#FFFFFF', fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: spacing.xs },
-    subtitle: { fontSize: 14, color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.sm },
+    title: { color: colors.text, fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: spacing.xs },
+    subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.sm },
 
     // Camera Box
     cameraBoxContainer: {
@@ -414,15 +434,15 @@ const styles = StyleSheet.create({
         aspectRatio: 1, // Square
         borderRadius: 32,
         overflow: 'hidden',
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#FFFFFF',
         marginBottom: spacing.xl,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        borderColor: colors.border,
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
         shadowRadius: 12,
-        elevation: 5,
+        elevation: 3,
     },
     camera: {
         position: 'absolute',
@@ -447,43 +467,53 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 28,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
         elevation: 2,
     },
     controlBtnPrimary: {
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 4,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: 'rgba(255, 117, 143, 0.25)', // Primary glow
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
     },
     captureInner: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 62,
+        height: 62,
+        borderRadius: 31,
         backgroundColor: colors.primary,
     },
     controlBtnText: {
         paddingVertical: spacing.md,
         paddingHorizontal: spacing.xl,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: '#FFFFFF',
         borderRadius: borderRadius.full,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+        elevation: 2,
     },
     retakeText: {
-        color: 'rgba(255, 255, 255, 0.8)',
+        color: colors.text,
         fontWeight: '600',
         fontSize: 16,
     },
@@ -498,7 +528,7 @@ const styles = StyleSheet.create({
 
     // Grid Overlay
     gridOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flexDirection: 'row', flexWrap: 'wrap' },
-    gridCell: { width: '33.33%', height: '33.33%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+    gridCell: { width: '33.33%', height: '33.33%', borderWidth: 1, borderColor: 'rgba(46, 30, 60, 0.12)' },
 
     // Floating pieces
     floatingPiece: { position: 'absolute', opacity: 0.3 },

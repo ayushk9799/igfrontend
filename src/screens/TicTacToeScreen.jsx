@@ -8,12 +8,14 @@ import {
     ActivityIndicator,
     Animated,
     Easing,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { colors, spacing } from '../theme';
 import GradientBackground from '../components/GradientBackground';
+import Button from '../components/Button';
 import { useSocketContext } from '../context/SocketContext';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
@@ -546,19 +548,19 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
+            <GradientBackground variant="light" showOrbs={true} showParticles={true}>
                 <SafeAreaView style={styles.container}>
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.primary} />
                         <Text style={styles.loadingText}>Setting up game...</Text>
                     </View>
                 </SafeAreaView>
-            </View>
+            </GradientBackground>
         );
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
+        <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             <SafeAreaView style={styles.container} edges={['top']}>
                 {/* Header */}
                 <View style={styles.header}>
@@ -566,8 +568,8 @@ const TicTacToeScreen = ({ navigation, route }) => {
                         <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                             <Path
                                 d="M19 12H5M12 19l-7-7 7-7"
-                                stroke="#FFFFFF"
-                                strokeWidth={2}
+                                stroke={colors.text}
+                                strokeWidth={2.5}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                             />
@@ -587,12 +589,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 {/* Player Info */}
                 <View style={styles.playersContainer}>
                     <View style={[styles.playerCard, isMyTurn && !isGameOver && styles.activePlayer]}>
-                        <Text style={styles.playerSymbol}>{mySymbol}</Text>
+                        <Text style={[styles.playerSymbol, { color: mySymbol === 'X' ? colors.primary : colors.secondary }]}>{mySymbol}</Text>
                         <Text style={styles.playerName}>You</Text>
                     </View>
                     <Text style={styles.vsText}>vs</Text>
                     <View style={[styles.playerCard, !isMyTurn && !isGameOver && styles.activePlayer]}>
-                        <Text style={styles.playerSymbol}>{theirSymbol}</Text>
+                        <Text style={[styles.playerSymbol, { color: theirSymbol === 'X' ? colors.primary : colors.secondary }]}>{theirSymbol}</Text>
                         <Text style={styles.playerName}>{partnerName}</Text>
                     </View>
                 </View>
@@ -635,69 +637,65 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 {/* Notify Partner Button Container - fixed height to prevent layout shift */}
                 {!isGameOver && gameId && (
                     <View style={styles.notifyButtonContainer}>
-                        <TouchableOpacity
-                            style={[
-                                styles.notifyButton,
-                                (isMyTurn || partnerOnline) && styles.notifyButtonHidden
-                            ]}
-                            onPress={notifyPartner}
-                            disabled={notifying || isMyTurn || partnerOnline}
-                            activeOpacity={0.8}
-                        >
-                            {notifying ? (
-                                <ActivityIndicator size="small" color="#FFF" />
-                            ) : (
-                                <>
+                        {!(isMyTurn || partnerOnline) ? (
+                            <Button
+                                title={`Nudge ${partnerName}`}
+                                onPress={notifyPartner}
+                                variant="primary"
+                                size="md"
+                                disabled={notifying}
+                                loading={notifying}
+                                leftIcon={
                                     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                         <Path
                                             d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
-                                            stroke="#FFF"
+                                            stroke="#FFFFFF"
                                             strokeWidth={2}
                                             strokeLinecap="round"
                                             strokeLinejoin="round"
                                         />
                                     </Svg>
-                                    <Text style={styles.notifyButtonText}>Nudge {partnerName}</Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
+                                }
+                                style={{ marginHorizontal: 40 }}
+                            />
+                        ) : null}
                     </View>
                 )}
 
                 {/* Play Again / Back buttons */}
                 {isGameOver && (
                     <View style={styles.gameOverButtons}>
-                        <TouchableOpacity
-                            style={styles.playAgainButton}
+                        <Button
+                            title="Play Again"
                             onPress={createNewGame}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.playAgainText}>Play Again</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.backHomeButton}
+                            variant="glow"
+                            size="xl"
+                            fullWidth
+                        />
+                        <Button
+                            title="Back to Home"
                             onPress={() => navigation?.goBack?.()}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.backHomeText}>Back to Home</Text>
-                        </TouchableOpacity>
+                            variant="secondary"
+                            size="xl"
+                            fullWidth
+                        />
                     </View>
                 )}
 
                 {/* Link Partner Button - shown when no partner is linked */}
                 {!partnerId && (
                     <View style={styles.linkPartnerContainer}>
-                        <TouchableOpacity
-                            style={styles.linkPartnerButton}
+                        <Button
+                            title="Link Partner to Play 🔗"
                             onPress={() => navigation?.navigate?.('PartnerLink')}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.linkPartnerText}>Link Partner to Play 🔗</Text>
-                        </TouchableOpacity>
+                            variant="primary"
+                            size="xl"
+                            fullWidth
+                        />
                     </View>
                 )}
             </SafeAreaView>
-        </View>
+        </GradientBackground>
     );
 };
 
@@ -713,7 +711,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 16,
         fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.7)',
+        color: colors.textSecondary,
     },
     header: {
         flexDirection: 'row',
@@ -723,12 +721,30 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     },
     backButton: {
-        padding: 8,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#FAE8FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.08,
+                shadowRadius: 6,
+            },
+            android: {
+                elevation: 3,
+            },
+        }),
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
     },
     headerRight: {
         width: 80,
@@ -737,7 +753,7 @@ const styles = StyleSheet.create({
     onlineIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(72, 187, 120, 0.15)',
+        backgroundColor: 'rgba(74, 222, 128, 0.12)',
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 12,
@@ -763,34 +779,46 @@ const styles = StyleSheet.create({
     },
     playerCard: {
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        backgroundColor: '#FFFFFF',
         paddingHorizontal: 24,
         paddingVertical: 16,
         borderRadius: 16,
         minWidth: 100,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: '#FAE8FF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
     },
     activePlayer: {
         borderWidth: 2,
         borderColor: colors.secondary,
         shadowColor: colors.secondary,
-        shadowOpacity: 0.25,
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 3,
     },
     playerSymbol: {
         fontSize: 32,
         fontWeight: '800',
-        color: '#FFFFFF',
     },
     playerName: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: colors.textSecondary,
         marginTop: 4,
     },
     vsText: {
         fontSize: 16,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.4)',
+        color: colors.textMuted,
     },
     statusContainer: {
         alignItems: 'center',
@@ -799,7 +827,7 @@ const styles = StyleSheet.create({
     statusText: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
     },
     statusWin: {
         color: colors.success,
@@ -840,11 +868,22 @@ const styles = StyleSheet.create({
         height: 304,
         flexDirection: 'row',
         flexWrap: 'wrap',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: 'rgba(255, 255, 255, 0.65)',
         borderRadius: 20,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: '#FAE8FF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#C084FC',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.06,
+                shadowRadius: 16,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     },
     cell: {
         width: 100,
@@ -854,14 +893,14 @@ const styles = StyleSheet.create({
     },
     cellBorderRight: {
         borderRightWidth: 1,
-        borderRightColor: 'rgba(255, 255, 255, 0.1)',
+        borderRightColor: '#FAE8FF',
     },
     cellBorderBottom: {
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+        borderBottomColor: '#FAE8FF',
     },
     cellWinning: {
-        backgroundColor: 'rgba(72, 187, 120, 0.15)',
+        backgroundColor: 'rgba(74, 222, 128, 0.12)',
     },
     symbolX: {
         fontSize: 56,
@@ -880,82 +919,14 @@ const styles = StyleSheet.create({
         height: 150, // Fixed height to prevent layout shift
         justifyContent: 'center',
     },
-    notifyButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: colors.accent,
-        marginHorizontal: 40,
-        paddingVertical: 14,
-        borderRadius: 24,
-        gap: 8,
-        shadowColor: colors.accent,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 4,
-    },
-    notifyButtonHidden: {
-        opacity: 0,
-    },
-    notifyButtonText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#FFF',
-    },
     gameOverButtons: {
         paddingHorizontal: 40,
         paddingBottom: 30,
         gap: 12,
     },
-    playAgainButton: {
-        backgroundColor: colors.secondary,
-        paddingVertical: 16,
-        borderRadius: 24,
-        alignItems: 'center',
-        shadowColor: colors.secondary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 4,
-    },
-    playAgainText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#FFF',
-    },
-    backHomeButton: {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        paddingVertical: 14,
-        borderRadius: 24,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
-    },
-    backHomeText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.8)',
-    },
     linkPartnerContainer: {
         paddingHorizontal: 40,
         paddingBottom: 30,
-    },
-    linkPartnerButton: {
-        backgroundColor: colors.primary,
-        paddingVertical: 16,
-        borderRadius: 24,
-        alignItems: 'center',
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 4,
-    },
-    linkPartnerText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#FFF',
     },
 });
 

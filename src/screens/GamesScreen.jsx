@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width } = Dimensions.get('window');
 const CARD_HEIGHT = Math.max(136, Math.min(146, width * 0.38));
@@ -113,6 +114,7 @@ const GamesScreen = ({
             title: pendingPuzzle ? 'Puzzle waiting' : 'Create puzzle',
             subtitle: 'A tiny photo challenge for two.',
             buttonLabel: pendingPuzzle ? 'Continue' : "Let's play",
+            gradient: ['#FFA852', '#FF6D26'],
             accent: '#FF9833',
             icon: 'puzzle',
             image: gameAssets.puzzle,
@@ -125,6 +127,7 @@ const GamesScreen = ({
             title: pendingTicTacToe ? 'Your turn' : activeTicTacToe ? `${partnerName}'s turn` : 'Tic tac toe',
             subtitle: 'Play a quick little duel.',
             buttonLabel: pendingTicTacToe || activeTicTacToe ? 'Resume' : 'Start game',
+            gradient: ['#9A85FF', '#5C3AF5'],
             accent: '#7C61F8',
             icon: 'gamepad',
             image: gameAssets.tictactoe,
@@ -138,6 +141,7 @@ const GamesScreen = ({
             title: pendingWordle ? 'Guess the word' : activeWordle ? `${partnerName}'s turn` : 'Wordle',
             subtitle: 'Set a secret word.',
             buttonLabel: pendingWordle || activeWordle ? 'Resume' : 'Play now',
+            gradient: ['#5CE5D2', '#32A292'],
             accent: '#48BFAE',
             icon: 'letter',
             image: gameAssets.wordle,
@@ -157,12 +161,19 @@ const GamesScreen = ({
             style={styles.gradient}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <View style={[styles.container, { paddingTop: insets.top + 26 }]}>
+            <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 104 }]}
                 >
-                   
+                    <View style={styles.hero}>
+                        <View style={styles.heroCopy}>
+                            <Text style={styles.headerTitle}>Play Games</Text>
+                            <Text style={styles.headerSubtitle}>Challenge your partner to a friendly duel!</Text>
+                        </View>
+                        <Sparkle style={styles.heroSparkleOne} color="#FF9833" />
+                        <Sparkle style={styles.heroSparkleTwo} color="#7C61F8" />
+                    </View>
 
                     <View style={styles.listContainer}>
                         {games.map((game) => (
@@ -188,7 +199,7 @@ const GamesScreen = ({
                                 <Text style={styles.gameTitle}>{game.title}</Text>
                                 <Text style={styles.gameSubtitle}>{game.subtitle}</Text>
                                 <LinearGradient
-                                    colors={[game.accent, game.key === 'wordle' ? '#55D7C1' : game.accent]}
+                                    colors={game.gradient}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 1 }}
                                     style={styles.cta}
@@ -220,28 +231,31 @@ const styles = StyleSheet.create({
         paddingHorizontal: 18,
     },
     scrollContent: {
-        paddingTop: 82,
+        paddingTop: 4,
     },
     hero: {
-        minHeight: 210,
-        justifyContent: 'center',
+        paddingTop: 8,
+        paddingBottom: 4,
+        marginBottom: 14,
     },
     heroCopy: {
-        width: '58%',
+        width: '100%',
         zIndex: 2,
     },
     headerTitle: {
-        fontSize: 33,
-        fontWeight: '900',
+        fontFamily: fontFamily.extraBold,
+        fontSize: 32,
+        fontWeight: fontWeight('800'),
         color: '#202B5E',
-        letterSpacing: 0,
-        marginBottom: 10,
+        letterSpacing: -0.5,
+        marginBottom: 6,
     },
     headerSubtitle: {
-        fontSize: 19,
-        lineHeight: 25,
+        fontFamily: fontFamily.medium,
+        fontSize: 16,
+        lineHeight: 22,
         color: '#7F7AA5',
-        fontWeight: '600',
+        fontWeight: fontWeight('500'),
     },
     heroImage: {
         position: 'absolute',
@@ -252,12 +266,12 @@ const styles = StyleSheet.create({
         opacity: 0.98,
     },
     heroSparkleOne: {
-        right: width * 0.41,
-        top: 102,
+        right: width * 0.28,
+        top: 14,
     },
     heroSparkleTwo: {
-        right: 28,
-        bottom: 24,
+        right: 12,
+        bottom: 4,
     },
     listContainer: {
         gap: 16,
@@ -312,8 +326,9 @@ const styles = StyleSheet.create({
     },
     activeText: {
         color: '#FFFFFF',
+        fontFamily: fontFamily.extraBold,
         fontSize: 9,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         letterSpacing: 0.5,
     },
     gameImage: {
@@ -343,38 +358,41 @@ const styles = StyleSheet.create({
     },
     gameTitle: {
         color: '#202B5E',
+        fontFamily: fontFamily.extraBold,
         fontSize: 18,
-        fontWeight: '900',
+        fontWeight: fontWeight('800'),
         letterSpacing: -0.2,
         marginTop: 4,
     },
     gameSubtitle: {
         color: '#7E7D91',
+        fontFamily: fontFamily.medium,
         fontSize: 13,
-        fontWeight: '600',
+        fontWeight: fontWeight('500'),
         lineHeight: 16,
         marginTop: 3,
     },
     cta: {
-        width: 106,
-        height: 30,
-        borderRadius: 15,
-        paddingLeft: 12,
-        paddingRight: 4,
-        marginTop: 8,
+        alignSelf: 'flex-start',
+        height: 36,
+        borderRadius: 18,
+        paddingLeft: 16,
+        paddingRight: 6,
+        marginTop: 10,
         alignItems: 'center',
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        gap: 8,
     },
     ctaText: {
         color: '#FFFFFF',
+        fontFamily: fontFamily.extraBold,
         fontSize: 12,
-        fontWeight: '900',
+        fontWeight: fontWeight('800'),
     },
     ctaArrow: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255,255,255,0.7)',
@@ -458,13 +476,15 @@ const styles = StyleSheet.create({
     },
     footerTitle: {
         color: '#6F56D9',
+        fontFamily: fontFamily.extraBold,
         fontSize: 19,
-        fontWeight: '900',
+        fontWeight: fontWeight('800'),
     },
     footerText: {
         color: '#8C78BE',
+        fontFamily: fontFamily.bold,
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: fontWeight('600'),
         marginTop: 4,
     },
     footerHeart: {
