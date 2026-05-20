@@ -9,11 +9,14 @@ import {
     Platform,
     Animated,
     PanResponder,
+    StatusBar,
 } from 'react-native';
 import Svg, { Path, Line } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import { colors, spacing, borderRadius } from '../theme';
+import { fontFamily } from '../constants/fonts';
+import GradientBackground from '../components/GradientBackground';
 import { usePuzzle } from '../hooks/usePuzzle';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -50,17 +53,21 @@ const timerStyles = StyleSheet.create({
     container: {
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: 'rgba(46, 30, 60, 0.85)',
         borderRadius: 30,
         width: 60,
         height: 60,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     number: {
+        fontFamily: fontFamily.extraBold,
         fontSize: 24,
         fontWeight: '800',
         color: '#fff',
     },
     label: {
+        fontFamily: fontFamily.bold,
         fontSize: 10,
         color: 'rgba(255,255,255,0.7)',
         textTransform: 'uppercase',
@@ -508,208 +515,214 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
     if (!puzzle) {
         return (
-            <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
-                <SafeAreaView style={styles.loadingContainer}>
-                    {/* Emoji container with pulse */}
-                    <Animated.View style={[
-                        styles.loadingEmojiContainer,
-                        { transform: [{ scale: pulseAnim }] }
-                    ]}>
-                        <Text style={styles.loadingEmoji}>🧩</Text>
-                    </Animated.View>
+            <View style={{ flex: 1 }}>
+                <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+                <GradientBackground variant="light" showOrbs={true}>
+                    <SafeAreaView style={styles.loadingContainer}>
+                        {/* Emoji container with pulse */}
+                        <Animated.View style={[
+                            styles.loadingEmojiContainer,
+                            { transform: [{ scale: pulseAnim }] }
+                        ]}>
+                            <Text style={styles.loadingEmoji}>🧩</Text>
+                        </Animated.View>
 
-                    {/* Loading text */}
-                    <Text style={styles.loadingText}>Preparing your puzzle...</Text>
-                    <Text style={styles.loadingSubtext}>Almost there!</Text>
-                </SafeAreaView>
+                        {/* Loading text */}
+                        <Text style={styles.loadingText}>Preparing your puzzle...</Text>
+                        <Text style={styles.loadingSubtext}>Almost there!</Text>
+                    </SafeAreaView>
+                </GradientBackground>
             </View>
         );
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#1A1A1A' }}>
-            <SafeAreaView style={styles.container} edges={['top']}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                            <Path d="M15 18l-6-6 6-6" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                        </Svg>
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Solve Puzzle 🧩</Text>
-                    <View style={styles.headerRight}>
-                        <TouchableOpacity
-                            onPress={() => setShowGridLines(!showGridLines)}
-                            style={[styles.gridToggleBtn, showGridLines && styles.gridToggleBtnActive]}
-                        >
-                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                                <Path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z"
-                                    stroke={showGridLines ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)'}
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
+        <View style={{ flex: 1 }}>
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+            <GradientBackground variant="light" showOrbs={true}>
+                <SafeAreaView style={styles.container} edges={['top']}>
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                             </Svg>
                         </TouchableOpacity>
-                        <View style={styles.moveCounter}>
-                            <Text style={styles.moveText}>{moveCount}</Text>
-                            <Text style={styles.moveLabel}>moves</Text>
+                        <Text style={styles.headerTitle}>Solve Puzzle 🧩</Text>
+                        <View style={styles.headerRight}>
+                            <TouchableOpacity
+                                onPress={() => setShowGridLines(!showGridLines)}
+                                style={[styles.gridToggleBtn, showGridLines && styles.gridToggleBtnActive]}
+                            >
+                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                    <Path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z"
+                                        stroke={showGridLines ? colors.primary : colors.textSecondary}
+                                        strokeWidth={2}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </Svg>
+                            </TouchableOpacity>
+                            <View style={styles.moveCounter}>
+                                <Text style={styles.moveText}>{moveCount}</Text>
+                                <Text style={styles.moveLabel}>moves</Text>
+                            </View>
                         </View>
                     </View>
-                </View>
 
-                {/* Instructions */}
-                {!isSolved && (
-                    <View style={styles.instructionContainer}>
-                        <Text style={styles.instructionText}>
-                            👆 Drag pieces to swap them
-                        </Text>
-                    </View>
-                )}
-
-                {/* Puzzle Grid - Always rendered, reference image overlays it */}
-                <View style={styles.puzzleContainer}>
-                    {/* Placeholder while image or puzzle is preparing */}
-                    {(!imageLoaded || !piecesReady) && (
-                        <View style={[styles.puzzleGrid, styles.puzzleGridPlaceholder]}>
-                            <Text style={styles.loadingSubtext}>Loading the puzzle...</Text>
+                    {/* Instructions */}
+                    {!isSolved && (
+                        <View style={styles.instructionContainer}>
+                            <Text style={styles.instructionText}>
+                                👆 Drag pieces to swap them
+                            </Text>
                         </View>
                     )}
 
-                    <View
-                        style={[styles.puzzleGrid, { opacity: (piecesReady && !showReference) ? 1 : 0 }]}
-                        onLayout={handleGridLayout}
-                        collapsable={false}
-                        pointerEvents={showReference ? 'none' : 'auto'}
-                    >
-                        {piecesReady && pieces.length === GRID_SIZE * GRID_SIZE && pieces.map((originalIndex, currentIndex) => {
-                            const isDragging = draggingIndex === currentIndex;
-
-                            // Validate originalIndex - must be 0-8 for 3x3 grid
-                            const validOriginalIndex = (typeof originalIndex === 'number' && originalIndex >= 0 && originalIndex < GRID_SIZE * GRID_SIZE)
-                                ? originalIndex
-                                : currentIndex;
-
-                            if (validOriginalIndex !== originalIndex) {
-                                console.warn(`🧩 ⚠️ INVALID PIECE INDEX - Position ${currentIndex} had invalid value ${originalIndex}, using ${validOriginalIndex}`);
-                            }
-
-                            // Calculate which part of the image to show based on the original piece position
-                            const originalRow = Math.floor(validOriginalIndex / GRID_SIZE);
-                            const originalCol = validOriginalIndex % GRID_SIZE;
-
-                            const cropTop = -originalRow * PIECE_SIZE;
-                            const cropLeft = -originalCol * PIECE_SIZE;
-
-                            return (
-                                <Animated.View
-                                    key={`piece-${currentIndex}`}
-                                    style={[
-                                        styles.pieceContainer,
-                                        getPiecePosition(currentIndex),
-                                        {
-                                            transform: [
-                                                { translateX: pieceAnimations[currentIndex].translateX },
-                                                { translateY: pieceAnimations[currentIndex].translateY },
-                                                { scale: pieceAnimations[currentIndex].scale },
-                                            ],
-                                            zIndex: isDragging ? 100 : (currentIndex + 1),
-                                            elevation: isDragging ? 20 : 1,
-                                        },
-                                    ]}
-                                    shouldRasterizeIOS={true}
-                                    renderToHardwareTextureAndroid={true}
-                                    needsOffscreenAlphaCompositing={true}
-                                    {...panResponders[currentIndex].panHandlers}
-                                >
-                                    <View style={{ width: PIECE_SIZE, height: PIECE_SIZE, overflow: 'hidden' }}>
-                                        <Image
-                                            source={{
-                                                uri: puzzle.imageUrl,
-                                                cache: 'force-cache'
-                                            }}
-                                            style={{
-                                                position: 'absolute',
-                                                top: cropTop,
-                                                left: cropLeft,
-                                                width: ACTUAL_PUZZLE_SIZE,
-                                                height: ACTUAL_PUZZLE_SIZE,
-                                            }}
-                                            resizeMode="cover"
-                                            fadeDuration={0}
-                                            onLoad={() => {
-                                            }}
-                                            onError={(error) => {
-                                                console.error(`🧩 ❌ Image FAILED to load for Position ${currentIndex} (Piece ${validOriginalIndex}):`, error.nativeEvent);
-                                            }}
-                                        />
-                                    </View>
-                                </Animated.View>
-                            );
-                        })}
-
-                        {/* SVG Grid Overlay - drawn on top of pieces */}
-                        {piecesReady && showGridLines && !isSolved && !showReference && (
-                            <View style={styles.gridOverlay} pointerEvents="none">
-                                <Svg width={ACTUAL_PUZZLE_SIZE} height={ACTUAL_PUZZLE_SIZE}>
-                                    {/* Vertical lines */}
-                                    <Line x1={PIECE_SIZE} y1={0} x2={PIECE_SIZE} y2={ACTUAL_PUZZLE_SIZE} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
-                                    <Line x1={PIECE_SIZE * 2} y1={0} x2={PIECE_SIZE * 2} y2={ACTUAL_PUZZLE_SIZE} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
-                                    {/* Horizontal lines */}
-                                    <Line x1={0} y1={PIECE_SIZE} x2={ACTUAL_PUZZLE_SIZE} y2={PIECE_SIZE} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
-                                    <Line x1={0} y1={PIECE_SIZE * 2} x2={ACTUAL_PUZZLE_SIZE} y2={PIECE_SIZE * 2} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
-                                </Svg>
+                    {/* Puzzle Grid - Always rendered, reference image overlays it */}
+                    <View style={styles.puzzleContainer}>
+                        {/* Placeholder while image or puzzle is preparing */}
+                        {(!imageLoaded || !piecesReady) && (
+                            <View style={[styles.puzzleGrid, styles.puzzleGridPlaceholder]}>
+                                <Text style={styles.loadingSubtext}>Loading the puzzle...</Text>
                             </View>
+                        )}
+
+                        <View
+                            style={[styles.puzzleGrid, { opacity: (piecesReady && !showReference) ? 1 : 0 }]}
+                            onLayout={handleGridLayout}
+                            collapsable={false}
+                            pointerEvents={showReference ? 'none' : 'auto'}
+                        >
+                            {piecesReady && pieces.length === GRID_SIZE * GRID_SIZE && pieces.map((originalIndex, currentIndex) => {
+                                const isDragging = draggingIndex === currentIndex;
+
+                                // Validate originalIndex - must be 0-8 for 3x3 grid
+                                const validOriginalIndex = (typeof originalIndex === 'number' && originalIndex >= 0 && originalIndex < GRID_SIZE * GRID_SIZE)
+                                    ? originalIndex
+                                    : currentIndex;
+
+                                if (validOriginalIndex !== originalIndex) {
+                                    console.warn(`🧩 ⚠️ INVALID PIECE INDEX - Position ${currentIndex} had invalid value ${originalIndex}, using ${validOriginalIndex}`);
+                                }
+
+                                // Calculate which part of the image to show based on the original piece position
+                                const originalRow = Math.floor(validOriginalIndex / GRID_SIZE);
+                                const originalCol = validOriginalIndex % GRID_SIZE;
+
+                                const cropTop = -originalRow * PIECE_SIZE;
+                                const cropLeft = -originalCol * PIECE_SIZE;
+
+                                return (
+                                    <Animated.View
+                                        key={`piece-${currentIndex}`}
+                                        style={[
+                                            styles.pieceContainer,
+                                            getPiecePosition(currentIndex),
+                                            {
+                                                transform: [
+                                                    { translateX: pieceAnimations[currentIndex].translateX },
+                                                    { translateY: pieceAnimations[currentIndex].translateY },
+                                                    { scale: pieceAnimations[currentIndex].scale },
+                                                ],
+                                                zIndex: isDragging ? 100 : (currentIndex + 1),
+                                                elevation: isDragging ? 20 : 1,
+                                            },
+                                        ]}
+                                        shouldRasterizeIOS={true}
+                                        renderToHardwareTextureAndroid={true}
+                                        needsOffscreenAlphaCompositing={true}
+                                        {...panResponders[currentIndex].panHandlers}
+                                    >
+                                        <View style={{ width: PIECE_SIZE, height: PIECE_SIZE, overflow: 'hidden' }}>
+                                            <Image
+                                                source={{
+                                                    uri: puzzle.imageUrl,
+                                                    cache: 'force-cache'
+                                                }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: cropTop,
+                                                    left: cropLeft,
+                                                    width: ACTUAL_PUZZLE_SIZE,
+                                                    height: ACTUAL_PUZZLE_SIZE,
+                                                }}
+                                                resizeMode="cover"
+                                                fadeDuration={0}
+                                                onLoad={() => {
+                                                }}
+                                                onError={(error) => {
+                                                    console.error(`🧩 ❌ Image FAILED to load for Position ${currentIndex} (Piece ${validOriginalIndex}):`, error.nativeEvent);
+                                                }}
+                                            />
+                                        </View>
+                                    </Animated.View>
+                                );
+                            })}
+
+                            {/* SVG Grid Overlay - drawn on top of pieces */}
+                            {piecesReady && showGridLines && !isSolved && !showReference && (
+                                <View style={styles.gridOverlay} pointerEvents="none">
+                                    <Svg width={ACTUAL_PUZZLE_SIZE} height={ACTUAL_PUZZLE_SIZE}>
+                                        {/* Vertical lines */}
+                                        <Line x1={PIECE_SIZE} y1={0} x2={PIECE_SIZE} y2={ACTUAL_PUZZLE_SIZE} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
+                                        <Line x1={PIECE_SIZE * 2} y1={0} x2={PIECE_SIZE * 2} y2={ACTUAL_PUZZLE_SIZE} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
+                                        {/* Horizontal lines */}
+                                        <Line x1={0} y1={PIECE_SIZE} x2={ACTUAL_PUZZLE_SIZE} y2={PIECE_SIZE} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
+                                        <Line x1={0} y1={PIECE_SIZE * 2} x2={ACTUAL_PUZZLE_SIZE} y2={PIECE_SIZE * 2} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
+                                    </Svg>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Reference image overlay - shown on top during countdown */}
+                        {showReference && imageLoaded && (
+                            <Animated.View style={[styles.referenceOverlay, { opacity: referenceOpacity }]}>
+                                <Text style={styles.referencePreviewLabel}>Memorize this image ⏱️</Text>
+                                <View style={styles.referenceImageWrapper}>
+                                    <Image
+                                        source={{
+                                            uri: puzzle.imageUrl,
+                                            cache: 'force-cache'
+                                        }}
+                                        style={styles.referencePreviewImage}
+                                        resizeMode="cover"
+                                        fadeDuration={0}
+                                    />
+                                    <View style={styles.countdownBadge}>
+                                        <CountdownTimer duration={5} />
+                                    </View>
+                                </View>
+                                <Text style={styles.referencePreviewHint}>Puzzle will appear here...</Text>
+                            </Animated.View>
                         )}
                     </View>
 
-                    {/* Reference image overlay - shown on top during countdown */}
-                    {showReference && imageLoaded && (
-                        <Animated.View style={[styles.referenceOverlay, { opacity: referenceOpacity }]}>
-                            <Text style={styles.referencePreviewLabel}>Memorize this image ⏱️</Text>
-                            <View style={styles.referenceImageWrapper}>
-                                <Image
-                                    source={{
-                                        uri: puzzle.imageUrl,
-                                        cache: 'force-cache'
-                                    }}
-                                    style={styles.referencePreviewImage}
-                                    resizeMode="cover"
-                                    fadeDuration={0}
-                                />
-                                <View style={styles.countdownBadge}>
-                                    <CountdownTimer duration={5} />
-                                </View>
-                            </View>
-                            <Text style={styles.referencePreviewHint}>Puzzle will appear here...</Text>
+                    {/* Solved Celebration - Inline below puzzle */}
+                    {isSolved && (
+                        <Animated.View style={[
+                            styles.celebrationInline,
+                            {
+                                opacity: celebrateOpacity,
+                                transform: [{ scale: celebrateScale }],
+                            }
+                        ]}>
+                            <Text style={styles.celebrateEmoji}>🎉</Text>
+                            <Text style={styles.celebrateTitle}>Puzzle Solved!</Text>
+                            <Text style={styles.celebrateSubtitle}>
+                                You did it in {moveCount} moves
+                            </Text>
+                            <Button
+                                title="Back to Home"
+                                onPress={() => navigation.goBack()}
+                                variant="primary"
+                                size="md"
+                            />
                         </Animated.View>
                     )}
-                </View>
 
-                {/* Solved Celebration - Inline below puzzle */}
-                {isSolved && (
-                    <Animated.View style={[
-                        styles.celebrationInline,
-                        {
-                            opacity: celebrateOpacity,
-                            transform: [{ scale: celebrateScale }],
-                        }
-                    ]}>
-                        <Text style={styles.celebrateEmoji}>🎉</Text>
-                        <Text style={styles.celebrateTitle}>Puzzle Solved!</Text>
-                        <Text style={styles.celebrateSubtitle}>
-                            You did it in {moveCount} moves
-                        </Text>
-                        <Button
-                            title="Back to Home"
-                            onPress={() => navigation.goBack()}
-                            variant="primary"
-                            size="md"
-                        />
-                    </Animated.View>
-                )}
-
-            </SafeAreaView>
+                </SafeAreaView>
+            </GradientBackground>
         </View>
     );
 };
@@ -727,12 +740,14 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        backgroundColor: 'rgba(255, 255, 255, 0.86)',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+        shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
+        shadowOpacity: 0.15,
         shadowRadius: 20,
         elevation: 10,
         zIndex: 10,
@@ -741,14 +756,16 @@ const styles = StyleSheet.create({
         fontSize: 48,
     },
     loadingText: {
+        fontFamily: fontFamily.bold,
         fontSize: 18,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: colors.text,
         marginTop: 32,
     },
     loadingSubtext: {
+        fontFamily: fontFamily.medium,
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.5)',
+        color: colors.textSecondary,
         marginTop: 8,
     },
     header: {
@@ -763,14 +780,22 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        backgroundColor: 'rgba(255, 255, 255, 0.86)',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
     },
     headerTitle: {
+        fontFamily: fontFamily.extraBold,
         fontSize: 20,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
     },
     headerRight: {
         flexDirection: 'row',
@@ -781,28 +806,45 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        backgroundColor: 'rgba(255, 255, 255, 0.86)',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
     },
     gridToggleBtnActive: {
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        backgroundColor: colors.primarySoft,
+        borderColor: colors.primaryLight,
     },
     moveCounter: {
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        backgroundColor: 'rgba(255, 255, 255, 0.86)',
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.xs,
         borderRadius: borderRadius.lg,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
     },
     moveText: {
+        fontFamily: fontFamily.extraBold,
         fontSize: 20,
         fontWeight: '800',
-        color: '#FFFFFF',
+        color: colors.primary,
     },
     moveLabel: {
+        fontFamily: fontFamily.bold,
         fontSize: 10,
-        color: 'rgba(255, 255, 255, 0.5)',
+        color: colors.textSecondary,
         textTransform: 'uppercase',
     },
     instructionContainer: {
@@ -810,8 +852,9 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.md,
     },
     instructionText: {
+        fontFamily: fontFamily.medium,
         fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: colors.textSecondary,
         fontWeight: '500',
     },
     puzzleContainer: {
@@ -822,11 +865,13 @@ const styles = StyleSheet.create({
         width: ACTUAL_PUZZLE_SIZE,
         height: ACTUAL_PUZZLE_SIZE,
         position: 'relative',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: colors.surface,
         borderRadius: borderRadius.lg,
-        shadowColor: '#000',
+        borderWidth: 2,
+        borderColor: colors.borderLight,
+        shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.12,
         shadowRadius: 16,
         elevation: 8,
         overflow: 'hidden',
@@ -867,14 +912,16 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     celebrateTitle: {
+        fontFamily: fontFamily.extraBold,
         fontSize: 24,
         fontWeight: '800',
-        color: '#FFFFFF',
+        color: colors.text,
         marginBottom: spacing.xs,
     },
     celebrateSubtitle: {
+        fontFamily: fontFamily.medium,
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: colors.textSecondary,
         marginBottom: spacing.md,
     },
     referenceOverlay: {
@@ -889,9 +936,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     referencePreviewLabel: {
+        fontFamily: fontFamily.bold,
         fontSize: 18,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: colors.text,
         marginBottom: spacing.md,
     },
     referenceImageWrapper: {
@@ -899,10 +947,12 @@ const styles = StyleSheet.create({
         height: ACTUAL_PUZZLE_SIZE,
         borderRadius: borderRadius.lg,
         overflow: 'hidden',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        shadowColor: '#000',
+        backgroundColor: colors.surface,
+        borderWidth: 2,
+        borderColor: colors.borderLight,
+        shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.12,
         shadowRadius: 16,
         elevation: 8,
     },
@@ -916,8 +966,9 @@ const styles = StyleSheet.create({
         right: spacing.md,
     },
     referencePreviewHint: {
+        fontFamily: fontFamily.medium,
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.5)',
+        color: colors.textSecondary,
         marginTop: spacing.md,
         fontStyle: 'italic',
     },
