@@ -19,6 +19,7 @@ const { width, height } = Dimensions.get('window');
 const AnimatedOnboardingScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const floatAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.timing(fadeAnim, {
@@ -26,7 +27,26 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
             duration: 400,
             useNativeDriver: true,
         }).start();
-    }, [fadeAnim]);
+
+        const floatLoop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(floatAnim, {
+                    toValue: 1,
+                    duration: 1500,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(floatAnim, {
+                    toValue: 0,
+                    duration: 1500,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+
+        floatLoop.start();
+
+        return () => floatLoop.stop();
+    }, [fadeAnim, floatAnim]);
 
     const handleNext = () => {
         onComplete?.();
@@ -51,10 +71,23 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         />
                     </View>
 
-                    <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+                    <Animated.View
+                        style={[
+                            styles.content,
+                            {
+                                opacity: fadeAnim,
+                                transform: [{
+                                    translateY: fadeAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [12, 0],
+                                    }),
+                                }],
+                            },
+                        ]}
+                    >
                         <View style={styles.titleBlock}>
                             <Text style={styles.titlePrimary}>Stay close,</Text>
-                            <Svg height={width < 380 ? 32 : 36} width={width - 40} style={styles.gradientTitle}>
+                            <Svg height={width < 380 ? 42 : 50} width={width - 40} style={styles.gradientTitle}>
                                 <Defs>
                                     <SvgGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
                                         <Stop offset="0" stopColor="#F45F83" />
@@ -65,13 +98,13 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                                 <SvgText
                                     fill="url(#titleGrad)"
                                     fontFamily={fontFamily.extraBold}
-                                    fontSize={width < 380 ? 27 : 31}
-                                    fontWeight={fontWeight('900')}
+                                    fontSize={width < 380 ? 30 : 35}
+                                    fontWeight={fontWeight('700')}
                                     stroke="url(#titleGrad)"
-                                    strokeWidth={1.2}
+                                    strokeWidth={0.15}
                                     textAnchor="middle"
                                     x={(width - 40) / 2}
-                                    y={width < 380 ? 27 : 31}
+                                    y={width < 380 ? 32 : 38}
                                 >
                                     even on busy days.
                                 </SvgText>
@@ -83,7 +116,19 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                             </View>
                         </View>
 
-                        <View style={styles.mascotStage}>
+                        <Animated.View
+                            style={[
+                                styles.mascotStage,
+                                {
+                                    transform: [{
+                                        translateY: floatAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0, -8],
+                                        }),
+                                    }],
+                                },
+                            ]}
+                        >
                             <Svg width="100%" height="100%" viewBox="0 0 330 330" style={StyleSheet.absoluteFill}>
                                 <Circle cx="165" cy="165" r="153" fill="rgba(243, 214, 238, 0.45)" stroke="rgba(255,255,255,0.85)" strokeWidth="2" />
                                 <Circle cx="165" cy="165" r="120" fill="rgba(248, 225, 244, 0.3)" />
@@ -100,7 +145,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                                     resizeMode="contain"
                                 />
                             </View>
-                        </View>
+                        </Animated.View>
 
                         <View style={styles.badgeRow}>
                             <View style={styles.moodBadge}>
@@ -127,7 +172,6 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                                 style={styles.nextButton}
                             >
                                 <Text style={styles.nextText}>Next</Text>
-                                <Text style={styles.nextArrow}>→</Text>
                             </LinearGradient>
                         </TouchableOpacity>
 
@@ -155,7 +199,7 @@ const styles = StyleSheet.create({
     },
     card: {
         flex: 1,
-        backgroundColor: 'rgba(255,255,255,0.48)',
+        backgroundColor: 'transparent',
         overflow: 'hidden',
     },
     header: {
@@ -195,7 +239,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0,
     },
     gradientTitle: {
-        marginTop: -2,
+        marginTop: -8,
     },
     titleAccent: {
         color: '#F45F83',
@@ -208,7 +252,7 @@ const styles = StyleSheet.create({
     },
 
     titleDivider: {
-        marginTop: 9,
+        marginTop: 6,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 14,
@@ -222,14 +266,14 @@ const styles = StyleSheet.create({
     dividerHeart: {
         color: '#FF6B82',
         fontFamily: fontFamily.regular,
-        fontSize: 20,
-        lineHeight: 22,
+        fontSize: 16,
+        lineHeight: 18,
     },
     mascotStage: {
         width: mascotSize,
         height: mascotSize,
         borderRadius: mascotSize / 2,
-        marginTop: height < 720 ? 6 : 10,
+        marginTop: height < 720 ? 4 : 6,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',

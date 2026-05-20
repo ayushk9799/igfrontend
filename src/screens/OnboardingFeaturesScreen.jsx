@@ -54,14 +54,27 @@ const FEATURES = [
 const OnboardingFeaturesScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const featureAnims = useRef(FEATURES.map(() => new Animated.Value(0))).current;
 
     useEffect(() => {
-        Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-        }).start();
-    }, [fadeAnim]);
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 400,
+                useNativeDriver: true,
+            }),
+            Animated.stagger(
+                90,
+                featureAnims.map((anim) =>
+                    Animated.timing(anim, {
+                        toValue: 1,
+                        duration: 360,
+                        useNativeDriver: true,
+                    })
+                )
+            ),
+        ]).start();
+    }, [fadeAnim, featureAnims]);
 
     return (
         <View style={styles.container}>
@@ -82,10 +95,23 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                         />
                     </View>
 
-                    <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+                    <Animated.View
+                        style={[
+                            styles.content,
+                            {
+                                opacity: fadeAnim,
+                                transform: [{
+                                    translateY: fadeAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [12, 0],
+                                    }),
+                                }],
+                            },
+                        ]}
+                    >
                         <View style={styles.titleBlock}>
                             <Text style={styles.titlePrimary}>Share little</Text>
-                            <Svg height={width < 380 ? 32 : 36} width={width - 40} style={styles.gradientTitle}>
+                            <Svg height={width < 380 ? 42 : 50} width={width - 40} style={styles.gradientTitle}>
                                 <Defs>
                                     <SvgGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
                                         <Stop offset="0" stopColor="#F45F83" />
@@ -96,13 +122,13 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                                 <SvgText
                                     fill="url(#titleGrad)"
                                     fontFamily={fontFamily.extraBold}
-                                    fontSize={width < 380 ? 27 : 31}
-                                    fontWeight={fontWeight('900')}
+                                    fontSize={width < 380 ? 30 : 35}
+                                    fontWeight={fontWeight('700')}
                                     stroke="url(#titleGrad)"
-                                    strokeWidth={1.2}
+                                    strokeWidth={0.15}
                                     textAnchor="middle"
                                     x={(width - 40) / 2}
-                                    y={width < 380 ? 27 : 31}
+                                    y={width < 380 ? 32 : 38}
                                 >
                                     moments together.
                                 </SvgText>
@@ -116,8 +142,22 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
 
                         <View style={styles.featuresContainer}>
                             <View style={styles.featuresGrid}>
-                                {FEATURES.map((feature) => (
-                                    <View key={feature.id} style={styles.featureCard}>
+                                {FEATURES.map((feature, index) => (
+                                    <Animated.View
+                                        key={feature.id}
+                                        style={[
+                                            styles.featureCard,
+                                            {
+                                                opacity: featureAnims[index],
+                                                transform: [{
+                                                    translateY: featureAnims[index].interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [16, 0],
+                                                    }),
+                                                }],
+                                            },
+                                        ]}
+                                    >
                                         <View
                                             style={[
                                                 styles.featureIconContainer,
@@ -135,7 +175,7 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                                         </View>
                                         <Text style={styles.featureTitle}>{feature.title}</Text>
                                         <Text style={styles.featureCopy}>{feature.copy}</Text>
-                                    </View>
+                                    </Animated.View>
                                 ))}
                             </View>
                         </View>
@@ -175,7 +215,7 @@ const styles = StyleSheet.create({
     },
     card: {
         flex: 1,
-        backgroundColor: 'rgba(255,255,255,0.48)',
+        backgroundColor: 'transparent',
         overflow: 'hidden',
     },
     header: {
@@ -215,7 +255,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0,
     },
     gradientTitle: {
-        marginTop: -2,
+        marginTop: -8,
     },
     titleAccent: {
         color: '#F45F83',
@@ -227,7 +267,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0,
     },
     titleDivider: {
-        marginTop: 8,
+        marginTop: 6,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 15,
@@ -241,15 +281,15 @@ const styles = StyleSheet.create({
     dividerHeart: {
         color: '#FF6B82',
         fontFamily: fontFamily.regular,
-        fontSize: 22,
-        lineHeight: 24,
+        fontSize: 16,
+        lineHeight: 18,
     },
     featuresContainer: {
         flex: 1,
         width: '100%',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        marginTop: height < 720 ? 12 : 20,
+        marginTop: height < 720 ? 6 : 10,
     },
     featuresGrid: {
         flexDirection: 'row',
@@ -261,14 +301,14 @@ const styles = StyleSheet.create({
     },
     featureCard: {
         width: (Math.min(width, 432) - 56) / 2,
-        height: height < 760 ? 174 : 208,
+        height: height < 760 ? 184 : 226,
         backgroundColor: 'rgba(255, 255, 255, 0.56)',
         borderRadius: 18,
         borderWidth: 1.2,
         borderColor: 'rgba(255, 255, 255, 0.92)',
         paddingHorizontal: 10,
-        paddingTop: 18,
-        paddingBottom: 12,
+        paddingTop: height < 760 ? 12 : 14,
+        paddingBottom: height < 760 ? 4 : 6,
         alignItems: 'center',
         shadowColor: '#B580D9',
         shadowOffset: { width: 0, height: 6 },
@@ -310,9 +350,10 @@ const styles = StyleSheet.create({
     },
     featureImageWrapper: {
         width: '100%',
-        height: height < 760 ? 102 : 132,
+        height: height < 760 ? 94 : 122,
         justifyContent: 'center',
         alignItems: 'center',
+        marginTop: height < 760 ? 14 : 20,
     },
     featureImage: {
         width: '112%',
