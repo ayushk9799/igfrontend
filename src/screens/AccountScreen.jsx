@@ -585,6 +585,7 @@ const styles = StyleSheet.create({
     },
     menuTitleDanger: {
         color: '#FF6B6B',
+        fontWeight: '800',
     },
     menuSubtitle: {
         fontSize: 12,

@@ -20,6 +20,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import Purchases from 'react-native-purchases';
 import { colors } from '../theme';
+import { fontFamily, fontWeight } from '../constants/fonts';
 import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
 import { API_URL } from '../constants/Api';
 
@@ -602,17 +603,19 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     headingTitle: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: '800',
         color: '#050E3E',
         letterSpacing: -0.4,
     },
     premiumText: {
         color: '#FF4B80',
+        fontFamily: fontFamily.extraBold,
+        fontWeight: fontWeight('800'),
     },
     headingSubtitle: {
         color: '#687498',
-        fontSize: 13.5,
+        fontSize: 14,
         fontWeight: '500',
         marginTop: 5,
     },
@@ -681,7 +684,7 @@ const styles = StyleSheet.create({
     },
     bestValueText: {
         color: '#FFFFFF',
-        fontSize: 9,
+        fontSize: 10,
         fontWeight: '900',
         letterSpacing: 0.2,
     },
@@ -697,19 +700,19 @@ const styles = StyleSheet.create({
         color: '#050E3E',
     },
     planSubtitleText: {
-        fontSize: 11.5,
+        fontSize: 12,
         fontWeight: '500',
         color: '#7380A1',
         marginTop: 2,
     },
     planMetaText: {
-        fontSize: 10.5,
+        fontSize: 11,
         fontWeight: '500',
         color: '#7380A1',
         marginTop: 1,
     },
     planSavingsText: {
-        fontSize: 11.5,
+        fontSize: 12,
         fontWeight: '700',
         color: '#10B981',
         marginTop: 4,
@@ -791,12 +794,12 @@ const styles = StyleSheet.create({
     },
     cancelText: {
         color: '#7380A1',
-        fontSize: 12.5,
+        fontSize: 13,
         fontWeight: '700',
     },
     cancelDot: {
         color: '#7380A1',
-        fontSize: 12.5,
+        fontSize: 13,
         fontWeight: '700',
         marginHorizontal: 8,
     },
@@ -808,7 +811,7 @@ const styles = StyleSheet.create({
     termsText: {
         textAlign: 'center',
         color: '#A0A6B5',
-        fontSize: 10.5,
+        fontSize: 11,
         lineHeight: 15,
     },
     termsLink: {
