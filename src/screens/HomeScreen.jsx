@@ -18,7 +18,7 @@ import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { getPenguinMoodImage } from '../constants/PenguinMoods';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
-import { fontFamily } from '../constants/fonts';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width } = Dimensions.get('window');
 
@@ -394,9 +394,6 @@ const HomeScreen = ({
                                         <HomeText style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{topic.title}</HomeText>
                                         <HomeText style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{topic.subtitle}</HomeText>
                                     </View>
-                                    <View style={styles.topicArrow}>
-                                        <IconSvg type="arrow" color={topic.arrowColor} size={18} />
-                                    </View>
                                 </LinearGradient>
                             </TouchableOpacity>
                         ))}
@@ -484,7 +481,7 @@ const styles = StyleSheet.create({
     badgeText: {
         color: '#FFFFFF',
         fontSize: 9,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     greetingBlock: {
@@ -492,14 +489,14 @@ const styles = StyleSheet.create({
     },
     greeting: {
         fontSize: 25,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         color: '#171B44',
         fontFamily: fontFamily.extraBold,
     },
     greetingSub: {
         color: '#6F6998',
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         marginTop: 4,
         fontFamily: fontFamily.bold,
     },
@@ -519,20 +516,20 @@ const styles = StyleSheet.create({
     cardEyebrow: {
         color: '#272C57',
         fontSize: 12,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         fontFamily: fontFamily.extraBold,
     },
     partnerMoodText: {
         color: '#FF6F8F',
         fontSize: 20,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         marginTop: 5,
         fontFamily: fontFamily.extraBold,
     },
     cardMeta: {
         color: '#817A9F',
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         marginTop: 5,
         fontFamily: fontFamily.bold,
     },
@@ -626,7 +623,7 @@ const styles = StyleSheet.create({
     sectionPrompt: {
         color: '#272C57',
         fontSize: 14,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         marginBottom: 12,
         fontFamily: fontFamily.extraBold,
     },
@@ -656,7 +653,7 @@ const styles = StyleSheet.create({
     quickLabel: {
         color: '#272C57',
         fontSize: 11,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         fontFamily: fontFamily.extraBold,
     },
     quoteCard: {
@@ -672,13 +669,13 @@ const styles = StyleSheet.create({
     quoteText: {
         color: '#555078',
         fontSize: 15,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         fontFamily: fontFamily.bold,
     },
     quoteSub: {
         color: '#6F6998',
         fontSize: 13,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         marginTop: 3,
         fontFamily: fontFamily.bold,
     },
@@ -699,7 +696,7 @@ const styles = StyleSheet.create({
     todayTitle: {
         color: '#171B44',
         fontSize: 20,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         marginTop: 4,
         fontFamily: fontFamily.extraBold,
     },
@@ -715,7 +712,7 @@ const styles = StyleSheet.create({
         color: '#6F6998',
         fontSize: 14,
         lineHeight: 20,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         marginTop: 12,
         fontFamily: fontFamily.bold,
     },
@@ -748,14 +745,14 @@ const styles = StyleSheet.create({
         color: '#171B44',
         fontSize: 14,
         lineHeight: 18,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     smallCardSub: {
         color: '#766F9B',
         fontSize: 11,
         lineHeight: 15,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         marginTop: 4,
         fontFamily: fontFamily.bold,
     },
@@ -819,7 +816,7 @@ const styles = StyleSheet.create({
     daysText: {
         color: '#FF758F',
         fontSize: 40,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         lineHeight: 44,
         fontFamily: fontFamily.extraBold,
     },
@@ -827,14 +824,14 @@ const styles = StyleSheet.create({
         color: '#171B44',
         fontSize: 15,
         lineHeight: 19,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     daysSub: {
         color: '#817A9F',
         fontSize: 11,
         lineHeight: 14,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         marginTop: 8,
         fontFamily: fontFamily.extraBold,
     },
@@ -852,7 +849,7 @@ const styles = StyleSheet.create({
     challengeCategory: {
         color: '#FF6F8F',
         fontSize: 11,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         fontFamily: fontFamily.extraBold,
         textTransform: 'uppercase',
         marginBottom: 4,
@@ -861,7 +858,7 @@ const styles = StyleSheet.create({
         color: '#3C375A',
         fontSize: 13,
         lineHeight: 17,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         fontFamily: fontFamily.bold,
     },
     challengeContentCompleted: {
@@ -876,7 +873,7 @@ const styles = StyleSheet.create({
         color: '#138A68',
         fontSize: 12,
         lineHeight: 16,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         fontFamily: fontFamily.bold,
         flex: 1,
         paddingRight: 8,
@@ -900,13 +897,13 @@ const styles = StyleSheet.create({
     sectionTitle: {
         color: '#171B44',
         fontSize: 20,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     sectionSub: {
         color: '#766F9B',
         fontSize: 13,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         marginTop: 3,
         fontFamily: fontFamily.bold,
     },
@@ -934,13 +931,13 @@ const styles = StyleSheet.create({
     gameTitle: {
         color: '#FFFFFF',
         fontSize: 17,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     gameSubtitle: {
         color: 'rgba(255,255,255,0.86)',
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         lineHeight: 17,
         marginTop: 6,
         fontFamily: fontFamily.bold,
@@ -976,7 +973,7 @@ const styles = StyleSheet.create({
     topicTitle: {
         fontSize: 14,
         lineHeight: 17,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         letterSpacing: 0,
         fontFamily: fontFamily.extraBold,
     },
@@ -984,11 +981,12 @@ const styles = StyleSheet.create({
         flexShrink: 1,
         flexGrow: 1,
         minWidth: 0,
+        paddingRight: 12,
     },
     topicSubtitle: {
         fontSize: 11,
         lineHeight: 15,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         marginTop: 4,
         opacity: 0.85,
         fontFamily: fontFamily.bold,
@@ -1017,7 +1015,7 @@ const styles = StyleSheet.create({
     linkPartnerTitle: {
         color: '#171B44',
         fontSize: 20,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         marginBottom: 7,
         fontFamily: fontFamily.extraBold,
     },
@@ -1025,7 +1023,7 @@ const styles = StyleSheet.create({
         color: '#6F6998',
         fontSize: 14,
         lineHeight: 20,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         fontFamily: fontFamily.bold,
     },
 });

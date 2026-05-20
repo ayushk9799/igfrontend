@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { colors } from '../theme';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -544,8 +545,9 @@ const styles = StyleSheet.create({
         marginTop: -2,
     },
     title: {
+        fontFamily: fontFamily.extraBold,
         fontSize: isCompactHeight ? 18 : 22,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         color: navy,
         textAlign: 'center',
         letterSpacing: -0.5,
@@ -556,11 +558,12 @@ const styles = StyleSheet.create({
         lineHeight: isCompactHeight ? 20 : 23,
     },
     subtitle: {
+        fontFamily: fontFamily.bold,
         fontSize: isCompactHeight ? 14 : 16,
         color: '#7380A1',
         textAlign: 'center',
         marginTop: isCompactHeight ? 8 : 10,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         lineHeight: isCompactHeight ? 21 : 23,
     },
     subtitleKeyboard: {
@@ -584,7 +587,8 @@ const styles = StyleSheet.create({
     },
     inputWrapper: {
         marginBottom: isCompactHeight ? 14 : 18,
-        width: '100%',
+        width: width - 76,
+        alignSelf: 'center',
     },
     inputWrapperKeyboard: {
         marginBottom: isCompactHeight ? 10 : 12,
@@ -622,20 +626,22 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
+        fontFamily: fontFamily.extraBold,
         fontSize: isCompactHeight ? 16 : 18,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         color: navy,
         letterSpacing: -0.5,
         padding: 0,
     },
     charCount: {
+        fontFamily: fontFamily.extraBold,
         fontSize: isCompactHeight ? 15 : 16,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         color: '#9BA5C4',
         paddingRight: 8,
     },
     continueButtonWrapper: {
-        width: '100%',
+        width: width - 76,
         height: isCompactHeight ? 44 : 48,
         borderRadius: 24,
         overflow: 'hidden',
@@ -667,8 +673,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     continueButtonText: {
+        fontFamily: fontFamily.extraBold,
         fontSize: isCompactHeight ? 16 : 18,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         color: '#FFFFFF',
     },
     footerSparkleRow: {
@@ -680,8 +687,9 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     footerSparkleText: {
+        fontFamily: fontFamily.bold,
         fontSize: isCompactHeight ? 13 : 15,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         color: '#B9A9C5',
     },
     cloudsContainer: {

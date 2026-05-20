@@ -21,6 +21,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { API_BASE } from '../constants/Api';
 import { updateUser } from '../utils/authStorage';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -397,9 +398,9 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     brandLogo: {
-        width: isCompactHeight ? 100 : 120,
-        height: isCompactHeight ? 30 : 36,
-        marginLeft: -10,
+        width: isCompactHeight ? 120 : 140,
+        height: isCompactHeight ? 36 : 42,
+        marginLeft: -14,
     },
     heroSection: {
         alignItems: 'center',
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         position: 'relative',
-        marginBottom: 6,
+        marginBottom: 2,
     },
     titleBurstLeft: {
         position: 'absolute',
@@ -442,18 +443,20 @@ const styles = StyleSheet.create({
         top: -2,
     },
     title: {
+        fontFamily: fontFamily.extraBold,
         fontSize: isCompactHeight ? 24 : 28,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         color: navy,
         textAlign: 'center',
         letterSpacing: -0.4,
     },
     subtitle: {
+        fontFamily: fontFamily.medium,
         fontSize: isCompactHeight ? 13 : 14,
         color: '#7380A1',
         textAlign: 'center',
-        marginTop: isCompactHeight ? 4 : 8,
-        fontWeight: '500',
+        marginTop: isCompactHeight ? 2 : 4,
+        fontWeight: fontWeight('500'),
     },
     codeSection: {
         gap: 0,

@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 import { requestNotificationPermission, registerFCMToken } from '../utils/pushNotifications';
 
@@ -98,8 +99,17 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                 end={{ x: 0.75, y: 1 }}
                 style={styles.gradient}
             >
-                <View style={[styles.container, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 10 }]}>
+                <View style={[styles.container, { paddingTop: insets.top + 4, paddingBottom: insets.bottom + 10 }]}>
                     
+                    {/* Brand Logo */}
+                    <View style={styles.brandContainer}>
+                        <Image 
+                            source={require('../../assets/images/penguin-text-logo.png')} 
+                            style={styles.brandLogo} 
+                            resizeMode="contain" 
+                        />
+                    </View>
+
                     {/* Hero Section */}
                     <Animated.View
                         style={[
@@ -239,6 +249,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         zIndex: 2,
     },
+    brandContainer: {
+        alignSelf: 'flex-start',
+        marginTop: 0,
+        marginLeft: 0,
+    },
+    brandLogo: {
+        width: isCompactHeight ? 120 : 140,
+        height: isCompactHeight ? 36 : 42,
+        marginLeft: -14, // Pull logo left slightly for visual alignment
+    },
     heroSection: {
         alignItems: 'center',
         marginTop: isCompactHeight ? 0 : 20,
@@ -268,7 +288,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         position: 'relative',
-        marginBottom: 8,
+        marginBottom: 2,
     },
     titleBurstContainer: {
         position: 'absolute',
@@ -281,26 +301,28 @@ const styles = StyleSheet.create({
         top: -2,
     },
     title: {
-        fontSize: isCompactHeight ? 28 : 34,
-        fontWeight: '800',
+        fontFamily: fontFamily.extraBold,
+        fontSize: isCompactHeight ? 25 : 30,
+        fontWeight: fontWeight('800'),
         color: navy,
         textAlign: 'center',
         letterSpacing: -0.4,
     },
     subtitle: {
+        fontFamily: fontFamily.medium,
         fontSize: isCompactHeight ? 13 : 14,
         color: '#7380A1',
         textAlign: 'center',
-        marginTop: isCompactHeight ? 6 : 10,
+        marginTop: isCompactHeight ? 2 : 4,
         lineHeight: 20,
         paddingHorizontal: 10,
-        fontWeight: '500',
+        fontWeight: fontWeight('500'),
     },
     featuresCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
         paddingHorizontal: isCompactHeight ? 16 : 24,
-        paddingVertical: isCompactHeight ? 2 : 6,
+        paddingVertical: isCompactHeight ? 2 : 4,
         shadowColor: '#FFB5D0',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.15,
@@ -310,33 +332,35 @@ const styles = StyleSheet.create({
     featureRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: isCompactHeight ? 10 : 12,
+        paddingVertical: isCompactHeight ? 6 : 8,
     },
     featureIconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
+        width: 38,
+        height: 38,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginRight: 12,
     },
     featureEmoji: {
-        fontSize: 24,
+        fontSize: 18,
     },
     featureTextContainer: {
         flex: 1,
     },
     featureTitle: {
-        fontSize: 15,
-        fontWeight: '700',
+        fontFamily: fontFamily.bold,
+        fontSize: 14,
+        fontWeight: fontWeight('700'),
         color: navy,
         letterSpacing: -0.3,
     },
     featureSubtitle: {
-        fontSize: 12,
+        fontFamily: fontFamily.medium,
+        fontSize: 11,
         color: '#7380A1',
-        marginTop: 2,
-        fontWeight: '500',
+        marginTop: 1,
+        fontWeight: fontWeight('500'),
     },
     divider: {
         height: 1,
@@ -344,8 +368,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 10,
     },
     spacer: {
-        flex: 1,
-        minHeight: isCompactHeight ? 15 : 30,
+        height: isCompactHeight ? 16 : 26,
     },
     bottomSection: {
         alignItems: 'center',
@@ -380,8 +403,9 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     allowButtonText: {
+        fontFamily: fontFamily.extraBold,
         fontSize: isCompactHeight ? 14 : 15,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         color: '#FFFFFF',
     },
     skipButton: {
@@ -389,9 +413,10 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
     },
     skipText: {
+        fontFamily: fontFamily.bold,
         fontSize: 15,
         color: '#7380A1',
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
     },
     cloudsContainer: {
         position: 'absolute',

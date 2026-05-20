@@ -15,7 +15,7 @@ import {
     Linking,
     StatusBar,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import ExpoImageCropTool from 'expo-image-crop-tool';
 import { ImageManipulator, FlipType, SaveFormat } from 'expo-image-manipulator';
@@ -27,6 +27,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { spacing } from '../theme';
 import useAvatarUpload from '../hooks/useAvatarUpload';
 import { selectUser } from '../store/slices/userSlice';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -81,6 +82,18 @@ const CameraIconOutline = ({ color = "#FF5E97" }) => (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
         <Path d="M12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17Z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
         <Path d="M22 8V18C22 19.1046 21.1046 20 20 20H4C2.89543 20 2 19.1046 2 18V8C2 6.89543 2.89543 6 4 6H7.17157C7.70201 6 8.21071 5.78929 8.58579 5.41421L9.41421 4.58579C9.78929 4.21071 10.298 4 10.8284 4H13.1716C13.702 4 14.2107 4.21071 14.5858 4.58579L15.4142 5.41421C15.7893 5.78929 16.298 6 16.8284 6H20C21.1046 6 22 6.89543 22 8Z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+);
+
+const CheckIconBig = () => (
+    <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+        <Path d="M9 16.17L4.83 12L3.41 13.41L9 19L21 7L19.59 5.59L9 16.17Z" fill="#FF5E97" />
+    </Svg>
+);
+
+const ReplaceIcon = () => (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+        <Path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="#FF5E97" />
     </Svg>
 );
 
@@ -305,149 +318,146 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Header */}
-                    <View style={styles.headerContainer}>
-                        <View style={styles.headerTextCol}>
-                            <View style={styles.titleRow}>
-                                <View style={styles.heartWrapper}>
-                                    <TinyHeart />
-                                </View>
-                                <Text style={styles.title}>add a photo</Text>
-                                <View style={styles.burstWrapper}>
-                                    <TitleBurst />
-                                </View>
+                    {/* Vertically Centered Content Section */}
+                    <View style={styles.contentCentered}>
+                        {/* Centered Premium Title Block inspired by other onboarding screens */}
+                        <View style={styles.titleBlock}>
+                            <Text style={styles.titlePrimary}>Add a photo</Text>
+                            <Svg height={width < 380 ? 44 : 50} width={width - 40} style={styles.gradientTitle}>
+                                <Defs>
+                                    <SvgGradient id="titleGradAvatar" x1="0" y1="0" x2="1" y2="0">
+                                        <Stop offset="0" stopColor="#FF435F" />
+                                        <Stop offset="0.52" stopColor="#D34AA2" />
+                                        <Stop offset="1" stopColor="#6756D8" />
+                                    </SvgGradient>
+                                </Defs>
+                                <SvgText
+                                    fill="url(#titleGradAvatar)"
+                                    fontFamily={fontFamily.extraBold}
+                                    fontSize={width < 380 ? 25 : 29}
+                                    fontWeight={fontWeight('700')}
+                                    stroke="url(#titleGradAvatar)"
+                                    strokeWidth={0.15}
+                                    textAnchor="middle"
+                                    x={(width - 40) / 2}
+                                    y={width < 380 ? 31 : 36}
+                                >
+                                    for your partner.
+                                </SvgText>
+                            </Svg>
+                            <View style={styles.titleDivider}>
+                                <View style={styles.dividerLine} />
+                                <Text style={styles.dividerHeart}>♡</Text>
+                                <View style={styles.dividerLine} />
                             </View>
-                            <Text style={styles.subtitle}>
-                                Let your partner see you
-                            </Text>
                         </View>
-                    </View>
 
-                    {/* Main Camera / Mascot Box */}
-                    <View style={styles.cardContainer}>
-                        <View style={styles.dashedBox}>
-                            
-                            {/* Decorative Sparkles & Hearts */}
-                            {!previewUri && !hasPermission && (
-                                <>
-                                    <View style={[styles.decor, { top: '8%', left: '10%' }]}><SparkleIcon size={14} color="#FFA6C9" /></View>
-                                    <View style={[styles.decor, { top: '30%', left: '4%' }]}><DecorativeHeart size={20} color="#FF8FAB" /></View>
-                                    <View style={[styles.decor, { top: '55%', left: '8%' }]}><SparkleIcon size={12} color="#FFA6C9" /></View>
-                                    <View style={[styles.decor, { top: '10%', right: '12%' }]}><SparkleIcon size={18} color="#FF8FAB" /></View>
-                                    <View style={[styles.decor, { top: '25%', right: '6%' }]}><SparkleIcon size={10} color="#FFA6C9" /></View>
-                                    <View style={[styles.decor, { top: '45%', right: '3%' }]}><DecorativeHeart size={24} color="#FF8FAB" /></View>
-                                    <View style={[styles.decor, { top: '60%', right: '10%' }]}><SparkleIcon size={14} color="#FFA6C9" /></View>
-                                </>
-                            )}
+                        {/* Centered Section Label above the card */}
+                        <Text style={styles.cardLabelText}>profile photo</Text>
 
-                            {previewUri ? (
-                                <View style={styles.cameraWrapper}>
-                                    <Image
-                                        source={{ uri: previewUri.uri }}
-                                        style={[
-                                            styles.previewImage,
-                                            previewUri.isFrontCamera && { transform: [{ scaleX: -1 }] }
-                                        ]}
-                                        resizeMode="cover"
-                                    />
-                                </View>
-                            ) : hasPermission ? (
-                                <View style={styles.cameraWrapper}>
-                                    {isCameraInitialized && (
-                                        <Camera
-                                            ref={cameraRef}
-                                            style={styles.camera}
-                                            cameraType={cameraType}
-                                            flashMode="auto"
+                        {/* Main Camera / Mascot Box */}
+                        <View style={styles.cardContainer}>
+                            <View style={[styles.dashedBox, (hasPermission || previewUri) && { borderWidth: 0 }]}>
+                                
+                                {/* Decorative Sparkles & Hearts */}
+                                {!previewUri && !hasPermission && (
+                                    <>
+                                        <View style={[styles.decor, { top: '8%', left: '10%' }]}><SparkleIcon size={14} color="#FFA6C9" /></View>
+                                        <View style={[styles.decor, { top: '30%', left: '4%' }]}><DecorativeHeart size={20} color="#FF8FAB" /></View>
+                                        <View style={[styles.decor, { top: '55%', left: '8%' }]}><SparkleIcon size={12} color="#FFA6C9" /></View>
+                                        <View style={[styles.decor, { top: '10%', right: '12%' }]}><SparkleIcon size={18} color="#FF8FAB" /></View>
+                                        <View style={[styles.decor, { top: '25%', right: '6%' }]}><SparkleIcon size={10} color="#FFA6C9" /></View>
+                                        <View style={[styles.decor, { top: '45%', right: '3%' }]}><DecorativeHeart size={24} color="#FF8FAB" /></View>
+                                        <View style={[styles.decor, { top: '60%', right: '10%' }]}><SparkleIcon size={14} color="#FFA6C9" /></View>
+                                    </>
+                                )}
+
+                                {previewUri ? (
+                                    <View style={styles.cameraWrapper}>
+                                        <Image
+                                            source={{ uri: previewUri.uri }}
+                                            style={[
+                                                styles.previewImage,
+                                                previewUri.isFrontCamera && { transform: [{ scaleX: -1 }] }
+                                            ]}
+                                            resizeMode="cover"
                                         />
-                                    )}
-                                </View>
-                            ) : (
-                                // No Permission State
-                                <View style={styles.noPermissionContent}>
-                                    <Image 
-                                        source={require('../../assets/images/camera-photo.png')} 
-                                        style={styles.mascotImage} 
-                                        resizeMode="contain" 
-                                    />
-                                    <View style={styles.permissionInfoBox}>
-                                        <View style={styles.permissionIconCircle}>
-                                            <CameraIconOutline color="#FF5E97" />
-                                        </View>
-                                        <View style={styles.permissionTextCol}>
-                                            <Text style={styles.permissionTitle}>Camera access is needed</Text>
-                                            <Text style={styles.permissionSubtitle}>to take your profile photo</Text>
-                                        </View>
                                     </View>
-                                    <TouchableOpacity style={styles.grantButton} onPress={requestCameraPermission} activeOpacity={0.85}>
-                                        <LinearGradient 
-                                            colors={['#FF5E97', '#FFA1C9']} 
-                                            start={{ x: 0, y: 0 }} 
-                                            end={{ x: 1, y: 0 }} 
-                                            style={styles.grantButtonGradient}
-                                        >
-                                            <CameraIconOutline color="#FFFFFF" />
-                                            <Text style={styles.grantButtonText}>Grant Camera Access</Text>
-                                        </LinearGradient>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-
-                        </View>
-                    </View>
-
-                    <View style={styles.spacer} />
-
-                    {/* Bottom Controls */}
-                    <View style={styles.controlsRow}>
-                        <View style={styles.controlItem}>
-                            <TouchableOpacity style={styles.smallCircleButton} onPress={handlePickFromGallery}>
-                                <GalleryIcon />
-                            </TouchableOpacity>
-                            <Text style={styles.controlLabel}>Gallery</Text>
-                        </View>
-
-                        <View style={styles.controlItem}>
-                            <TouchableOpacity style={styles.captureRing} onPress={handleCapture}>
-                                <LinearGradient colors={['#FFB5D0', '#FF8FAB', '#FF5E97']} style={styles.captureRingGradient}>
-                                    <View style={styles.captureInnerCircle} />
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.controlItem}>
-                            <TouchableOpacity style={styles.smallCircleButton} onPress={toggleCamera}>
-                                <FlipIcon />
-                            </TouchableOpacity>
-                            <Text style={styles.controlLabel}>Flip</Text>
-                        </View>
-                    </View>
-
-                    {/* Footer Continue Button */}
-                    <View style={styles.footer}>
-                        <TouchableOpacity
-                            style={[styles.continueButtonWrapper, (!previewUri && !hasPermission) && styles.continueButtonDisabled]}
-                            onPress={handleNext}
-                            disabled={!previewUri || isUploading}
-                            activeOpacity={0.85}
-                        >
-                            <LinearGradient
-                                colors={['#FF5E97', '#FFA1C9']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.continueButtonGradient}
-                            >
-                                {isUploading ? (
-                                    <ActivityIndicator color="#FFFFFF" />
+                                ) : hasPermission ? (
+                                    <View style={styles.cameraWrapper}>
+                                        {isCameraInitialized && (
+                                            <Camera
+                                                ref={cameraRef}
+                                                style={styles.camera}
+                                                cameraType={cameraType}
+                                                flashMode="auto"
+                                            />
+                                        )}
+                                    </View>
                                 ) : (
-                                    <View style={styles.continueButtonContent}>
-                                        <Text style={[styles.continueButtonText, (!previewUri && !hasPermission) && styles.continueButtonTextDisabled]}>
-                                            Continue →
-                                        </Text>
+                                    // No Permission State
+                                    <View style={styles.noPermissionContent}>
+                                        <Image 
+                                            source={require('../../assets/images/camera-photo.png')} 
+                                            style={styles.mascotImage} 
+                                            resizeMode="contain" 
+                                        />
+                                        <TouchableOpacity style={styles.grantButton} onPress={requestCameraPermission} activeOpacity={0.85}>
+                                            <LinearGradient 
+                                                colors={['#FF5E97', '#FFA1C9']} 
+                                                start={{ x: 0, y: 0 }} 
+                                                end={{ x: 1, y: 0 }} 
+                                                style={styles.grantButtonGradient}
+                                            >
+                                                <CameraIconOutline color="#FFFFFF" />
+                                                <Text style={styles.grantButtonText}>Grant Camera Access</Text>
+                                            </LinearGradient>
+                                        </TouchableOpacity>
                                     </View>
                                 )}
-                            </LinearGradient>
-                        </TouchableOpacity>
+
+                            </View>
+                        </View>
+
+                        <View style={styles.spacer} />
+
+                        {/* Bottom Controls */}
+                        <View style={styles.controlsRow}>
+                            <View style={styles.controlItem}>
+                                <TouchableOpacity style={styles.smallCircleButton} onPress={handlePickFromGallery}>
+                                    <GalleryIcon />
+                                </TouchableOpacity>
+                                <Text style={styles.controlLabel}>Gallery</Text>
+                            </View>
+
+                            <View style={styles.controlItem}>
+                                <TouchableOpacity 
+                                    style={[styles.captureRing, (!previewUri && !hasPermission) && { opacity: 0.5 }]} 
+                                    onPress={previewUri ? handleNext : handleCapture}
+                                    disabled={(!previewUri && !hasPermission) || isUploading}
+                                >
+                                    <LinearGradient colors={['#FFB5D0', '#FF8FAB', '#FF5E97']} style={styles.captureRingGradient}>
+                                        <View style={styles.captureInnerCircle}>
+                                            {isUploading ? (
+                                                <ActivityIndicator color="#FF5E97" size="small" />
+                                            ) : previewUri ? (
+                                                <CheckIconBig />
+                                            ) : null}
+                                        </View>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.controlItem}>
+                                <TouchableOpacity 
+                                    style={styles.smallCircleButton} 
+                                    onPress={previewUri ? () => setPreviewUri(null) : toggleCamera}
+                                >
+                                    {previewUri ? <ReplaceIcon /> : <FlipIcon />}
+                                </TouchableOpacity>
+                                <Text style={styles.controlLabel}>{previewUri ? 'Replace' : 'Flip'}</Text>
+                            </View>
+                        </View>
                     </View>
                 </View>
 
@@ -475,6 +485,10 @@ const styles = StyleSheet.create({
         flex: 1,
         zIndex: 2,
     },
+    contentCentered: {
+        flex: 1,
+        justifyContent: 'center',
+    },
     topRowContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -484,17 +498,9 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     brandLogo: {
-        width: isCompactHeight ? 100 : 120,
-        height: isCompactHeight ? 30 : 36,
-        marginLeft: -10,
-    },
-    headerContainer: {
-        paddingHorizontal: 24,
-        marginBottom: isCompactHeight ? 15 : 25,
-    },
-    headerTextCol: {
-        flex: 1,
-        alignItems: 'flex-start',
+        width: isCompactHeight ? 120 : 140,
+        height: isCompactHeight ? 36 : 42,
+        marginLeft: -14,
     },
     closeButton: {
         width: 32,
@@ -509,45 +515,62 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 4,
     },
-    titleRow: {
+    titleBlock: {
+        alignItems: 'center',
+        marginTop: isCompactHeight ? 0 : 6,
+    },
+    titlePrimary: {
+        color: '#050E3E',
+        fontFamily: fontFamily.extraBold,
+        fontSize: isCompactHeight ? 26 : 30,
+        fontWeight: fontWeight('800'),
+        textAlign: 'center',
+        letterSpacing: 0.2,
+    },
+    gradientTitle: {
+        marginTop: -6,
+    },
+    titleDivider: {
+        marginTop: 4,
         flexDirection: 'row',
         alignItems: 'center',
-        position: 'relative',
+        gap: 15,
+        marginBottom: isCompactHeight ? 10 : 16,
     },
-    heartWrapper: {
-        position: 'absolute',
-        top: -6,
-        left: 22,
+    dividerLine: {
+        width: 62,
+        height: 2,
+        borderRadius: 1,
+        backgroundColor: 'rgba(255, 143, 171, 0.34)',
     },
-    burstWrapper: {
-        position: 'absolute',
-        top: -10,
-        right: -20,
-        transform: [{ scale: 0.8 }],
+    dividerHeart: {
+        color: '#FF6B82',
+        fontFamily: fontFamily.regular,
+        fontSize: 16,
+        lineHeight: 18,
     },
-    title: {
-        fontSize: 26,
-        fontWeight: '800',
-        color: navy,
-        letterSpacing: -0.5,
-    },
-    subtitle: {
-        fontSize: 14,
-        color: '#7380A1',
-        marginTop: 4,
-        fontWeight: '500',
+    cardLabelText: {
+        fontFamily: fontFamily.bold,
+        fontSize: 13,
+        fontWeight: fontWeight('700'),
+        color: '#FF5E97',
+        textAlign: 'center',
+        marginBottom: isCompactHeight ? 8 : 12,
+        textTransform: 'uppercase',
+        letterSpacing: 1.5,
     },
     cardContainer: {
         backgroundColor: '#FFFFFF',
         borderRadius: 36,
         padding: 12,
-        marginHorizontal: 24,
+        width: width - 48,
+        height: width - 48,
+        alignSelf: 'center',
         shadowColor: '#FFB5D0',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
         elevation: 6,
-        height: isCompactHeight ? 380 : 440,
     },
     dashedBox: {
         flex: 1,
@@ -570,10 +593,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     mascotImage: {
-        width: 400,
-        height: 400,
+        width: isCompactHeight ? 320 : 360,
+        height: isCompactHeight ? 320 : 360,
         position: 'absolute',
-        top: '-10%',
+        top: isCompactHeight ? '-24%' : '-18%',
         zIndex: 2,
     },
     permissionInfoBox: {
@@ -607,14 +630,17 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     permissionTitle: {
+        fontFamily: fontFamily.bold,
         fontSize: 14,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         color: navy,
     },
     permissionSubtitle: {
+        fontFamily: fontFamily.medium,
         fontSize: 13,
         color: '#7380A1',
         marginTop: 2,
+        fontWeight: fontWeight('500'),
     },
     grantButton: {
         width: '100%',
@@ -635,9 +661,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     grantButtonText: {
+        fontFamily: fontFamily.extraBold,
         color: '#FFFFFF',
-        fontSize: isCompactHeight ? 16 : 18,
-        fontWeight: '800',
+        fontSize: isCompactHeight ? 14 : 15,
+        fontWeight: fontWeight('800'),
         marginLeft: 8,
     },
     cameraWrapper: {
@@ -661,7 +688,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 30,
-        marginBottom: isCompactHeight ? 20 : 30,
+        marginBottom: isCompactHeight ? 10 : 15,
     },
     controlItem: {
         alignItems: 'center',
@@ -681,8 +708,9 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     controlLabel: {
+        fontFamily: fontFamily.bold,
         fontSize: 13,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         color: '#7380A1',
     },
     captureRing: {
@@ -707,6 +735,8 @@ const styles = StyleSheet.create({
         height: 68,
         borderRadius: 34,
         backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     footer: {
         paddingHorizontal: 24,
@@ -738,8 +768,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     continueButtonText: {
+        fontFamily: fontFamily.extraBold,
         fontSize: isCompactHeight ? 16 : 18,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         color: '#FFFFFF',
     },
     continueButtonTextDisabled: {
