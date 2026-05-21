@@ -5,27 +5,166 @@ import {
     StyleSheet,
     TouchableOpacity,
     Image,
-    Dimensions,
     Platform,
     Animated,
     PanResponder,
     StatusBar,
+    Alert,
+    ScrollView,
+    useWindowDimensions,
 } from 'react-native';
-import Svg, { Path, Line } from 'react-native-svg';
+import Svg, { Path, Image as SvgImage, ClipPath, Defs, Text as SvgText } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import Button from '../components/Button';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import GradientBackground from '../components/GradientBackground';
 import { usePuzzle } from '../hooks/usePuzzle';
+import * as Haptics from 'expo-haptics';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// Use Math.floor to ensure integer pixel values and avoid gaps/overlaps
-const PUZZLE_SIZE = Math.floor(SCREEN_WIDTH - 60);
-const GRID_SIZE = 3;
-const PIECE_SIZE = Math.floor(PUZZLE_SIZE / GRID_SIZE);
-// Recalculate PUZZLE_SIZE to be exactly divisible by GRID_SIZE (avoids sub-pixel gaps)
-const ACTUAL_PUZZLE_SIZE = PIECE_SIZE * GRID_SIZE;
+const MAX_GRID_SIZE = 9;
+const SHOW_DEV_NUMBERS = false; // Set to false to hide numbers in production
+const TRAY_PIECE_HEIGHT = 110;
+
+const getEdgePath = (x1, y1, x2, y2, nx, ny) => {
+    if (nx === 0 && ny === 0) {
+        return `L ${x2} ${y2}`;
+    }
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const S = Math.sqrt(dx * dx + dy * dy);
+
+    // Helper to compute absolute coordinates of a relative point (t, perp)
+    const p = (t, perp) => {
+        const px = x1 + t * dx + perp * S * nx;
+        const py = y1 + t * dy + perp * S * ny;
+        return `${px.toFixed(1)},${py.toFixed(1)}`;
+    };
+
+    // Construct the Bezier segments
+    const pA = p(0.38, 0);
+    const pB_cp1 = p(0.38, 0.05);
+    const pB_cp2 = p(0.32, 0.10);
+    const pB = p(0.32, 0.20);
+    
+    const pHead_cp1 = p(0.32, 0.30);
+    const pHead_cp2 = p(0.40, 0.32);
+    const pHead_mid = p(0.50, 0.32);
+    
+    const pHead_cp3 = p(0.60, 0.32);
+    const pHead_cp4 = p(0.68, 0.30);
+    const pHead = p(0.68, 0.20);
+    
+    const pC_cp1 = p(0.68, 0.10);
+    const pC_cp2 = p(0.62, 0.05);
+    const pC = p(0.62, 0);
+
+    return `L ${pA} C ${pB_cp1} ${pB_cp2} ${pB} C ${pHead_cp1} ${pHead_cp2} ${pHead_mid} C ${pHead_cp3} ${pHead_cp4} ${pHead} C ${pC_cp1} ${pC_cp2} ${pC} L ${x2},${y2}`;
+};
+
+const getPiecePath = (row, col, gridDim, pieceSize, tabSize) => {
+    const P = pieceSize;
+    const T = tabSize;
+
+    // Corner points in local coordinate system offset by T
+    const TL = { x: T, y: T };
+    const TR = { x: T + P, y: T };
+    const BR = { x: T + P, y: T + P };
+    const BL = { x: T, y: T + P };
+
+    // Determine absolute tab direction vectors for each of the 4 edges
+    const topDir = row === 0 ? 0 : ((row - 1 + col) % 2 === 0 ? 1 : -1);
+    const topN = { x: 0, y: topDir };
+
+    const rightDir = col === gridDim - 1 ? 0 : ((row + col) % 2 === 0 ? 1 : -1);
+    const rightN = { x: rightDir, y: 0 };
+
+    const bottomDir = row === gridDim - 1 ? 0 : ((row + col) % 2 === 0 ? 1 : -1);
+    const bottomN = { x: 0, y: bottomDir };
+
+    const leftDir = col === 0 ? 0 : ((row + col - 1) % 2 === 0 ? 1 : -1);
+    const leftN = { x: leftDir, y: 0 };
+
+    // Clockwise walk
+    return `M ${TL.x} ${TL.y} ` +
+        `${getEdgePath(TL.x, TL.y, TR.x, TR.y, topN.x, topN.y)} ` +
+        `${getEdgePath(TR.x, TR.y, BR.x, BR.y, rightN.x, rightN.y)} ` +
+        `${getEdgePath(BR.x, BR.y, BL.x, BL.y, bottomN.x, bottomN.y)} ` +
+        `${getEdgePath(BL.x, BL.y, TL.x, TL.y, leftN.x, leftN.y)} Z`;
+};
+
+const getPieceEdgeProtrusions = (r, c, gridDim) => {
+    // Top edge
+    const topDir = r === 0 ? 0 : ((r - 1 + c) % 2 === 0 ? 1 : -1);
+    const top = topDir === 0 ? 0 : (topDir === -1 ? 1 : -1);
+
+    // Bottom edge
+    const bottomDir = r === gridDim - 1 ? 0 : ((r + c) % 2 === 0 ? 1 : -1);
+    const bottom = bottomDir === 0 ? 0 : (bottomDir === 1 ? 1 : -1);
+
+    // Left edge
+    const leftDir = c === 0 ? 0 : ((r + c - 1) % 2 === 0 ? 1 : -1);
+    const left = leftDir === 0 ? 0 : (leftDir === -1 ? 1 : -1);
+
+    // Right edge
+    const rightDir = c === gridDim - 1 ? 0 : ((r + c) % 2 === 0 ? 1 : -1);
+    const right = rightDir === 0 ? 0 : (rightDir === 1 ? 1 : -1);
+
+    return { top, bottom, left, right };
+};
+
+// Check if a single slot's piece collides with its immediate neighbors.
+// This avoids false positives from pre-existing board state unrelated to the current move.
+const checkSlotOverlap = (piecesArray, slotIndex, gridDim) => {
+    const val = piecesArray[slotIndex];
+    if (val === null || val === undefined || val < 0) return false;
+
+    const row = Math.floor(slotIndex / gridDim);
+    const col = slotIndex % gridDim;
+    const originalRow = Math.floor(val / gridDim);
+    const originalCol = val % gridDim;
+    const pEdge = getPieceEdgeProtrusions(originalRow, originalCol, gridDim);
+
+    // Right neighbor — collision if the sum of outward protrusions > 0:
+    //   tab+tab (1+1=2), tab+flat (1+0=1), flat+tab (0+1=1) are ALL physical overlaps.
+    //   tab+indent (1-1=0) is fine (tab fits into indent).
+    if (col < gridDim - 1) {
+        const rightVal = piecesArray[slotIndex + 1];
+        if (rightVal !== null && rightVal !== undefined && rightVal >= 0) {
+            const rEdge = getPieceEdgeProtrusions(Math.floor(rightVal / gridDim), rightVal % gridDim, gridDim);
+            if (pEdge.right + rEdge.left > 0) return true;
+        }
+    }
+    // Left neighbor
+    if (col > 0) {
+        const leftVal = piecesArray[slotIndex - 1];
+        if (leftVal !== null && leftVal !== undefined && leftVal >= 0) {
+            const lEdge = getPieceEdgeProtrusions(Math.floor(leftVal / gridDim), leftVal % gridDim, gridDim);
+            if (lEdge.right + pEdge.left > 0) return true;
+        }
+    }
+    // Bottom neighbor
+    if (row < gridDim - 1) {
+        const bottomVal = piecesArray[slotIndex + gridDim];
+        if (bottomVal !== null && bottomVal !== undefined && bottomVal >= 0) {
+            const bEdge = getPieceEdgeProtrusions(Math.floor(bottomVal / gridDim), bottomVal % gridDim, gridDim);
+            if (pEdge.bottom + bEdge.top > 0) return true;
+        }
+    }
+    // Top neighbor
+    if (row > 0) {
+        const topVal = piecesArray[slotIndex - gridDim];
+        if (topVal !== null && topVal !== undefined && topVal >= 0) {
+            const tEdge = getPieceEdgeProtrusions(Math.floor(topVal / gridDim), topVal % gridDim, gridDim);
+            if (tEdge.bottom + pEdge.top > 0) return true;
+        }
+    }
+    return false;
+};
+
 
 /**
  * CountdownTimer - Shows seconds remaining before puzzle appears
@@ -34,9 +173,14 @@ const CountdownTimer = ({ duration }) => {
     const [seconds, setSeconds] = useState(duration);
 
     useEffect(() => {
-        if (seconds <= 0) return;
         const timer = setInterval(() => {
-            setSeconds(prev => (prev > 0 ? prev - 1 : 0));
+            setSeconds(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
         }, 1000);
         return () => clearInterval(timer);
     }, []);
@@ -84,27 +228,59 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
     const [puzzle, setPuzzle] = useState(initialData || null);
     const [pieces, setPieces] = useState([]);
+    const [trayOrder, setTrayOrder] = useState([]);
     const [moveCount, setMoveCount] = useState(0);
     const [isSolved, setIsSolved] = useState(false);
     const [showReference, setShowReference] = useState(true);
-    const [draggingIndex, setDraggingIndex] = useState(null);
+    const [draggingPiece, setDraggingPiece] = useState(null);
+    const draggingIndex = draggingPiece ? draggingPiece.currentIndex : null;
+    const dragPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
     const [gridPosition, setGridPosition] = useState({ x: 0, y: 0 });
     const [hoverTarget, setHoverTarget] = useState(-1);
     const [imageLoaded, setImageLoaded] = useState(false);
     const [showGridLines, setShowGridLines] = useState(true);
     const [piecesReady, setPiecesReady] = useState(false); // Delay piece rendering
+    const [devShowCorrect, setDevShowCorrect] = useState(false);
+    const [devJiggle, setDevJiggle] = useState(false);
+    // Natural pixel dimensions of the puzzle image (loaded asynchronously)
+    const [imageNaturalSize, setImageNaturalSize] = useState({ width: 1, height: 1 });
+
+    // Dynamic layout parameters based on the loaded puzzle
+    // Use useWindowDimensions so PUZZLE_SIZE responds to actual device screen width
+    const { width: windowWidth } = useWindowDimensions();
+    const PUZZLE_SIZE = Math.floor(windowWidth - 60);
+    const gridDim = pieces.length > 0 ? Math.round(Math.sqrt(pieces.length)) : 5;
+    const pieceSize = Math.floor(PUZZLE_SIZE / gridDim);
+    const actualPuzzleSize = pieceSize * gridDim;
+    const tabSize = Math.floor(pieceSize * 0.35);
+
+    // Cover-scale: scale image uniformly to fill actualPuzzleSize×actualPuzzleSize
+    // (like CSS object-fit:cover). This ensures "what is viewed = what gets puzzled".
+    const imgCoverScale = Math.max(
+        actualPuzzleSize / imageNaturalSize.width,
+        actualPuzzleSize / imageNaturalSize.height,
+    );
+    const scaledImgW = imageNaturalSize.width * imgCoverScale;
+    const scaledImgH = imageNaturalSize.height * imgCoverScale;
+    // Center the scaled image over the puzzle area (negative values = image overflows grid edge)
+    const imgOffsetX = (actualPuzzleSize - scaledImgW) / 2;
+    const imgOffsetY = (actualPuzzleSize - scaledImgH) / 2;
 
     // Animation refs
     const celebrateScale = useRef(new Animated.Value(0)).current;
     const celebrateOpacity = useRef(new Animated.Value(0)).current;
     const referenceOpacity = useRef(new Animated.Value(1)).current;
+    const idleAnim = useRef(new Animated.Value(0)).current;
 
     // Piece animation values
     const pieceAnimations = useRef(
-        Array(GRID_SIZE * GRID_SIZE).fill(null).map(() => ({
+        Array(MAX_GRID_SIZE * MAX_GRID_SIZE).fill(null).map(() => ({
             translateX: new Animated.Value(0),
             translateY: new Animated.Value(0),
             scale: new Animated.Value(1),
+            jiggleX: new Animated.Value(0),
+            jiggleY: new Animated.Value(0),
+            jiggleRotate: new Animated.Value(0),
         }))
     ).current;
 
@@ -132,55 +308,178 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         draggingIndexRef.current = draggingIndex;
     }, [draggingIndex]);
 
+    const originalImageUrlRef = useRef(null);
+    const originalPiecesRef = useRef(null);
+    const originalGridSizeRef = useRef(null);
+    const trayScrollViewRef = useRef(null);
+
+    // Handle dev jiggle positions & rotations
+    useEffect(() => {
+        const animations = pieces.map((_, index) => {
+            const row = Math.floor(index / gridDim);
+            const col = index % gridDim;
+
+            // Spread out pieces slightly from the center, plus apply random-looking offsets and rotations
+            const targetX = devJiggle ? (col - (gridDim - 1) / 2) * 35 + (row % 2 === 0 ? 6 : -6) : 0;
+            const targetY = devJiggle ? (row - (gridDim - 1) / 2) * 35 + (col % 2 === 0 ? 6 : -6) : 0;
+            const targetRotate = devJiggle ? (row * 2 - col) * 4 : 0;
+
+            return Animated.parallel([
+                Animated.spring(pieceAnimations[index].jiggleX, {
+                    toValue: targetX,
+                    friction: 6,
+                    tension: 50,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(pieceAnimations[index].jiggleY, {
+                    toValue: targetY,
+                    friction: 6,
+                    tension: 50,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(pieceAnimations[index].jiggleRotate, {
+                    toValue: targetRotate,
+                    friction: 6,
+                    tension: 50,
+                    useNativeDriver: true,
+                }),
+            ]);
+        });
+
+        Animated.parallel(animations).start();
+    }, [devJiggle, pieces, pieceAnimations, gridDim]);
+
+    // Continuous float loop when jiggling is active
+    useEffect(() => {
+        let loopAnim;
+        if (devJiggle) {
+            idleAnim.setValue(0);
+            loopAnim = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(idleAnim, {
+                        toValue: 1,
+                        duration: 1800,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(idleAnim, {
+                        toValue: 0,
+                        duration: 1800,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            loopAnim.start();
+        } else {
+            Animated.spring(idleAnim, {
+                toValue: 0,
+                friction: 8,
+                useNativeDriver: true,
+            }).start();
+        }
+        return () => {
+            if (loopAnim) loopAnim.stop();
+        };
+    }, [devJiggle, idleAnim]);
+
     // Load puzzle data
     useEffect(() => {
         const loadPuzzle = async () => {
             if (puzzleId && !initialData) {
                 const result = await getPuzzle(puzzleId);
                 if (result.success) {
-                    result.data.pieces.forEach((piece, idx) => {
-                    });
+                    const loadedPuzzle = result.data;
+                    const dim = loadedPuzzle.gridSize?.rows || 5;
+                    const targetLength = dim * dim;
 
-                    // Check for duplicates
-                    const duplicates = result.data.pieces.filter((item, index) => result.data.pieces.indexOf(item) !== index);
-                    if (duplicates.length > 0) {
-                        console.error('🧩 ⚠️ DUPLICATE PIECES DETECTED:', duplicates);
-                        console.error('🧩 This will cause overlapping! Pieces array:', result.data.pieces);
+                    let loadedPieces = [...loadedPuzzle.pieces];
+                    if (loadedPieces.length < targetLength) {
+                        loadedPieces = [...loadedPieces, ...Array(targetLength - loadedPieces.length).fill(null)];
+                    } else if (loadedPieces.length > targetLength) {
+                        loadedPieces = loadedPieces.slice(0, targetLength);
                     }
 
-                    setPuzzle(result.data);
-                    setPieces([...result.data.pieces]);
-                    setMoveCount(result.data.moveCount || 0);
+                    // Normalize pieces to support tray/board distinction
+                    const hasNegative = loadedPieces.some(p => p !== null && p < 0);
+                    if (!hasNegative && loadedPuzzle.status !== 'solved') {
+                        loadedPieces = loadedPieces.map((p) => p !== null ? -p - 1 : null);
+                    }
+
+                    // Check for duplicates (ignoring empty/null slots)
+                    const absolutePieces = loadedPieces.map(p => p !== null ? (p < 0 ? -p - 1 : p) : null);
+                    const duplicates = absolutePieces.filter((item, index) => item !== null && absolutePieces.indexOf(item) !== index);
+                    if (duplicates.length > 0) {
+                        console.error('🧩 ⚠️ DUPLICATE PIECES DETECTED:', duplicates);
+                        console.error('🧩 This will cause overlapping! Pieces array:', loadedPieces);
+                    }
+
+                    setPuzzle(loadedPuzzle);
+                    originalImageUrlRef.current = loadedPuzzle.imageUrl;
+                    originalPiecesRef.current = [...loadedPieces];
+                    originalGridSizeRef.current = loadedPuzzle.gridSize || { rows: dim, cols: dim };
+                    setPieces(loadedPieces);
+                    setTrayOrder(loadedPieces.filter(val => val !== null && val < 0).map(val => -val - 1));
+                    setMoveCount(loadedPuzzle.moveCount || 0);
                 }
             } else if (initialData) {
-                initialData.pieces.forEach((piece, idx) => {
-                });
+                const dim = initialData.gridSize?.rows || 5;
+                const targetLength = dim * dim;
 
-                // Check for duplicates
-                const duplicates = initialData.pieces.filter((item, index) => initialData.pieces.indexOf(item) !== index);
-                if (duplicates.length > 0) {
-                    console.error('🧩 ⚠️ DUPLICATE PIECES DETECTED:', duplicates);
-                    console.error('🧩 This will cause overlapping! Pieces array:', initialData.pieces);
+                let loadedPieces = [...initialData.pieces];
+                if (loadedPieces.length < targetLength) {
+                    loadedPieces = [...loadedPieces, ...Array(targetLength - loadedPieces.length).fill(null)];
+                } else if (loadedPieces.length > targetLength) {
+                    loadedPieces = loadedPieces.slice(0, targetLength);
                 }
 
-                setPieces([...initialData.pieces]);
+                // Normalize pieces to support tray/board distinction
+                const hasNegative = loadedPieces.some(p => p !== null && p < 0);
+                if (!hasNegative && initialData.status !== 'solved') {
+                    loadedPieces = loadedPieces.map((p) => p !== null ? -p - 1 : null);
+                }
+
+                // Check for duplicates (ignoring empty/null slots)
+                const absolutePieces = loadedPieces.map(p => p !== null ? (p < 0 ? -p - 1 : p) : null);
+                const duplicates = absolutePieces.filter((item, index) => item !== null && absolutePieces.indexOf(item) !== index);
+                if (duplicates.length > 0) {
+                    console.error('🧩 ⚠️ DUPLICATE PIECES DETECTED:', duplicates);
+                    console.error('🧩 This will cause overlapping! Pieces array:', loadedPieces);
+                }
+
+                if (initialData.imageUrl) {
+                    originalImageUrlRef.current = initialData.imageUrl;
+                }
+                originalPiecesRef.current = [...loadedPieces];
+                originalGridSizeRef.current = initialData.gridSize || { rows: dim, cols: dim };
+                setPieces(loadedPieces);
+                setTrayOrder(loadedPieces.filter(val => val !== null && val < 0).map(val => -val - 1));
                 setMoveCount(initialData.moveCount || 0);
             }
         };
         loadPuzzle();
-    }, [puzzleId, initialData]);
+    }, [puzzleId, initialData, getPuzzle]);
 
-    // Preload puzzle image
+    // Preload puzzle image and measure its natural pixel dimensions
     useEffect(() => {
         if (puzzle?.imageUrl) {
+            if (puzzle.imageUrl.startsWith('file:/') || puzzle.imageUrl.startsWith('content:/') || !puzzle.imageUrl.startsWith('http')) {
+                // Local files: use Image.getSize directly
+                Image.getSize(
+                    puzzle.imageUrl,
+                    (w, h) => { setImageNaturalSize({ width: w, height: h }); setImageLoaded(true); },
+                    () => { setImageLoaded(true); }
+                );
+                return;
+            }
             setImageLoaded(false);
+            // Measure dimensions while prefetching
+            Image.getSize(
+                puzzle.imageUrl,
+                (w, h) => setImageNaturalSize({ width: w, height: h }),
+                () => {} // Keep fallback size (1×1) on error; won't show white bands
+            );
             Image.prefetch(puzzle.imageUrl)
-                .then(() => {
-                    setImageLoaded(true);
-                })
-                .catch((err) => {
-                    setImageLoaded(true);
-                });
+                .then(() => { setImageLoaded(true); })
+                .catch(() => { setImageLoaded(true); });
         }
     }, [puzzle?.imageUrl]);
 
@@ -202,6 +501,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
         return () => clearTimeout(timer);
     }, []);
+
+    // trayOrder is synchronized directly inside interaction and helper functions
 
     // Check if solved
     const checkSolved = useCallback((currentPieces) => {
@@ -230,33 +531,141 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         const relX = pageX - gp.x;
         const relY = pageY - gp.y;
 
-        const col = Math.floor(relX / PIECE_SIZE);
-        const row = Math.floor(relY / PIECE_SIZE);
+        const currentGridDim = piecesRef.current.length > 0 ? Math.round(Math.sqrt(piecesRef.current.length)) : 9;
+        const currentPuzzleSize = Math.floor(windowWidth - 60);
+        const currentPieceSize = Math.floor(currentPuzzleSize / currentGridDim);
 
+        const col = Math.floor(relX / currentPieceSize);
+        const row = Math.floor(relY / currentPieceSize);
 
-        if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) {
-            return row * GRID_SIZE + col;
+        if (col >= 0 && col < currentGridDim && row >= 0 && row < currentGridDim) {
+            return row * currentGridDim + col;
         }
         return -1;
-    }, []);
+    }, [windowWidth]);
+
+    // Check if placing the dragging piece at targetSlot causes collision with its immediate neighbors
+    const checkHoverCollision = useCallback((targetSlot) => {
+        if (!draggingPiece || targetSlot === -1) return false;
+
+        const currentPieces = [...piecesRef.current];
+        const fromIndex = draggingPiece.currentIndex;
+        if (fromIndex === -1) return false;
+
+        const pieceFrom = currentPieces[fromIndex];
+        const pieceTo = currentPieces[targetSlot];
+        const originalPieceFrom = pieceFrom < 0 ? -pieceFrom - 1 : pieceFrom;
+
+        // Simulate the swap
+        let newPieceTo;
+        if (fromIndex === targetSlot) {
+            newPieceTo = pieceFrom;
+            currentPieces[targetSlot] = originalPieceFrom;
+        } else {
+            if (pieceTo < 0) {
+                // Target slot was empty. The tray piece for that target slot remains in the tray.
+                newPieceTo = pieceTo;
+            } else {
+                // Target slot was occupied by an active piece.
+                if (pieceFrom < 0) {
+                    // Dragged from tray, so the occupied piece is bumped back to the tray (becomes negative).
+                    newPieceTo = -pieceTo - 1;
+                } else {
+                    // Dragged from board, so we just swap their board positions (both stay active).
+                    newPieceTo = pieceTo;
+                }
+            }
+
+            currentPieces[targetSlot] = originalPieceFrom;
+            currentPieces[fromIndex] = newPieceTo;
+        }
+
+        // Only check the slots involved in this move against their neighbors
+        return checkSlotOverlap(currentPieces, targetSlot, gridDim) ||
+            (fromIndex !== targetSlot && newPieceTo >= 0 && checkSlotOverlap(currentPieces, fromIndex, gridDim));
+    }, [draggingPiece, gridDim]);
 
     // Handle piece swap
     const handlePieceSwap = useCallback((fromIndex, toIndex) => {
-        if (fromIndex === toIndex || toIndex === -1) return;
+        if (toIndex === -1) return false;
 
         const currentPieces = [...piecesRef.current];
 
-        // Log before swap
+        const pieceFrom = currentPieces[fromIndex];
+        const pieceTo = currentPieces[toIndex];
 
-        // Perform the swap
-        const temp = currentPieces[fromIndex];
-        currentPieces[fromIndex] = currentPieces[toIndex];
-        currentPieces[toIndex] = temp;
+        // Dragged piece becomes active on the board (positive)
+        const originalPieceFrom = pieceFrom < 0 ? -pieceFrom - 1 : pieceFrom;
 
-        // Log after swap
+        if (fromIndex === toIndex) {
+            // Dragged and dropped on the same slot
+            if (pieceFrom < 0) {
+                // Piece was in the tray, now placing it on the board at its current slot index
+                currentPieces[toIndex] = originalPieceFrom;
 
-        // Check for duplicates
-        const duplicates = currentPieces.filter((item, index) => currentPieces.indexOf(item) !== index);
+                if (checkSlotOverlap(currentPieces, toIndex, gridDim)) {
+                    return false;
+                }
+
+                setPieces(currentPieces);
+                setMoveCount(prev => prev + 1);
+                setTrayOrder(prev => prev.filter(idx => idx !== originalPieceFrom));
+
+                if (puzzleId) {
+                    movePiece(puzzleId, fromIndex, toIndex, currentPieces).catch(err => {
+                        console.error('Failed to update backend:', err);
+                    });
+                }
+
+                if (checkSolved(currentPieces)) {
+                    setIsSolved(true);
+                    playCelebration();
+                    try {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    } catch (e) {}
+                } else {
+                    try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    } catch (e) {}
+                }
+                return true;
+            } else {
+                // Already active on the board, dropped back on the same slot. Just return true (no-op).
+                return true;
+            }
+        }
+
+        // Replaced/swapped piece logic
+        let newPieceTo;
+        if (pieceTo < 0) {
+            // Target slot was empty. The tray piece for that target slot remains in the tray.
+            newPieceTo = pieceTo;
+        } else {
+            // Target slot was occupied by an active piece.
+            if (pieceFrom < 0) {
+                // Dragged from tray, so the occupied piece is bumped back to the tray (becomes negative).
+                newPieceTo = -pieceTo - 1;
+            } else {
+                // Dragged from board, so we just swap their board positions (both stay active).
+                newPieceTo = pieceTo;
+            }
+        }
+
+        currentPieces[toIndex] = originalPieceFrom;
+        currentPieces[fromIndex] = newPieceTo;
+
+        // Validate shape collisions before saving:
+        // Only check the destination slot (and source if a piece lands there too)
+        if (checkSlotOverlap(currentPieces, toIndex, gridDim)) {
+            return false;
+        }
+        if (newPieceTo >= 0 && checkSlotOverlap(currentPieces, fromIndex, gridDim)) {
+            return false;
+        }
+
+        // Check for duplicates (ignoring empty/null slots)
+        const absolutePieces = currentPieces.map(p => p !== null ? (p < 0 ? -p - 1 : p) : null);
+        const duplicates = absolutePieces.filter((item, index) => item !== null && absolutePieces.indexOf(item) !== index);
         if (duplicates.length > 0) {
             console.error('🧩 ⚠️ DUPLICATE PIECES AFTER SWAP:', duplicates);
         }
@@ -264,9 +673,23 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         setPieces(currentPieces);
         setMoveCount(prev => prev + 1);
 
+        // Update trayOrder directly when moving from/to tray
+        if (pieceFrom < 0) {
+            if (pieceTo >= 0) {
+                // Dragged from tray, bumped pieceTo back to tray
+                setTrayOrder(prev => [pieceTo, ...prev.filter(idx => idx !== pieceTo && idx !== originalPieceFrom)]);
+                setTimeout(() => {
+                    trayScrollViewRef.current?.scrollTo({ x: 0, animated: true });
+                }, 100);
+            } else {
+                // Dragged from tray, placed on empty board slot
+                setTrayOrder(prev => prev.filter(idx => idx !== originalPieceFrom));
+            }
+        }
+
         // Update backend (async but don't wait)
         if (puzzleId) {
-            movePiece(puzzleId, fromIndex, toIndex).catch(err => {
+            movePiece(puzzleId, fromIndex, toIndex, currentPieces).catch(err => {
                 console.error('Failed to update backend:', err);
             });
         }
@@ -275,162 +698,149 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         if (checkSolved(currentPieces)) {
             setIsSolved(true);
             playCelebration();
+            try {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (e) {}
+        } else {
+            try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch (e) {}
         }
-    }, [puzzleId, movePiece, checkSolved, playCelebration]);
+        return true;
+    }, [puzzleId, movePiece, checkSolved, playCelebration, gridDim]);
 
     // Memoized pan responders
     const panResponders = useRef(
-        Array(GRID_SIZE * GRID_SIZE).fill(null).map((_, index) =>
+        Array(MAX_GRID_SIZE * MAX_GRID_SIZE).fill(null).map((_, index) =>
             PanResponder.create({
-                onStartShouldSetPanResponder: () => true,
-                onMoveShouldSetPanResponder: () => true,
+                onStartShouldSetPanResponder: () => false,
+                onMoveShouldSetPanResponder: (evt, gestureState) => {
+                    const currentSlot = piecesRef.current.indexOf(index);
+                    const isOnBoard = currentSlot !== -1;
+                    if (isOnBoard) {
+                        return (Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2) && !isSolved;
+                    }
+                    // Only claim responder if vertical drag is dominant (to allow horizontal scrolling in tray)
+                    const isVertical = Math.abs(gestureState.dy) > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+                    return isVertical && !isSolved;
+                },
                 onPanResponderTerminationRequest: () => false,
 
-                onPanResponderGrant: () => {
-                    const currentPiece = piecesRef.current[index];
-                    setDraggingIndex(index);
-                    setHoverTarget(-1);
-                    Animated.spring(pieceAnimations[index].scale, {
-                        toValue: 1.15,
-                        friction: 8,
-                        useNativeDriver: true,
-                    }).start();
+                onPanResponderGrant: (evt, gestureState) => {
+                    const currentSlot = piecesRef.current.indexOf(index) !== -1
+                        ? piecesRef.current.indexOf(index)
+                        : piecesRef.current.indexOf(-index - 1);
+                    if (currentSlot === -1) return;
+                    
+                    // Set dragging piece state with layout information
+                    setDraggingPiece({
+                        originalIndex: index,
+                        currentIndex: currentSlot,
+                    });
+
+                    // Set drag position to current finger position
+                    dragPosition.setValue({
+                        x: gestureState.x0,
+                        y: gestureState.y0,
+                    });
                 },
 
                 onPanResponderMove: (evt, gestureState) => {
-                    // Update dragged piece position
-                    pieceAnimations[index].translateX.setValue(gestureState.dx);
-                    pieceAnimations[index].translateY.setValue(gestureState.dy);
+                    // Update drag position with finger movement
+                    dragPosition.setValue({
+                        x: gestureState.moveX,
+                        y: gestureState.moveY,
+                    });
 
-                    // Calculate which slot we're hovering over
-                    const gp = gridPositionRef.current;
-                    const relX = gestureState.moveX - gp.x;
-                    const relY = gestureState.moveY - gp.y;
-                    const col = Math.floor(relX / PIECE_SIZE);
-                    const row = Math.floor(relY / PIECE_SIZE);
-
-                    let newTarget = -1;
-                    if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) {
-                        newTarget = row * GRID_SIZE + col;
-                    }
-
-                    // If hovering over a different slot than before
-                    const prevTarget = hoverTargetRef.current;
-                    if (newTarget !== prevTarget) {
-                        if (newTarget !== -1 && newTarget !== index) {
-                            const draggedPiece = piecesRef.current[index];
-                            const targetPiece = piecesRef.current[newTarget];
-                        }
-
-                        // Reset previous hover target piece to its position
-                        if (prevTarget !== -1 && prevTarget !== index) {
-                            Animated.spring(pieceAnimations[prevTarget].translateX, {
-                                toValue: 0,
-                                friction: 6,
-                                tension: 80,
-                                useNativeDriver: true,
-                            }).start();
-                            Animated.spring(pieceAnimations[prevTarget].translateY, {
-                                toValue: 0,
-                                friction: 6,
-                                tension: 80,
-                                useNativeDriver: true,
-                            }).start();
-                            Animated.spring(pieceAnimations[prevTarget].scale, {
-                                toValue: 1,
-                                friction: 8,
-                                useNativeDriver: true,
-                            }).start();
-                        }
-
-                        // Animate new target piece to dragged piece's original position
-                        if (newTarget !== -1 && newTarget !== index) {
-                            const fromRow = Math.floor(index / GRID_SIZE);
-                            const fromCol = index % GRID_SIZE;
-                            const toRow = Math.floor(newTarget / GRID_SIZE);
-                            const toCol = newTarget % GRID_SIZE;
-
-                            const deltaX = (fromCol - toCol) * PIECE_SIZE;
-                            const deltaY = (fromRow - toRow) * PIECE_SIZE;
-
-                            Animated.spring(pieceAnimations[newTarget].translateX, {
-                                toValue: deltaX,
-                                friction: 6,
-                                tension: 80,
-                                useNativeDriver: true,
-                            }).start();
-                            Animated.spring(pieceAnimations[newTarget].translateY, {
-                                toValue: deltaY,
-                                friction: 6,
-                                tension: 80,
-                                useNativeDriver: true,
-                            }).start();
-                            Animated.spring(pieceAnimations[newTarget].scale, {
-                                toValue: 1.05,
-                                friction: 8,
-                                useNativeDriver: true,
-                            }).start();
-                        }
-
-                        setHoverTarget(newTarget);
-                    }
+                    // Calculate if we are hovering over any slot on the board
+                    const targetSlot = getTargetPosition(gestureState.moveX, gestureState.moveY);
+                    setHoverTarget(targetSlot);
                 },
 
                 onPanResponderRelease: (evt, gestureState) => {
-                    const currentHoverTarget = hoverTargetRef.current;
+                    const targetSlot = getTargetPosition(gestureState.moveX, gestureState.moveY);
+                    
+                    const currentSlot = piecesRef.current.indexOf(index) !== -1
+                        ? piecesRef.current.indexOf(index)
+                        : piecesRef.current.indexOf(-index - 1);
 
-                    // Reset dragged piece position
-                    Animated.parallel([
-                        Animated.spring(pieceAnimations[index].translateX, {
-                            toValue: 0,
-                            friction: 6,
-                            useNativeDriver: true,
-                        }),
-                        Animated.spring(pieceAnimations[index].translateY, {
-                            toValue: 0,
-                            friction: 6,
-                            useNativeDriver: true,
-                        }),
-                        Animated.spring(pieceAnimations[index].scale, {
-                            toValue: 1,
-                            friction: 8,
-                            useNativeDriver: true,
-                        }),
-                    ]).start();
-
-                    // If we have a valid hover target, complete the swap
-                    if (currentHoverTarget !== -1 && currentHoverTarget !== index) {
-                        const piece1 = piecesRef.current[index];
-                        const piece2 = piecesRef.current[currentHoverTarget];
-
-                        // Reset target piece animation to origin
-                        Animated.parallel([
-                            Animated.spring(pieceAnimations[currentHoverTarget].translateX, {
-                                toValue: 0,
-                                friction: 5,
-                                tension: 100,
-                                useNativeDriver: true,
-                            }),
-                            Animated.spring(pieceAnimations[currentHoverTarget].translateY, {
-                                toValue: 0,
-                                friction: 5,
-                                tension: 100,
-                                useNativeDriver: true,
-                            }),
-                            Animated.spring(pieceAnimations[currentHoverTarget].scale, {
-                                toValue: 1,
-                                friction: 8,
-                                useNativeDriver: true,
-                            }),
-                        ]).start();
-
-                        // USE THE EXISTING handlePieceSwap FUNCTION INSTEAD OF INLINE SWAP
-                        handlePieceSwap(index, currentHoverTarget);
+                    if (targetSlot !== -1) {
+                        // Yes, drop on board slot!
+                        let success = true;
+                        if (currentSlot !== -1) {
+                            success = handlePieceSwap(currentSlot, targetSlot);
+                        }
+                        if (success) {
+                            setHoverTarget(-1);
+                            setDraggingPiece(null);
+                        } else {
+                            // If placing the piece caused an overlap collision, reject and animate back
+                            try {
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                            } catch (e) {}
+                            Alert.alert('Invalid Move', 'Pieces cannot overlap!');
+                            Animated.spring(dragPosition, {
+                                toValue: { x: gestureState.x0, y: gestureState.y0 },
+                                useNativeDriver: false,
+                                tension: 40,
+                                friction: 7,
+                            }).start(() => {
+                                setHoverTarget(-1);
+                                setDraggingPiece(null);
+                            });
+                        }
                     } else {
-                    }
+                        // Drop outside board (back to tray)!
+                        if (currentSlot !== -1) {
+                            // If the piece was on the board (positive value), convert it back to a tray piece (negative).
+                            // Note: piecesRef.current[currentSlot] may be -index-1 (already in tray) if piece was
+                            // dragged from the tray without reaching a board slot.
+                            const slotValue = piecesRef.current[currentSlot];
+                            const wasOnBoard = slotValue >= 0; // board pieces are stored as non-negative originalIndex
+                            if (wasOnBoard) {
+                                const currentPieces = [...piecesRef.current];
+                                currentPieces[currentSlot] = -slotValue - 1;
+                                setPieces(currentPieces);
+                                setMoveCount(prev => prev + 1);
 
-                    setHoverTarget(-1);
-                    setDraggingIndex(null);
+                                // Prepend returned piece to trayOrder and scroll to beginning
+                                setTrayOrder(prev => [slotValue, ...prev.filter(idx => idx !== slotValue)]);
+                                setTimeout(() => {
+                                    trayScrollViewRef.current?.scrollTo({ x: 0, animated: true });
+                                }, 100);
+
+                                if (puzzleId) {
+                                    movePiece(puzzleId, currentSlot, -1, currentPieces).catch(err => {
+                                        console.error('Failed to update backend:', err);
+                                    });
+                                }
+
+                                // Reset dragging states immediately, preventing the ghost piece from flying back
+                                setHoverTarget(-1);
+                                setDraggingPiece(null);
+                                try {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                } catch (e) {}
+                                return;
+                            }
+                            // If wasOnBoard is false, piece was already in tray (negative) — nothing to do,
+                            // it remains in the tray with its existing negative value.
+                        }
+
+                        // Animate back for pieces already in the tray dropped back to the tray
+                        Animated.spring(dragPosition, {
+                            toValue: { x: gestureState.x0, y: gestureState.y0 },
+                            useNativeDriver: false,
+                            tension: 40,
+                            friction: 7,
+                        }).start(() => {
+                            setHoverTarget(-1);
+                            setDraggingPiece(null);
+                        });
+                        try {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        } catch (e) {}
+                    }
                 },
             })
         )
@@ -438,25 +848,153 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
     // Get piece image crop position - use exact pixel values
     const getPieceStyle = (originalIndex) => {
-        const row = Math.floor(originalIndex / GRID_SIZE);
-        const col = originalIndex % GRID_SIZE;
+        const row = Math.floor(originalIndex / gridDim);
+        const col = originalIndex % gridDim;
         return {
             position: 'absolute',
-            top: -row * PIECE_SIZE,
-            left: -col * PIECE_SIZE,
-            width: ACTUAL_PUZZLE_SIZE,
-            height: ACTUAL_PUZZLE_SIZE,
+            top: -row * pieceSize,
+            left: -col * pieceSize,
+            width: actualPuzzleSize,
+            height: actualPuzzleSize,
         };
     };
 
     // Get the position for each piece in the grid
     const getPiecePosition = (index) => {
-        const row = Math.floor(index / GRID_SIZE);
-        const col = index % GRID_SIZE;
+        const row = Math.floor(index / gridDim);
+        const col = index % gridDim;
         return {
-            top: row * PIECE_SIZE,
-            left: col * PIECE_SIZE,
+            top: row * pieceSize - tabSize,
+            left: col * pieceSize - tabSize,
         };
+    };
+
+    const resetToDefaultImage = () => {
+        if (originalImageUrlRef.current) {
+            setPuzzle(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    imageUrl: originalImageUrlRef.current,
+                    gridSize: originalGridSizeRef.current || prev.gridSize || { rows: 5, cols: 5 }
+                };
+            });
+            if (originalPiecesRef.current) {
+                setPieces([...originalPiecesRef.current]);
+                setTrayOrder(originalPiecesRef.current.filter(val => val !== null && val < 0).map(val => -val - 1));
+            }
+        }
+    };
+
+    const updatePuzzleForDev = (uri) => {
+        setPuzzle(prev => {
+            const base = prev || {
+                id: 'dev-puzzle',
+                status: 'pending',
+                moveCount: 0,
+            };
+            return {
+                ...base,
+                imageUrl: uri,
+                gridSize: { rows: 5, cols: 5 } // Always force 5x5 for dev custom image gallery picker testing
+            };
+        });
+        // Generate a shuffled 5x5 pieces array (25 elements) for dev testing
+        const devPieces = Array.from({ length: 25 }, (_, i) => i);
+        for (let i = devPieces.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [devPieces[i], devPieces[j]] = [devPieces[j], devPieces[i]];
+        }
+        setPieces(devPieces.map(piece => -piece - 1));
+        setTrayOrder(devPieces);
+    };
+
+    const performImageSelection = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to pick a custom dev image!');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                quality: 1,
+            });
+
+            if (result.canceled) return;
+            const asset = result.assets ? result.assets[0] : result;
+            const sourceUri = asset?.uri;
+            if (!sourceUri) return;
+
+            // Normalize URI prefix
+            const normalizedUri = sourceUri.startsWith('file://') || sourceUri.startsWith('content://') 
+                ? sourceUri 
+                : (sourceUri.startsWith('/') ? `file://${sourceUri}` : sourceUri);
+
+            const hasDimensions = asset?.width && asset?.height;
+            if (hasDimensions) {
+                try {
+                    const width = asset.width;
+                    const height = asset.height;
+                    const size = Math.min(width, height);
+                    const originX = (width - size) / 2;
+                    const originY = (height - size) / 2;
+
+                    const cropResult = await manipulateAsync(
+                        normalizedUri,
+                        [{ crop: { originX, originY, width: size, height: size } }],
+                        { compress: 0.9, format: SaveFormat.JPEG }
+                    );
+
+                    updatePuzzleForDev(cropResult.uri);
+                } catch (cropError) {
+                    console.error('🧩 Failed to crop chosen image directly:', cropError);
+                    updatePuzzleForDev(normalizedUri);
+                }
+            } else {
+                // Fallback to Image.getSize if dimensions aren't present in Picker output
+                Image.getSize(normalizedUri, async (width, height) => {
+                    try {
+                        const size = Math.min(width, height);
+                        const originX = (width - size) / 2;
+                        const originY = (height - size) / 2;
+
+                        const cropResult = await manipulateAsync(
+                            normalizedUri,
+                            [{ crop: { originX, originY, width: size, height: size } }],
+                            { compress: 0.9, format: SaveFormat.JPEG }
+                        );
+
+                        updatePuzzleForDev(cropResult.uri);
+                    } catch (cropError) {
+                        console.error('🧩 Failed to crop chosen image after getSize:', cropError);
+                        updatePuzzleForDev(normalizedUri);
+                    }
+                }, (getSizeError) => {
+                    console.error('🧩 Failed to get chosen image size:', getSizeError);
+                    updatePuzzleForDev(normalizedUri);
+                });
+            }
+        } catch (pickError) {
+            console.error('🧩 Failed to pick image from gallery:', pickError);
+        }
+    };
+
+    const handleDevPickImage = () => {
+        if (originalImageUrlRef.current && puzzle?.imageUrl !== originalImageUrlRef.current) {
+            Alert.alert(
+                'Custom Dev Image',
+                'Would you like to pick a new image or reset to the original default puzzle image?',
+                [
+                    { text: 'Pick New Image', onPress: () => performImageSelection() },
+                    { text: 'Reset to Default', onPress: () => resetToDefaultImage() },
+                    { text: 'Cancel', style: 'cancel' }
+                ]
+            );
+        } else {
+            performImageSelection();
+        }
     };
 
     // Handle grid layout measurement
@@ -464,7 +1002,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         const { x, y, width, height } = event.nativeEvent.layout;
         // Calculate absolute position
         // The grid is centered, so we calculate its position
-        const gridX = (SCREEN_WIDTH - PUZZLE_SIZE) / 2;
+        const gridX = (windowWidth - PUZZLE_SIZE) / 2;
         const gridY = event.nativeEvent.layout.y;
 
         // Use measure for accurate page coordinates
@@ -511,7 +1049,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                 ])
             ).start();
         }
-    }, [puzzle, imageLoaded]);
+    }, [puzzle, imageLoaded, glowAnim, pulseAnim]);
 
     if (!puzzle) {
         return (
@@ -550,6 +1088,31 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                         </TouchableOpacity>
                         <Text style={styles.headerTitle}>Solve Puzzle 🧩</Text>
                         <View style={styles.headerRight}>
+                            {SHOW_DEV_NUMBERS && (
+                                <>
+                                    <TouchableOpacity
+                                        onPress={handleDevPickImage}
+                                        style={[styles.gridToggleBtn, { marginRight: 4 }]}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={{ fontSize: 16 }}>🖼️</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => setDevShowCorrect(!devShowCorrect)}
+                                        style={[styles.gridToggleBtn, devShowCorrect && styles.gridToggleBtnActive, { marginRight: 4 }]}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={{ fontSize: 16 }}>🎯</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => setDevJiggle(!devJiggle)}
+                                        style={[styles.gridToggleBtn, devJiggle && styles.gridToggleBtnActive, { marginRight: 4 }]}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={{ fontSize: 16 }}>🫨</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
                             <TouchableOpacity
                                 onPress={() => setShowGridLines(!showGridLines)}
                                 style={[styles.gridToggleBtn, showGridLines && styles.gridToggleBtnActive]}
@@ -574,7 +1137,11 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                     {!isSolved && (
                         <View style={styles.instructionContainer}>
                             <Text style={styles.instructionText}>
-                                👆 Drag pieces to swap them
+                                {devShowCorrect 
+                                    ? '🎯 Dev Mode: Showing Correct Placements 🎯' 
+                                    : devJiggle 
+                                        ? '🫨 Dev Mode: Jiggly Explosive Cut-View 🫨' 
+                                        : '👆 Drag pieces to swap them'}
                             </Text>
                         </View>
                     )}
@@ -583,35 +1150,47 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                     <View style={styles.puzzleContainer}>
                         {/* Placeholder while image or puzzle is preparing */}
                         {(!imageLoaded || !piecesReady) && (
-                            <View style={[styles.puzzleGrid, styles.puzzleGridPlaceholder]}>
+                            <View style={[styles.puzzleGrid, { width: actualPuzzleSize, height: actualPuzzleSize }, styles.puzzleGridPlaceholder]}>
                                 <Text style={styles.loadingSubtext}>Loading the puzzle...</Text>
                             </View>
                         )}
 
                         <View
-                            style={[styles.puzzleGrid, { opacity: (piecesReady && !showReference) ? 1 : 0 }]}
+                            style={[
+                                styles.puzzleGrid,
+                                {
+                                    width: actualPuzzleSize,
+                                    height: actualPuzzleSize,
+                                    opacity: (piecesReady && !showReference) ? 1 : 0
+                                }
+                            ]}
                             onLayout={handleGridLayout}
                             collapsable={false}
                             pointerEvents={showReference ? 'none' : 'auto'}
                         >
-                            {piecesReady && pieces.length === GRID_SIZE * GRID_SIZE && pieces.map((originalIndex, currentIndex) => {
-                                const isDragging = draggingIndex === currentIndex;
+                            {piecesReady && pieces.length > 0 && pieces.length === gridDim * gridDim && pieces.map((val, currentIndex) => {
+                                const isHovered = hoverTarget === currentIndex && draggingPiece;
+                                const isDragging = draggingPiece && draggingPiece.currentIndex === currentIndex;
 
-                                // Validate originalIndex - must be 0-8 for 3x3 grid
-                                const validOriginalIndex = (typeof originalIndex === 'number' && originalIndex >= 0 && originalIndex < GRID_SIZE * GRID_SIZE)
-                                    ? originalIndex
-                                    : currentIndex;
+                                // Decide which piece index to show (placed piece or hover preview)
+                                const renderPieceIndex = (devShowCorrect || devJiggle)
+                                    ? currentIndex 
+                                    : (val >= 0 ? val : (isHovered ? draggingPiece.originalIndex : -1));
 
-                                if (validOriginalIndex !== originalIndex) {
-                                    console.warn(`🧩 ⚠️ INVALID PIECE INDEX - Position ${currentIndex} had invalid value ${originalIndex}, using ${validOriginalIndex}`);
-                                }
+                                const slotRow = Math.floor(currentIndex / gridDim);
+                                const slotCol = currentIndex % gridDim;
+                                const originalRow = renderPieceIndex !== -1 ? Math.floor(renderPieceIndex / gridDim) : 0;
+                                const originalCol = renderPieceIndex !== -1 ? renderPieceIndex % gridDim : 0;
+                                const isColliding = isHovered && checkHoverCollision(currentIndex);
 
-                                // Calculate which part of the image to show based on the original piece position
-                                const originalRow = Math.floor(validOriginalIndex / GRID_SIZE);
-                                const originalCol = validOriginalIndex % GRID_SIZE;
-
-                                const cropTop = -originalRow * PIECE_SIZE;
-                                const cropLeft = -originalCol * PIECE_SIZE;
+                                const idleY = devJiggle ? idleAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0, (currentIndex % 2 === 0 ? 3.5 : -3.5)],
+                                }) : 0;
+                                const idleX = devJiggle ? idleAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0, (currentIndex % 3 === 0 ? -2.5 : 2.5)],
+                                }) : 0;
 
                                 return (
                                     <Animated.View
@@ -620,9 +1199,28 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                             styles.pieceContainer,
                                             getPiecePosition(currentIndex),
                                             {
+                                                width: pieceSize + 2 * tabSize,
+                                                height: pieceSize + 2 * tabSize,
+                                                opacity: (devShowCorrect || devJiggle)
+                                                    ? 1
+                                                    : (isDragging 
+                                                        ? 0.0  // Hide piece from original board slot while dragging to prevent overlapping
+                                                        : (val >= 0 
+                                                            ? 1 
+                                                            : (isHovered ? 0.45 : 0))),
                                                 transform: [
                                                     { translateX: pieceAnimations[currentIndex].translateX },
                                                     { translateY: pieceAnimations[currentIndex].translateY },
+                                                    { translateX: pieceAnimations[currentIndex].jiggleX },
+                                                    { translateY: pieceAnimations[currentIndex].jiggleY },
+                                                    { translateX: idleX },
+                                                    { translateY: idleY },
+                                                    { 
+                                                        rotate: pieceAnimations[currentIndex].jiggleRotate.interpolate({
+                                                            inputRange: [-360, 360],
+                                                            outputRange: ['-360deg', '360deg']
+                                                         })
+                                                    },
                                                     { scale: pieceAnimations[currentIndex].scale },
                                                 ],
                                                 zIndex: isDragging ? 100 : (currentIndex + 1),
@@ -632,54 +1230,64 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                         shouldRasterizeIOS={true}
                                         renderToHardwareTextureAndroid={true}
                                         needsOffscreenAlphaCompositing={true}
-                                        {...panResponders[currentIndex].panHandlers}
+                                        pointerEvents={(devShowCorrect || devJiggle || val >= 0) ? 'auto' : 'none'}
+                                        {...(val >= 0 && panResponders[val] ? panResponders[val].panHandlers : {})}
                                     >
-                                        <View style={{ width: PIECE_SIZE, height: PIECE_SIZE, overflow: 'hidden' }}>
-                                            <Image
-                                                source={{
-                                                    uri: puzzle.imageUrl,
-                                                    cache: 'force-cache'
-                                                }}
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: cropTop,
-                                                    left: cropLeft,
-                                                    width: ACTUAL_PUZZLE_SIZE,
-                                                    height: ACTUAL_PUZZLE_SIZE,
-                                                }}
-                                                resizeMode="cover"
-                                                fadeDuration={0}
-                                                onLoad={() => {
-                                                }}
-                                                onError={(error) => {
-                                                    console.error(`🧩 ❌ Image FAILED to load for Position ${currentIndex} (Piece ${validOriginalIndex}):`, error.nativeEvent);
-                                                }}
-                                            />
-                                        </View>
+                                        <Svg
+                                            width={pieceSize + 2 * tabSize}
+                                            height={pieceSize + 2 * tabSize}
+                                            viewBox={`0 0 ${pieceSize + 2 * tabSize} ${pieceSize + 2 * tabSize}`}
+                                        >
+                                            {renderPieceIndex !== -1 && (
+                                                <Defs>
+                                                    <ClipPath id={`clip-${currentIndex}`}>
+                                                        <Path d={getPiecePath(originalRow, originalCol, gridDim, pieceSize, tabSize)} />
+                                                    </ClipPath>
+                                                </Defs>
+                                            )}
+                                            {renderPieceIndex !== -1 && (
+                                                <SvgImage
+                                                    href={puzzle.imageUrl}
+                                                    x={tabSize - originalCol * pieceSize + imgOffsetX}
+                                                    y={tabSize - originalRow * pieceSize + imgOffsetY}
+                                                    width={scaledImgW}
+                                                    height={scaledImgH}
+                                                    clipPath={`url(#clip-${currentIndex})`}
+                                                />
+                                            )}
+                                            {showGridLines && !isSolved && (val < 0 || isColliding) && (
+                                                <Path
+                                                    d={getPiecePath(slotRow, slotCol, gridDim, pieceSize, tabSize)}
+                                                    fill="none"
+                                                    stroke={isColliding ? "rgba(255, 75, 75, 0.9)" : "rgba(255, 255, 255, 0.55)"}
+                                                    strokeWidth={isColliding ? 2.5 : 1.5}
+                                                />
+                                            )}
+                                            {SHOW_DEV_NUMBERS && renderPieceIndex !== -1 && (
+                                                <SvgText
+                                                    x={tabSize + pieceSize / 2}
+                                                    y={tabSize + pieceSize / 2 + (gridDim > 4 ? 3 : 6)}
+                                                    fill="#FF4B4B"
+                                                    fontSize={Math.max(8, Math.floor(pieceSize * 0.28)).toString()}
+                                                    fontWeight="bold"
+                                                    textAnchor="middle"
+                                                >
+                                                    {gridDim > 4 
+                                                        ? `${currentIndex}/${renderPieceIndex}` 
+                                                        : `Idx: ${currentIndex} / Orig: ${renderPieceIndex}`}
+                                                </SvgText>
+                                            )}
+                                        </Svg>
                                     </Animated.View>
                                 );
                             })}
-
-                            {/* SVG Grid Overlay - drawn on top of pieces */}
-                            {piecesReady && showGridLines && !isSolved && !showReference && (
-                                <View style={styles.gridOverlay} pointerEvents="none">
-                                    <Svg width={ACTUAL_PUZZLE_SIZE} height={ACTUAL_PUZZLE_SIZE}>
-                                        {/* Vertical lines */}
-                                        <Line x1={PIECE_SIZE} y1={0} x2={PIECE_SIZE} y2={ACTUAL_PUZZLE_SIZE} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
-                                        <Line x1={PIECE_SIZE * 2} y1={0} x2={PIECE_SIZE * 2} y2={ACTUAL_PUZZLE_SIZE} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
-                                        {/* Horizontal lines */}
-                                        <Line x1={0} y1={PIECE_SIZE} x2={ACTUAL_PUZZLE_SIZE} y2={PIECE_SIZE} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
-                                        <Line x1={0} y1={PIECE_SIZE * 2} x2={ACTUAL_PUZZLE_SIZE} y2={PIECE_SIZE * 2} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
-                                    </Svg>
-                                </View>
-                            )}
                         </View>
 
                         {/* Reference image overlay - shown on top during countdown */}
                         {showReference && imageLoaded && (
                             <Animated.View style={[styles.referenceOverlay, { opacity: referenceOpacity }]}>
                                 <Text style={styles.referencePreviewLabel}>Memorize this image ⏱️</Text>
-                                <View style={styles.referenceImageWrapper}>
+                                <View style={[styles.referenceImageWrapper, { width: actualPuzzleSize, height: actualPuzzleSize }]}>
                                     <Image
                                         source={{
                                             uri: puzzle.imageUrl,
@@ -697,6 +1305,94 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                             </Animated.View>
                         )}
                     </View>
+
+                    {/* Horizontal Tray of Unplaced Pieces */}
+                    {!isSolved && imageLoaded && piecesReady && !showReference && (
+                        <View style={styles.trayContainer}>
+                            <Text style={styles.trayTitle}>Remaining Pieces</Text>
+                            <ScrollView
+                                ref={trayScrollViewRef}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.trayScrollView}
+                                contentContainerStyle={styles.trayContent}
+                                scrollEnabled={!draggingPiece}
+                            >
+                                {trayOrder.map((originalIndex) => {
+                                    // Render pieces that are in the tray (negative value in pieces array)
+                                    if (!pieces.includes(-originalIndex - 1) || devShowCorrect) return null;
+
+                                    const originalRow = Math.floor(originalIndex / gridDim);
+                                    const originalCol = originalIndex % gridDim;
+                                    
+                                    const trayScale = TRAY_PIECE_HEIGHT / (pieceSize + 2 * tabSize);
+                                    const trayPieceSize = (pieceSize + 2 * tabSize) * trayScale;
+                                    const isBeingDragged = draggingPiece && draggingPiece.originalIndex === originalIndex;
+
+                                    return (
+                                        <View
+                                            key={`tray-piece-wrapper-${originalIndex}`}
+                                            style={[
+                                                styles.trayPieceWrapper,
+                                                { width: trayPieceSize, height: trayPieceSize }
+                                            ]}
+                                        >
+                                            <Animated.View
+                                                style={[
+                                                    styles.trayPieceContainer,
+                                                    {
+                                                        width: pieceSize + 2 * tabSize,
+                                                        height: pieceSize + 2 * tabSize,
+                                                        transform: [{ scale: trayScale }],
+                                                        opacity: isBeingDragged ? 0.15 : 1,
+                                                    }
+                                                ]}
+                                                {...(panResponders[originalIndex] ? panResponders[originalIndex].panHandlers : {})}
+                                            >
+                                                <Svg
+                                                    width={pieceSize + 2 * tabSize}
+                                                    height={pieceSize + 2 * tabSize}
+                                                    viewBox={`0 0 ${pieceSize + 2 * tabSize} ${pieceSize + 2 * tabSize}`}
+                                                >
+                                                    <Defs>
+                                                        <ClipPath id={`clip-tray-${originalIndex}`}>
+                                                            <Path d={getPiecePath(originalRow, originalCol, gridDim, pieceSize, tabSize)} />
+                                                        </ClipPath>
+                                                    </Defs>
+                                                    <SvgImage
+                                                        href={puzzle.imageUrl}
+                                                        x={tabSize - originalCol * pieceSize + imgOffsetX}
+                                                        y={tabSize - originalRow * pieceSize + imgOffsetY}
+                                                        width={scaledImgW}
+                                                        height={scaledImgH}
+                                                        clipPath={`url(#clip-tray-${originalIndex})`}
+                                                    />
+                                                    <Path
+                                                        d={getPiecePath(originalRow, originalCol, gridDim, pieceSize, tabSize)}
+                                                        fill="none"
+                                                        stroke="rgba(255, 255, 255, 0.7)"
+                                                        strokeWidth={1.5}
+                                                    />
+                                                    {SHOW_DEV_NUMBERS && (
+                                                        <SvgText
+                                                            x={tabSize + pieceSize / 2}
+                                                            y={tabSize + pieceSize / 2 + (gridDim > 4 ? 3 : 6)}
+                                                            fill="#FF4B4B"
+                                                            fontSize={Math.max(8, Math.floor(pieceSize * 0.28)).toString()}
+                                                            fontWeight="bold"
+                                                            textAnchor="middle"
+                                                        >
+                                                            {originalIndex}
+                                                        </SvgText>
+                                                    )}
+                                                </Svg>
+                                            </Animated.View>
+                                        </View>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+                    )}
 
                     {/* Solved Celebration - Inline below puzzle */}
                     {isSolved && (
@@ -723,6 +1419,63 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
                 </SafeAreaView>
             </GradientBackground>
+            {draggingPiece && (
+                <Animated.View
+                    style={[
+                        styles.draggingOverlay,
+                        {
+                            width: pieceSize + 2 * tabSize,
+                            height: pieceSize + 2 * tabSize,
+                            left: dragPosition.x,
+                            top: dragPosition.y,
+                            transform: [
+                                { translateX: -pieceSize / 2 - tabSize },
+                                { translateY: -pieceSize / 2 - tabSize },
+                                { scale: 1.1 },
+                            ],
+                        }
+                    ]}
+                    pointerEvents="none"
+                >
+                    <Svg
+                        width={pieceSize + 2 * tabSize}
+                        height={pieceSize + 2 * tabSize}
+                        viewBox={`0 0 ${pieceSize + 2 * tabSize} ${pieceSize + 2 * tabSize}`}
+                    >
+                        <Defs>
+                            <ClipPath id={`clip-drag-${draggingPiece.originalIndex}`}>
+                                <Path d={getPiecePath(
+                                    Math.floor(draggingPiece.originalIndex / gridDim),
+                                    draggingPiece.originalIndex % gridDim,
+                                    gridDim,
+                                    pieceSize,
+                                    tabSize
+                                )} />
+                            </ClipPath>
+                        </Defs>
+                        <SvgImage
+                            href={puzzle.imageUrl}
+                            x={tabSize - (draggingPiece.originalIndex % gridDim) * pieceSize + imgOffsetX}
+                            y={tabSize - Math.floor(draggingPiece.originalIndex / gridDim) * pieceSize + imgOffsetY}
+                            width={scaledImgW}
+                            height={scaledImgH}
+                            clipPath={`url(#clip-drag-${draggingPiece.originalIndex})`}
+                        />
+                        <Path
+                            d={getPiecePath(
+                                Math.floor(draggingPiece.originalIndex / gridDim),
+                                draggingPiece.originalIndex % gridDim,
+                                gridDim,
+                                pieceSize,
+                                tabSize
+                            )}
+                            fill="none"
+                            stroke="rgba(255, 255, 255, 0.8)"
+                            strokeWidth={2}
+                        />
+                    </Svg>
+                </Animated.View>
+            )}
         </View>
     );
 };
@@ -862,8 +1615,6 @@ const styles = StyleSheet.create({
         paddingVertical: spacing.lg,
     },
     puzzleGrid: {
-        width: ACTUAL_PUZZLE_SIZE,
-        height: ACTUAL_PUZZLE_SIZE,
         position: 'relative',
         backgroundColor: colors.surface,
         borderRadius: borderRadius.lg,
@@ -874,7 +1625,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowRadius: 16,
         elevation: 8,
-        overflow: 'hidden',
+        overflow: 'visible',
     },
     puzzleGridPlaceholder: {
         alignItems: 'center',
@@ -885,9 +1636,6 @@ const styles = StyleSheet.create({
     },
     pieceContainer: {
         position: 'absolute',
-        width: PIECE_SIZE,
-        height: PIECE_SIZE,
-        overflow: 'hidden',
     },
     pieceClip: {
         width: '100%',
@@ -943,8 +1691,6 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     referenceImageWrapper: {
-        width: ACTUAL_PUZZLE_SIZE,
-        height: ACTUAL_PUZZLE_SIZE,
         borderRadius: borderRadius.lg,
         overflow: 'hidden',
         backgroundColor: colors.surface,
@@ -971,6 +1717,59 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         marginTop: spacing.md,
         fontStyle: 'italic',
+    },
+    trayContainer: {
+        marginHorizontal: spacing.lg,
+        marginTop: spacing.md,
+        paddingTop: spacing.sm,
+        paddingBottom: spacing.sm,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#E9D5FF', // beautiful lavender border
+        borderRadius: 16,
+        alignItems: 'center',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 3,
+    },
+    trayTitle: {
+        fontFamily: fontFamily.bold,
+        fontSize: 12,
+        color: colors.textSecondary,
+        marginBottom: spacing.xs,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    trayScrollView: {
+        width: '100%',
+        maxHeight: 150,
+    },
+    trayContent: {
+        paddingHorizontal: spacing.lg,
+        alignItems: 'center',
+        gap: 8,
+    },
+    trayPieceWrapper: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginHorizontal: 4,
+    },
+    trayPieceContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'visible',
+    },
+    draggingOverlay: {
+        position: 'absolute',
+        zIndex: 9999,
+        elevation: 99,
+        overflow: 'visible',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.35,
+        shadowRadius: 16,
     },
 });
 

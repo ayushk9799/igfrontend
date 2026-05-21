@@ -443,10 +443,12 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginTop: 8,
         marginBottom: 18,
+        zIndex: 10,
     },
     brandContainer: {
         flexDirection: 'column',
         alignItems: 'flex-start',
+       
     },
     brandLogo: {
         width: 135,
@@ -550,23 +552,22 @@ const styles = StyleSheet.create({
         resizeMode: 'cover',
     },
     hero: {
-        height: 226,
+        height: 220,
         alignItems: 'center',
         justifyContent: 'flex-end',
-        marginTop: 4,
+        marginTop: 0,
         marginBottom: -2,
+        overflow: 'hidden',
     },
     heroImage: {
         width: width + 12,
-        height: 226,
-        resizeMode: 'cover',
+        height: 290,
+        resizeMode: 'contain',
         opacity: 0.96,
     },
     heroImageWrap: {
         width: width + 12,
-        height: 226,
-        borderRadius: 28,
-        overflow: 'hidden',
+        height: 260,
         backgroundColor: 'transparent',
     },
     heroFadeTop: {

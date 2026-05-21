@@ -82,7 +82,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
         Animated.loop(Animated.timing(piece1Rotate, { toValue: 1, duration: 8000, useNativeDriver: true })).start();
         Animated.loop(Animated.timing(piece2Rotate, { toValue: -1, duration: 10000, useNativeDriver: true })).start();
         Animated.loop(Animated.timing(piece3Rotate, { toValue: 1, duration: 6000, useNativeDriver: true })).start();
-    }, [showCamera, previewUri]);
+    }, [showCamera, previewUri, piece1Rotate, piece2Rotate, piece3Rotate, pulseAnim, puzzleFloat]);
 
     const checkCameraPermission = async () => {
         if (Platform.OS === 'ios') {
@@ -310,7 +310,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                         {/* Grid Overlay on Preview */}
                         {previewUri && (
                             <View style={styles.gridOverlay}>
-                                {[...Array(9)].map((_, i) => (
+                                {[...Array(25)].map((_, i) => (
                                     <View key={i} style={styles.gridCell} />
                                 ))}
                             </View>
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
 
     // Grid Overlay
     gridOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flexDirection: 'row', flexWrap: 'wrap' },
-    gridCell: { width: '33.33%', height: '33.33%', borderWidth: 1, borderColor: 'rgba(46, 30, 60, 0.12)' },
+    gridCell: { width: '20%', height: '20%', borderWidth: 1, borderColor: 'rgba(46, 30, 60, 0.12)' },
 
     // Floating pieces
     floatingPiece: { position: 'absolute', opacity: 0.3 },

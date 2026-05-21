@@ -16,7 +16,7 @@ export const usePuzzle = () => {
     /**
      * Upload image to S3 and create a puzzle
      */
-    const createPuzzle = useCallback(async (imageAsset, partnerId, gridSize = { rows: 3, cols: 3 }) => {
+    const createPuzzle = useCallback(async (imageAsset, partnerId, gridSize = { rows: 5, cols: 5 }) => {
 
         const user = getUser();
         if (!user?.id) {
@@ -136,12 +136,12 @@ export const usePuzzle = () => {
     /**
      * Record a piece move
      */
-    const movePiece = useCallback(async (puzzleId, fromIndex, toIndex) => {
+    const movePiece = useCallback(async (puzzleId, fromIndex, toIndex, newPieces) => {
         try {
             const response = await fetch(`${API_BASE}/api/puzzle/${puzzleId}/move`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fromIndex, toIndex }),
+                body: JSON.stringify({ fromIndex, toIndex, pieces: newPieces }),
             });
             return await response.json();
         } catch (err) {

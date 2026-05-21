@@ -76,6 +76,51 @@ const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
     );
 };
 
+const FloatingHeart = ({ x, delay = 0, size = 18, color = '#FF8FAB' }) => {
+    const translateY = useRef(new Animated.Value(0)).current;
+    const opacity = useRef(new Animated.Value(0)).current;
+    const scaleAnim = useRef(new Animated.Value(0.3)).current;
+
+    useEffect(() => {
+        const anim = Animated.loop(
+            Animated.sequence([
+                Animated.delay(delay),
+                Animated.parallel([
+                    Animated.timing(translateY, { toValue: -height * 0.5, duration: 3500, useNativeDriver: true }),
+                    Animated.sequence([
+                        Animated.timing(opacity, { toValue: 0.9, duration: 400, useNativeDriver: true }),
+                        Animated.delay(2000),
+                        Animated.timing(opacity, { toValue: 0, duration: 1100, useNativeDriver: true }),
+                    ]),
+                    Animated.timing(scaleAnim, { toValue: 1, duration: 3500, useNativeDriver: true }),
+                ]),
+                Animated.parallel([
+                    Animated.timing(translateY, { toValue: 0, duration: 0, useNativeDriver: true }),
+                    Animated.timing(opacity, { toValue: 0, duration: 0, useNativeDriver: true }),
+                    Animated.timing(scaleAnim, { toValue: 0.3, duration: 0, useNativeDriver: true }),
+                ]),
+            ])
+        );
+        anim.start();
+        return () => anim.stop();
+    }, [delay, translateY, opacity, scaleAnim]);
+
+    return (
+        <Animated.View style={{
+            position: 'absolute',
+            left: x,
+            bottom: height * 0.25,
+            opacity,
+            transform: [{ translateY }, { scale: scaleAnim }],
+            zIndex: 5,
+        }}>
+            <Svg width={size} height={size * 0.86} viewBox="0 0 14 12" fill="none">
+                <Path d="M7 12L6.0125 11.0825C2.4 7.755 0 5.5425 0 2.8425C0 0.81 1.575 -0.75 3.5 -0.75C4.585 -0.75 5.6175 -0.255 6.265 0.4425C6.545 0.705 6.7825 1.0125 7 1.3425C7.2175 1.0125 7.455 0.705 7.735 0.4425C8.3825 -0.255 9.415 -0.75 10.5 -0.75C12.425 -0.75 14 0.81 14 2.8425C14 5.5425 11.6 7.755 7.9875 11.09L7 12Z" fill={color} />
+            </Svg>
+        </Animated.View>
+    );
+};
+
 export const PartnerCodeScreen = ({
     partnerCode = 'XXXXXX',
     userId,
@@ -89,9 +134,11 @@ export const PartnerCodeScreen = ({
     const [pairingStatus, setPairingStatus] = useState('');
     const [copied, setCopied] = useState(false);
     const [isAlreadyPaired, setIsAlreadyPaired] = useState(false);
+    const [pairedPartner, setPairedPartner] = useState(null);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(40)).current;
     const connectedScale = useRef(new Animated.Value(0)).current;
+    const pairedScale = useRef(new Animated.Value(0)).current;
     const insets = useSafeAreaInsets();
 
     // Check if user is already paired on mount or when partnerId changes
@@ -124,7 +171,7 @@ export const PartnerCodeScreen = ({
         }
     }, [fadeAnim, slideAnim, isAlreadyPaired]);
 
-    // If already paired, show connected screen
+    // If already paired (passive partner), show connected screen
     if (isAlreadyPaired) {
         return (
             <View style={styles.root}>
@@ -136,6 +183,16 @@ export const PartnerCodeScreen = ({
                     end={{ x: 0.75, y: 1 }}
                     style={styles.gradient}
                 >
+                    {/* Floating Hearts */}
+                    <FloatingHeart x={width * 0.1} delay={0} size={20} color="#FF8FAB" />
+                    <FloatingHeart x={width * 0.25} delay={400} size={14} color="#FF5E97" />
+                    <FloatingHeart x={width * 0.45} delay={800} size={22} color="#FFB5D0" />
+                    <FloatingHeart x={width * 0.65} delay={200} size={16} color="#FF8FAB" />
+                    <FloatingHeart x={width * 0.8} delay={600} size={18} color="#FFA1C9" />
+                    <FloatingHeart x={width * 0.15} delay={1000} size={12} color="#FF5E97" />
+                    <FloatingHeart x={width * 0.55} delay={1400} size={24} color="#FFB5D0" />
+                    <FloatingHeart x={width * 0.35} delay={1800} size={15} color="#FFA1C9" />
+
                     <View style={styles.connectedContainer}>
                         <Animated.View style={[styles.connectedContent, { transform: [{ scale: connectedScale }] }]}>
                             <Text style={styles.connectedEmoji}>💕</Text>
@@ -145,6 +202,42 @@ export const PartnerCodeScreen = ({
                                     {partnerUsername} just paired with you
                                 </Text>
                             )}
+                        </Animated.View>
+                    </View>
+                </LinearGradient>
+            </View>
+        );
+    }
+
+    // If just paired by initiator, show connected screen with floating hearts
+    if (pairedPartner) {
+        return (
+            <View style={styles.root}>
+                <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+                <LinearGradient
+                    colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+                    locations={[0, 0.34, 0.72, 1]}
+                    start={{ x: 0.25, y: 0 }}
+                    end={{ x: 0.75, y: 1 }}
+                    style={styles.gradient}
+                >
+                    {/* Floating Hearts */}
+                    <FloatingHeart x={width * 0.1} delay={0} size={20} color="#FF8FAB" />
+                    <FloatingHeart x={width * 0.25} delay={400} size={14} color="#FF5E97" />
+                    <FloatingHeart x={width * 0.45} delay={800} size={22} color="#FFB5D0" />
+                    <FloatingHeart x={width * 0.65} delay={200} size={16} color="#FF8FAB" />
+                    <FloatingHeart x={width * 0.8} delay={600} size={18} color="#FFA1C9" />
+                    <FloatingHeart x={width * 0.15} delay={1000} size={12} color="#FF5E97" />
+                    <FloatingHeart x={width * 0.55} delay={1400} size={24} color="#FFB5D0" />
+                    <FloatingHeart x={width * 0.35} delay={1800} size={15} color="#FFA1C9" />
+
+                    <View style={styles.connectedContainer}>
+                        <Animated.View style={[styles.connectedContent, { transform: [{ scale: pairedScale }] }]}>
+                            <Text style={styles.connectedEmoji}>💕</Text>
+                            <Text style={styles.connectedTitle}>You're Connected!</Text>
+                            <Text style={styles.connectedSubtitle}>
+                                You're now paired with {pairedPartner.name}
+                            </Text>
                         </Animated.View>
                     </View>
                 </LinearGradient>
@@ -189,12 +282,19 @@ export const PartnerCodeScreen = ({
                     connectionDate: data.partner.connectionDate,
                 });
 
-                // Small delay for satisfying UX
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Show connected screen with floating hearts
+                setPairedPartner(data.partner);
+                Animated.spring(pairedScale, {
+                    toValue: 1,
+                    friction: 5,
+                    tension: 80,
+                    useNativeDriver: true,
+                }).start();
 
-                Alert.alert('Connected! 💕', `You're now paired with ${data.partner.name}!`, [
-                    { text: 'Continue', onPress: () => onPaired(data.partner) },
-                ]);
+                // Auto-navigate after showing the connected screen
+                setTimeout(() => {
+                    onPaired(data.partner);
+                }, 3000);
             } else {
                 Alert.alert('Pairing Failed', data.error || 'Could not connect with this code');
             }
