@@ -27,7 +27,7 @@ const formatTimeAgo = (dateValue) => {
     }
 
     const diffMs = Math.max(Date.now() - updatedAt, 0);
-    const minute = 60 * 1000;
+    const minute = 60 * 1000; 
     const hour = 60 * minute;
     const day = 24 * hour;
 

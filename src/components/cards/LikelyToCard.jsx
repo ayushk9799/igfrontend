@@ -1,59 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 
 import { categoryConfig } from './categoryConfig';
-import { cardStyles as styles } from './cardStyles';
-import { colors } from '../../theme';
+import { cardStyles } from './cardStyles';
+import { spacing } from '../../theme';
+import { fontFamily } from '../../constants/fonts';
 
 
 /**
- * SelectableAvatar - Simple tap-to-select avatar with real image support
- */
-const SelectableAvatar = ({ name, isYou, isSelected, onSelect, disabled, categoryColor, avatarUrl }) => {
-    return (
-        <TouchableOpacity
-            style={styles.avatarWrapper}
-            onPress={onSelect}
-            disabled={disabled}
-            activeOpacity={0.7}
-        >
-            <View style={[
-                styles.avatarOuter,
-                isSelected && { borderColor: categoryColor, shadowColor: categoryColor, shadowOpacity: 0.4 },
-            ]}>
-                <LinearGradient
-                    colors={isSelected ? [categoryColor, categoryColor + 'CC'] : [colors.surface, colors.backgroundAlt]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.avatarGradient}
-                />
-                <View style={styles.avatarInner}>
-                    {avatarUrl ? (
-                        <Image
-                            source={{ uri: avatarUrl }}
-                            style={styles.avatarImage}
-                            resizeMode="cover"
-                        />
-                    ) : (
-                        <Text style={styles.avatarEmoji}>{isYou ? 'ME' : 'You'}</Text>
-                    )}
-                </View>
-            </View>
-            {isSelected && (
-                <View style={[styles.selectedIndicator, { backgroundColor: categoryColor }]}>
-                    <Text style={styles.selectedCheck}>✓</Text>
-                </View>
-            )}
-            <Text style={styles.avatarName} numberOfLines={1}>
-                {isYou ? 'You' : name || 'Partner'}
-            </Text>
-        </TouchableOpacity>
-    );
-};
-
-/**
- * LikelyToCard - "Who is more likely to..." card with selectable avatars
+ * LikelyToCard - "Who is more likely to..." card with selectable choice buttons
+ * Redesigned with light pinkish theme, hero image, and clean choice buttons
  */
 const LikelyToCard = React.memo(({
     task,
@@ -121,83 +79,259 @@ const LikelyToCard = React.memo(({
     };
 
     return (
-        <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
+        <LinearGradient
+            colors={['#FFF0F3', '#FFF8FA']}
+            style={styles.cardContainer}
+        >
             <View style={styles.cardContent}>
+                {/* Top Header */}
                 <View style={styles.topRow}>
-                    <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
+                    <View style={styles.categoryBadge}>
+                        <Text style={styles.badgeEmoji}>❤️</Text>
                         <Text style={styles.categoryText}>{config.label}</Text>
                     </View>
+                    <Text style={styles.counterText}>{index + 1} / {totalCards}</Text>
                 </View>
 
+                {/* Question Area */}
                 <View style={styles.questionSection}>
                     {locked && <Text style={styles.submittedText}>Submitted ✓</Text>}
-                    <Text style={styles.questionText}>{task.taskstatement}</Text>
+                    <Text style={styles.questionText}>
+                        {task.taskstatement}
+                    </Text>
                 </View>
 
-                {/* Bottom Bar - Avatar Left, Skip Center, Avatar Right */}
-                <View style={likelyStyles.bottomBar}>
-                    {/* Partner Avatar - Left */}
-                    <SelectableAvatar
-                        name={partnerName}
-                        isYou={false}
-                        isSelected={selectedAnswer === 'partner'}
-                        onSelect={() => handleSelect('partner')}
-                        disabled={locked || isAnswered}
-                        categoryColor={config.color}
-                        avatarUrl={partnerAvatar}
-                    />
+                {/* Hero Image */}
+                <Image
+                    source={require('../../../assets/daily-cards/likelyto.png')}
+                    style={styles.heroImage}
+                    resizeMode="contain"
+                />
 
-                    {/* Skip - Center */}
-                    <TouchableOpacity onPress={onSkip} style={likelyStyles.skipButton} disabled={locked}>
-                        <Text style={likelyStyles.skipText}>Skip</Text>
+                {/* Choice Buttons */}
+                <View style={styles.choicesRow}>
+                    {/* Partner - "You" button (from partner's POV) */}
+                    <TouchableOpacity
+                        style={[
+                            styles.choiceButton,
+                            styles.choicePartner,
+                            selectedAnswer === 'partner' && styles.choiceSelected,
+                        ]}
+                        onPress={() => handleSelect('partner')}
+                        disabled={locked || isAnswered}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[
+                            styles.choiceLabel,
+                            styles.choiceLabelPartner,
+                            selectedAnswer === 'partner' && styles.choiceLabelSelected,
+                        ]}>You</Text>
+                       
                     </TouchableOpacity>
 
-                    {/* User Avatar - Right */}
-                    <SelectableAvatar
-                        name={userName}
-                        isYou={true}
-                        isSelected={selectedAnswer === 'you'}
-                        onSelect={() => handleSelect('you')}
+                    {/* User - "ME" button */}
+                    <TouchableOpacity
+                        style={[
+                            styles.choiceButton,
+                            styles.choiceMe,
+                            selectedAnswer === 'you' && styles.choiceSelected,
+                        ]}
+                        onPress={() => handleSelect('you')}
                         disabled={locked || isAnswered}
-                        categoryColor={config.color}
-                        avatarUrl={userAvatar}
-                    />
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[
+                            styles.choiceLabel,
+                            styles.choiceLabelMe,
+                            selectedAnswer === 'you' && styles.choiceLabelSelected,
+                        ]}>ME</Text>
+                       
+                    </TouchableOpacity>
                 </View>
 
-
+                {/* Skip Button */}
+                {!isLastCard && (
+                    <View style={[styles.skipRow, locked && { opacity: 0 }]}>
+                        <TouchableOpacity
+                            onPress={isLocked ? onNavigateToPremium : onSkip}
+                            style={styles.skipButton}
+                            disabled={locked}
+                        >
+                            <Text style={styles.skipText}>Skip</Text>
+                            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                                <Path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="#E8758A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                            </Svg>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
         </LinearGradient>
     );
 });
 
-import { StyleSheet } from 'react-native';
-import { spacing } from '../../theme';
-import { fontFamily } from '../../constants/fonts';
-
-const likelyStyles = StyleSheet.create({
-    bottomBar: {
+const styles = StyleSheet.create({
+    cardContainer: {
+        flex: 1,
+        borderRadius: 28,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#FFCDD6',
+        shadowColor: '#FF6B8A',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.15,
+        shadowRadius: 22,
+        elevation: 10,
+        marginRight: 10,
+    },
+    cardContent: {
+        flex: 1,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.md,
+    },
+    topRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.md,
+        marginBottom: spacing.md,
+    },
+    categoryBadge: {
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 9,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#FFE0E6',
+    },
+    badgeEmoji: {
+        fontSize: 14,
+    },
+    categoryText: {
+        color: '#E8758A',
+        fontWeight: '800',
+        fontSize: 13,
+        fontFamily: fontFamily.bold,
+    },
+    counterText: {
+        color: '#17204D',
+        fontWeight: '800',
+        fontSize: 16,
+        fontFamily: fontFamily.bold,
+    },
+    questionSection: {
+        justifyContent: 'center',
+        paddingHorizontal: spacing.md,
+        marginTop: spacing.sm,
+        marginBottom: spacing.sm,
+    },
+    submittedText: {
+        textAlign: 'center',
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#E8758A',
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+        paddingVertical: spacing.xs,
+        fontFamily: fontFamily.bold,
+    },
+    questionText: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: '#14245A',
+        lineHeight: 32,
+        textAlign: 'center',
+        fontFamily: fontFamily.extraBold,
+    },
+    heroImage: {
+        alignSelf: 'center',
+        width: '80%',
+        height: 170,
+        marginTop: spacing.xs,
+        marginBottom: spacing.md,
+    },
+    choicesRow: {
+        flexDirection: 'row',
+        gap: spacing.md,
+        paddingHorizontal: spacing.xs,
+        marginBottom: spacing.md,
         marginTop: 'auto',
     },
-    skipButton: {
-        paddingVertical: 12,
-        paddingHorizontal: spacing.lg,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.14)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.18)',
+    choiceButton: {
+        flex: 1,
+        borderRadius: 20,
+        paddingVertical: spacing.lg,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 3,
     },
-    skipText: {
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontSize: 16,
-        fontWeight: '500',
+    choicePartner: {
+        backgroundColor: '#FFF0F3',
+        borderColor: '#FFD0D9',
+    },
+    choiceMe: {
+        backgroundColor: '#F0ECF8',
+        borderColor: '#DDD5EE',
+    },
+    choiceSelected: {
+        borderWidth: 2.5,
+        borderColor: '#E8758A',
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+        shadowColor: '#E8758A',
+    },
+    choiceLabel: {
+        fontSize: 22,
+        fontWeight: '800',
+        fontFamily: fontFamily.extraBold,
+        marginBottom: 4,
+    },
+    choiceLabelPartner: {
+        color: '#E8758A',
+    },
+    choiceLabelMe: {
+        color: '#8B7DB8',
+    },
+    choiceLabelSelected: {
+        color: '#E8758A',
+    },
+    choiceSublabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    choiceSublabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#E8758A',
         fontFamily: fontFamily.medium,
     },
-
+    skipRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: spacing.xs,
+    },
+    skipButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+    },
+    skipText: {
+        color: '#E8758A',
+        fontSize: 16,
+        fontWeight: '700',
+        fontFamily: fontFamily.bold,
+    },
 });
 
 export default LikelyToCard;

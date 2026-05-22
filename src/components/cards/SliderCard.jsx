@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { Image, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -163,7 +164,7 @@ const SliderCard = React.memo(({
     }
 
     return (
-        <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
+        <LinearGradient colors={['#EFFFF8', '#F9FFFD']} style={styles.cardInner}>
             {/* Already Answered Overlay */}
             {isAnswered && (
                 <View style={cardStyles.answeredOverlay}>
@@ -181,8 +182,11 @@ const SliderCard = React.memo(({
             <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
                 {/* Header */}
                 <View style={styles.topRow}>
-                    <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
-                        <Text style={cardStyles.categoryText}>Rate It</Text>
+                    <View style={styles.categoryBadge}>
+                        <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                            <Path d="M12 2L14.95 8.02L21.6 8.98L16.8 13.66L17.93 20.28L12 17.16L6.07 20.28L7.2 13.66L2.4 8.98L9.05 8.02L12 2Z" fill="#16B98F" />
+                        </Svg>
+                        <Text style={styles.categoryText}>Rate It</Text>
                     </View>
                     <Text style={styles.counterText}>{index + 1}/{totalCards}</Text>
                 </View>
@@ -192,10 +196,16 @@ const SliderCard = React.memo(({
                     <Text style={styles.questionText}>"{task.taskstatement}"</Text>
                 </View>
 
+                <Image
+                    source={require('../../../assets/daily-cards/rate.png')}
+                    style={styles.starImage}
+                    resizeMode="contain"
+                />
+
                 {/* Value Display */}
                 <View style={styles.valueDisplay}>
                     <View style={styles.valuePill}>
-                        <Text style={[styles.valueText, { color: config.color }]}>{currentValue}</Text>
+                        <Text style={styles.valueText}>{currentValue}</Text>
                         <Text style={styles.valueMax}>/ {maxValue}</Text>
                     </View>
                 </View>
@@ -208,7 +218,7 @@ const SliderCard = React.memo(({
                         {/* Progress Fill */}
                         <Animated.View style={[styles.trackFill, progressStyle]}>
                             <LinearGradient
-                                colors={['#FFFFFF', 'rgba(255,255,255,0.72)']}
+                                colors={['#18C79A', '#63E1C0']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={styles.trackFillGradient}
@@ -271,9 +281,18 @@ const SliderCard = React.memo(({
                         ]}
                     >
                         <Text style={styles.submitText}>
-                            {locked ? 'Submitted ✓' : 'Submit'}
+                            {locked ? 'Submitted ✓' : '✓  Submit'}
                         </Text>
                     </TouchableOpacity>
+                </View>
+
+                <View style={styles.swipeHint}>
+                    <Text style={styles.swipeText}>Swipe to see next</Text>
+                    <View style={styles.swipeDot}>
+                        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                            <Path d="M9 18L15 12L9 6" stroke="#16B98F" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+                        </Svg>
+                    </View>
                 </View>
 
 
@@ -287,6 +306,14 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#B9ECD9',
+        shadowColor: '#7DDCC2',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.20,
+        shadowRadius: 22,
+        elevation: 10,
+        marginRight: 10,
     },
     cardContent: {
         flex: 1,
@@ -301,43 +328,62 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     categoryBadge: {
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+        paddingVertical: 9,
+        paddingHorizontal: 16,
+        borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.22)',
+        borderColor: '#D6F5E9',
+        backgroundColor: 'rgba(255,255,255,0.82)',
     },
-    counterText: {
-        color: '#FFFFFF',
-        fontWeight: '600',
+    categoryText: {
+        color: '#16B98F',
+        fontWeight: '800',
         fontSize: 14,
         fontFamily: fontFamily.bold,
     },
+    counterText: {
+        color: '#083D45',
+        fontWeight: '800',
+        fontSize: 16,
+        fontFamily: fontFamily.bold,
+    },
     questionSection: {
-        flex: 1,
+        flex: 0,
         justifyContent: 'center',
-        paddingHorizontal: spacing.sm,
+        paddingHorizontal: spacing.lg,
+        marginTop: spacing.sm,
+        marginBottom: spacing.xs,
     },
     questionText: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: '800',
-        color: '#FFFFFF',
-        fontStyle: 'italic',
-        lineHeight: 30,
+        color: '#083D45',
+        lineHeight: 32,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
+    },
+    starImage: {
+        alignSelf: 'center',
+        width: 130,
+        height: 100,
+        marginTop: spacing.xs,
+        marginBottom: 0,
     },
     valueDisplay: {
         flexDirection: 'row',
         alignItems: 'baseline',
         justifyContent: 'center',
+        marginTop: 'auto',
         marginBottom: spacing.md,
     },
     valuePill: {
         minWidth: 132,
-        paddingHorizontal: 18,
-        paddingVertical: 8,
-        borderRadius: 30,
+        paddingHorizontal: 22,
+        paddingVertical: 9,
+        borderRadius: 36,
         backgroundColor: 'rgba(255,255,255,0.94)',
         flexDirection: 'row',
         alignItems: 'baseline',
@@ -351,6 +397,7 @@ const styles = StyleSheet.create({
     valueText: {
         fontSize: 48,
         fontWeight: '900',
+        color: '#16B98F',
         fontFamily: fontFamily.extraBold,
     },
     valueMax: {
@@ -361,7 +408,7 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     sliderContainer: {
-        height: 74,
+        height: 62,
         marginHorizontal: spacing.md,
         justifyContent: 'center',
     },
@@ -371,16 +418,16 @@ const styles = StyleSheet.create({
         right: 0,
         height: 52,
         borderRadius: 26,
-        backgroundColor: 'rgba(255,255,255,0.14)',
+        backgroundColor: 'rgba(255,255,255,0.72)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.18)',
+        borderColor: '#D9EFE8',
     },
     trackBackground: {
         position: 'absolute',
         left: KNOB_SIZE / 2,
         right: KNOB_SIZE / 2,
         height: TRACK_HEIGHT,
-        backgroundColor: 'rgba(255, 255, 255, 0.26)',
+        backgroundColor: '#E7EEEE',
         borderRadius: TRACK_HEIGHT / 2,
         overflow: 'hidden',
     },
@@ -397,13 +444,13 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: 12,
-        top: (74 - 12) / 2,
+        top: (62 - 12) / 2,
     },
     tick: {
         position: 'absolute',
         width: 2,
         height: 8,
-        backgroundColor: 'rgba(255, 255, 255, 0.4)',
+        backgroundColor: '#C9D6D4',
         borderRadius: 1,
     },
     knob: {
@@ -437,12 +484,12 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: spacing.lg,
         marginTop: 2,
-        marginBottom: spacing.lg,
+        marginBottom: spacing.md,
     },
     labelText: {
         fontSize: 13,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.7)',
+        color: '#0A5962',
         fontFamily: fontFamily.bold,
     },
     actionRow: {
@@ -450,16 +497,16 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: spacing.md,
-        paddingBottom: 2,
+        paddingBottom: 0,
     },
     skipButton: {
         paddingVertical: 13,
         paddingHorizontal: spacing.lg,
         borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.12)',
+        backgroundColor: '#DFF7EF',
     },
     skipText: {
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: '#0A8E72',
         fontSize: 16,
         fontWeight: '500',
         fontFamily: fontFamily.medium,
@@ -469,7 +516,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         borderRadius: 25,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.22)',
+        borderColor: 'rgba(255,255,255,0.7)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
@@ -484,6 +531,27 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         fontFamily: fontFamily.bold,
+    },
+    swipeHint: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingTop: spacing.sm,
+    },
+    swipeText: {
+        color: '#8A9C9A',
+        fontSize: 12,
+        fontWeight: '700',
+        fontFamily: fontFamily.medium,
+    },
+    swipeDot: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#DDF7EE',
     },
 
 });

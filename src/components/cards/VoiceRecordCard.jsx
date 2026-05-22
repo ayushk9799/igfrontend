@@ -316,7 +316,7 @@ const VoiceRecordCard = React.memo(({
     };
 
     return (
-        <LinearGradient colors={config.bgGradient} style={styles.cardInner}>
+        <LinearGradient colors={['#FFF0F6', '#FFF9FB']} style={voiceStyles.cardInner}>
             {/* Already Answered Overlay */}
             {isAnswered && (
                 <View style={styles.answeredOverlay}>
@@ -328,17 +328,22 @@ const VoiceRecordCard = React.memo(({
                 </View>
             )}
 
-            <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
+            <View style={[voiceStyles.cardContent, isAnswered && { opacity: 0.3 }]}>
                 {/* Header */}
-                <View style={styles.topRow}>
-                    <View style={[styles.categoryBadge, { backgroundColor: config.color + '20' }]}>
-                        <Text style={styles.categoryText}>{config.label}</Text>
+                <View style={voiceStyles.topRow}>
+                    <View style={voiceStyles.categoryBadge}>
+                        <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                            <Path d="M12 2a4 4 0 00-4 4v6a4 4 0 008 0V6a4 4 0 00-4-4z" fill="#F64D7E" />
+                            <Path d="M19 11a7 7 0 01-14 0M12 18v4M8 22h8" stroke="#F64D7E" strokeWidth={2.4} strokeLinecap="round" />
+                        </Svg>
+                        <Text style={voiceStyles.categoryText}>{config.label}</Text>
                     </View>
+                    <Text style={voiceStyles.counterText}>{index + 1} / {totalCards}</Text>
                 </View>
 
                 {/* Question */}
-                <View style={styles.questionSection}>
-                    <Text style={styles.questionText}>{task.taskstatement}</Text>
+                <View style={voiceStyles.questionSection}>
+                    <Text style={voiceStyles.questionText}>{task.taskstatement}</Text>
                 </View>
 
                 {/* Recording UI */}
@@ -346,30 +351,19 @@ const VoiceRecordCard = React.memo(({
                     {!recordingUri ? (
                         // Recording Mode
                         <>
-                            <Animated.View style={[voiceStyles.pulseCircle, pulseAnimatedStyle]}>
-                                <TouchableOpacity
-                                    onPress={handleToggleRecording}
+                            <TouchableOpacity
+                                onPress={handleToggleRecording}
+                                activeOpacity={0.82}
+                            >
+                                <Animated.Image
+                                    source={require('../../../assets/daily-cards/voice.png')}
                                     style={[
-                                        voiceStyles.micButton,
-                                        isRecording && voiceStyles.micButtonRecording
+                                        voiceStyles.voiceArtwork,
+                                        isRecording && pulseAnimatedStyle
                                     ]}
-                                    activeOpacity={0.8}
-                                >
-                                    <Svg width={48} height={48} viewBox="0 0 24 24" fill="none">
-                                        <Path
-                                            d="M12 1a4 4 0 00-4 4v6a4 4 0 008 0V5a4 4 0 00-4-4z"
-                                            fill={isRecording ? '#FF4444' : '#FFFFFF'}
-                                        />
-                                        <Path
-                                            d="M19 10v1a7 7 0 01-14 0v-1M12 18.5V23M8 23h8"
-                                            stroke={isRecording ? '#FF4444' : '#FFFFFF'}
-                                            strokeWidth={2}
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        />
-                                    </Svg>
-                                </TouchableOpacity>
-                            </Animated.View>
+                                    resizeMode="contain"
+                                />
+                            </TouchableOpacity>
 
                             <Text style={voiceStyles.instructionText}>
                                 {isRecording ? 'Tap to stop' : 'Tap to record'}
@@ -471,7 +465,7 @@ const VoiceRecordCard = React.memo(({
                                                         strokeLinejoin="round"
                                                     />
                                                 </Svg>
-                                                <Text style={voiceStyles.submitText}>Send</Text>
+                                                <Text style={voiceStyles.submitText}>✓  Submit</Text>
                                             </>
                                         )}
                                     </View>
@@ -481,14 +475,29 @@ const VoiceRecordCard = React.memo(({
                     )}
                 </View>
 
-                {/* Skip Button */}
-                {!isLastCard && !recordingUri && !isRecording && (
-                    <View style={voiceStyles.skipContainer}>
+                {!recordingUri && !isRecording && (
+                    <View style={voiceStyles.bottomActions}>
                         <TouchableOpacity onPress={isLocked ? onNavigateToPremium : onSkip} style={voiceStyles.skipButton}>
                             <Text style={voiceStyles.skipText}>Skip</Text>
                         </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={handleSubmit}
+                            style={[voiceStyles.idleSubmitButton, !recordingUri && voiceStyles.idleSubmitDisabled]}
+                            disabled={!recordingUri}
+                        >
+                            <Text style={voiceStyles.idleSubmitText}>✓  Submit</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
+
+                <View style={voiceStyles.swipeHint}>
+                    <Text style={voiceStyles.swipeText}>Swipe to see next</Text>
+                    <View style={voiceStyles.swipeDot}>
+                        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                            <Path d="M9 18L15 12L9 6" stroke="#F64D7E" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+                        </Svg>
+                    </View>
+                </View>
 
 
             </View>
@@ -497,45 +506,83 @@ const VoiceRecordCard = React.memo(({
 });
 
 const voiceStyles = StyleSheet.create({
+    cardInner: {
+        flex: 1,
+        borderRadius: 28,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#FFB6CA',
+        shadowColor: '#F78AAA',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.18,
+        shadowRadius: 22,
+        elevation: 10,
+        marginRight: 10,
+    },
+    cardContent: {
+        flex: 1,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.md,
+    },
+    topRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: spacing.lg,
+    },
+    categoryBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+        backgroundColor: 'rgba(255,255,255,0.82)',
+        paddingVertical: 9,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#FFD6E2',
+    },
+    categoryText: {
+        color: '#F64D7E',
+        fontWeight: '800',
+        fontSize: 14,
+        fontFamily: fontFamily.bold,
+    },
+    counterText: {
+        color: '#8B1642',
+        fontWeight: '800',
+        fontSize: 16,
+        fontFamily: fontFamily.bold,
+    },
+    questionSection: {
+        justifyContent: 'center',
+        paddingHorizontal: spacing.lg,
+        marginTop: spacing.xl,
+        marginBottom: spacing.sm,
+    },
+    questionText: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: '#8B1642',
+        lineHeight: 33,
+        textAlign: 'center',
+        fontFamily: fontFamily.extraBold,
+    },
     recordingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: spacing.xl,
+        paddingVertical: spacing.sm,
     },
-    pulseCircle: {
-        width: 140,
-        height: 140,
-        borderRadius: 70,
-        backgroundColor: 'rgba(255, 255, 255, 0.18)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.22)',
-    },
-    micButton: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: 'rgba(255, 255, 255, 0.16)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.42)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.22,
-        shadowRadius: 16,
-        elevation: 9,
-    },
-    micButtonRecording: {
-        backgroundColor: 'rgba(255, 68, 68, 0.3)',
-        borderColor: '#FF4444',
+    voiceArtwork: {
+        width: 238,
+        height: 162,
+        alignSelf: 'center',
     },
     instructionText: {
-        color: 'rgba(255, 255, 255, 0.8)',
+        color: '#8B1642',
         fontSize: 16,
-        marginTop: spacing.lg,
+        marginTop: spacing.xs,
         fontWeight: '500',
         fontFamily: fontFamily.medium,
     },
@@ -543,12 +590,12 @@ const voiceStyles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: spacing.md,
-        backgroundColor: 'rgba(255, 255, 255, 0.16)',
+        backgroundColor: '#FFE3EC',
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.18)',
+        borderColor: '#FFD1DF',
     },
     recordingDot: {
         width: 10,
@@ -558,7 +605,7 @@ const voiceStyles = StyleSheet.create({
         marginRight: spacing.sm,
     },
     timerText: {
-        color: '#FFFFFF',
+        color: '#8B1642',
         fontSize: 18,
         fontWeight: '600',
         fontVariant: ['tabular-nums'],
@@ -567,23 +614,23 @@ const voiceStyles = StyleSheet.create({
     previewContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.14)',
+        backgroundColor: 'rgba(255,255,255,0.74)',
         borderRadius: 24,
         padding: spacing.lg,
         paddingHorizontal: spacing.lg,
         width: '100%',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.22)',
+        borderColor: '#FFD1DF',
     },
     playButton: {
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        backgroundColor: '#F64D7E',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderColor: '#FFFFFF',
     },
     playButtonActive: {
         backgroundColor: 'rgba(255, 100, 100, 0.3)',
@@ -613,7 +660,7 @@ const voiceStyles = StyleSheet.create({
         marginHorizontal: 2,
     },
     durationText: {
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#8B1642',
         fontSize: 14,
         fontWeight: '600',
         fontVariant: ['tabular-nums'],
@@ -634,7 +681,7 @@ const voiceStyles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 14,
         borderRadius: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        backgroundColor: '#FFE3EC',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.2)',
         gap: spacing.sm,
@@ -657,7 +704,7 @@ const voiceStyles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: spacing.md,
         gap: spacing.sm,
-        backgroundColor: '#000000',
+        backgroundColor: '#F64D7E',
         borderRadius: 16,
         minHeight: 52,
     },
@@ -668,23 +715,67 @@ const voiceStyles = StyleSheet.create({
         letterSpacing: 0.5,
         fontFamily: fontFamily.bold,
     },
-    skipContainer: {
+    bottomActions: {
         marginTop: 'auto',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: spacing.lg,
     },
     skipButton: {
         paddingVertical: 12,
         paddingHorizontal: spacing.lg,
         borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.13)',
+        backgroundColor: '#FFE3EC',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.18)',
+        borderColor: '#FFD1DF',
     },
     skipText: {
-        color: 'rgba(255, 255, 255, 0.7)',
+        color: '#B62D59',
         fontSize: 16,
         fontWeight: '500',
         fontFamily: fontFamily.medium,
+    },
+    idleSubmitButton: {
+        paddingVertical: 14,
+        paddingHorizontal: 28,
+        borderRadius: 25,
+        backgroundColor: '#F64D7E',
+        shadowColor: '#F64D7E',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.24,
+        shadowRadius: 14,
+        elevation: 8,
+    },
+    idleSubmitDisabled: {
+        opacity: 0.55,
+    },
+    idleSubmitText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '800',
+        fontFamily: fontFamily.bold,
+    },
+    swipeHint: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingTop: spacing.sm,
+    },
+    swipeText: {
+        color: '#A88996',
+        fontSize: 12,
+        fontWeight: '700',
+        fontFamily: fontFamily.medium,
+    },
+    swipeDot: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFDDE8',
     },
 
 });

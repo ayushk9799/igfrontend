@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Keyboard, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { Image, View, Text, TouchableOpacity, TextInput, Keyboard, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
@@ -12,7 +12,7 @@ import { fontFamily } from '../../constants/fonts';
 /**
  * DeepCard - High-impact text-based card for deep questions and sharing
  */
-const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, onSkip, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
+const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
     const [answer, setAnswer] = useState(previousAnswer || '');
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
@@ -55,7 +55,7 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
 
     return (
         <LinearGradient
-            colors={config.bgGradient}
+            colors={['#F8EDFF', '#FFF8FF']}
             style={styles.cardContainer}
         >
             <KeyboardAvoidingView
@@ -67,10 +67,12 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
                     {/* Top Header */}
                     <View style={styles.topRow}>
                         <View style={styles.categoryBadge}>
-                            <Text style={styles.categoryText}>
-                                {config.label}
-                            </Text>
+                            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                                <Path d="M21 12C21 16.42 16.97 20 12 20C10.9 20 9.85 19.82 8.88 19.5L4 21L5.62 16.82C4.6 15.48 4 13.82 4 12C4 7.58 8.03 4 13 4C17.97 4 21 7.58 21 12Z" fill="#8B5CF6" />
+                            </Svg>
+                            <Text style={styles.categoryText}>{config.label}</Text>
                         </View>
+                        <Text style={styles.counterText}>{index + 1} / {totalCards}</Text>
                     </View>
 
                     {/* Question Area */}
@@ -81,6 +83,12 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
                         </Text>
                     </View>
 
+                    <Image
+                        source={require('../../../assets/daily-cards/deeptalk.png')}
+                        style={styles.heroImage}
+                        resizeMode="contain"
+                    />
+
                     {/* Response Area with Submit Button inside */}
                     <View style={styles.inputContainer}>
                         <TextInput
@@ -90,9 +98,11 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
                             multiline
                             value={answer}
                             onChangeText={setAnswer}
+                            maxLength={250}
                             blurOnSubmit={false}
                             textAlignVertical="top"
                         />
+                        <Text style={styles.charCount}>{answer.length}/250</Text>
                         {/* Submit Button inside input */}
                         <TouchableOpacity
                             style={[
@@ -110,10 +120,14 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
                         </TouchableOpacity>
                     </View>
 
-                    {/* Skip link */}
-                    <TouchableOpacity onPress={isLocked ? onNavigateToPremium : onSkip} activeOpacity={0.7} style={styles.skipContainer}>
-                        <Text style={styles.skipText}>Skip </Text>
-                    </TouchableOpacity>
+                    <View style={styles.swipeHint}>
+                        <Text style={styles.swipeText}>Swipe to see next</Text>
+                        <View style={styles.swipeDot}>
+                            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                                <Path d="M9 18L15 12L9 6" stroke="#9B6BE8" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+                            </Svg>
+                        </View>
+                    </View>
                 </View>
 
 
@@ -127,6 +141,14 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#DEC8FF',
+        shadowColor: '#B794F4',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.20,
+        shadowRadius: 22,
+        elevation: 10,
+        marginRight: 10,
     },
     keyboardAvoid: {
         flex: 1,
@@ -144,52 +166,59 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     categoryBadge: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingVertical: 8,
+        backgroundColor: 'rgba(255,255,255,0.82)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+        paddingVertical: 9,
         paddingHorizontal: 16,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.22)',
+        borderColor: '#EFE1FF',
     },
     categoryText: {
-        color: '#FFFFFF',
-        fontWeight: '600',
+        color: '#8B5CF6',
+        fontWeight: '800',
         fontSize: 14,
         fontFamily: fontFamily.bold,
     },
     counterText: {
-        color: '#FFFFFF',
-        fontWeight: '600',
-        fontSize: 14,
+        color: '#17204D',
+        fontWeight: '800',
+        fontSize: 16,
         fontFamily: fontFamily.bold,
     },
     questionSection: {
-        flex: 1,
         justifyContent: 'center',
-        paddingHorizontal: spacing.sm,
+        paddingHorizontal: spacing.lg,
+        marginTop: spacing.lg,
         marginBottom: spacing.md,
-        borderRadius: 24,
-        backgroundColor: 'rgba(255,255,255,0.10)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.14)',
     },
     questionText: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#FFFFFF',
-        fontStyle: 'italic',
+        color: '#14245A',
         lineHeight: 32,
+        textAlign: 'center',
         fontFamily: fontFamily.extraBold,
+    },
+    heroImage: {
+        alignSelf: 'center',
+        width: '88%',
+        height: 178,
+        marginTop: -4,
+        marginBottom: spacing.xl,
     },
     inputContainer: {
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
         padding: spacing.md,
-        paddingBottom: 60,
-        height: 160,
+        paddingBottom: 58,
+        minHeight: 250,
+        marginTop: 'auto',
         marginBottom: spacing.sm,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.42)',
+        borderColor: '#F0E3FF',
         position: 'relative',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
@@ -198,12 +227,22 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     textInput: {
-        color: '#333333',
+        color: '#17204D',
         fontSize: 16,
         fontWeight: '500',
         flex: 1,
+        minHeight: 90,
         textAlignVertical: 'top',
         fontFamily: fontFamily.medium,
+    },
+    charCount: {
+        position: 'absolute',
+        right: 18,
+        bottom: 18,
+        color: '#A69BB8',
+        fontSize: 13,
+        fontWeight: '700',
+        fontFamily: fontFamily.bold,
     },
     submitButton: {
         position: 'absolute',
@@ -211,14 +250,19 @@ const styles = StyleSheet.create({
         right: 12,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#4CAF50',
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 20,
+        backgroundColor: '#A970E8',
+        paddingVertical: 11,
+        paddingHorizontal: 18,
+        borderRadius: 22,
         gap: 6,
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.24,
+        shadowRadius: 12,
+        elevation: 7,
     },
     submitButtonDisabled: {
-        backgroundColor: 'rgba(76, 175, 80, 0.4)',
+        backgroundColor: 'rgba(169, 112, 232, 0.42)',
     },
     submitButtonText: {
         color: '#FFFFFF',
@@ -226,15 +270,26 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontFamily: fontFamily.bold,
     },
-    skipContainer: {
+    swipeHint: {
+        flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: spacing.sm,
+        justifyContent: 'center',
+        gap: 10,
+        paddingTop: spacing.xs,
     },
-    skipText: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: 'rgba(255, 255, 255, 0.6)',
+    swipeText: {
+        color: '#9B90A6',
+        fontSize: 12,
+        fontWeight: '700',
         fontFamily: fontFamily.medium,
+    },
+    swipeDot: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#EFE2FF',
     },
 
 });
