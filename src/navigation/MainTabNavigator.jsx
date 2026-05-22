@@ -23,6 +23,17 @@ import { selectDuelBadgeCount } from '../store/slices/notificationsSlice';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { API_BASE } from '../constants/Api';
 
+const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
+
+const isMoodPastRefreshWindow = (mood, now) => {
+    if (!mood?.updatedAt) {
+        return false;
+    }
+
+    const updatedAt = new Date(mood.updatedAt).getTime();
+    return !Number.isNaN(updatedAt) && now - updatedAt > MOOD_STALE_MS;
+};
+
 export const MainTabNavigator = ({
     // Only keep essential callbacks that navigate outside this component
     yourMood,
@@ -51,6 +62,10 @@ export const MainTabNavigator = ({
     const [isPremiumOpenInAccount, setIsPremiumOpenInAccount] = useState(false);
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
     const [isMoodVisible, setIsMoodVisible] = useState(false);
+    const [isMoodRefreshPrompt, setIsMoodRefreshPrompt] = useState(false);
+    const [moodRefreshNow, setMoodRefreshNow] = useState(Date.now());
+    const [moodPreview, setMoodPreview] = useState(null);
+    const lastAutoOpenedMoodRef = React.useRef(null);
 
     // Redux state
     const userData = useSelector(selectUser);
@@ -76,6 +91,39 @@ export const MainTabNavigator = ({
 
     // Socket context for real-time data
     const { socket, partnerMood, partnerOnline, partnerScribble } = useSocketContext();
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setMoodRefreshNow(Date.now());
+        }, 60 * 1000);
+
+        return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!hasPartner || isMoodVisible || !isMoodPastRefreshWindow(yourMood, moodRefreshNow)) {
+            return;
+        }
+
+        if (lastAutoOpenedMoodRef.current === yourMood.updatedAt) {
+            return;
+        }
+
+        lastAutoOpenedMoodRef.current = yourMood.updatedAt;
+        setIsMoodRefreshPrompt(true);
+        setIsMoodVisible(true);
+    }, [hasPartner, isMoodVisible, moodRefreshNow, yourMood]);
+
+    const openMoodPicker = useCallback(() => {
+        setIsMoodRefreshPrompt(false);
+        setIsMoodVisible(true);
+    }, []);
+
+    const closeMoodPicker = useCallback(() => {
+        setMoodPreview(null);
+        setIsMoodRefreshPrompt(false);
+        setIsMoodVisible(false);
+    }, []);
 
     // Fetch unread chat count
     const fetchChatBadge = useCallback(async () => {
@@ -169,13 +217,13 @@ export const MainTabNavigator = ({
                         partnerName={partnerName}
                         daysTogether={daysTogether}
                         hasPartner={hasPartner}
-                        yourMood={yourMood}
+                        yourMood={moodPreview || yourMood}
                         partnerMood={partnerMood}
                         partnerOnline={partnerOnline}
                         partnerScribble={partnerScribble}
                         pendingInvite={pendingInvite}
                         todayChallenge={todayChallenge}
-                        onMoodPress={() => setIsMoodVisible(true)}
+                        onMoodPress={openMoodPicker}
                         onScribblePress={() => setCurrentTab('canvas')}
                         onQuestionPress={(category) => {
                             if (category) {
@@ -374,17 +422,22 @@ export const MainTabNavigator = ({
                 animationType="slide"
                 transparent={true}
                 statusBarTranslucent={true}
-                onRequestClose={() => setIsMoodVisible(false)}
+                onRequestClose={closeMoodPicker}
             >
                 <MoodScreen
                     currentMood={getEmojiById(yourMood?.id) || getEmojiByLabel(yourMood?.label) || emojis[0]}
                     partnerMood={partnerMood ? (getEmojiById(partnerMood.id) || getEmojiByLabel(partnerMood.label)) : null}
                     partnerName={userData?.partnerUsername || partnerName || 'Your Love'}
                     onMoodSelect={(mood) => {
+                        setMoodPreview(null);
+                        setIsMoodRefreshPrompt(false);
                         onMoodSelect?.(mood);
                         setIsMoodVisible(false);
                     }}
-                    onBack={() => setIsMoodVisible(false)}
+                    onMoodPreview={setMoodPreview}
+                    onBack={closeMoodPicker}
+                    isRefreshPrompt={isMoodRefreshPrompt}
+                    moodUpdatedAt={yourMood?.updatedAt}
                 />
             </Modal>
         </View>
@@ -399,4 +452,3 @@ const styles = StyleSheet.create({
 });
 
 export default MainTabNavigator;
-

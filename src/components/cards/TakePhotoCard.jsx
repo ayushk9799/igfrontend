@@ -30,7 +30,6 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
     const lastTaskIdRef = useRef(task._id);
-    const [hasPermission, setHasPermission] = useState(Platform.OS === 'ios');
     const [previewUri, setPreviewUri] = useState(isAnswered ? previousAnswer : null);
     const [showCamera, setShowCamera] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,7 +52,6 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                     PermissionsAndroid.PERMISSIONS.CAMERA
                 );
                 const granted = result === PermissionsAndroid.RESULTS.GRANTED;
-                setHasPermission(granted);
                 if (!granted) {
                     Alert.alert('Permission required', 'Please allow Camera access to take a photo.');
                     return false;
@@ -62,7 +60,6 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
             }
             return true;
         } catch (e) {
-            setHasPermission(false);
             return false;
         }
     };
@@ -321,13 +318,24 @@ const photoStyles = StyleSheet.create({
         width: 72,
         height: 72,
         borderRadius: 34,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: 'rgba(255,255,255,0.16)',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.26)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.20,
+        shadowRadius: 14,
+        elevation: 7,
     },
     skipButton: {
-        paddingVertical: spacing.sm,
+        paddingVertical: 12,
         paddingHorizontal: spacing.lg,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.13)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.18)',
     },
     skipText: {
         color: 'rgba(255, 255, 255, 0.7)',

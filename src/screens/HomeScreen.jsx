@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
@@ -22,6 +22,16 @@ import { fontFamily, fontWeight } from '../constants/fonts';
 import { storage } from '../utils/authStorage';
 
 const { width } = Dimensions.get('window');
+const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
+
+const isMoodStale = (mood, now) => {
+    if (!mood?.updatedAt) {
+        return true;
+    }
+
+    const updatedAt = new Date(mood.updatedAt).getTime();
+    return Number.isNaN(updatedAt) || now - updatedAt > MOOD_STALE_MS;
+};
 
 const HomeText = ({ children, style, ...props }) => (
     <Text {...props} style={[{ fontFamily: fontFamily.regular }, style]} allowFontScaling={false}>
@@ -167,13 +177,15 @@ const HomeScreen = ({
     const badgeWiggleAnim = useRef(new Animated.Value(0)).current;
     const badgePulseAnim = useRef(new Animated.Value(1)).current;
     const hasNudgeAnimated = useRef(storage.getBoolean('has_played_nudge_anim') === true);
+    const [now, setNow] = useState(Date.now());
 
     const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
+    const isYourMoodStale = hasPartner && isMoodStale(yourMood, now);
     const isChallengeComplete = todayChallenge?.progress?.isComplete || false;
     const completedCount = todayChallenge?.progress?.completedCount || 0;
     const totalTasks = todayChallenge?.progress?.totalTasks || 0;
 
-    const showNudge = hasPartner && (yourMood === null || !yourMood?.updatedAt);
+    const showNudge = hasPartner && isYourMoodStale;
 
     let currentTask = null;
     if (todayChallenge?.challenge?.tasks) {
@@ -189,6 +201,14 @@ const HomeScreen = ({
     useEffect(() => {
         onRefreshPuzzle?.();
     }, [onRefreshPuzzle]);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setNow(Date.now());
+        }, 60 * 1000);
+
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         if (!pendingTicTacToe && !pendingWordle) {
@@ -367,7 +387,9 @@ const HomeScreen = ({
                                     ]
                                 }
                             ]}>
-                                <HomeText style={styles.moodNudgeText}>How are you feeling? Tap here 💛</HomeText>
+                                <HomeText style={styles.moodNudgeText}>
+                                    {yourMood?.updatedAt ? 'Mood is old. Tap to refresh 💛' : 'How are you feeling? Tap here 💛'}
+                                </HomeText>
                             </Animated.View>
                         )}
                     </TouchableOpacity>

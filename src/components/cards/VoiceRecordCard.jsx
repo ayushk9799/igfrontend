@@ -24,7 +24,7 @@ import Animated, {
 import { categoryConfig } from './categoryConfig';
 import { cardStyles as styles } from './cardStyles';
 import { fontFamily } from '../../constants/fonts';
-import { colors, spacing } from '../../theme';
+import { spacing } from '../../theme';
 import { uploadAudioToS3 } from '../../utils/uploadApi';
 
 
@@ -55,14 +55,12 @@ const VoiceRecordCard = React.memo(({
 
     // Create audio recorder player instance
     const audioRecorderPlayerRef = useRef(null);
-    const [isPlayerReady, setIsPlayerReady] = useState(false);
 
     // Initialize the audio recorder player on mount
     useEffect(() => {
         try {
             const player = new AudioRecorderPlayer();
             audioRecorderPlayerRef.current = player;
-            setIsPlayerReady(true);
         } catch (error) {
             console.error('🎙️ [VoiceRecordCard] Failed to initialize AudioRecorderPlayer:', error);
         }
@@ -81,7 +79,6 @@ const VoiceRecordCard = React.memo(({
     const [isRecording, setIsRecording] = useState(false);
     const [recordingUri, setRecordingUri] = useState(null);
     const [recordingDuration, setRecordingDuration] = useState('00:00');
-    const [recordingDurationMs, setRecordingDurationMs] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [playbackPosition, setPlaybackPosition] = useState('00:00');
@@ -96,7 +93,6 @@ const VoiceRecordCard = React.memo(({
             lastTaskIdRef.current = task._id;
             setRecordingUri(isAnswered ? previousAnswer : null);
             setRecordingDuration('00:00');
-            setRecordingDurationMs(0);
             setIsRecording(false);
             setIsPlaying(false);
         }
@@ -135,7 +131,7 @@ const VoiceRecordCard = React.memo(({
             pulseScale.value = withTiming(1, { duration: 200 });
             pulseOpacity.value = withTiming(0.6, { duration: 200 });
         }
-    }, [isRecording]);
+    }, [isRecording, pulseOpacity, pulseScale]);
 
     const pulseAnimatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: pulseScale.value }],
@@ -211,12 +207,11 @@ const VoiceRecordCard = React.memo(({
                     android: `sdcard/voice_${Date.now()}.mp4`,
                 });
 
-                const uri = await audioRecorderPlayerRef.current.startRecorder(path);
+                await audioRecorderPlayerRef.current.startRecorder(path);
 
                 audioRecorderPlayerRef.current.addRecordBackListener((e) => {
                     const duration = audioRecorderPlayerRef.current.mmssss(Math.floor(e.currentPosition));
                     setRecordingDuration(duration.slice(0, 5)); // MM:SS format
-                    setRecordingDurationMs(e.currentPosition);
                 });
 
                 setIsRecording(true);
@@ -284,7 +279,6 @@ const VoiceRecordCard = React.memo(({
         await cleanupPlayback();
         setRecordingUri(null);
         setRecordingDuration('00:00');
-        setRecordingDurationMs(0);
         setPlaybackPosition('00:00');
     };
 
@@ -513,19 +507,26 @@ const voiceStyles = StyleSheet.create({
         width: 140,
         height: 140,
         borderRadius: 70,
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        backgroundColor: 'rgba(255, 255, 255, 0.18)',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
     },
     micButton: {
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 3,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.42)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+        elevation: 9,
     },
     micButtonRecording: {
         backgroundColor: 'rgba(255, 68, 68, 0.3)',
@@ -542,10 +543,12 @@ const voiceStyles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: spacing.md,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
         borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.18)',
     },
     recordingDot: {
         width: 10,
@@ -564,13 +567,13 @@ const voiceStyles = StyleSheet.create({
     previewContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.35)',
+        backgroundColor: 'rgba(255, 255, 255, 0.14)',
         borderRadius: 24,
         padding: spacing.lg,
         paddingHorizontal: spacing.lg,
         width: '100%',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderColor: 'rgba(255, 255, 255, 0.22)',
     },
     playButton: {
         width: 60,
@@ -670,8 +673,12 @@ const voiceStyles = StyleSheet.create({
         alignItems: 'center',
     },
     skipButton: {
-        paddingVertical: spacing.sm,
+        paddingVertical: 12,
         paddingHorizontal: spacing.lg,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.13)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.18)',
     },
     skipText: {
         color: 'rgba(255, 255, 255, 0.7)',

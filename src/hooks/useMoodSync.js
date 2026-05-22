@@ -11,7 +11,7 @@ import { useSocketContext } from '../context/SocketContext';
  * }}
  */
 export const useMoodSync = () => {
-    const { socket, isConnected, partnerMood } = useSocketContext();
+    const { socket, isConnected, partnerMood, moodHistory, partnerMoodHistory, refreshMoodHistory } = useSocketContext();
 
     /**
      * Update your mood and broadcast to partner
@@ -22,7 +22,20 @@ export const useMoodSync = () => {
             return;
         }
 
-        socket.emit('mood:update', { id, emoji, label });
+        let timezone = null;
+        try {
+            timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch (error) {
+            timezone = null;
+        }
+
+        socket.emit('mood:update', {
+            id,
+            emoji,
+            label,
+            timezone,
+            timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        });
     }, [socket, isConnected]);
 
     /**
@@ -38,8 +51,11 @@ export const useMoodSync = () => {
 
     return {
         partnerMood,
+        moodHistory,
+        partnerMoodHistory,
         updateMood,
         refreshPartnerMood,
+        refreshMoodHistory,
     };
 };
 

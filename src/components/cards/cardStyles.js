@@ -1,8 +1,7 @@
-import { StyleSheet, Dimensions } from 'react-native';
-import { colors, spacing, borderRadius } from '../../theme';
+import { StyleSheet } from 'react-native';
+import { colors, spacing } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
 
-const { width } = Dimensions.get('window');
 export const AVATAR_SIZE = 85;
 
 /**
@@ -14,12 +13,22 @@ export const cardStyles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
     },
     cardContent: { flex: 1, padding: spacing.lg },
 
     // Card header
     topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-    categoryBadge: { flexDirection: 'row', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
+    categoryBadge: {
+        flexDirection: 'row',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
+    },
     categoryText: {
         color: '#FFFFFF',
         fontWeight: '600',
@@ -34,7 +43,17 @@ export const cardStyles = StyleSheet.create({
     },
 
     // Question area
-    questionSection: { flex: 1, justifyContent: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.md },
+    questionSection: {
+        flex: 1,
+        justifyContent: 'center',
+        paddingVertical: spacing.xl,
+        paddingHorizontal: spacing.md,
+        marginVertical: spacing.sm,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.10)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.14)',
+    },
     prefixText: {
         fontSize: 16,
         fontWeight: '600',
@@ -77,6 +96,8 @@ export const cardStyles = StyleSheet.create({
         paddingVertical: spacing.md,
         alignSelf: 'center',
         marginTop: spacing.sm,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.12)',
     },
     skipTextInCard: {
         fontSize: 16,
@@ -124,12 +145,12 @@ export const cardStyles = StyleSheet.create({
         borderRadius: AVATAR_SIZE / 2,
         overflow: 'hidden',
         borderWidth: 3,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(255,255,255,0.82)',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 6,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+        elevation: 8,
     },
     avatarDragging: { shadowOpacity: 0.3, shadowRadius: 20 },
     avatarGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
@@ -139,9 +160,11 @@ export const cardStyles = StyleSheet.create({
     avatarName: {
         fontSize: 14,
         fontWeight: '700',
-        color: colors.text,
+        color: '#FFFFFF',
         marginTop: spacing.xs,
         fontFamily: fontFamily.bold,
+        maxWidth: 92,
+        textAlign: 'center',
     },
     selectedIndicator: {
         position: 'absolute',
@@ -167,14 +190,19 @@ export const cardStyles = StyleSheet.create({
     choicesRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
     choiceCard: {
         flex: 1,
-        borderRadius: 20,
+        borderRadius: 24,
         padding: spacing.lg,
-        borderWidth: 2,
-        borderColor: colors.borderLight,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.42)',
         overflow: 'hidden',
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: 80,
+        minHeight: 96,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.14,
+        shadowRadius: 14,
+        elevation: 5,
     },
     choiceCardSelected: { borderColor: 'transparent' },
     choiceGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
@@ -212,10 +240,15 @@ export const cardStyles = StyleSheet.create({
         aspectRatio: 1, // Square aspect ratio
         borderRadius: 24,
         overflow: 'hidden',
-        backgroundColor: colors.surface,
+        backgroundColor: 'rgba(255,255,255,0.92)',
         marginBottom: spacing.md,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: 'rgba(255,255,255,0.55)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.14,
+        shadowRadius: 18,
+        elevation: 8,
     },
     camera: {
         // Position 16:9 camera centered in 1:1 box
@@ -322,9 +355,11 @@ export const cardStyles = StyleSheet.create({
     photoActionBtn: {
         flex: 1,
         paddingVertical: spacing.md,
-        borderRadius: 16,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.30)',
     },
 
     // Already Answered Overlay styles

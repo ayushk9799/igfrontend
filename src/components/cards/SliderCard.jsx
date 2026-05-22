@@ -1,21 +1,19 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
-    useAnimatedGestureHandler,
     withSpring,
-    interpolate,
     runOnJS,
 } from 'react-native-reanimated';
-import { PanGestureHandler } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 
 import { categoryConfig, defaultConfig } from './categoryConfig';
 import { cardStyles } from './cardStyles';
 import {
-    colors, spacing
+    spacing
 } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
 
@@ -68,6 +66,7 @@ const SliderCard = React.memo(({
             ? ((previousAnswer - minValue) / (maxValue - minValue)) * (SLIDER_WIDTH - KNOB_SIZE)
             : ((SLIDER_WIDTH - KNOB_SIZE) / 2)
     );
+    const gestureStartX = useSharedValue(0);
 
     // Reset only when task ID actually changes
     useEffect(() => {
@@ -79,7 +78,7 @@ const SliderCard = React.memo(({
             setHasInteracted(isAnswered);
             translateX.value = ((initialValue - minValue) / (maxValue - minValue)) * (SLIDER_WIDTH - KNOB_SIZE);
         }
-    }, [task._id, isAnswered, previousAnswer, minValue, maxValue]);
+    }, [task._id, isAnswered, previousAnswer, minValue, maxValue, translateX]);
 
     // Haptic feedback
     const triggerHaptic = useCallback(() => {
@@ -99,22 +98,24 @@ const SliderCard = React.memo(({
     }, [minValue, maxValue, currentValue, triggerHaptic]);
 
     // Gesture handler
-    const gestureHandler = useAnimatedGestureHandler({
-        onStart: (_, ctx) => {
-            ctx.startX = translateX.value;
-        },
-        onActive: (event, ctx) => {
-            const newX = Math.max(0, Math.min(SLIDER_WIDTH - KNOB_SIZE, ctx.startX + event.translationX));
-            translateX.value = newX;
-            runOnJS(updateValueFromPosition)(newX);
-            if (!hasInteracted) {
-                runOnJS(setHasInteracted)(true);
-            }
-        },
-        onEnd: () => {
-            translateX.value = withSpring(translateX.value, { damping: 15, stiffness: 150 });
-        },
-    });
+    const panGesture = useMemo(() => (
+        Gesture.Pan()
+            .enabled(!locked && !isAnswered)
+            .onBegin(() => {
+                gestureStartX.value = translateX.value;
+            })
+            .onUpdate((event) => {
+                const newX = Math.max(0, Math.min(SLIDER_WIDTH - KNOB_SIZE, gestureStartX.value + event.translationX));
+                translateX.value = newX;
+                runOnJS(updateValueFromPosition)(newX);
+                if (!hasInteracted) {
+                    runOnJS(setHasInteracted)(true);
+                }
+            })
+            .onEnd(() => {
+                translateX.value = withSpring(translateX.value, { damping: 15, stiffness: 150 });
+            })
+    ), [gestureStartX, hasInteracted, isAnswered, locked, translateX, updateValueFromPosition]);
 
     // Animated styles
     const knobStyle = useAnimatedStyle(() => ({
@@ -193,16 +194,26 @@ const SliderCard = React.memo(({
 
                 {/* Value Display */}
                 <View style={styles.valueDisplay}>
-                    <Text style={[styles.valueText, { color: config.color }]}>{currentValue}</Text>
-                    <Text style={styles.valueMax}>/ {maxValue}</Text>
+                    <View style={styles.valuePill}>
+                        <Text style={[styles.valueText, { color: config.color }]}>{currentValue}</Text>
+                        <Text style={styles.valueMax}>/ {maxValue}</Text>
+                    </View>
                 </View>
 
                 {/* Slider */}
                 <View style={styles.sliderContainer}>
+                    <View style={styles.sliderGlass} />
                     {/* Track Background */}
                     <View style={styles.trackBackground}>
                         {/* Progress Fill */}
-                        <Animated.View style={[styles.trackFill, progressStyle, { backgroundColor: config.color }]} />
+                        <Animated.View style={[styles.trackFill, progressStyle]}>
+                            <LinearGradient
+                                colors={['#FFFFFF', 'rgba(255,255,255,0.72)']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.trackFillGradient}
+                            />
+                        </Animated.View>
                     </View>
 
                     {/* Tick Marks */}
@@ -223,15 +234,15 @@ const SliderCard = React.memo(({
                     </View>
 
                     {/* Draggable Knob */}
-                    <PanGestureHandler onGestureEvent={gestureHandler} enabled={!locked && !isAnswered}>
+                    <GestureDetector gesture={panGesture}>
                         <Animated.View style={[styles.knob, knobStyle, { borderColor: config.color }]}>
                             <LinearGradient
-                                colors={[config.color, config.color + 'CC']}
+                                colors={['#FFFFFF', '#FFF1F7']}
                                 style={styles.knobGradient}
                             />
                             <Text style={styles.knobValue}>{currentValue}</Text>
                         </Animated.View>
-                    </PanGestureHandler>
+                    </GestureDetector>
                 </View>
 
                 {/* Labels */}
@@ -293,6 +304,8 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
     },
     counterText: {
         color: '#FFFFFF',
@@ -318,44 +331,73 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'baseline',
         justifyContent: 'center',
-        marginBottom: spacing.lg,
+        marginBottom: spacing.md,
+    },
+    valuePill: {
+        minWidth: 132,
+        paddingHorizontal: 18,
+        paddingVertical: 8,
+        borderRadius: 30,
+        backgroundColor: 'rgba(255,255,255,0.94)',
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+        elevation: 8,
     },
     valueText: {
-        fontSize: 56,
+        fontSize: 48,
         fontWeight: '900',
         fontFamily: fontFamily.extraBold,
     },
     valueMax: {
-        fontSize: 24,
+        fontSize: 18,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: '#7A6D80',
         marginLeft: 4,
         fontFamily: fontFamily.bold,
     },
     sliderContainer: {
-        height: 60,
+        height: 74,
         marginHorizontal: spacing.md,
         justifyContent: 'center',
+    },
+    sliderGlass: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: 'rgba(255,255,255,0.14)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.18)',
     },
     trackBackground: {
         position: 'absolute',
         left: KNOB_SIZE / 2,
         right: KNOB_SIZE / 2,
         height: TRACK_HEIGHT,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        backgroundColor: 'rgba(255, 255, 255, 0.26)',
         borderRadius: TRACK_HEIGHT / 2,
         overflow: 'hidden',
     },
     trackFill: {
         height: '100%',
         borderRadius: TRACK_HEIGHT / 2,
+        overflow: 'hidden',
+    },
+    trackFillGradient: {
+        flex: 1,
     },
     tickContainer: {
         position: 'absolute',
         left: 0,
         right: 0,
         height: 12,
-        top: (60 - 12) / 2,
+        top: (74 - 12) / 2,
     },
     tick: {
         position: 'absolute',
@@ -373,16 +415,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 3,
+        borderColor: '#FFFFFF',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 8,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 10,
         overflow: 'hidden',
     },
     knobGradient: {
         ...StyleSheet.absoluteFillObject,
-        opacity: 0.15,
     },
     knobValue: {
         fontSize: 16,
@@ -394,7 +436,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingHorizontal: spacing.lg,
-        marginTop: spacing.sm,
+        marginTop: 2,
         marginBottom: spacing.lg,
     },
     labelText: {
@@ -408,10 +450,13 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: spacing.md,
+        paddingBottom: 2,
     },
     skipButton: {
-        paddingVertical: spacing.sm,
+        paddingVertical: 13,
         paddingHorizontal: spacing.lg,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.12)',
     },
     skipText: {
         color: 'rgba(255, 255, 255, 0.6)',
@@ -423,6 +468,8 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         paddingHorizontal: 32,
         borderRadius: 25,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,

@@ -45,6 +45,9 @@ const SelectableAvatar = ({ name, isYou, isSelected, onSelect, disabled, categor
                     <Text style={styles.selectedCheck}>✓</Text>
                 </View>
             )}
+            <Text style={styles.avatarName} numberOfLines={1}>
+                {isYou ? 'You' : name || 'Partner'}
+            </Text>
         </TouchableOpacity>
     );
 };
@@ -181,8 +184,12 @@ const likelyStyles = StyleSheet.create({
         marginTop: 'auto',
     },
     skipButton: {
-        paddingVertical: spacing.sm,
+        paddingVertical: 12,
         paddingHorizontal: spacing.lg,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.14)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.18)',
     },
     skipText: {
         color: 'rgba(255, 255, 255, 0.7)',

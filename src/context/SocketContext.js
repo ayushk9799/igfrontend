@@ -52,6 +52,8 @@ export const SocketProvider = ({ children }) => {
     const [partnerOnline, setPartnerOnline] = useState(false);
     const [partnerMood, setPartnerMood] = useState(null);
     const [userMood, setUserMood] = useState(null); // User's own saved mood
+    const [moodHistory, setMoodHistory] = useState([]);
+    const [partnerMoodHistory, setPartnerMoodHistory] = useState([]);
     const [partnerScribble, setPartnerScribble] = useState(null); // Partner's scribble
     const socketRef = useRef(null);
     const appState = useRef(AppState.currentState);
@@ -98,6 +100,8 @@ export const SocketProvider = ({ children }) => {
             socketInstance.emit('presence:getStatus');
             socketInstance.emit('mood:getPartner');
             socketInstance.emit('mood:getMyMood'); // Fetch user's own saved mood
+            socketInstance.emit('mood:getHistory', { days: 31 });
+            socketInstance.emit('mood:getPartnerHistory', { days: 31 });
             socketInstance.emit('scribble:getPartner'); // Fetch partner's scribble
         });
 
@@ -155,6 +159,26 @@ export const SocketProvider = ({ children }) => {
         // Mood events - user's own mood
         socketInstance.on('mood:myMood', (data) => {
             setUserMood(data.mood || null);
+        });
+
+        socketInstance.on('mood:history', (data) => {
+            setMoodHistory(Array.isArray(data.history) ? data.history : []);
+        });
+
+        socketInstance.on('mood:partnerHistory', (data) => {
+            setPartnerMoodHistory(Array.isArray(data.history) ? data.history : []);
+        });
+
+        socketInstance.on('mood:historyItemAdded', (data) => {
+            if (data.mood) {
+                setMoodHistory(prev => [data.mood, ...prev].slice(0, 200));
+            }
+        });
+
+        socketInstance.on('mood:partnerHistoryItemAdded', (data) => {
+            if (data.mood) {
+                setPartnerMoodHistory(prev => [data.mood, ...prev].slice(0, 200));
+            }
         });
 
 
@@ -233,6 +257,11 @@ export const SocketProvider = ({ children }) => {
         onMoodUpdatedRef.current = callback;
     }, []);
 
+    const refreshMoodHistory = useCallback((days = 31) => {
+        socketRef.current?.emit('mood:getHistory', { days });
+        socketRef.current?.emit('mood:getPartnerHistory', { days });
+    }, []);
+
 
     // Context value
     const value = {
@@ -242,10 +271,13 @@ export const SocketProvider = ({ children }) => {
         partnerOnline,
         partnerMood,
         userMood,
+        moodHistory,
+        partnerMoodHistory,
         partnerScribble,
         connect,
         disconnect,
         setOnMoodUpdated,
+        refreshMoodHistory,
     };
 
     return (
@@ -269,10 +301,13 @@ export const useSocketContext = () => {
             partnerOnline: false,
             partnerMood: null,
             userMood: null,
+            moodHistory: [],
+            partnerMoodHistory: [],
             partnerScribble: null,
             connect: () => { },
             disconnect: () => { },
             setOnMoodUpdated: () => { },
+            refreshMoodHistory: () => { },
         };
     }
     return context;

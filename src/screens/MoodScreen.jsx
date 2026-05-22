@@ -12,8 +12,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius } from '../theme';
 import { emojis } from '../constants/Moods';
-import GradientBackground from '../components/GradientBackground';
-import { getPenguinMoodImage } from '../constants/PenguinMoods';
 
 const { width } = Dimensions.get('window');
 
@@ -21,6 +19,46 @@ const GRID_COLUMNS = 3;
 const GRID_GAP = 10;
 const GRID_PADDING = 16;
 const ITEM_SIZE = (width - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
+
+const formatTimeAgo = (dateValue) => {
+    const updatedAt = new Date(dateValue).getTime();
+    if (!dateValue || Number.isNaN(updatedAt)) {
+        return 'a while';
+    }
+
+    const diffMs = Math.max(Date.now() - updatedAt, 0);
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+
+    if (diffMs < minute) {
+        return 'just now';
+    }
+
+    if (diffMs < hour) {
+        const minutes = Math.floor(diffMs / minute);
+        return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+    }
+
+    if (diffMs < day) {
+        const hours = Math.floor(diffMs / hour);
+        return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+    }
+
+    const days = Math.floor(diffMs / day);
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+};
+
+const getLastUpdatedText = (dateValue) => {
+    if (!dateValue) {
+        return 'Mood not updated yet';
+    }
+
+    const timeAgo = formatTimeAgo(dateValue);
+    return timeAgo === 'just now'
+        ? 'just now'
+        : `${timeAgo} ago`;
+};
 
 const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
     return (
@@ -38,29 +76,28 @@ const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
     );
 });
 
-const MoodListHeader = ({ onBack, partnerName, selectedMood, partnerMood }) => {
-    const partnerMoodId = partnerMood?.id || 'relaxed';
-    const penguinMoodImage = getPenguinMoodImage(partnerMoodId, selectedMood?.id);
+const MoodListHeader = ({ onBack, partnerName, isRefreshPrompt, moodUpdatedAt }) => {
+    const timeAgo = formatTimeAgo(moodUpdatedAt);
+    const title = isRefreshPrompt
+        ? `Last mood updated ${timeAgo}${timeAgo === 'just now' ? '' : ' ago'}`
+        : 'How are you feeling?';
+    const subtitle = isRefreshPrompt
+        ? `Let ${partnerName} know how you feel now`
+        : `Let ${partnerName} know your vibe ✨`;
 
     return (
-        <>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Text style={styles.backIcon}>×</Text>
-                </TouchableOpacity>
-                <View style={styles.headerText}>
-                    <Text style={styles.title}>How are you feeling?</Text>
-                    <Text style={styles.subtitle}>Let {partnerName} know your vibe ✨</Text>
-                </View>
+        <View style={styles.header}>
+            <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                <Text style={styles.backIcon}>×</Text>
+            </TouchableOpacity>
+            <View style={styles.headerText}>
+                <Text style={styles.title}>{title}</Text>
+                <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
-
-            {selectedMood && (
-                <View style={styles.selectedCard}>
-                    <Image source={penguinMoodImage} style={styles.selectedImage} />
-                    <Text style={styles.selectedLabel}>{selectedMood.label}</Text>
-                </View>
-            )}
-        </>
+            <View style={styles.updatedBadge}>
+                <Text style={styles.updatedBadgeText}>{getLastUpdatedText(moodUpdatedAt)}</Text>
+            </View>
+        </View>
     );
 };
 
@@ -68,17 +105,20 @@ const ListFooter = () => <View style={styles.listFooter} />;
 
 export const MoodScreen = ({
     currentMood = null,
-    partnerMood = null,
     partnerName = 'Your Love',
     onMoodSelect = () => { },
+    onMoodPreview = () => { },
     onBack = () => { },
+    isRefreshPrompt = false,
+    moodUpdatedAt = null,
 }) => {
     const [selectedMood, setSelectedMood] = useState(currentMood);
     const insets = useSafeAreaInsets();
 
     const handleSelectMood = useCallback((mood) => {
         setSelectedMood(mood);
-    }, []);
+        onMoodPreview(mood);
+    }, [onMoodPreview]);
 
     const handleShare = useCallback(() => {
         if (!selectedMood) return;
@@ -122,8 +162,8 @@ export const MoodScreen = ({
                         <MoodListHeader
                             onBack={onBack}
                             partnerName={partnerName}
-                            selectedMood={selectedMood}
-                            partnerMood={partnerMood}
+                            isRefreshPrompt={isRefreshPrompt}
+                            moodUpdatedAt={moodUpdatedAt}
                         />
                     )}
                     ListFooterComponent={ListFooter}
@@ -163,7 +203,7 @@ export const MoodScreen = ({
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(5, 14, 62, 0.45)',
+        backgroundColor: 'rgba(5, 14, 62, 0.18)',
         justifyContent: 'flex-end',
     },
     backdropPressable: {
@@ -171,11 +211,11 @@ const styles = StyleSheet.create({
     },
     sheetContainer: {
         backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        maxHeight: '88%',
-        minHeight: '60%',
-        paddingTop: 10,
+        borderTopLeftRadius: 26,
+        borderTopRightRadius: 26,
+        maxHeight: '58%',
+        minHeight: '46%',
+        paddingTop: 8,
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
@@ -194,7 +234,7 @@ const styles = StyleSheet.create({
         borderRadius: 2.5,
         backgroundColor: '#E2E8F0',
         alignSelf: 'center',
-        marginBottom: 8,
+        marginBottom: 4,
     },
     outerContainer: {
         flex: 1,
@@ -208,8 +248,8 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.md,
-        marginBottom: spacing.md,
+        gap: spacing.sm,
+        marginBottom: spacing.sm,
     },
     headerText: {
         flex: 1,
@@ -241,7 +281,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     title: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: '800',
         color: colors.text,
         letterSpacing: -0.5,
@@ -251,37 +291,21 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         marginTop: 1,
     },
-    selectedCard: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: spacing.sm,
-        marginBottom: spacing.sm,
-        borderRadius: borderRadius.xl,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.05,
-                shadowRadius: 12,
-            },
-            android: {
-                elevation: 3,
-            },
-        }),
+    updatedBadge: {
+        flexShrink: 0,
+        maxWidth: 116,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 14,
+        backgroundColor: '#FFF0F5',
+        borderWidth: 1,
+        borderColor: '#FAD6E3',
     },
-    selectedImage: {
-        width: 170,
-        height: 115,
-        resizeMode: 'contain',
-    },
-    selectedLabel: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: colors.text,
-        marginTop: 2,
+    updatedBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#B44768',
+        textAlign: 'center',
     },
     gridRow: {
         gap: GRID_GAP,

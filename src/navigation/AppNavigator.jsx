@@ -41,6 +41,21 @@ import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPrem
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 
+const getMoodUpdateMetadata = () => {
+    let timezone = null;
+
+    try {
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch (error) {
+        timezone = null;
+    }
+
+    return {
+        timezone,
+        timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+    };
+};
+
 export const AppNavigator = () => {
     const dispatch = useDispatch();
 
@@ -250,7 +265,14 @@ export const AppNavigator = () => {
     // Sync local yourMood state with socket userMood when it loads
     useEffect(() => {
         if (userMood) {
-            setYourMood({ id: userMood.id, emoji: userMood.emoji, label: userMood.label, updatedAt: userMood.updatedAt });
+            setYourMood({
+                id: userMood.id,
+                emoji: userMood.emoji,
+                label: userMood.label,
+                updatedAt: userMood.updatedAt,
+                timezone: userMood.timezone,
+                timezoneOffsetMinutes: userMood.timezoneOffsetMinutes,
+            });
         } else {
             setYourMood(null);
         }
@@ -748,12 +770,26 @@ export const AppNavigator = () => {
     };
 
     const handleMoodSelect = (mood) => {
+        const metadata = getMoodUpdateMetadata();
+        const updatedAt = new Date().toISOString();
+
         // Update local mood state immediately
-        setYourMood({ id: mood.id, emoji: mood.emoji, label: mood.label, updatedAt: new Date().toISOString() });
+        setYourMood({
+            id: mood.id,
+            emoji: mood.emoji,
+            label: mood.label,
+            updatedAt,
+            ...metadata,
+        });
 
         // Send mood to backend via WebSocket (fire and forget - don't wait for response)
         if (socket) {
-            socket.emit('mood:update', { id: mood.id, emoji: mood.emoji, label: mood.label });
+            socket.emit('mood:update', {
+                id: mood.id,
+                emoji: mood.emoji,
+                label: mood.label,
+                ...metadata,
+            });
         }
 
         // Navigate back to home screen
@@ -1025,6 +1061,7 @@ export const AppNavigator = () => {
                         partnerMood={partnerMood ? (getEmojiById(partnerMood.id) || getEmojiByLabel(partnerMood.label)) : null}
                         partnerName={userData.partnerUsername || 'Your Love'}
                         onMoodSelect={handleMoodSelect}
+                        moodUpdatedAt={yourMood?.updatedAt}
                         onBack={() => navigate('home')}
                     />
                 );
