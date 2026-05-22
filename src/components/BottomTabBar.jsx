@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
 import { colors, spacing, borderRadius } from '../theme';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width } = Dimensions.get('window');
 
@@ -265,14 +266,16 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     tabLabel: {
+        fontFamily: fontFamily.medium,
         fontSize: 11,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         color: colors.textMuted,
         marginTop: 4,
     },
     tabLabelActive: {
+        fontFamily: fontFamily.bold,
         color: colors.primary,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
     },
     iconWrapper: {
         position: 'relative',
@@ -290,8 +293,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
     },
     badgeText: {
+        fontFamily: fontFamily.bold,
         fontSize: 10,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         color: '#FFFFFF',
     },
 });

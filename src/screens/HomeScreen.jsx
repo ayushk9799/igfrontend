@@ -18,7 +18,8 @@ import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { getPenguinMoodImage } from '../constants/PenguinMoods';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
-import { fontFamily } from '../constants/fonts';
+import { fontFamily, fontWeight } from '../constants/fonts';
+import { storage } from '../utils/authStorage';
 
 const { width } = Dimensions.get('window');
 
@@ -162,11 +163,17 @@ const HomeScreen = ({
     onNotificationPress,
 }) => {
     const blinkAnim = useRef(new Animated.Value(1)).current;
-    const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
+    const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
+    const badgeWiggleAnim = useRef(new Animated.Value(0)).current;
+    const badgePulseAnim = useRef(new Animated.Value(1)).current;
+    const hasNudgeAnimated = useRef(storage.getBoolean('has_played_nudge_anim') === true);
 
+    const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
     const isChallengeComplete = todayChallenge?.progress?.isComplete || false;
     const completedCount = todayChallenge?.progress?.completedCount || 0;
     const totalTasks = todayChallenge?.progress?.totalTasks || 0;
+
+    const showNudge = hasPartner && (yourMood === null || !yourMood?.updatedAt);
 
     let currentTask = null;
     if (todayChallenge?.challenge?.tasks) {
@@ -199,6 +206,88 @@ const HomeScreen = ({
         animation.start();
         return () => animation.stop();
     }, [pendingTicTacToe, pendingWordle, blinkAnim]);
+
+    useEffect(() => {
+        if (!showNudge) {
+            penguinJiggleAnim.setValue(0);
+            badgeWiggleAnim.setValue(0);
+            badgePulseAnim.setValue(1);
+            return undefined;
+        }
+
+        if (hasNudgeAnimated.current) {
+            return undefined;
+        }
+
+        let animation;
+        const timer = setTimeout(() => {
+            penguinJiggleAnim.setValue(0);
+            badgeWiggleAnim.setValue(0);
+            badgePulseAnim.setValue(1);
+
+            animation = Animated.loop(
+                Animated.sequence([
+                    Animated.parallel([
+                        // Heartbeat pulse for the badge
+                        Animated.sequence([
+                            Animated.timing(badgePulseAnim, { toValue: 1.12, duration: 250, useNativeDriver: true }),
+                            Animated.timing(badgePulseAnim, { toValue: 0.95, duration: 200, useNativeDriver: true }),
+                            Animated.timing(badgePulseAnim, { toValue: 1.05, duration: 200, useNativeDriver: true }),
+                            Animated.timing(badgePulseAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+                        ]),
+                        // Playful wiggle for the badge: tilts left and right
+                        Animated.sequence([
+                            Animated.timing(badgeWiggleAnim, { toValue: 1, duration: 120, useNativeDriver: true }),
+                            Animated.timing(badgeWiggleAnim, { toValue: -1, duration: 140, useNativeDriver: true }),
+                            Animated.timing(badgeWiggleAnim, { toValue: 0.8, duration: 120, useNativeDriver: true }),
+                            Animated.timing(badgeWiggleAnim, { toValue: -0.8, duration: 120, useNativeDriver: true }),
+                            Animated.timing(badgeWiggleAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+                        ]),
+                        // Playful jiggle for the penguin: tilts opposite direction, slightly offset
+                        Animated.sequence([
+                            Animated.delay(100),
+                            Animated.timing(penguinJiggleAnim, { toValue: -1, duration: 120, useNativeDriver: true }),
+                            Animated.timing(penguinJiggleAnim, { toValue: 1, duration: 140, useNativeDriver: true }),
+                            Animated.timing(penguinJiggleAnim, { toValue: -0.7, duration: 120, useNativeDriver: true }),
+                            Animated.timing(penguinJiggleAnim, { toValue: 0.7, duration: 120, useNativeDriver: true }),
+                            Animated.timing(penguinJiggleAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+                        ])
+                    ]),
+                    Animated.delay(2000) // Sleep/pause between wiggles
+                ]),
+                { iterations: 2 }
+            );
+
+            animation.start(({ finished }) => {
+                if (finished) {
+                    hasNudgeAnimated.current = true;
+                    storage.set('has_played_nudge_anim', true);
+                }
+            });
+        }, 800);
+
+        return () => {
+            clearTimeout(timer);
+            if (animation) {
+                animation.stop();
+            }
+        };
+    }, [showNudge, penguinJiggleAnim, badgeWiggleAnim, badgePulseAnim]);
+
+    const penguinRotation = penguinJiggleAnim.interpolate({
+        inputRange: [-1, 1],
+        outputRange: ['-4deg', '4deg'],
+    });
+
+    const penguinTranslateX = penguinJiggleAnim.interpolate({
+        inputRange: [-1, 1],
+        outputRange: [-4, 4],
+    });
+
+    const badgeRotation = badgeWiggleAnim.interpolate({
+        inputRange: [-1, 1],
+        outputRange: ['-5deg', '5deg'],
+    });
 
    
 
@@ -249,14 +338,38 @@ const HomeScreen = ({
 
                     <TouchableOpacity
                         style={styles.hero}
-                        onPress={onMoodPress}
+                        onPress={hasPartner ? onMoodPress : onFindPartner}
                         activeOpacity={0.92}
                     >
                         <View style={styles.heroSparkleOne} />
                         <View style={styles.heroSparkleTwo} />
-                        <View style={styles.heroImageWrap}>
-                            <Image source={penguinMoodImage} style={styles.heroImage} />
-                        </View>
+                        <Animated.View style={[
+                            styles.heroImageWrap,
+                            showNudge && {
+                                transform: [
+                                    { rotate: penguinRotation },
+                                    { translateX: penguinTranslateX },
+                                ]
+                            }
+                        ]}>
+                            <Image
+                                source={hasPartner ? penguinMoodImage : require('../../assets/penguinmoods/nopartner.png')}
+                                style={styles.heroImage}
+                            />
+                        </Animated.View>
+                        {showNudge && (
+                            <Animated.View style={[
+                                styles.moodNudgeBadge,
+                                {
+                                    transform: [
+                                        { scale: badgePulseAnim },
+                                        { rotate: badgeRotation }
+                                    ]
+                                }
+                            ]}>
+                                <HomeText style={styles.moodNudgeText}>How are you feeling? Tap here 💛</HomeText>
+                            </Animated.View>
+                        )}
                     </TouchableOpacity>
 
                    
@@ -394,20 +507,12 @@ const HomeScreen = ({
                                         <HomeText style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{topic.title}</HomeText>
                                         <HomeText style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{topic.subtitle}</HomeText>
                                     </View>
-                                    <View style={styles.topicArrow}>
-                                        <IconSvg type="arrow" color={topic.arrowColor} size={18} />
-                                    </View>
                                 </LinearGradient>
                             </TouchableOpacity>
                         ))}
                     </View>
 
-                    {!hasPartner && (
-                        <TouchableOpacity style={styles.linkPartnerCard} onPress={onFindPartner} activeOpacity={0.9}>
-                            <HomeText style={styles.linkPartnerTitle}>Find your partner</HomeText>
-                            <HomeText style={styles.linkPartnerText}>Connect with someone special and start your Penguin story.</HomeText>
-                        </TouchableOpacity>
-                    )}
+                 
                 </ScrollView>
             </SafeAreaView>
         </LinearGradient>
@@ -486,7 +591,7 @@ const styles = StyleSheet.create({
     badgeText: {
         color: '#FFFFFF',
         fontSize: 9,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     greetingBlock: {
@@ -494,14 +599,14 @@ const styles = StyleSheet.create({
     },
     greeting: {
         fontSize: 25,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         color: '#171B44',
         fontFamily: fontFamily.extraBold,
     },
     greetingSub: {
         color: '#6F6998',
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         marginTop: 4,
         fontFamily: fontFamily.bold,
     },
@@ -521,20 +626,20 @@ const styles = StyleSheet.create({
     cardEyebrow: {
         color: '#272C57',
         fontSize: 12,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         fontFamily: fontFamily.extraBold,
     },
     partnerMoodText: {
         color: '#FF6F8F',
         fontSize: 20,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         marginTop: 5,
         fontFamily: fontFamily.extraBold,
     },
     cardMeta: {
         color: '#817A9F',
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         marginTop: 5,
         fontFamily: fontFamily.bold,
     },
@@ -557,18 +662,45 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         marginTop: 0,
         marginBottom: -2,
-        overflow: 'hidden',
+        marginHorizontal: -20,
+        overflow: 'visible',
     },
     heroImage: {
-        width: width + 12,
-        height: 290,
+        width: width,
+        height: 260,
         resizeMode: 'contain',
         opacity: 0.96,
     },
     heroImageWrap: {
-        width: width + 12,
+        width: width,
         height: 260,
         backgroundColor: 'transparent',
+    },
+    moodNudgeBadge: {
+        position: 'absolute',
+        bottom: 12,
+        alignSelf: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.10,
+                shadowRadius: 6,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
+    },
+    moodNudgeText: {
+        color: '#3C375A',
+        fontSize: 12,
+        fontWeight: fontWeight('700'),
+        fontFamily: fontFamily.bold,
     },
     heroFadeTop: {
         position: 'absolute',
@@ -627,7 +759,7 @@ const styles = StyleSheet.create({
     sectionPrompt: {
         color: '#272C57',
         fontSize: 14,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         marginBottom: 12,
         fontFamily: fontFamily.extraBold,
     },
@@ -657,7 +789,7 @@ const styles = StyleSheet.create({
     quickLabel: {
         color: '#272C57',
         fontSize: 11,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         fontFamily: fontFamily.extraBold,
     },
     quoteCard: {
@@ -673,13 +805,13 @@ const styles = StyleSheet.create({
     quoteText: {
         color: '#555078',
         fontSize: 15,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         fontFamily: fontFamily.bold,
     },
     quoteSub: {
         color: '#6F6998',
         fontSize: 13,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         marginTop: 3,
         fontFamily: fontFamily.bold,
     },
@@ -700,7 +832,7 @@ const styles = StyleSheet.create({
     todayTitle: {
         color: '#171B44',
         fontSize: 20,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         marginTop: 4,
         fontFamily: fontFamily.extraBold,
     },
@@ -716,7 +848,7 @@ const styles = StyleSheet.create({
         color: '#6F6998',
         fontSize: 14,
         lineHeight: 20,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         marginTop: 12,
         fontFamily: fontFamily.bold,
     },
@@ -749,14 +881,14 @@ const styles = StyleSheet.create({
         color: '#171B44',
         fontSize: 14,
         lineHeight: 18,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     smallCardSub: {
         color: '#766F9B',
         fontSize: 11,
         lineHeight: 15,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         marginTop: 4,
         fontFamily: fontFamily.bold,
     },
@@ -820,7 +952,7 @@ const styles = StyleSheet.create({
     daysText: {
         color: '#FF758F',
         fontSize: 40,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         lineHeight: 44,
         fontFamily: fontFamily.extraBold,
     },
@@ -828,14 +960,14 @@ const styles = StyleSheet.create({
         color: '#171B44',
         fontSize: 15,
         lineHeight: 19,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     daysSub: {
         color: '#817A9F',
         fontSize: 11,
         lineHeight: 14,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         marginTop: 8,
         fontFamily: fontFamily.extraBold,
     },
@@ -853,7 +985,7 @@ const styles = StyleSheet.create({
     challengeCategory: {
         color: '#FF6F8F',
         fontSize: 11,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         fontFamily: fontFamily.extraBold,
         textTransform: 'uppercase',
         marginBottom: 4,
@@ -862,7 +994,7 @@ const styles = StyleSheet.create({
         color: '#3C375A',
         fontSize: 13,
         lineHeight: 17,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         fontFamily: fontFamily.bold,
     },
     challengeContentCompleted: {
@@ -877,7 +1009,7 @@ const styles = StyleSheet.create({
         color: '#138A68',
         fontSize: 12,
         lineHeight: 16,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         fontFamily: fontFamily.bold,
         flex: 1,
         paddingRight: 8,
@@ -901,13 +1033,13 @@ const styles = StyleSheet.create({
     sectionTitle: {
         color: '#171B44',
         fontSize: 20,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     sectionSub: {
         color: '#766F9B',
         fontSize: 13,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         marginTop: 3,
         fontFamily: fontFamily.bold,
     },
@@ -935,13 +1067,13 @@ const styles = StyleSheet.create({
     gameTitle: {
         color: '#FFFFFF',
         fontSize: 17,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
     gameSubtitle: {
         color: 'rgba(255,255,255,0.86)',
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         lineHeight: 17,
         marginTop: 6,
         fontFamily: fontFamily.bold,
@@ -977,7 +1109,7 @@ const styles = StyleSheet.create({
     topicTitle: {
         fontSize: 14,
         lineHeight: 17,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         letterSpacing: 0,
         fontFamily: fontFamily.extraBold,
     },
@@ -985,11 +1117,12 @@ const styles = StyleSheet.create({
         flexShrink: 1,
         flexGrow: 1,
         minWidth: 0,
+        paddingRight: 12,
     },
     topicSubtitle: {
         fontSize: 11,
         lineHeight: 15,
-        fontWeight: '700',
+        fontWeight: fontWeight('700'),
         marginTop: 4,
         opacity: 0.85,
         fontFamily: fontFamily.bold,
@@ -1018,7 +1151,7 @@ const styles = StyleSheet.create({
     linkPartnerTitle: {
         color: '#171B44',
         fontSize: 20,
-        fontWeight: '900',
+        fontWeight: fontWeight('900'),
         marginBottom: 7,
         fontFamily: fontFamily.extraBold,
     },
@@ -1026,7 +1159,7 @@ const styles = StyleSheet.create({
         color: '#6F6998',
         fontSize: 14,
         lineHeight: 20,
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
         fontFamily: fontFamily.bold,
     },
 });

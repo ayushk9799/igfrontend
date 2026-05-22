@@ -52,7 +52,7 @@ export const AppNavigator = () => {
     // Local state (navigation & UI only)
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
     const [isPremiumVisible, setIsPremiumVisible] = useState(false);
-    const [yourMood, setYourMood] = useState(emojis[0]);
+    const [yourMood, setYourMood] = useState(null);
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
@@ -250,7 +250,9 @@ export const AppNavigator = () => {
     // Sync local yourMood state with socket userMood when it loads
     useEffect(() => {
         if (userMood) {
-            setYourMood({ id: userMood.id, emoji: userMood.emoji, label: userMood.label });
+            setYourMood({ id: userMood.id, emoji: userMood.emoji, label: userMood.label, updatedAt: userMood.updatedAt });
+        } else {
+            setYourMood(null);
         }
     }, [userMood]);
 
@@ -747,7 +749,7 @@ export const AppNavigator = () => {
 
     const handleMoodSelect = (mood) => {
         // Update local mood state immediately
-        setYourMood({ id: mood.id, emoji: mood.emoji, label: mood.label });
+        setYourMood({ id: mood.id, emoji: mood.emoji, label: mood.label, updatedAt: new Date().toISOString() });
 
         // Send mood to backend via WebSocket (fire and forget - don't wait for response)
         if (socket) {

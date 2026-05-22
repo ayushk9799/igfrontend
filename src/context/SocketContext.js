@@ -148,16 +148,13 @@ export const SocketProvider = ({ children }) => {
                 setPartnerMood(data.mood);
                 setPartnerOnline(data.isOnline);
             } else {
-                // Partner has no mood set - use default
-                setPartnerMood({ id: 'relaxed', emoji: 'relaxed', label: 'Relaxed', updatedAt: null });
+                setPartnerMood(null);
             }
         });
 
         // Mood events - user's own mood
         socketInstance.on('mood:myMood', (data) => {
-            if (data.mood) {
-                setUserMood(data.mood);
-            }
+            setUserMood(data.mood || null);
         });
 
 

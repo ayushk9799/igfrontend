@@ -11,11 +11,105 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import Svg, { Path } from 'react-native-svg';
 
-import { colors, spacing, borderRadius } from '../theme';
+import { colors, spacing, borderRadius, shadows } from '../theme';
 import { fontFamily } from '../constants/fonts';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+// Sparkle star component
+const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
+    const opacity = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const animate = Animated.loop(
+            Animated.sequence([
+                Animated.delay(delay),
+                Animated.timing(opacity, {
+                    toValue: 0.8,
+                    duration: 1200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(opacity, {
+                    toValue: 0.1,
+                    duration: 1200,
+                    useNativeDriver: true,
+                }),
+                Animated.delay(800),
+            ]),
+        );
+        animate.start();
+        return () => animate.stop();
+    }, [opacity, delay]);
+
+    return (
+        <Animated.View style={{ position: 'absolute', left: x, top: y, opacity }}>
+            <Svg width={size} height={size} viewBox="0 0 24 24">
+                <Path
+                    d="M12 0L14.59 8.41L24 12L14.59 15.59L12 24L9.41 15.59L0 12L9.41 8.41L12 0Z"
+                    fill="rgba(255,255,255,0.9)"
+                />
+            </Svg>
+        </Animated.View>
+    );
+};
+
+// Floating heart
+const FloatingHeart = ({ x, y, size = 16, delay = 0 }) => {
+    const translateY = useRef(new Animated.Value(0)).current;
+    const opacity = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const animate = () => {
+            translateY.setValue(0);
+            opacity.setValue(0);
+            Animated.sequence([
+                Animated.delay(delay),
+                Animated.parallel([
+                    Animated.timing(translateY, {
+                        toValue: -60,
+                        duration: 3500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.sequence([
+                        Animated.timing(opacity, {
+                            toValue: 0.7,
+                            duration: 600,
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(opacity, {
+                            toValue: 0.7,
+                            duration: 1800,
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(opacity, {
+                            toValue: 0,
+                            duration: 1100,
+                            useNativeDriver: true,
+                        }),
+                    ]),
+                ]),
+            ]).start(() => animate());
+        };
+        animate();
+        return () => {
+            translateY.stopAnimation();
+            opacity.stopAnimation();
+        };
+    }, [delay, translateY, opacity]);
+
+    return (
+        <Animated.View style={{ position: 'absolute', left: x, top: y, opacity, transform: [{ translateY }] }}>
+            <Svg width={size} height={size} viewBox="0 0 24 24">
+                <Path
+                    fill="#FF8FAB"
+                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                />
+            </Svg>
+        </Animated.View>
+    );
+};
 
 // Category emoji mapping
 const categoryEmojis = {
@@ -65,9 +159,21 @@ export default function DailyChallengeDoneScreen({
         <View style={styles.completionWrapper}>
             {/* Gradient Background */}
             <LinearGradient
-                colors={['#FDF8F3', '#F8EDE3', '#FFE8D6']}
+                colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+                locations={[0, 0.34, 0.72, 1]}
+                start={{ x: 0.25, y: 0 }}
+                end={{ x: 0.75, y: 1 }}
                 style={StyleSheet.absoluteFill}
             />
+
+            {/* Sparkles and Hearts */}
+            <Sparkle x={width * 0.1} y={height * 0.05} size={7} delay={0} />
+            <Sparkle x={width * 0.74} y={height * 0.06} size={8} delay={600} />
+            <Sparkle x={width * 0.92} y={height * 0.15} size={11} delay={1000} />
+            <Sparkle x={width * 0.18} y={height * 0.42} size={7} delay={1400} />
+            <Sparkle x={width * 0.8} y={height * 0.52} size={7} delay={400} />
+            <Sparkle x={width * 0.12} y={height * 0.86} size={6} delay={900} />
+            <FloatingHeart x={width * 0.77} y={height * 0.55} size={20} delay={600} />
 
             {/* Confetti Animation */}
             {showConfetti && (
@@ -117,13 +223,23 @@ export default function DailyChallengeDoneScreen({
                         </View>
                     )}
 
-                  
+                    {/* Dynamic Action Button */}
+                    {isComplete ? (
+                        <TouchableOpacity style={styles.compareBtn} onPress={onCompareWithPartner}>
+                            <Text style={styles.compareBtnText}>Compare Answers with {partnerName}</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity style={styles.remindBtn} onPress={onRemindPartner}>
+                            <Text style={styles.remindBtnText}>Remind {partnerName} to Play</Text>
+                        </TouchableOpacity>
+                    )}
 
-                    <TouchableOpacity style={styles.remindBtn} onPress={onRemindPartner}>
-                        <Text style={styles.remindBtnText}>Remind {partnerName} to Play</Text>
+                    {/* View My Answers Toggle */}
+                    <TouchableOpacity style={styles.viewAnswersBtn} onPress={() => setShowAnswers(!showAnswers)}>
+                        <Text style={styles.viewAnswersBtnText}>
+                            {showAnswers ? 'Hide My Answers' : 'View My Answers'}
+                        </Text>
                     </TouchableOpacity>
-
-                 
 
                     {showAnswers && (
                         <View style={styles.answersContainer}>
@@ -195,18 +311,16 @@ const styles = StyleSheet.create({
 
     // Progress card
     progressCard: {
-        backgroundColor: colors.surface,
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
         borderRadius: borderRadius.xl,
         padding: spacing.xl,
         alignItems: 'center',
         marginTop: spacing.xl,
         marginBottom: spacing.lg,
         width: '100%',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(250, 232, 255, 0.8)',
+        ...shadows.lg,
     },
     progressLabel: {
         fontFamily: fontFamily.bold,
@@ -230,14 +344,15 @@ const styles = StyleSheet.create({
 
     // Notify card
     notifyCard: {
-        backgroundColor: 'rgba(255,255,255,0.8)',
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
         borderRadius: borderRadius.xl,
         padding: spacing.lg,
         alignItems: 'center',
         marginBottom: spacing.lg,
         width: '100%',
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: 'rgba(250, 232, 255, 0.8)',
+        ...shadows.md,
     },
     notifyEmoji: {
         fontSize: 32,
@@ -254,16 +369,17 @@ const styles = StyleSheet.create({
 
     // Compare button
     compareBtn: {
-        backgroundColor: '#FF6B9D',
+        backgroundColor: colors.primary,
         paddingHorizontal: spacing.xl,
         paddingVertical: spacing.md,
-        borderRadius: borderRadius.lg,
+        borderRadius: borderRadius.full,
         marginTop: spacing.md,
-        shadowColor: '#FF6B9D',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+        marginBottom: spacing.md,
+        width: '100%',
+        minHeight: 48,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...shadows.glow,
     },
     compareBtnText: {
         fontFamily: fontFamily.bold,
@@ -277,15 +393,13 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary,
         paddingHorizontal: spacing.xl,
         paddingVertical: spacing.md,
-        borderRadius: borderRadius.lg,
+        borderRadius: borderRadius.full,
         marginBottom: spacing.md,
         width: '100%',
+        minHeight: 48,
         alignItems: 'center',
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+        justifyContent: 'center',
+        ...shadows.glow,
     },
     remindBtnText: {
         fontFamily: fontFamily.bold,
@@ -302,7 +416,7 @@ const styles = StyleSheet.create({
     viewAnswersBtnText: {
         fontFamily: fontFamily.bold,
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '700',
         color: colors.primary,
     },
 
@@ -313,11 +427,14 @@ const styles = StyleSheet.create({
     },
     answerItem: {
         flexDirection: 'row',
-        backgroundColor: colors.surface,
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
         padding: spacing.md,
         borderRadius: borderRadius.md,
         marginBottom: spacing.sm,
         alignItems: 'flex-start',
+        borderWidth: 1,
+        borderColor: 'rgba(250, 232, 255, 0.8)',
+        ...shadows.sm,
     },
     answerEmoji: {
         fontSize: 24,
@@ -342,12 +459,13 @@ const styles = StyleSheet.create({
 
     // Home link
     homeLink: {
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.md,
+        marginTop: spacing.sm,
     },
     homeLinkText: {
         fontFamily: fontFamily.bold,
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 15,
+        fontWeight: '700',
         color: colors.textSecondary,
     },
 });

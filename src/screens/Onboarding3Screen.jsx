@@ -176,6 +176,18 @@ const Onboarding3Screen = ({ onComplete }) => {
                     <View style={styles.footer}>
                         <View style={styles.noteCard}>
                             <LinearGradient
+                                pointerEvents="none"
+                                colors={[
+                                    'rgba(255,255,255,0.86)',
+                                    'rgba(255,246,250,0.58)',
+                                    'rgba(255,255,255,0.76)',
+                                ]}
+                                locations={[0, 0.5, 1]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.noteCardGlass}
+                            />
+                            <LinearGradient
                                 colors={['#FF8DA2', '#FF657F']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
@@ -457,7 +469,7 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         minHeight: height < 720 ? 52 : 58,
         borderRadius: 24,
-        backgroundColor: 'rgba(255,255,255,0.72)',
+        backgroundColor: 'rgba(255,255,255,0.24)',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.95)',
         flexDirection: 'row',
@@ -470,6 +482,10 @@ const styles = StyleSheet.create({
         shadowRadius: 12,
         elevation: 3,
         zIndex: 2,
+        overflow: 'hidden',
+    },
+    noteCardGlass: {
+        ...StyleSheet.absoluteFillObject,
     },
     noteIcon: {
         width: height < 720 ? 38 : 42,

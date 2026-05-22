@@ -26,18 +26,6 @@ import { useSocketContext } from '../context/SocketContext';
 const { width } = Dimensions.get('window');
 const CANVAS_SIZE = width - 40;
 
-const brushColors = [
-    { color: '#FF3B6F', name: 'Pink', glow: 'rgba(255, 59, 111, 0.4)' },
-    { color: '#8B5CF6', name: 'Purple', glow: 'rgba(139, 92, 246, 0.4)' },
-    { color: '#EF4444', name: 'Red', glow: 'rgba(239, 68, 68, 0.4)' },
-    { color: '#F97316', name: 'Orange', glow: 'rgba(249, 115, 22, 0.4)' },
-    { color: '#FACC15', name: 'Yellow', glow: 'rgba(250, 204, 21, 0.4)' },
-    { color: '#22C55E', name: 'Green', glow: 'rgba(34, 197, 94, 0.4)' },
-    { color: '#06B6D4', name: 'Cyan', glow: 'rgba(6, 182, 212, 0.4)' },
-    { color: '#3B82F6', name: 'Blue', glow: 'rgba(59, 130, 246, 0.4)' },
-    { color: '#1F2937', name: 'Dark', glow: 'rgba(31, 41, 55, 0.4)' },
-];
-
 const brushSizes = [
     { size: 4, name: 'S' },
     { size: 8, name: 'M' },
@@ -45,80 +33,235 @@ const brushSizes = [
     { size: 22, name: 'XL' },
 ];
 
-// Animated Color Bubble Component
-const ColorBubble = ({ item, isSelected, onSelect, index }) => {
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const floatAnim = useRef(new Animated.Value(0)).current;
+// HSV to Hex color conversion
+const hsvToHex = (h, s, v) => {
+    h = ((h % 360) + 360) % 360;
+    const c = v * s;
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    const m = v - c;
+    let r, g, b;
+    if (h < 60) { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else { r = c; g = 0; b = x; }
+    const toHex = (val) => {
+        const hex = Math.round((val + m) * 255).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    };
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+};
 
-    React.useEffect(() => {
-        const float = Animated.loop(
-            Animated.sequence([
-                Animated.timing(floatAnim, {
-                    toValue: 1,
-                    duration: 2000 + index * 300,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(floatAnim, {
-                    toValue: 0,
-                    duration: 2000 + index * 300,
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-        float.start();
-        return () => float.stop();
-    }, [floatAnim, index]);
+const SPECTRUM_COLORS = [
+    '#FF0000', '#FFFF00', '#00FF00', '#00FFFF',
+    '#0000FF', '#FF00FF', '#FF0000',
+];
 
-    const handlePress = () => {
-        Animated.sequence([
-            Animated.timing(scaleAnim, {
-                toValue: 0.8,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scaleAnim, {
-                toValue: isSelected ? 1.2 : 1,
-                ...timing.springBouncy,
-                useNativeDriver: true,
-            }),
-        ]).start();
-        onSelect(item.color);
+
+// Full Spectrum Color Picker Component
+const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
+    const [hue, setHue] = useState(0);
+    const [shadePos, setShadePos] = useState(0.5);
+    const [showShade, setShowShade] = useState(false);
+    const [hueBarWidth, setHueBarWidth] = useState(0);
+    const [shadeBarWidth, setShadeBarWidth] = useState(0);
+
+    const hueBarWidthRef = useRef(0);
+    const shadeBarWidthRef = useRef(0);
+    const hueRef = useRef(0);
+    const shadePosRef = useRef(0.5);
+    const onChangeRef = useRef(onColorChange);
+
+    // Animated values for smooth thumb movement (no re-renders during drag)
+    const hueThumbX = useRef(new Animated.Value(0)).current;
+    const shadeThumbX = useRef(new Animated.Value(0)).current;
+
+    // Start values for dx-based delta dragging
+    const hueStartRef = useRef(0);
+    const shadeStartRef = useRef(0.5);
+
+    useEffect(() => { onChangeRef.current = onColorChange; }, [onColorChange]);
+    useEffect(() => { hueBarWidthRef.current = hueBarWidth; }, [hueBarWidth]);
+    useEffect(() => { shadeBarWidthRef.current = shadeBarWidth; }, [shadeBarWidth]);
+
+    // Sync animated thumb position when state changes (grant/release/layout)
+    useEffect(() => {
+        if (hueBarWidth > 0) {
+            hueThumbX.setValue((hue / 360) * hueBarWidth);
+        }
+    }, [hue, hueBarWidth, hueThumbX]);
+
+    useEffect(() => {
+        if (shadeBarWidth > 0) {
+            shadeThumbX.setValue(shadePos * shadeBarWidth);
+        }
+    }, [shadePos, shadeBarWidth, shadeThumbX]);
+
+    const computeColor = (h, sp) => {
+        let s, v;
+        if (sp <= 0.5) {
+            s = sp * 2;
+            v = 1;
+        } else {
+            s = 1;
+            v = 1 - (sp - 0.5) * 2;
+        }
+        return hsvToHex(h, s, Math.max(v, 0.01));
     };
 
-    const translateY = floatAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, -6],
-    });
+    const huePan = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => true,
+            onPanResponderGrant: (e) => {
+                const w = hueBarWidthRef.current;
+                if (w <= 0) return;
+                const x = Math.max(0, Math.min(e.nativeEvent.locationX, w));
+                const newHue = (x / w) * 360;
+                hueRef.current = newHue;
+                hueStartRef.current = newHue;
+                hueThumbX.setValue(x);
+                setHue(newHue);
+            },
+            onPanResponderMove: (_, gestureState) => {
+                const w = hueBarWidthRef.current;
+                if (w <= 0) return;
+                const deltaPct = gestureState.dx / w;
+                const newHue = Math.max(0, Math.min(hueStartRef.current + deltaPct * 360, 360));
+                hueRef.current = newHue;
+                hueThumbX.setValue((newHue / 360) * w);
+                // No setState during move — zero re-renders
+            },
+            onPanResponderRelease: () => {
+                setHue(hueRef.current);
+                const color = computeColor(hueRef.current, shadePosRef.current);
+                if (onChangeRef.current) onChangeRef.current(color);
+            },
+        })
+    ).current;
+
+    const shadePan = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => true,
+            onPanResponderGrant: (e) => {
+                const w = shadeBarWidthRef.current;
+                if (w <= 0) return;
+                const x = Math.max(0, Math.min(e.nativeEvent.locationX, w));
+                const newPos = x / w;
+                shadePosRef.current = newPos;
+                shadeStartRef.current = newPos;
+                shadeThumbX.setValue(x);
+                setShadePos(newPos);
+            },
+            onPanResponderMove: (_, gestureState) => {
+                const w = shadeBarWidthRef.current;
+                if (w <= 0) return;
+                const deltaPct = gestureState.dx / w;
+                const newPos = Math.max(0, Math.min(shadeStartRef.current + deltaPct, 1));
+                shadePosRef.current = newPos;
+                shadeThumbX.setValue(newPos * w);
+                // No setState during move — zero re-renders
+            },
+            onPanResponderRelease: () => {
+                setShadePos(shadePosRef.current);
+                const color = computeColor(hueRef.current, shadePosRef.current);
+                if (onChangeRef.current) onChangeRef.current(color);
+            },
+        })
+    ).current;
+
+    const pureHueColor = hsvToHex(hue, 1, 1);
+    const displayColor = computeColor(hue, shadePos);
 
     return (
-        <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
-            <Animated.View
-                style={[
-                    styles.colorWrapper,
+        <View style={styles.spectrumContainer}>
+            {/* Hue bar row with preview dot and filter button */}
+            <View style={styles.spectrumMainRow}>
+                {/* Color preview dot */}
+                <View style={[
+                    styles.spectrumPreviewDot,
+                    { backgroundColor: displayColor },
                     {
-                        transform: [{ scale: scaleAnim }, { translateY }],
+                        shadowColor: displayColor,
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.4,
+                        shadowRadius: 6,
                     },
-                ]}
-            >
-                {/* Selection glow */}
-                {isSelected && (
-                    <View style={[styles.colorGlow, { backgroundColor: item.glow }]} />
-                )}
+                ]} />
+
+                {/* Hue spectrum bar */}
                 <View
+                    style={styles.spectrumBarOuter}
+                    onLayout={(e) => setHueBarWidth(e.nativeEvent.layout.width)}
+                    {...huePan.panHandlers}
+                >
+                    <LinearGradient
+                        colors={SPECTRUM_COLORS}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.spectrumBar}
+                    />
+                    <Animated.View style={[styles.spectrumThumb, { left: hueThumbX }]}>
+                        <View style={[styles.spectrumThumbDot, { backgroundColor: pureHueColor }]} />
+                    </Animated.View>
+                </View>
+
+                {/* Shade toggle button */}
+                <TouchableOpacity
+                    onPress={() => {
+                        const next = !showShade;
+                        setShowShade(next);
+                        if (!next) {
+                            // Reset to middle shade when closing
+                            shadePosRef.current = 0.5;
+                            setShadePos(0.5);
+                            const color = computeColor(hueRef.current, 0.5);
+                            if (onChangeRef.current) onChangeRef.current(color);
+                        }
+                    }}
+                    activeOpacity={0.7}
                     style={[
-                        styles.colorOption,
-                        { backgroundColor: item.color },
-                        isSelected && styles.colorSelected,
-                        isSelected && {
-                            shadowColor: item.color,
-                            shadowOffset: { width: 0, height: 0 },
-                            shadowOpacity: 0.8,
-                            shadowRadius: 12,
-                        },
+                        styles.spectrumFilterBtn,
+                        showShade && styles.spectrumFilterBtnActive,
                     ]}
-                />
-            </Animated.View>
-        </TouchableOpacity>
+                >
+                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                        <Path
+                            d="M12 3v1m0 16v1m8.66-13.5l-.87.5M4.21 16.5l-.87.5M20.66 16.5l-.87-.5M4.21 7.5l-.87-.5M21 12h-1M4 12H3m13.5 0a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"
+                            stroke={showShade ? '#FFFFFF' : colors.textSecondary}
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                    </Svg>
+                </TouchableOpacity>
+            </View>
+
+            {/* Shade bar - only visible when filter button is active */}
+            {showShade && (
+                <View style={styles.spectrumShadeRow}>
+                    <Text style={styles.spectrumShadeLabel}>Shade</Text>
+                    <View
+                        style={styles.spectrumBarOuter}
+                        onLayout={(e) => setShadeBarWidth(e.nativeEvent.layout.width)}
+                        {...shadePan.panHandlers}
+                    >
+                        <LinearGradient
+                            colors={['#FFFFFF', pureHueColor, '#000000']}
+                            locations={[0, 0.5, 1]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.spectrumBar}
+                        />
+                        <Animated.View style={[styles.spectrumThumb, { left: shadeThumbX }]}>
+                            <View style={[styles.spectrumThumbDot, { backgroundColor: displayColor }]} />
+                        </Animated.View>
+                    </View>
+                </View>
+            )}
+        </View>
     );
 };
 
@@ -252,7 +395,7 @@ export const ScribbleScreen = ({
 }) => {
     const [paths, setPaths] = useState([]);
     const [currentPath, setCurrentPath] = useState('');
-    const [selectedColor, setSelectedColor] = useState(colors.primary);
+    const [selectedColor, setSelectedColor] = useState('#FF0000');
     const [selectedSize, setSelectedSize] = useState(8);
     const [inkSplash, setInkSplash] = useState(null);
     const [sentScribble, setSentScribble] = useState(null); // Store sent scribble for preview
@@ -585,17 +728,10 @@ export const ScribbleScreen = ({
                 {/* Color Picker */}
                 <View style={styles.toolSection}>
                     <Text style={styles.toolLabel}>Color</Text>
-                    <View style={styles.colorPicker}>
-                        {brushColors.map((item, index) => (
-                            <ColorBubble
-                                key={item.name}
-                                item={item}
-                                index={index}
-                                isSelected={selectedColor === item.color}
-                                onSelect={setSelectedColor}
-                            />
-                        ))}
-                    </View>
+                    <SpectrumColorPicker
+                        selectedColor={selectedColor}
+                        onColorChange={setSelectedColor}
+                    />
                 </View>
 
                 {/* Brush Size */}
@@ -1073,30 +1209,80 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
         marginLeft: spacing.xs,
     },
-    colorPicker: {
+    spectrumContainer: {
+        gap: 8,
+    },
+    spectrumMainRow: {
         flexDirection: 'row',
-        gap: spacing.sm,
-        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 10,
     },
-    colorWrapper: {
-        padding: 2,
-        position: 'relative',
-    },
-    colorGlow: {
-        position: 'absolute',
-        top: -3,
-        left: -3,
-        right: -3,
-        bottom: -3,
-        borderRadius: 20,
-    },
-    colorOption: {
+    spectrumPreviewDot: {
         width: 30,
         height: 30,
         borderRadius: 15,
+        borderWidth: 2.5,
+        borderColor: '#FFFFFF',
     },
-    colorSelected: {
-        transform: [{ scale: 1.2 }],
+    spectrumFilterBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#F7DDEA',
+    },
+    spectrumFilterBtnActive: {
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
+    },
+    spectrumShadeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    spectrumShadeLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: colors.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        width: 36,
+    },
+    spectrumBarOuter: {
+        flex: 1,
+        height: 32,
+        justifyContent: 'center',
+        position: 'relative',
+    },
+    spectrumBar: {
+        height: 14,
+        borderRadius: 7,
+    },
+    spectrumThumb: {
+        position: 'absolute',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2.5,
+        borderColor: '#FFFFFF',
+        marginLeft: -12,
+        top: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    spectrumThumbDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
     },
     sliderWrapper: {
         flexDirection: 'row',
