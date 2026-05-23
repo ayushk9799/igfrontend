@@ -508,7 +508,10 @@ export default function PremiumScreen({ onBack }) {
                     <View style={styles.couplesBannerContainer}>
                         <View style={styles.couplesBanner}>
                             <Text style={styles.couplesText}>
-                                💕 One subscription covers both you & your partner — only one of you needs to pay!
+                                💕 One subscription covers{' '}
+                                <Text style={styles.couplesTextBold}>both you & your partner</Text>
+                                {' '}—{' '}
+                                <Text style={styles.couplesTextBold}>only one of you needs to pay!</Text>
                             </Text>
                         </View>
                     </View>
@@ -754,10 +757,15 @@ const styles = StyleSheet.create({
     },
     couplesText: {
         color: '#FF6F8F',
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: '500',
-        lineHeight: 16.5,
+        lineHeight: 22,
         textAlign: 'center',
+    },
+    couplesTextBold: {
+        fontSize: 15.5,
+        fontWeight: '800',
+        color: '#E8446D',
     },
     // CTA Action Button
     subscribeButtonWrapper: {

@@ -2,81 +2,96 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { fontFamily } from '../../constants/fonts';
 import LinearGradient from 'react-native-linear-gradient';
-import Svg, { Path, Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 
 /**
  * PremiumLockOverlay - Shared premium restriction overlay for all card types
- * Features: SVG lock with golden glow, semi-transparent backdrop (question visible),
- * golden gradient unlock button, sparkle accents
+ * Features: Crown icon with golden glow, frosted glass backdrop,
+ * golden gradient unlock button, sparkle accents, reassurance text
  */
 const PremiumLockOverlay = ({ onPress, questionText }) => {
     return (
         <TouchableOpacity
             style={styles.overlay}
-            activeOpacity={0.95}
+            activeOpacity={0.97}
             onPress={onPress}
         >
-            {/* Subtle gradient overlay instead of flat black */}
+            {/* Multi-stop gradient overlay for depth */}
             <LinearGradient
-                colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.65)']}
-                locations={[0, 0.5, 1]}
+                colors={[
+                    'rgba(0,0,0,0.15)',
+                    'rgba(0,0,0,0.45)',
+                    'rgba(0,0,0,0.60)',
+                    'rgba(0,0,0,0.72)',
+                ]}
+                locations={[0, 0.35, 0.6, 1]}
                 style={styles.gradientOverlay}
             />
 
             <View style={styles.content}>
-                {/* Sparkle accent - top left */}
-                <Text style={styles.sparkleTopLeft}>✦</Text>
+                {/* Sparkle accents scattered */}
+                <Text style={styles.sparkle1}>✦</Text>
+                <Text style={styles.sparkle2}>✧</Text>
+                <Text style={styles.sparkle3}>✦</Text>
+                <Text style={styles.sparkle4}>✧</Text>
+                <Text style={styles.sparkle5}>✦</Text>
 
-                {/* Lock Icon with Glow Ring */}
-                <View style={styles.lockContainer}>
-                    {/* Outer glow ring */}
-                    <View style={styles.glowRing}>
+                {/* Crown Icon with Glow */}
+                <View style={styles.iconContainer}>
+                    {/* Outer soft glow */}
+                    <View style={styles.outerGlow}>
                         <LinearGradient
-                            colors={['rgba(255, 215, 0, 0.25)', 'rgba(255, 165, 0, 0.08)']}
-                            style={styles.glowRingGradient}
+                            colors={['rgba(255, 215, 0, 0.20)', 'rgba(255, 165, 0, 0.05)', 'transparent']}
+                            style={styles.outerGlowGradient}
                         />
                     </View>
-                    {/* Inner circle with lock */}
-                    <View style={styles.lockCircle}>
+                    {/* Middle glow ring */}
+                    <View style={styles.middleGlow}>
                         <LinearGradient
-                            colors={['#FFD700', '#FFA500']}
+                            colors={['rgba(255, 215, 0, 0.30)', 'rgba(255, 165, 0, 0.10)']}
+                            style={styles.middleGlowGradient}
+                        />
+                    </View>
+                    {/* Icon circle */}
+                    <View style={styles.iconCircle}>
+                        <LinearGradient
+                            colors={['#FFE066', '#FFD700', '#FFA500']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
-                            style={styles.lockCircleGradient}
+                            style={styles.iconCircleGradient}
                         />
-                        <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
+                        {/* Crown SVG */}
+                        <Svg width={34} height={34} viewBox="0 0 24 24" fill="none">
                             <Path
-                                d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2z"
+                                d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5z"
                                 fill="#FFFFFF"
                             />
                             <Path
-                                d="M7 11V7a5 5 0 0110 0v4"
-                                stroke="#FFFFFF"
-                                strokeWidth={2.5}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                            {/* Keyhole */}
-                            <Circle cx={12} cy={16} r={1.5} fill="#FFA500" />
-                            <Path
-                                d="M12 17.5V19"
-                                stroke="#FFA500"
-                                strokeWidth={1.5}
-                                strokeLinecap="round"
+                                d="M5 19h14v2H5v-2z"
+                                fill="#FFFFFF"
+                                opacity={0.85}
                             />
                         </Svg>
                     </View>
                 </View>
 
-                {/* Sparkle accent - right */}
-                <Text style={styles.sparkleRight}>✦</Text>
-
                 {/* Title */}
-                <Text style={styles.title}>Premium Only</Text>
+                <Text style={styles.title}>Premium Content</Text>
+
+                {/* Divider line */}
+                <View style={styles.divider}>
+                    <LinearGradient
+                        colors={['transparent', 'rgba(255, 215, 0, 0.5)', 'transparent']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.dividerGradient}
+                    />
+                </View>
 
                 {/* Question preview (visible through overlay) */}
                 {questionText ? (
                     <View style={styles.questionPreview}>
+                        <Text style={styles.questionLabel}>Question</Text>
                         <Text style={styles.questionText} numberOfLines={3}>
                             {questionText}
                         </Text>
@@ -85,7 +100,7 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
 
                 {/* Subtitle */}
                 <Text style={styles.subtitle}>
-                    Upgrade to unlock unlimited questions
+                    Upgrade to unlock all premium questions & features
                 </Text>
 
                 {/* Unlock Button with gradient */}
@@ -95,21 +110,33 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
                     activeOpacity={0.85}
                 >
                     <LinearGradient
-                        colors={['#FFD700', '#FFA500']}
+                        colors={['#FF7EB3', '#FF4B80', '#E8446D']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={StyleSheet.absoluteFill}
                     />
                     <View style={styles.unlockButtonContent}>
-                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
+                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" style={{ marginRight: 8 }}>
                             <Path
                                 d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
                                 fill="#FFFFFF"
                             />
                         </Svg>
-                        <Text style={styles.unlockButtonText}>Unlock Now</Text>
+                        <Text style={styles.unlockButtonText}>Unlock Premium</Text>
+                        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" style={{ marginLeft: 6 }}>
+                            <Path
+                                d="M5 12h14M12 5l7 7-7 7"
+                                stroke="#FFFFFF"
+                                strokeWidth={2.5}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
                     </View>
                 </TouchableOpacity>
+
+                {/* Reassurance text */}
+                <Text style={styles.reassurance}>Cancel anytime · Covers your partner too</Text>
             </View>
         </TouchableOpacity>
     );
@@ -129,80 +156,130 @@ const styles = StyleSheet.create({
     },
     content: {
         alignItems: 'center',
-        paddingHorizontal: 32,
+        paddingHorizontal: 28,
         zIndex: 1,
     },
     // Sparkle accents
-    sparkleTopLeft: {
+    sparkle1: {
         position: 'absolute',
-        top: -60,
-        left: -10,
-        fontSize: 16,
-        color: 'rgba(255, 215, 0, 0.6)',
-        fontFamily: fontFamily.medium,
+        top: -70,
+        left: -5,
+        fontSize: 18,
+        color: 'rgba(255, 215, 0, 0.7)',
     },
-    sparkleRight: {
+    sparkle2: {
         position: 'absolute',
-        top: 20,
-        right: -8,
+        top: -45,
+        right: 5,
         fontSize: 12,
         color: 'rgba(255, 215, 0, 0.5)',
-        fontFamily: fontFamily.medium,
     },
-    // Lock icon with glow
-    lockContainer: {
+    sparkle3: {
+        position: 'absolute',
+        top: 30,
+        right: -12,
+        fontSize: 14,
+        color: 'rgba(255, 215, 0, 0.55)',
+    },
+    sparkle4: {
+        position: 'absolute',
+        bottom: -50,
+        left: 10,
+        fontSize: 10,
+        color: 'rgba(255, 215, 0, 0.4)',
+    },
+    sparkle5: {
+        position: 'absolute',
+        bottom: -30,
+        right: 20,
+        fontSize: 16,
+        color: 'rgba(255, 215, 0, 0.45)',
+    },
+    // Icon with layered glow
+    iconContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 16,
+        marginBottom: 18,
     },
-    glowRing: {
+    outerGlow: {
         position: 'absolute',
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
         overflow: 'hidden',
     },
-    glowRingGradient: {
+    outerGlowGradient: {
         ...StyleSheet.absoluteFillObject,
     },
-    lockCircle: {
-        width: 68,
-        height: 68,
-        borderRadius: 34,
+    middleGlow: {
+        position: 'absolute',
+        width: 94,
+        height: 94,
+        borderRadius: 47,
+        overflow: 'hidden',
+    },
+    middleGlowGradient: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    iconCircle: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
         shadowColor: '#FFD700',
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 16,
-        elevation: 10,
+        shadowOpacity: 0.6,
+        shadowRadius: 20,
+        elevation: 12,
     },
-    lockCircleGradient: {
+    iconCircleGradient: {
         ...StyleSheet.absoluteFillObject,
     },
     // Title
     title: {
-        fontSize: 26,
+        fontSize: 28,
         fontWeight: '900',
         color: '#FFD700',
-        marginBottom: 8,
-        textShadowColor: 'rgba(255, 215, 0, 0.3)',
+        marginBottom: 6,
+        textShadowColor: 'rgba(255, 215, 0, 0.35)',
         textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 8,
-        letterSpacing: 0.5,
+        textShadowRadius: 10,
+        letterSpacing: 0.3,
         fontFamily: fontFamily.extraBold,
+    },
+    // Divider
+    divider: {
+        width: 80,
+        height: 2,
+        borderRadius: 1,
+        marginBottom: 14,
+        overflow: 'hidden',
+    },
+    dividerGradient: {
+        ...StyleSheet.absoluteFillObject,
     },
     // Question preview
     questionPreview: {
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
         borderRadius: 16,
-        paddingVertical: 12,
+        paddingVertical: 14,
         paddingHorizontal: 20,
-        marginBottom: 12,
+        marginBottom: 14,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
+        borderColor: 'rgba(255, 215, 0, 0.15)',
         maxWidth: '100%',
+    },
+    questionLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: 'rgba(255, 215, 0, 0.7)',
+        textTransform: 'uppercase',
+        letterSpacing: 1.2,
+        marginBottom: 6,
+        textAlign: 'center',
+        fontFamily: fontFamily.bold,
     },
     questionText: {
         fontSize: 16,
@@ -215,10 +292,10 @@ const styles = StyleSheet.create({
     },
     // Subtitle
     subtitle: {
-        fontSize: 15,
-        color: 'rgba(255, 255, 255, 0.85)',
+        fontSize: 14,
+        color: 'rgba(255, 255, 255, 0.75)',
         textAlign: 'center',
-        marginBottom: 24,
+        marginBottom: 22,
         lineHeight: 20,
         fontFamily: fontFamily.medium,
     },
@@ -230,11 +307,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 16,
         paddingHorizontal: 36,
-        shadowColor: '#FFD700',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        elevation: 8,
+        shadowColor: '#FF4B80',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.5,
+        shadowRadius: 16,
+        elevation: 10,
     },
     unlockButtonContent: {
         flexDirection: 'row',
@@ -244,9 +321,18 @@ const styles = StyleSheet.create({
     unlockButtonText: {
         color: '#FFFFFF',
         fontSize: 17,
-        fontWeight: '800',
+        fontWeight: '900',
         letterSpacing: 0.5,
-        fontFamily: fontFamily.bold,
+        fontFamily: fontFamily.extraBold,
+    },
+    // Reassurance text
+    reassurance: {
+        marginTop: 14,
+        fontSize: 11,
+        color: 'rgba(255, 255, 255, 0.50)',
+        textAlign: 'center',
+        fontFamily: fontFamily.medium,
+        letterSpacing: 0.3,
     },
 });
 

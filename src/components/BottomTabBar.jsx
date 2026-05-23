@@ -6,112 +6,56 @@ import {
     Text,
     StyleSheet,
     Animated,
+    Image,
     Platform,
     Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
-import LinearGradient from 'react-native-linear-gradient';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width } = Dimensions.get('window');
 
-// Tab icons as SVG components with filled/outlined states
+// Tab icon images - filled and unfilled variants
+const tabIcons = {
+    home: {
+        default: require('../../assets/bottomtab/house.png'),
+        filled: require('../../assets/bottomtab/house_filled.png'),
+    },
+    canvas: {
+        default: require('../../assets/bottomtab/canvas.png'),
+        filled: require('../../assets/bottomtab/canvas_filled.png'),
+    },
+    today: {
+        default: require('../../assets/bottomtab/today.png'),
+        filled: require('../../assets/bottomtab/today_filled.png'),
+    },
+    games: {
+        default: require('../../assets/bottomtab/game.png'),
+        filled: require('../../assets/bottomtab/game_filled.png'),
+    },
+    chats: {
+        default: require('../../assets/bottomtab/chat.png'),
+        filled: require('../../assets/bottomtab/chat_filled.png'),
+    },
+};
 
-// Home icon - house with door
-const HomeIcon = ({ color, size = 24, filled = false }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-            d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill={filled ? color : 'none'}
-        />
-        {!filled && (
-            <Path
-                d="M9 22V12h6v10"
-                stroke={color}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        )}
-        {filled && (
-            <Path
-                d="M9 22V12h6v10"
-                stroke={colors.surface}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill={colors.surface}
-            />
-        )}
-    </Svg>
-);
-
-// Pencil icon for Canvas - cleaner than palette
-const PencilIcon = ({ color, size = 24, filled = false }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-            d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill={filled ? color : 'none'}
-        />
-    </Svg>
-);
-
-// Spark/Flame icon for Today - represents daily streak/challenge
-const SparkIcon = ({ color, size = 24, filled = false }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-            d="M12 2L9 9l-7 1 5 5-1 7 6-3 6 3-1-7 5-5-7-1-3-7z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill={filled ? color : 'none'}
-        />
-    </Svg>
-);
-
-// Chat/Message icon for Chats
-const ChatIcon = ({ color, size = 24, filled = false }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-            d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill={filled ? color : 'none'}
-        />
-    </Svg>
-);
-
-const GameIcon = ({ color, size = 24, filled = false }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-            d="M21 11.5c0-4.14-3.36-7.5-7.5-7.5H10.5C6.36 4 3 7.36 3 11.5V13c0 2.21 1.79 4 4 4h.5c.83 0 1.5.67 1.5 1.5v.5c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2v-.5c0-.83.67-1.5 1.5-1.5H17c2.21 0 4-1.79 4-4v-1.5z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill={filled ? color : 'none'}
-        />
-        <Path d="M7 11h2M8 10v2" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-        <Path d="M15.5 11h.01M16.5 10h.01M15.5 12h.01" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
+// Image-based tab icon component
+const TabIcon = ({ iconKey, color, size = 24, filled = false }) => (
+    <Image
+        source={filled ? tabIcons[iconKey].filled : tabIcons[iconKey].default}
+        style={{
+            width: size,
+            height: size,
+            tintColor: color,
+        }}
+        resizeMode="contain"
+    />
 );
 
 
 
-const TabItem = ({ icon: Icon, label, isActive, onPress, badge = 0 }) => {
+const TabItem = ({ iconKey, label, isActive, onPress, badge = 0 }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const translateY = useRef(new Animated.Value(0)).current;
 
@@ -166,7 +110,8 @@ const TabItem = ({ icon: Icon, label, isActive, onPress, badge = 0 }) => {
                 ]}
             >
                 <View style={styles.iconWrapper}>
-                    <Icon
+                    <TabIcon
+                        iconKey={iconKey}
                         color={isActive ? colors.primary : colors.textMuted}
                         size={24}
                         filled={isActive}
@@ -196,11 +141,11 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
     const insets = useSafeAreaInsets();
 
     const tabs = [
-        { key: 'home', label: 'Home', icon: HomeIcon },
-        { key: 'canvas', label: 'Canvas', icon: PencilIcon },
-        { key: 'dailyChallenge', label: 'Today', icon: SparkIcon },
-        { key: 'games', label: 'Games', icon: GameIcon },
-        { key: 'chats', label: 'Chats', icon: ChatIcon, badge: chatBadge },
+        { key: 'home', label: 'Home', iconKey: 'home' },
+        { key: 'canvas', label: 'Canvas', iconKey: 'canvas' },
+        { key: 'dailyChallenge', label: 'Today', iconKey: 'today' },
+        { key: 'games', label: 'Games', iconKey: 'games' },
+        { key: 'chats', label: 'Chats', iconKey: 'chats', badge: chatBadge },
     ];
 
     return (
@@ -209,7 +154,7 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
                 {tabs.map((tab) => (
                     <TabItem
                         key={tab.key}
-                        icon={tab.icon}
+                        iconKey={tab.iconKey}
                         label={tab.label}
                         isActive={currentTab === tab.key}
                         onPress={() => onTabChange(tab.key)}

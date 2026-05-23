@@ -10,6 +10,7 @@ import TakePhotoCard from './TakePhotoCard';
 import DeepCard from './DeepCard';
 import SliderCard from './SliderCard';
 import VoiceRecordCard from './VoiceRecordCard';
+import PremiumLockOverlay from './PremiumLockOverlay';
 import { categoryConfig, defaultConfig } from './categoryConfig';
 import { spacing } from '../../theme';
 
@@ -231,11 +232,6 @@ const TaskCard = React.memo(({
 
     // Debug: Log the category being received
 
-    // If locked, render the in-card premium lock instead of the actual card
-    if (isLocked) {
-        return <PremiumLockedCard task={task} onNavigateToPremium={onNavigateToPremium} />;
-    }
-
     const commonProps = {
         task,
         index,
@@ -259,27 +255,35 @@ const TaskCard = React.memo(({
         onNavigateToPremium,
     };
 
+    let card;
     if (task.category === 'likelyto') {
-        return <LikelyToCard {...commonProps} />;
+        card = <LikelyToCard {...commonProps} />;
+    } else if (task.category === 'neverhaveiever') {
+        card = <NeverHaveIEverCard {...commonProps} />;
+    } else if (task.category === 'takephoto') {
+        card = <TakePhotoCard {...commonProps} />;
+    } else if (task.category === 'slider') {
+        card = <SliderCard {...commonProps} />;
+    } else if (task.category === 'voicerecord') {
+        card = <VoiceRecordCard {...commonProps} />;
+    } else {
+        card = <DeepCard {...commonProps} />;
     }
 
-    if (task.category === 'neverhaveiever') {
-        return <NeverHaveIEverCard {...commonProps} />;
+    // If locked, render the real card with PremiumLockOverlay on top
+    if (isLocked) {
+        return (
+            <View style={{ flex: 1 }}>
+                {card}
+                <PremiumLockOverlay
+                    onPress={onNavigateToPremium}
+                    questionText={task.taskstatement}
+                />
+            </View>
+        );
     }
 
-    if (task.category === 'takephoto') {
-        return <TakePhotoCard {...commonProps} />;
-    }
-
-    if (task.category === 'slider') {
-        return <SliderCard {...commonProps} />;
-    }
-
-    if (task.category === 'voicerecord') {
-        return <VoiceRecordCard {...commonProps} />;
-    }
-
-    return <DeepCard {...commonProps} />;
+    return card;
 });
 
 export default TaskCard;
