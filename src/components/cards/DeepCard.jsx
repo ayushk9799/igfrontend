@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Image, View, Text, TouchableOpacity, TextInput, Keyboard, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { Image, View, Text, TouchableOpacity, TextInput, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Animated, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
@@ -16,6 +16,10 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
     const [answer, setAnswer] = useState(previousAnswer || '');
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const imageOpacity = useRef(new Animated.Value(1)).current;
+    const imageHeight = useRef(new Animated.Value(150)).current;
+    const scrollViewRef = useRef(null);
 
     // Reset answer only when task ID actually changes (not during swipe gestures)
     useEffect(() => {
@@ -24,6 +28,50 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
             setAnswer(isAnswered ? previousAnswer || '' : '');
         }
     }, [task._id, isAnswered, previousAnswer]);
+
+    // Keyboard listeners to collapse image when keyboard opens
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            () => {
+                setKeyboardVisible(true);
+                Animated.parallel([
+                    Animated.timing(imageOpacity, {
+                        toValue: 0,
+                        duration: 200,
+                        useNativeDriver: false,
+                    }),
+                    Animated.timing(imageHeight, {
+                        toValue: 0,
+                        duration: 200,
+                        useNativeDriver: false,
+                    }),
+                ]).start();
+            }
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => {
+                setKeyboardVisible(false);
+                Animated.parallel([
+                    Animated.timing(imageOpacity, {
+                        toValue: 1,
+                        duration: 250,
+                        useNativeDriver: false,
+                    }),
+                    Animated.timing(imageHeight, {
+                        toValue: 150,
+                        duration: 250,
+                        useNativeDriver: false,
+                    }),
+                ]).start();
+            }
+        );
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     // Track if this card was just submitted
     const [justSubmitted, setJustSubmitted] = useState(false);
@@ -61,7 +109,7 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
             <KeyboardAvoidingView
                 style={styles.keyboardAvoid}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 140 : 0}
             >
                 <View style={styles.cardContent}>
                     {/* Top Header */}
@@ -83,13 +131,16 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
                         </Text>
                     </View>
 
-                    <Image
-                        source={require('../../../assets/daily-cards/deeptalk.png')}
-                        style={styles.heroImage}
-                        resizeMode="contain"
-                    />
+                    {/* Image collapses when keyboard is open */}
+                    <Animated.View style={{ height: imageHeight, opacity: imageOpacity, overflow: 'hidden' }}>
+                        <Image
+                            source={require('../../../assets/daily-cards/deeptalk.png')}
+                            style={styles.heroImage}
+                            resizeMode="contain"
+                        />
+                    </Animated.View>
 
-                    {/* Response Area with Submit Button inside */}
+                    {/* Response Area - fills all remaining space */}
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.textInput}
@@ -102,35 +153,37 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
                             blurOnSubmit={false}
                             textAlignVertical="top"
                         />
-                        <Text style={styles.charCount}>{answer.length}/250</Text>
-                        {/* Submit Button inside input */}
-                        <TouchableOpacity
-                            style={[
-                                styles.submitButton,
-                                !answer.trim() && styles.submitButtonDisabled
-                            ]}
-                            onPress={handleSubmit}
-                            activeOpacity={0.8}
-                            disabled={!answer.trim()}
-                        >
-                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                                <Path d="M5 12L10 17L20 7" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                            </Svg>
-                            <Text style={styles.submitButtonText}>Submit</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.swipeHint}>
-                        <Text style={styles.swipeText}>Swipe to see next</Text>
-                        <View style={styles.swipeDot}>
-                            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                                <Path d="M9 18L15 12L9 6" stroke="#9B6BE8" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-                            </Svg>
+                        <View style={styles.inputFooter}>
+                            <Text style={styles.charCount}>{answer.length}/250</Text>
+                            {/* Submit Button */}
+                            <TouchableOpacity
+                                style={[
+                                    styles.submitButton,
+                                    !answer.trim() && styles.submitButtonDisabled
+                                ]}
+                                onPress={handleSubmit}
+                                activeOpacity={0.8}
+                                disabled={!answer.trim()}
+                            >
+                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                    <Path d="M5 12L10 17L20 7" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                </Svg>
+                                <Text style={styles.submitButtonText}>Submit</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
+
+                    {!keyboardVisible && (
+                        <View style={styles.swipeHint}>
+                            <Text style={styles.swipeText}>Swipe to see next</Text>
+                            <View style={styles.swipeDot}>
+                                <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                                    <Path d="M9 18L15 12L9 6" stroke="#9B6BE8" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+                                </Svg>
+                            </View>
+                        </View>
+                    )}
                 </View>
-
-
             </KeyboardAvoidingView>
         </LinearGradient>
     );
@@ -163,7 +216,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: spacing.lg,
+        marginBottom: spacing.md,
     },
     categoryBadge: {
         backgroundColor: 'rgba(255,255,255,0.82)',
@@ -191,8 +244,8 @@ const styles = StyleSheet.create({
     questionSection: {
         justifyContent: 'center',
         paddingHorizontal: spacing.lg,
-        marginTop: spacing.lg,
-        marginBottom: spacing.md,
+        marginTop: spacing.sm,
+        marginBottom: spacing.sm,
     },
     questionText: {
         fontSize: 24,
@@ -205,21 +258,17 @@ const styles = StyleSheet.create({
     heroImage: {
         alignSelf: 'center',
         width: '88%',
-        height: 178,
-        marginTop: -4,
-        marginBottom: spacing.xl,
+        height: '100%',
     },
     inputContainer: {
+        flex: 1,
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
         padding: spacing.md,
-        paddingBottom: 58,
-        minHeight: 250,
-        marginTop: 'auto',
+        paddingBottom: spacing.md,
         marginBottom: spacing.sm,
         borderWidth: 1,
         borderColor: '#F0E3FF',
-        position: 'relative',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.16,
@@ -231,23 +280,22 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
         flex: 1,
-        minHeight: 90,
         textAlignVertical: 'top',
         fontFamily: fontFamily.medium,
     },
+    inputFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: spacing.sm,
+    },
     charCount: {
-        position: 'absolute',
-        right: 18,
-        bottom: 18,
         color: '#A69BB8',
         fontSize: 13,
         fontWeight: '700',
         fontFamily: fontFamily.bold,
     },
     submitButton: {
-        position: 'absolute',
-        bottom: 12,
-        right: 12,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#A970E8',
@@ -291,7 +339,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#EFE2FF',
     },
-
 });
 
 export default DeepCard;

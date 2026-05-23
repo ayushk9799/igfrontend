@@ -2856,6 +2856,11 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - RNNotifee (9.1.8):
+    - React-Core
+    - RNNotifee/NotifeeCore (= 9.1.8)
+  - RNNotifee/NotifeeCore (9.1.8):
+    - React-Core
   - RNPurchases (9.7.6):
     - PurchasesHybridCommon (= 17.31.0)
     - React-Core
@@ -3206,6 +3211,7 @@ DEPENDENCIES:
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - "RNNotifee (from `../node_modules/@notifee/react-native`)"
   - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -3433,6 +3439,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/messaging"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNNotifee:
+    :path: "../node_modules/@notifee/react-native"
   RNPurchases:
     :path: "../node_modules/react-native-purchases"
   RNReanimated:
@@ -3561,6 +3569,7 @@ SPEC CHECKSUMS:
   RNFBApp: b574c08010a6d3e995e654d03e34e789ebe55a35
   RNFBMessaging: da2d7f511df0368011a126b156f1a7f4be0c1b72
   RNGestureHandler: 3a73f098d74712952870e948b3d9cf7b6cae9961
+  RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
   RNPurchases: 462fb7edb0304dba1db46e3d38368a271ebe4cc2
   RNReanimated: 0a42c1fc618e8f510b7b1724164308e49220dbe2
   RNSVG: 6f39605a4c4d200b11435c35bd077553c6b5963a

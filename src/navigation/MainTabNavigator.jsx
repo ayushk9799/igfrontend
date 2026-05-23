@@ -67,6 +67,12 @@ export const MainTabNavigator = ({
     const [moodPreview, setMoodPreview] = useState(null);
     const lastAutoOpenedMoodRef = React.useRef(null);
 
+    useEffect(() => {
+        if (initialTab) {
+            setCurrentTab(initialTab);
+        }
+    }, [initialTab]);
+
     // Redux state
     const userData = useSelector(selectUser);
     const hasPartner = useSelector(selectHasPartner);

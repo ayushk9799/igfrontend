@@ -1,6 +1,6 @@
 // Updated Navigator with premium theme and auth persistence
 import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Alert, Platform, BackHandler, Modal } from 'react-native';
+import { View, StyleSheet, Alert, Platform, BackHandler, Modal, AppState } from 'react-native';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
@@ -34,6 +34,7 @@ import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, se
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
 import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener, checkNotificationPermission } from '../utils/pushNotifications';
+import { clearPendingLocalNotificationRoute, getInitialLocalNotification, getPendingLocalNotificationRoute, onLocalNotificationPress, showLocalNotification } from '../utils/localNotifications';
 import { API_BASE } from '../constants/Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
 // Redux actions
@@ -80,6 +81,7 @@ export const AppNavigator = () => {
     const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
 
     const pendingNotificationRef = React.useRef(null); // Store notification that launched the app from quit state
+    const recentLocalNotificationKeysRef = React.useRef(new Map());
     const purchasesConfiguredRef = React.useRef(false);
     const initPurchases = React.useCallback(async () => {
         try {
@@ -380,19 +382,137 @@ export const AppNavigator = () => {
     // Navigate to the correct screen based on push notification data
     const handleNotificationNavigation = async (remoteMessage) => {
         const data = remoteMessage?.data;
-        if (!data || data.type !== 'chat' || !data.chatId) return;
+        if (!data?.type) return;
+
+        const storedUser = getUser();
+        const currentUserId = storedUser?.id || userData?.id;
+
+        const openHomeTab = (tab = 'home') => {
+            setHomeInitialTab(tab);
+            setCurrentScreen('home');
+        };
+
+        const fetchJson = async (url) => {
+            const response = await fetch(url);
+            return response.json();
+        };
 
         try {
-            const response = await fetch(`${API_BASE}/api/chat/${data.chatId}`);
-            const json = await response.json();
-            if (json.success) {
-                setSelectedChat(json.data.chat || json.data);
-                setCurrentScreen('chat');
+            switch (data.type) {
+                case 'chat': {
+                    if (!data.chatId) return;
+                    const json = await fetchJson(`${API_BASE}/api/chat/${data.chatId}`);
+                    if (json.success) {
+                        setSelectedChat(json.data.chat || json.data);
+                        setCurrentScreen('chat');
+                    }
+                    break;
+                }
+
+                case 'puzzle': {
+                    let puzzle = null;
+
+                    if (data.puzzleId) {
+                        const json = await fetchJson(`${API_BASE}/api/puzzle/${data.puzzleId}`);
+                        puzzle = json.success ? json.data : null;
+                    } else if (currentUserId) {
+                        const json = await fetchJson(`${API_BASE}/api/puzzle/pending/${currentUserId}`);
+                        puzzle = json.success && json.data?.length > 0 ? json.data[0] : null;
+                    }
+
+                    if (puzzle) {
+                        dispatch(setSelectedPuzzle(puzzle));
+                        setCurrentScreen('jigsawPuzzle');
+                    } else {
+                        openHomeTab('games');
+                    }
+                    break;
+                }
+
+                case 'tictactoe': {
+                    let game = null;
+
+                    if (data.gameId) {
+                        const json = await fetchJson(`${API_BASE}/api/tictactoe/${data.gameId}`);
+                        game = json.success ? json.data : null;
+                    } else if (currentUserId) {
+                        const json = await fetchJson(`${API_BASE}/api/tictactoe/active/${currentUserId}`);
+                        game = json.success ? json.data : null;
+                    }
+
+                    if (game) {
+                        dispatch(setSelectedTicTacToe(game));
+                        setCurrentScreen('ticTacToe');
+                    } else {
+                        openHomeTab('games');
+                    }
+                    break;
+                }
+
+                case 'wordle': {
+                    let game = null;
+
+                    if (data.gameId) {
+                        const userQuery = currentUserId ? `?userId=${currentUserId}` : '';
+                        const json = await fetchJson(`${API_BASE}/api/wordle/${data.gameId}${userQuery}`);
+                        game = json.success ? json.data : null;
+                    } else if (currentUserId) {
+                        const json = await fetchJson(`${API_BASE}/api/wordle/active/${currentUserId}`);
+                        game = json.success ? json.data : null;
+                    }
+
+                    if (game) {
+                        dispatch(setSelectedWordle(game));
+                        setCurrentScreen('wordle');
+                    } else {
+                        openHomeTab('games');
+                    }
+                    break;
+                }
+
+                case 'daily_challenge_reminder':
+                    openHomeTab('dailyChallenge');
+                    break;
+
+                case 'scribble':
+                    openHomeTab('canvas');
+                    break;
+
+                case 'mood_update':
+                case 'partner_paired':
+                case 'nudge':
+                    openHomeTab('home');
+                    break;
+
+                default:
+                    break;
             }
         } catch (err) {
             console.error('❌ Failed to navigate from notification:', err);
         }
     };
+
+    const getNotificationKey = useCallback((data = {}) => {
+        const targetId = data.chatId || data.gameId || data.puzzleId || data.challengeId || '';
+        return `${data.type || 'unknown'}:${targetId}`;
+    }, []);
+
+    const showRoutedLocalNotification = useCallback(async ({ title, body, data }) => {
+        if (AppState.currentState !== 'active' || !data?.type) return;
+
+        const key = getNotificationKey(data);
+        const now = Date.now();
+        const recent = recentLocalNotificationKeysRef.current.get(key);
+        if (recent && now - recent < 5000) return;
+
+        recentLocalNotificationKeysRef.current.set(key, now);
+
+        try {
+            await showLocalNotification({ title, body, data });
+        } catch (err) {
+            console.warn('Failed to show local notification:', err?.message || err);
+        }
+    }, [getNotificationKey]);
 
     // Setup Notification Listeners
     useEffect(() => {
@@ -404,14 +524,27 @@ export const AppNavigator = () => {
             }
         });
 
+        getInitialLocalNotification().then(remoteMessage => {
+            if (remoteMessage) {
+                pendingNotificationRef.current = remoteMessage;
+            }
+        });
+
         // 2. Notification Opened App (App opened from background state)
         //    App is already initialized, navigate immediately
         const unsubscribeOpenedApp = onNotificationOpenedApp(getMessaging(getApp()), remoteMessage => {
             handleNotificationNavigation(remoteMessage);
         });
 
-        // 3. Foreground Message Handler — no alert, notification still shows in system tray
+        const unsubscribeLocalOpenedApp = onLocalNotificationPress(handleNotificationNavigation);
+
+        // 3. Foreground Message Handler — mirror FCM as a local notification
         const unsubscribeForeground = setupForegroundMessageHandler((remoteMessage) => {
+            if (remoteMessage?.data?.type === 'scribble_update') return;
+
+            const title = remoteMessage?.notification?.title || 'New notification';
+            const body = remoteMessage?.notification?.body || 'Open this update?';
+            showRoutedLocalNotification({ title, body, data: remoteMessage?.data });
         });
 
         // 4. Token Refresh Listener - handles token rotation by Firebase
@@ -419,10 +552,178 @@ export const AppNavigator = () => {
 
         return () => {
             unsubscribeOpenedApp();
+            unsubscribeLocalOpenedApp();
             if (unsubscribeForeground) unsubscribeForeground();
             if (unsubscribeTokenRefresh) unsubscribeTokenRefresh();
         };
     }, []);
+
+    useEffect(() => {
+        const handlePendingLocalNotificationRoute = () => {
+            const pending = getPendingLocalNotificationRoute();
+            if (pending) {
+                clearPendingLocalNotificationRoute();
+                handleNotificationNavigation(pending);
+            }
+        };
+
+        handlePendingLocalNotificationRoute();
+
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active') {
+                handlePendingLocalNotificationRoute();
+            }
+        });
+
+        return () => subscription?.remove();
+    }, []);
+
+    // Show local notifications for realtime socket events while both users are online.
+    useEffect(() => {
+        if (!socket || !userData?.id) return;
+
+        const sameId = (a, b) => a && b && String(a) === String(b);
+        const selectedChatId = selectedChat?._id;
+        const selectedTicTacToeId = selectedTicTacToe?._id || selectedTicTacToe?.gameId;
+        const selectedWordleId = selectedWordle?._id || selectedWordle?.gameId;
+        const partnerName = userData?.partnerUsername || 'Your partner';
+
+        const handleChatNotification = (data = {}) => {
+            if (!data.chatId) return;
+            if (currentScreen === 'chat' && sameId(selectedChatId, data.chatId)) return;
+
+            showRoutedLocalNotification({
+                title: data.senderName || partnerName,
+                body: data.preview || 'Sent you a message',
+                data: {
+                    type: 'chat',
+                    chatId: data.chatId,
+                },
+            });
+        };
+
+        const handleScribbleReceived = (data = {}) => {
+            showRoutedLocalNotification({
+                title: 'New Scribble',
+                body: `${data.fromUserName || partnerName} sent you a doodle`,
+                data: {
+                    type: 'scribble',
+                },
+            });
+        };
+
+        const handleMoodChanged = (data = {}) => {
+            const moodLabel = data.mood?.label ? `: ${data.mood.label}` : '';
+            showRoutedLocalNotification({
+                title: 'Mood Update',
+                body: `${data.userName || partnerName} updated their mood${moodLabel}`,
+                data: {
+                    type: 'mood_update',
+                },
+            });
+        };
+
+        const handleTicTacToeUpdate = (data = {}) => {
+            if (!data.gameId) return;
+            if (currentScreen === 'ticTacToe' && sameId(selectedTicTacToeId, data.gameId)) return;
+
+            showRoutedLocalNotification({
+                title: 'Tic Tac Toe',
+                body: data.gameComplete ? 'Your game was updated' : 'Your partner made a move',
+                data: {
+                    type: 'tictactoe',
+                    gameId: data.gameId,
+                },
+            });
+        };
+
+        const handleTicTacToeInvite = (data = {}) => {
+            if (!data.gameId) return;
+
+            showRoutedLocalNotification({
+                title: 'Tic Tac Toe Challenge',
+                body: `${data.fromName || partnerName} challenged you to play`,
+                data: {
+                    type: 'tictactoe',
+                    gameId: data.gameId,
+                },
+            });
+        };
+
+        const handleWordleUpdate = (data = {}) => {
+            if (!data.gameId) return;
+            if (currentScreen === 'wordle' && sameId(selectedWordleId, data.gameId)) return;
+
+            showRoutedLocalNotification({
+                title: 'Wordle Update',
+                body: data.gameComplete ? 'Your Wordle game finished' : 'Your Wordle game was updated',
+                data: {
+                    type: 'wordle',
+                    gameId: data.gameId,
+                },
+            });
+        };
+
+        const handleWordleInvite = (data = {}) => {
+            if (!data.gameId) return;
+
+            showRoutedLocalNotification({
+                title: 'Wordle Challenge',
+                body: `${data.creatorName || partnerName} set a word for you`,
+                data: {
+                    type: 'wordle',
+                    gameId: data.gameId,
+                },
+            });
+        };
+
+        const handleNudgeReceived = (data = {}) => {
+            showRoutedLocalNotification({
+                title: 'Partner Nudge',
+                body: `${data.fromName || partnerName} nudged you`,
+                data: {
+                    type: 'nudge',
+                },
+            });
+        };
+
+        socket.on('chat:notification', handleChatNotification);
+        socket.on('scribble:received', handleScribbleReceived);
+        socket.on('mood:changed', handleMoodChanged);
+        socket.on('tictactoe:invited', handleTicTacToeInvite);
+        socket.on('tictactoe:update', handleTicTacToeUpdate);
+        socket.on('tictactoe:moveReceived', handleTicTacToeUpdate);
+        socket.on('tictactoe:newGame', handleTicTacToeUpdate);
+        socket.on('wordle:invite', handleWordleInvite);
+        socket.on('wordle:update', handleWordleUpdate);
+        socket.on('wordle:newGame', handleWordleInvite);
+        socket.on('nudge:received', handleNudgeReceived);
+
+        return () => {
+            socket.off('chat:notification', handleChatNotification);
+            socket.off('scribble:received', handleScribbleReceived);
+            socket.off('mood:changed', handleMoodChanged);
+            socket.off('tictactoe:invited', handleTicTacToeInvite);
+            socket.off('tictactoe:update', handleTicTacToeUpdate);
+            socket.off('tictactoe:moveReceived', handleTicTacToeUpdate);
+            socket.off('tictactoe:newGame', handleTicTacToeUpdate);
+            socket.off('wordle:invite', handleWordleInvite);
+            socket.off('wordle:update', handleWordleUpdate);
+            socket.off('wordle:newGame', handleWordleInvite);
+            socket.off('nudge:received', handleNudgeReceived);
+        };
+    }, [
+        socket,
+        userData?.id,
+        userData?.partnerUsername,
+        currentScreen,
+        selectedChat?._id,
+        selectedTicTacToe?._id,
+        selectedTicTacToe?.gameId,
+        selectedWordle?._id,
+        selectedWordle?.gameId,
+        showRoutedLocalNotification,
+    ]);
 
     // Check auth state on mount
     useEffect(() => {

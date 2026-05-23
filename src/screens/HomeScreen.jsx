@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
@@ -23,6 +23,44 @@ import { storage } from '../utils/authStorage';
 
 const { width } = Dimensions.get('window');
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
+const SCRIBBLE_PREVIEW_PADDING = 28;
+const SCRIBBLE_PREVIEW_MIN_SIZE = 140;
+
+const getScribblePreviewBox = (paths = []) => {
+    const points = [];
+
+    paths.forEach((path) => {
+        const matches = path?.d?.matchAll(/[-+]?\d*\.?\d+(?:e[-+]?\d+)?/gi);
+        const values = matches ? Array.from(matches, match => Number(match[0])) : [];
+
+        for (let index = 0; index < values.length - 1; index += 2) {
+            const x = values[index];
+            const y = values[index + 1];
+
+            if (Number.isFinite(x) && Number.isFinite(y)) {
+                points.push({ x, y });
+            }
+        }
+    });
+
+    if (points.length === 0) {
+        return '0 0 320 220';
+    }
+
+    const minX = Math.min(...points.map(point => point.x));
+    const maxX = Math.max(...points.map(point => point.x));
+    const minY = Math.min(...points.map(point => point.y));
+    const maxY = Math.max(...points.map(point => point.y));
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const size = Math.max(
+        maxX - minX + SCRIBBLE_PREVIEW_PADDING * 2,
+        maxY - minY + SCRIBBLE_PREVIEW_PADDING * 2,
+        SCRIBBLE_PREVIEW_MIN_SIZE
+    );
+
+    return `${centerX - size / 2} ${centerY - size / 2} ${size} ${size}`;
+};
 
 const isMoodStale = (mood, now) => {
     if (!mood?.updatedAt) {
@@ -180,6 +218,10 @@ const HomeScreen = ({
     const [now, setNow] = useState(Date.now());
 
     const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
+    const scribblePreviewBox = useMemo(
+        () => getScribblePreviewBox(partnerScribble?.paths),
+        [partnerScribble?.paths]
+    );
     const isYourMoodStale = hasPartner && isMoodStale(yourMood, now);
     const isChallengeComplete = todayChallenge?.progress?.isComplete || false;
     const completedCount = todayChallenge?.progress?.completedCount || 0;
@@ -415,8 +457,13 @@ const HomeScreen = ({
 
                                 <View style={styles.scribblePaper}>
                                     {partnerScribble?.paths?.length > 0 ? (
-                                        <Svg width="100%" height="100%" viewBox="0 0 320 180">
-                                            {partnerScribble.paths.slice(0, 18).map((path, index) => (
+                                        <Svg
+                                            width="100%"
+                                            height="100%"
+                                            viewBox={scribblePreviewBox}
+                                            preserveAspectRatio="xMidYMid meet"
+                                        >
+                                            {partnerScribble.paths.slice(0, 40).map((path, index) => (
                                                 <Path
                                                     key={`${path.d}-${index}`}
                                                     d={path.d}
