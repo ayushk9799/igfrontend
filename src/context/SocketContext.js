@@ -62,14 +62,15 @@ export const SocketProvider = ({ children }) => {
     // Initialize socket connection
     const connect = useCallback(() => {
         const user = getUser();
-        if (!user?.id) {
+        const userId = user?.id || user?._id;
+        if (!userId) {
             return;
         }
 
         // Check if already connected
         if (socketRef.current?.connected) {
             // If the connected userId matches the current user, we're good
-            if (socketRef.current.auth?.userId === user.id) {
+            if (socketRef.current.auth?.userId === userId) {
                 return;
             }
             // Otherwise, we have a stale connection (e.g. after logout/login)
@@ -82,7 +83,7 @@ export const SocketProvider = ({ children }) => {
         // Create socket connection with auth
         const socketInstance = io(API_BASE, {
             auth: {
-                userId: user.id,
+                userId,
             },
             transports: ['websocket'],
             reconnection: true,

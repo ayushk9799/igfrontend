@@ -282,14 +282,15 @@ export const AppNavigator = () => {
 
     // Listen for Wordle socket events for real-time updates
     useEffect(() => {
-        if (!socket || !userData?.id) return;
+        const userId = userData?.id || userData?._id;
+        if (!socket || !userId) return;
 
         const handleWordleInvite = (data) => {
-            fetchPendingWordle(userData.id);
+            fetchPendingWordle(userId);
         };
 
         const handleWordleUpdate = (data) => {
-            fetchPendingWordle(userData.id);
+            fetchPendingWordle(userId);
         };
 
         socket.on('wordle:invite', handleWordleInvite);
@@ -299,7 +300,7 @@ export const AppNavigator = () => {
             socket.off('wordle:invite', handleWordleInvite);
             socket.off('wordle:update', handleWordleUpdate);
         };
-    }, [socket, userData?.id]);
+    }, [socket, userData?.id, userData?._id]);
 
     // Listen for TicTacToe socket events for real-time updates
     useEffect(() => {
@@ -580,7 +581,8 @@ export const AppNavigator = () => {
 
     // Show local notifications for realtime socket events while both users are online.
     useEffect(() => {
-        if (!socket || !userData?.id) return;
+        const userId = userData?.id || userData?._id;
+        if (!socket || !userId) return;
 
         const sameId = (a, b) => a && b && String(a) === String(b);
         const selectedChatId = selectedChat?._id;
@@ -592,9 +594,16 @@ export const AppNavigator = () => {
             if (!data.chatId) return;
             if (currentScreen === 'chat' && sameId(selectedChatId, data.chatId)) return;
 
+            const title = data.isAnswer && data.questionText
+                ? data.questionText
+                : data.senderName || partnerName;
+            const body = data.isAnswer
+                ? `${data.senderName || partnerName}: ${data.preview || 'Answered a question'}`
+                : data.preview || 'Sent you a message';
+
             showRoutedLocalNotification({
-                title: data.senderName || partnerName,
-                body: data.preview || 'Sent you a message',
+                title,
+                body,
                 data: {
                     type: 'chat',
                     chatId: data.chatId,
@@ -715,6 +724,7 @@ export const AppNavigator = () => {
     }, [
         socket,
         userData?.id,
+        userData?._id,
         userData?.partnerUsername,
         currentScreen,
         selectedChat?._id,
