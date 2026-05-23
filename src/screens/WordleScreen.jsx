@@ -11,11 +11,16 @@ import {
     Keyboard,
     ScrollView,
     Platform,
+    Dimensions,
+    Image,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { colors, spacing } from '../theme';
+import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import { colors } from '../theme';
 import GradientBackground from '../components/GradientBackground';
 import Button from '../components/Button';
 import { API_BASE } from '../constants/Api';
@@ -23,6 +28,161 @@ import { getUser } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 
 
+
+const AnimatedWordleTile = ({
+    letter,
+    status,
+    index,
+    isCurrent = false,
+    shouldAnimateFlip = false,
+    isSecret = false,
+}) => {
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const flipAnim = useRef(new Animated.Value(shouldAnimateFlip ? 0 : 180)).current;
+
+    // Spring scale-in on typing (only for current row)
+    useEffect(() => {
+        if (letter && isCurrent) {
+            scaleAnim.setValue(0.85);
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                tension: 120,
+                friction: 6,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [letter, isCurrent, scaleAnim]);
+
+    // Flip animation on submit
+    useEffect(() => {
+        if (shouldAnimateFlip) {
+            flipAnim.setValue(0);
+            Animated.timing(flipAnim, {
+                toValue: 180,
+                duration: 500,
+                delay: index * 200,
+                useNativeDriver: true,
+            }).start();
+
+            // Staggered haptic tick at mid-flip
+            const midTime = index * 200 + 250;
+            const timer = setTimeout(() => {
+                ReactNativeHapticFeedback.trigger("selection", {
+                    enableVibrateFallback: false,
+                    ignoreAndroidSystemSettings: false,
+                });
+            }, midTime);
+
+            return () => clearTimeout(timer);
+        } else if (!shouldAnimateFlip && status) {
+            // Already flipped
+            flipAnim.setValue(180);
+        } else {
+            // Unrevealed state
+            flipAnim.setValue(0);
+        }
+    }, [shouldAnimateFlip, status, index, flipAnim]);
+
+    const rotateX = flipAnim.interpolate({
+        inputRange: [0, 180],
+        outputRange: ['0deg', '180deg'],
+    });
+
+    const frontOpacity = flipAnim.interpolate({
+        inputRange: [0, 89.9, 90, 180],
+        outputRange: [1, 1, 0, 0],
+    });
+
+    const backOpacity = flipAnim.interpolate({
+        inputRange: [0, 90, 90.1, 180],
+        outputRange: [0, 0, 1, 1],
+    });
+
+    // Style resolution for front side
+    let frontBg = 'rgba(255, 255, 255, 0.65)';
+    let frontBorder = 'rgba(46, 30, 60, 0.12)';
+    let frontText = colors.text;
+
+    if (isSecret) {
+        frontBg = 'rgba(192, 132, 252, 0.12)';
+        frontBorder = '#E9D5FF';
+        frontText = colors.secondary;
+    } else if (letter) {
+        frontBg = '#FFFFFF';
+        frontBorder = colors.primary;
+    }
+
+    // Style resolution for back side
+    let backBg = 'rgba(255, 255, 255, 0.65)';
+    let backBorder = 'rgba(46, 30, 60, 0.12)';
+    let backText = colors.text;
+
+    if (isSecret) {
+        backBg = 'rgba(192, 132, 252, 0.12)';
+        backBorder = '#E9D5FF';
+        backText = colors.secondary;
+    } else if (status === 'correct') {
+        backBg = colors.success;
+        backBorder = colors.success;
+        backText = '#FFFFFF';
+    } else if (status === 'present') {
+        backBg = colors.warning;
+        backBorder = colors.warning;
+        backText = '#FFFFFF';
+    } else if (status === 'absent') {
+        backBg = colors.textMuted;
+        backBorder = colors.textMuted;
+        backText = '#FFFFFF';
+    } else if (letter) {
+        backBg = '#FFFFFF';
+        backBorder = colors.primary;
+    }
+
+    return (
+        <Animated.View
+            style={[
+                styles.tile,
+                {
+                    transform: [
+                        { scale: scaleAnim },
+                        { rotateX }
+                    ],
+                }
+            ]}
+        >
+            {/* Front Card (Unrevealed) */}
+            <Animated.View
+                style={[
+                    StyleSheet.absoluteFillObject,
+                    styles.tileSide,
+                    {
+                        backgroundColor: frontBg,
+                        borderColor: frontBorder,
+                        opacity: frontOpacity,
+                    }
+                ]}
+            >
+                <Text style={[styles.tileText, { color: frontText }]}>{letter?.toUpperCase() || ''}</Text>
+            </Animated.View>
+
+            {/* Back Card (Revealed Status) */}
+            <Animated.View
+                style={[
+                    StyleSheet.absoluteFillObject,
+                    styles.tileSide,
+                    {
+                        backgroundColor: backBg,
+                        borderColor: backBorder,
+                        opacity: backOpacity,
+                        transform: [{ rotateX: '180deg' }],
+                    }
+                ]}
+            >
+                <Text style={[styles.tileText, { color: backText }]}>{letter?.toUpperCase() || ''}</Text>
+            </Animated.View>
+        </Animated.View>
+    );
+};
 
 const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     const { gameId: initialGameId, gameData: initialGameData } = route?.params || {};
@@ -60,6 +220,51 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Input ref for focus management
     const inputRef = useRef(null);
+
+    // Track newly submitted guesses for 3D flip animation
+    const [lastSubmittedRowIndex, setLastSubmittedRowIndex] = useState(-1);
+
+    // Audio player ref
+    const audioPlayerRef = useRef(null);
+
+    // Initialize audio player on mount
+    useEffect(() => {
+        audioPlayerRef.current = new AudioRecorderPlayer();
+        return () => {
+            if (audioPlayerRef.current) {
+                audioPlayerRef.current.stopPlayer().catch(() => {});
+            }
+        };
+    }, []);
+
+    const playResultSound = useCallback(async () => {
+        try {
+            if (!audioPlayerRef.current) return;
+            await audioPlayerRef.current.stopPlayer().catch(() => {});
+            const soundAsset = require('../../assets/sounds/result.mp3');
+            const soundUri = Image.resolveAssetSource(soundAsset).uri;
+            await audioPlayerRef.current.startPlayer(soundUri);
+            await audioPlayerRef.current.setVolume(1.0);
+        } catch (error) {
+            console.error('Failed to play result sound:', error);
+        }
+    }, []);
+
+    // Haptic/audio feedback on game resolution (win/loss)
+    useEffect(() => {
+        if (status === 'won') {
+            playResultSound();
+            ReactNativeHapticFeedback.trigger("notificationSuccess", {
+                enableVibrateFallback: false,
+                ignoreAndroidSystemSettings: false,
+            });
+        } else if (status === 'lost') {
+            ReactNativeHapticFeedback.trigger("notificationError", {
+                enableVibrateFallback: false,
+                ignoreAndroidSystemSettings: false,
+            });
+        }
+    }, [status, playResultSound]);
 
     // Load or check for active game
     useEffect(() => {
@@ -114,6 +319,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             setRevealedWord('');
             setSuccessMessage('');
             setErrorMessage('');
+            setLastSubmittedRowIndex(-1);
             // Fetch the new active game
             fetchActiveGame();
         };
@@ -212,6 +418,11 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     };
 
     const shakeRow = () => {
+        ReactNativeHapticFeedback.trigger("notificationWarning", {
+            enableVibrateFallback: false,
+            ignoreAndroidSystemSettings: false,
+        });
+
         Animated.sequence([
             Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
             Animated.timing(shakeAnim, { toValue: -10, duration: 100, useNativeDriver: true }),
@@ -294,6 +505,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             const data = await response.json();
 
             if (data.success) {
+                setLastSubmittedRowIndex(guesses.length);
                 const newGuess = {
                     word: guess.toLowerCase(),
                     result: data.data.guessResult,
@@ -339,6 +551,20 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         }
     };
 
+    const startNewGame = () => {
+        setGuesses([]);
+        setCurrentGuess('');
+        setSecretWord('');
+        setKeyboardState({});
+        setStatus('pending');
+        setRevealedWord('');
+        setSuccessMessage('');
+        setErrorMessage('');
+        setLastSubmittedRowIndex(-1);
+        setIsCreator(true);
+        setMode('create');
+    };
+
     const notifyPartner = async () => {
         const now = Date.now();
         if (now - lastNotifyTime < 5 * 60 * 1000) {
@@ -371,6 +597,11 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Handle text input change - only allow letters
     const handleTextChange = (text) => {
+        ReactNativeHapticFeedback.trigger("selection", {
+            enableVibrateFallback: false,
+            ignoreAndroidSystemSettings: false,
+        });
+
         // Filter to only allow letters (A-Z, a-z)
         const lettersOnly = text.replace(/[^a-zA-Z]/g, '').toUpperCase();
 
@@ -409,43 +640,23 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         }
     };
 
-    // Render a single tile
-    const renderTile = (letter, status, index) => {
-        let bgColor = 'rgba(255, 255, 255, 0.65)';
-        let textColor = colors.text;
-        let borderColor = 'rgba(46, 30, 60, 0.12)';
-
-        if (status === 'correct') {
-            bgColor = colors.success; // Green
-            textColor = '#FFFFFF';
-            borderColor = colors.success;
-        } else if (status === 'present') {
-            bgColor = colors.warning; // Yellow
-            textColor = '#FFFFFF';
-            borderColor = colors.warning;
-        } else if (status === 'absent') {
-            bgColor = colors.textMuted; // Gray
-            textColor = '#FFFFFF';
-            borderColor = colors.textMuted;
-        } else if (letter) {
-            bgColor = '#FFFFFF';
-            borderColor = colors.primary;
-        }
-
-        return (
-            <View key={index} style={[styles.tile, { backgroundColor: bgColor, borderColor }]}>
-                <Text style={[styles.tileText, { color: textColor }]}>{letter?.toUpperCase() || ''}</Text>
-            </View>
-        );
-    };
-
     // Render a guess row
     const renderGuessRow = (guess, rowIndex) => {
         const tiles = [];
+        const isNewRow = rowIndex === lastSubmittedRowIndex;
         for (let i = 0; i < 5; i++) {
             const letter = guess?.word?.[i] || '';
             const status = guess?.result?.[i]?.status || null;
-            tiles.push(renderTile(letter, status, i));
+            tiles.push(
+                <AnimatedWordleTile
+                    key={i}
+                    letter={letter}
+                    status={status}
+                    index={i}
+                    isCurrent={false}
+                    shouldAnimateFlip={isNewRow}
+                />
+            );
         }
         return (
             <View key={rowIndex} style={styles.guessRow}>
@@ -459,7 +670,16 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         const word = mode === 'create' ? secretWord : currentGuess;
         const tiles = [];
         for (let i = 0; i < 5; i++) {
-            tiles.push(renderTile(word[i] || '', null, i));
+            tiles.push(
+                <AnimatedWordleTile
+                    key={i}
+                    letter={word[i] || ''}
+                    status={null}
+                    index={i}
+                    isCurrent={true}
+                    shouldAnimateFlip={false}
+                />
+            );
         }
         return (
             <TouchableOpacity
@@ -509,23 +729,30 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                 >
                     {/* Header */}
                     <View style={styles.header}>
-                        <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
-                            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                <Path
-                                    d="M19 12H5M12 19l-7-7 7-7"
-                                    stroke={colors.text}
-                                    strokeWidth={2.5}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </Svg>
-                        </TouchableOpacity>
-                        <Text style={styles.headerTitle}>Wordle</Text>
+                        <View style={styles.headerLeft}>
+                            <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
+                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M19 12H5M12 19l-7-7 7-7"
+                                        stroke={colors.text}
+                                        strokeWidth={2.5}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </Svg>
+                            </TouchableOpacity>
+                            <Text style={styles.headerTitle}>Wordle</Text>
+                        </View>
                         <View style={styles.headerRight}>
-                            {partnerOnline && (
+                            {partnerOnline ? (
                                 <View style={styles.onlineIndicator}>
                                     <View style={styles.onlineDot} />
                                     <Text style={styles.onlineText}>Online</Text>
+                                </View>
+                            ) : (
+                                <View style={styles.offlineIndicator}>
+                                    <View style={styles.offlineDot} />
+                                    <Text style={styles.offlineText}>Offline</Text>
                                 </View>
                             )}
                         </View>
@@ -635,11 +862,15 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                 {/* Show the secret word */}
                                 <View style={styles.secretWordContainer}>
                                     {secretWord.split('').map((letter, i) => (
-                                        <View key={i} style={[styles.tile, styles.tileSecret]}>
-                                            <Text style={[styles.tileText, { color: colors.secondary }]}>
-                                                {letter.toUpperCase()}
-                                            </Text>
-                                        </View>
+                                        <AnimatedWordleTile
+                                            key={i}
+                                            letter={letter}
+                                            status={null}
+                                            index={i}
+                                            isCurrent={false}
+                                            shouldAnimateFlip={false}
+                                            isSecret={true}
+                                        />
                                     ))}
                                 </View>
 
@@ -679,7 +910,21 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     )}
 
                     {/* Action Buttons */}
-                    {mode === 'complete' && isCreator && gameId && partnerOnline !== true && (status === 'pending' || status === 'in_progress') && (
+                    {/* 1. Game is finished (won or lost): Show Play Again */}
+                    {mode === 'complete' && (status === 'won' || status === 'lost') && (
+                        <View style={styles.actionButtons}>
+                            <Button
+                                title="Play Again 🎮"
+                                onPress={startNewGame}
+                                variant="primary"
+                                size="xl"
+                                fullWidth
+                            />
+                        </View>
+                    )}
+
+                    {/* 2. Creator is waiting & partner is offline: Show Nudge */}
+                    {mode === 'complete' && isCreator && (status === 'pending' || status === 'in_progress') && partnerOnline !== true && (
                         <View style={styles.actionButtons}>
                             <Button
                                 title={`Nudge ${partnerName}`}
@@ -693,16 +938,13 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                         </View>
                     )}
 
-                    {mode === 'complete' && !isCreator && (
-                        <View style={styles.actionButtons}>
-                            <Button
-                                title="Back to Home"
-                                onPress={() => navigation?.goBack?.()}
-                                variant="secondary"
-                                size="xl"
-                                fullWidth
-                            />
-                        </View>
+                    {status === 'won' && (
+                        <ConfettiCannon
+                            count={150}
+                            origin={{ x: Dimensions.get('window').width / 2, y: -20 }}
+                            autoStart={true}
+                            fadeOut={true}
+                        />
                     )}
                 </KeyboardAvoidingView>
             </SafeAreaView>
@@ -731,10 +973,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 12,
     },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
     backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#FAE8FF',
@@ -780,6 +1027,26 @@ const styles = StyleSheet.create({
     onlineText: {
         fontSize: 12,
         color: colors.success,
+        fontWeight: '600',
+    },
+    offlineIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(156, 163, 175, 0.12)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    offlineDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: colors.textMuted,
+        marginRight: 6,
+    },
+    offlineText: {
+        fontSize: 12,
+        color: colors.textMuted,
         fontWeight: '600',
     },
     statusContainer: {
@@ -836,12 +1103,8 @@ const styles = StyleSheet.create({
     tile: {
         width: 56,
         height: 56,
-        borderWidth: 1.5,
-        borderColor: 'rgba(46, 30, 60, 0.12)',
         borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+        backgroundColor: 'transparent',
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
@@ -854,9 +1117,11 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    tileSecret: {
-        backgroundColor: 'rgba(192, 132, 252, 0.12)',
-        borderColor: '#E9D5FF',
+    tileSide: {
+        borderWidth: 1.5,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     tileText: {
         fontSize: 28,

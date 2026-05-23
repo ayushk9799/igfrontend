@@ -9,10 +9,15 @@ import {
     Animated,
     Easing,
     Platform,
+    Image,
+    Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, Line } from 'react-native-svg';
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import ConfettiCannon from 'react-native-confetti-cannon';
 import { colors, spacing } from '../theme';
 import GradientBackground from '../components/GradientBackground';
 import Button from '../components/Button';
@@ -20,16 +25,85 @@ import { useSocketContext } from '../context/SocketContext';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 
+const AnimatedLine = Animated.createAnimatedComponent(Line);
+
+const WIN_PATTERNS = [
+    [0, 1, 2], // top row
+    [3, 4, 5], // middle row
+    [6, 7, 8], // bottom row
+    [0, 3, 6], // left column
+    [1, 4, 7], // middle column
+    [2, 5, 8], // right column
+    [0, 4, 8], // diagonal
+    [2, 4, 6], // anti-diagonal
+];
+
+const getCellCenter = (index) => {
+    const row = Math.floor(index / 3);
+    const col = index % 3;
+    const x = col * 102 + 50;
+    const y = row * 102 + 50;
+    return { x, y };
+};
+
+const AnimatedSymbol = ({ value, mySymbol }) => {
+    const scaleAnim = useRef(new Animated.Value(0.3)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        // Trigger haptic click exactly when showing the mark!
+        ReactNativeHapticFeedback.trigger("selection", {
+            enableVibrateFallback: false,
+            ignoreAndroidSystemSettings: false,
+        });
+
+        Animated.parallel([
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                tension: 60,
+                friction: 8,
+                useNativeDriver: true,
+            }),
+            Animated.timing(opacityAnim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            })
+        ]).start();
+    }, []);
+
+    return (
+        <Animated.View style={{
+            opacity: opacityAnim,
+            transform: [{ scale: scaleAnim }],
+            justifyContent: 'center',
+            alignItems: 'center',
+        }}>
+            {value === 'X' ? (
+                <Text style={[styles.symbolX, value === mySymbol && styles.mySymbol]}>
+                    ✕
+                </Text>
+            ) : (
+                <Text style={[styles.symbolO, value === mySymbol && styles.mySymbol]}>
+                    ○
+                </Text>
+            )}
+        </Animated.View>
+    );
+};
+
 const TicTacToeScreen = ({ navigation, route }) => {
     const { gameId: initialGameId, gameData: initialGameData } = route?.params || {};
     const { socket, partnerOnline } = useSocketContext();
     const user = getUser();
+    const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
     // Game state
     const [gameId, setGameId] = useState(initialGameId || null);
     const [board, setBoard] = useState(Array(9).fill(null));
     const [currentTurn, setCurrentTurn] = useState('creator');
     const [status, setStatus] = useState('pending');
+    const [revealGameOverText, setRevealGameOverText] = useState(false);
     const [creatorSymbol, setCreatorSymbol] = useState('X');
     const [partnerSymbol, setPartnerSymbol] = useState('O');
     const [isCreator, setIsCreator] = useState(true);
@@ -39,6 +113,17 @@ const TicTacToeScreen = ({ navigation, route }) => {
     const [lastNotifyTime, setLastNotifyTime] = useState(0);
     const [statusMessage, setStatusMessage] = useState(null);
     const statusTimerRef = useRef(null);
+    const audioPlayerRef = useRef(null);
+
+    // Initialize audio player on mount
+    useEffect(() => {
+        audioPlayerRef.current = new AudioRecorderPlayer();
+        return () => {
+            if (audioPlayerRef.current) {
+                audioPlayerRef.current.stopPlayer().catch(() => {});
+            }
+        };
+    }, []);
 
     // Show inline status message that auto-clears after 3 seconds
     const showStatus = useCallback((message, type = 'error') => {
@@ -117,6 +202,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
             // Partner is NOT the creator of this new game
             setIsCreator(data.creatorId === user?.id);
             setWinner(null);
+            setRevealGameOverText(false);
             // Join the new game room
             socket.emit('tictactoe:join', { gameId: data.gameId });
             // Trigger game start animation
@@ -235,6 +321,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
         setPartnerSymbol(data.partnerSymbol || 'O');
         setIsCreator(data.creatorId?._id === user?.id || data.creatorId === user?.id);
         setWinner(data.winner);
+        setRevealGameOverText(['won_creator', 'won_partner', 'draw'].includes(data.status));
         setLoading(false);
     };
 
@@ -389,6 +476,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 }
                 // Reset winner state for new game
                 setWinner(null);
+                setRevealGameOverText(false);
                 // Trigger game start animation for creator
                 startGameAnimation('Game Started Again! 🎮');
             } else {
@@ -512,37 +600,144 @@ const TicTacToeScreen = ({ navigation, route }) => {
         return `${partnerName}'s turn`;
     };
 
+    const winningLine = React.useMemo(() => {
+        if (!['won_creator', 'won_partner'].includes(status)) return [];
+        for (const pattern of WIN_PATTERNS) {
+            const [a, b, c] = pattern;
+            if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                return pattern;
+            }
+        }
+        return [];
+    }, [board, status]);
+
+    const lineAnim = useRef(new Animated.Value(0)).current;
+    const highlightAnim = useRef(new Animated.Value(0)).current;
+
+    const playResultSound = useCallback(async () => {
+        try {
+            if (!audioPlayerRef.current) return;
+            await audioPlayerRef.current.stopPlayer().catch(() => {});
+            const soundAsset = require('../../assets/sounds/result.mp3');
+            const soundUri = Image.resolveAssetSource(soundAsset).uri;
+            await audioPlayerRef.current.startPlayer(soundUri);
+            await audioPlayerRef.current.setVolume(1.0);
+        } catch (error) {
+            console.error('Failed to play result sound:', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (winningLine.length > 0) {
+            lineAnim.setValue(0);
+            highlightAnim.setValue(0);
+            setRevealGameOverText(false);
+            
+            // Play game over result sound effect!
+            playResultSound();
+
+            Animated.sequence([
+                // First highlight winning boxes and dim others smoothly
+                Animated.timing(highlightAnim, {
+                    toValue: 1,
+                    duration: 400,
+                    easing: Easing.inOut(Easing.ease),
+                    useNativeDriver: true,
+                }),
+                // Then draw the winning strike-through line from end to end
+                Animated.timing(lineAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    easing: Easing.out(Easing.ease),
+                    useNativeDriver: true,
+                })
+            ]).start(({ finished }) => {
+                if (finished) {
+                    setRevealGameOverText(true);
+                }
+            });
+        } else {
+            lineAnim.setValue(0);
+            highlightAnim.setValue(0);
+            setRevealGameOverText(false);
+            if (audioPlayerRef.current) {
+                audioPlayerRef.current.stopPlayer().catch(() => {});
+            }
+        }
+    }, [winningLine, playResultSound]);
+
+    const startCenter = winningLine.length > 0 ? getCellCenter(winningLine[0]) : { x: 0, y: 0 };
+    const endCenter = winningLine.length > 0 ? getCellCenter(winningLine[2]) : { x: 0, y: 0 };
+
+    const lineData = React.useMemo(() => {
+        if (winningLine.length === 0) return { startX: 0, startY: 0, length: 0, angle: '0rad' };
+        const dx = endCenter.x - startCenter.x;
+        const dy = endCenter.y - startCenter.y;
+        const originalLength = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        
+        // Extend line by 50px at each end to reach outer edges
+        const startX = startCenter.x - 50 * Math.cos(angle);
+        const startY = startCenter.y - 50 * Math.sin(angle);
+        const length = originalLength + 100;
+        
+        return { startX, startY, length, angle: `${angle}rad` };
+    }, [winningLine, startCenter, endCenter]);
+
     const renderCell = (index) => {
         const value = board[index];
-        const isWinningCell = false; // TODO: highlight winning cells
+        const isWinningCell = winningLine.includes(index);
 
         // Allow tapping if: new game OR (my turn AND cell empty AND game not over)
         const canTap = isNewGame || (isMyTurn && value === null && !isGameOver);
 
+        // Dim non-winning cells smoothly when the game is won, keeping style node type consistent
+        const cellOpacity = (winningLine.length > 0 && !isWinningCell)
+            ? highlightAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0.1]
+            })
+            : highlightAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1]
+            });
+
         return (
-            <TouchableOpacity
+            <Animated.View
                 key={index}
                 style={[
                     styles.cell,
                     index % 3 !== 2 && styles.cellBorderRight,
                     index < 6 && styles.cellBorderBottom,
-                    isWinningCell && styles.cellWinning,
+                    { opacity: cellOpacity }
                 ]}
-                onPress={() => makeMove(index)}
-                disabled={!canTap}
-                activeOpacity={0.7}
             >
-                {value === 'X' && (
-                    <Text style={[styles.symbolX, value === mySymbol && styles.mySymbol]}>
-                        ✕
-                    </Text>
-                )}
-                {value === 'O' && (
-                    <Text style={[styles.symbolO, value === mySymbol && styles.mySymbol]}>
-                        ○
-                    </Text>
-                )}
-            </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => makeMove(index)}
+                    disabled={!canTap}
+                    activeOpacity={0.7}
+                    style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        width: '100%',
+                        height: '100%'
+                    }}
+                >
+                    {isWinningCell && (
+                        <Animated.View
+                            style={[
+                                StyleSheet.absoluteFill,
+                                styles.cellWinning,
+                                { opacity: highlightAnim }
+                            ]}
+                        />
+                    )}
+                    {value !== null && (
+                        <AnimatedSymbol value={value} mySymbol={mySymbol} />
+                    )}
+                </TouchableOpacity>
+            </Animated.View>
         );
     };
 
@@ -564,23 +759,30 @@ const TicTacToeScreen = ({ navigation, route }) => {
             <SafeAreaView style={styles.container} edges={['top']}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
-                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                            <Path
-                                d="M19 12H5M12 19l-7-7 7-7"
-                                stroke={colors.text}
-                                strokeWidth={2.5}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </Svg>
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Tic Tac Toe</Text>
+                    <View style={styles.headerLeft}>
+                        <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
+                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M19 12H5M12 19l-7-7 7-7"
+                                    stroke={colors.text}
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
+                        </TouchableOpacity>
+                        <Text style={styles.headerTitle}>Tic Tac Toe</Text>
+                    </View>
                     <View style={styles.headerRight}>
-                        {partnerOnline && (
+                        {partnerOnline ? (
                             <View style={styles.onlineIndicator}>
                                 <View style={styles.onlineDot} />
                                 <Text style={styles.onlineText}>Online</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.offlineIndicator}>
+                                <View style={styles.offlineDot} />
+                                <Text style={styles.offlineText}>Offline</Text>
                             </View>
                         )}
                     </View>
@@ -631,6 +833,31 @@ const TicTacToeScreen = ({ navigation, route }) => {
                         }
                     ]}>
                         {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(renderCell)}
+
+                        {winningLine.length > 0 && (
+                            <Animated.View
+                                pointerEvents="none"
+                                style={{
+                                    position: 'absolute',
+                                    left: lineData.startX,
+                                    top: lineData.startY - 3, // Align vertically with extended start center
+                                    width: lineData.length,
+                                    height: 6,
+                                    borderRadius: 3,
+                                    backgroundColor: colors.secondary,
+                                    transformOrigin: 'left',
+                                    transform: [
+                                        { rotate: lineData.angle },
+                                        { scaleX: lineAnim }
+                                    ],
+                                    shadowColor: colors.secondary,
+                                    shadowOffset: { width: 0, height: 0 },
+                                    shadowOpacity: 0.8,
+                                    shadowRadius: 10,
+                                    elevation: 5,
+                                }}
+                            />
+                        )}
                     </Animated.View>
                 </View>
 
@@ -663,19 +890,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 )}
 
                 {/* Play Again / Back buttons */}
-                {isGameOver && (
+                {isGameOver && (revealGameOverText || status === 'draw') && (
                     <View style={styles.gameOverButtons}>
                         <Button
                             title="Play Again"
                             onPress={createNewGame}
                             variant="glow"
-                            size="xl"
-                            fullWidth
-                        />
-                        <Button
-                            title="Back to Home"
-                            onPress={() => navigation?.goBack?.()}
-                            variant="secondary"
                             size="xl"
                             fullWidth
                         />
@@ -693,6 +913,15 @@ const TicTacToeScreen = ({ navigation, route }) => {
                             fullWidth
                         />
                     </View>
+                )}
+
+                {didIWin && revealGameOverText && (
+                    <ConfettiCannon
+                        count={150}
+                        origin={{ x: SCREEN_WIDTH / 2, y: -20 }}
+                        autoStart={true}
+                        fadeOut={true}
+                    />
                 )}
             </SafeAreaView>
         </GradientBackground>
@@ -720,10 +949,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 12,
     },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
     backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#FAE8FF',
@@ -768,6 +1002,26 @@ const styles = StyleSheet.create({
     onlineText: {
         fontSize: 12,
         color: colors.success,
+        fontWeight: '600',
+    },
+    offlineIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(156, 163, 175, 0.12)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    offlineDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#9CA3AF',
+        marginRight: 6,
+    },
+    offlineText: {
+        fontSize: 12,
+        color: '#9CA3AF',
         fontWeight: '600',
     },
     playersContainer: {
