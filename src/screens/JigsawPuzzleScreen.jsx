@@ -266,6 +266,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     const imgOffsetX = (actualPuzzleSize - scaledImgW) / 2;
     const imgOffsetY = (actualPuzzleSize - scaledImgH) / 2;
 
+    const gridRef = useRef(null);
+
     // Animation refs
     const celebrateScale = useRef(new Animated.Value(0)).current;
     const celebrateOpacity = useRef(new Animated.Value(0)).current;
@@ -295,6 +297,11 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     useEffect(() => {
         gridPositionRef.current = gridPosition;
     }, [gridPosition]);
+
+    const gridMetricsRef = useRef({ gridDim, pieceSize, actualPuzzleSize });
+    useEffect(() => {
+        gridMetricsRef.current = { gridDim, pieceSize, actualPuzzleSize };
+    }, [gridDim, pieceSize, actualPuzzleSize]);
 
     // Hover target ref for use in pan responders
     const hoverTargetRef = useRef(hoverTarget);
@@ -526,23 +533,41 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     }, [celebrateScale, celebrateOpacity]);
 
     // Get target position from screen coordinates
+    const measureGridPosition = useCallback(() => {
+        requestAnimationFrame(() => {
+            gridRef.current?.measureInWindow?.((x, y) => {
+                const nextPosition = { x, y };
+                gridPositionRef.current = nextPosition;
+                setGridPosition(nextPosition);
+            });
+        });
+    }, []);
+
     const getTargetPosition = useCallback((pageX, pageY) => {
         const gp = gridPositionRef.current;
         const relX = pageX - gp.x;
         const relY = pageY - gp.y;
 
-        const currentGridDim = piecesRef.current.length > 0 ? Math.round(Math.sqrt(piecesRef.current.length)) : 9;
-        const currentPuzzleSize = Math.floor(windowWidth - 60);
-        const currentPieceSize = Math.floor(currentPuzzleSize / currentGridDim);
+        const {
+            gridDim: currentGridDim,
+            pieceSize: currentPieceSize,
+            actualPuzzleSize: currentActualPuzzleSize,
+        } = gridMetricsRef.current;
+
+        if (
+            relX < 0 ||
+            relY < 0 ||
+            relX >= currentActualPuzzleSize ||
+            relY >= currentActualPuzzleSize
+        ) {
+            return -1;
+        }
 
         const col = Math.floor(relX / currentPieceSize);
         const row = Math.floor(relY / currentPieceSize);
 
-        if (col >= 0 && col < currentGridDim && row >= 0 && row < currentGridDim) {
-            return row * currentGridDim + col;
-        }
-        return -1;
-    }, [windowWidth]);
+        return row * currentGridDim + col;
+    }, []);
 
     // Check if placing the dragging piece at targetSlot causes collision with its immediate neighbors
     const checkHoverCollision = useCallback((targetSlot) => {
@@ -727,6 +752,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                 onPanResponderTerminationRequest: () => false,
 
                 onPanResponderGrant: (evt, gestureState) => {
+                    measureGridPosition();
+
                     const currentSlot = piecesRef.current.indexOf(index) !== -1
                         ? piecesRef.current.indexOf(index)
                         : piecesRef.current.indexOf(-index - 1);
@@ -778,7 +805,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                             try {
                                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                             } catch (e) {}
-                            Alert.alert('Invalid Move', 'Pieces cannot overlap!');
                             Animated.spring(dragPosition, {
                                 toValue: { x: gestureState.x0, y: gestureState.y0 },
                                 useNativeDriver: false,
@@ -998,17 +1024,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     };
 
     // Handle grid layout measurement
-    const handleGridLayout = (event) => {
-        const { x, y, width, height } = event.nativeEvent.layout;
-        // Calculate absolute position
-        // The grid is centered, so we calculate its position
-        const gridX = (windowWidth - PUZZLE_SIZE) / 2;
-        const gridY = event.nativeEvent.layout.y;
-
-        // Use measure for accurate page coordinates
-        event.target.measure?.((fx, fy, w, h, px, py) => {
-            setGridPosition({ x: px, y: py });
-        });
+    const handleGridLayout = () => {
+        measureGridPosition();
     };
 
     // Pulsing animation for loading
@@ -1156,6 +1173,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                         )}
 
                         <View
+                            ref={gridRef}
                             style={[
                                 styles.puzzleGrid,
                                 {
