@@ -37,7 +37,6 @@ const isMoodPastRefreshWindow = (mood, now) => {
 export const MainTabNavigator = ({
     // Only keep essential callbacks that navigate outside this component
     yourMood,
-    pendingInvite,
     initialTab,
     onMoodSelect,
     onQuestionPress,
@@ -52,10 +51,10 @@ export const MainTabNavigator = ({
     onPremiumPress,
     onLogout,
     onDeleteAccount,
+    onTabChange,
 }) => {
     const [currentTab, setCurrentTab] = useState(initialTab || 'home');
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
-    const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
     const [todayChallenge, setTodayChallenge] = useState(null);
     const [isAccountVisible, setIsAccountVisible] = useState(false);
@@ -72,6 +71,10 @@ export const MainTabNavigator = ({
             setCurrentTab(initialTab);
         }
     }, [initialTab]);
+
+    useEffect(() => {
+        onTabChange?.(currentTab);
+    }, [currentTab, onTabChange]);
 
     // Redux state
     const userData = useSelector(selectUser);
@@ -96,7 +99,7 @@ export const MainTabNavigator = ({
     const duelBadgeCount = useSelector(selectDuelBadgeCount);
 
     // Socket context for real-time data
-    const { socket, partnerMood, partnerOnline, partnerScribble } = useSocketContext();
+    const { socket, partnerMood, partnerScribble } = useSocketContext();
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -220,14 +223,10 @@ export const MainTabNavigator = ({
             case 'home':
                 return (
                     <HomeScreen
-                        partnerName={partnerName}
-                        daysTogether={daysTogether}
                         hasPartner={hasPartner}
                         yourMood={moodPreview || yourMood}
                         partnerMood={partnerMood}
-                        partnerOnline={partnerOnline}
                         partnerScribble={partnerScribble}
-                        pendingInvite={pendingInvite}
                         todayChallenge={todayChallenge}
                         onMoodPress={openMoodPicker}
                         onScribblePress={() => setCurrentTab('canvas')}
@@ -249,16 +248,7 @@ export const MainTabNavigator = ({
                         }}
                         onFindPartner={onFindPartner}
                         onSettingsPress={() => setIsAccountVisible(true)}
-                        onJigsawCreate={onJigsawCreate}
-                        onJigsawPlay={onJigsawPlay}
-                        pendingPuzzle={pendingPuzzle}
                         onRefreshPuzzle={onRefreshPuzzle}
-                        pendingTicTacToe={pendingTicTacToe}
-                        activeTicTacToe={activeTicTacToe}
-                        onTicTacToePress={onTicTacToePress}
-                        pendingWordle={pendingWordle}
-                        activeWordle={activeWordle}
-                        onWordlePress={onWordlePress}
                         duelBadgeCount={duelBadgeCount}
                         onNotificationPress={() => setIsNotificationVisible(true)}
                     />

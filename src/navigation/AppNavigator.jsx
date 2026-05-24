@@ -73,6 +73,7 @@ export const AppNavigator = () => {
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
     const [homeInitialTab, setHomeInitialTab] = useState(null); // Track which tab to open in MainTabNavigator
+    const [lastHomeTab, setLastHomeTab] = useState('home'); // Remember active tab before opening full-screen routes
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -898,6 +899,11 @@ export const AppNavigator = () => {
         });
     };
 
+    const navigateHomeTab = (tab = lastHomeTab || 'home') => {
+        setHomeInitialTab(tab);
+        navigate('home');
+    };
+
     // Fetch pending TicTacToe games for the user
     const fetchPendingTicTacToe = async (userId) => {
         if (!userId) return;
@@ -1215,8 +1221,13 @@ export const AppNavigator = () => {
                 return true;
             }
 
+            if (['jigsawCreate', 'jigsawPuzzle', 'ticTacToe', 'wordle'].includes(currentScreen)) {
+                navigateHomeTab('games');
+                return true;
+            }
+
             if (homeSubScreens.includes(currentScreen)) {
-                navigate('home');
+                navigateHomeTab();
                 return true; // Prevent default (app exit)
             }
 
@@ -1226,6 +1237,7 @@ export const AppNavigator = () => {
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentScreen, isPremiumVisible]);
 
     // Handle onboarding completion
@@ -1362,6 +1374,7 @@ export const AppNavigator = () => {
                         onPremiumPress={() => navigate('premium')}
                         onLogout={handleLogout}
                         onDeleteAccount={handleDeleteAccount}
+                        onTabChange={setLastHomeTab}
                     />
                 );
 
@@ -1482,7 +1495,7 @@ export const AppNavigator = () => {
             case 'jigsawCreate':
                 return (
                     <JigsawCreateScreen
-                        navigation={{ goBack: () => navigate('home') }}
+                        navigation={{ goBack: () => navigateHomeTab('games') }}
                         route={{
                             params: {
                                 partnerId: userData.partnerId,
@@ -1496,7 +1509,7 @@ export const AppNavigator = () => {
             case 'jigsawPuzzle':
                 return (
                     <JigsawPuzzleScreen
-                        navigation={{ goBack: () => navigate('home') }}
+                        navigation={{ goBack: () => navigateHomeTab('games') }}
                         route={{
                             params: {
                                 puzzleId: selectedPuzzle?._id,
@@ -1509,7 +1522,7 @@ export const AppNavigator = () => {
             case 'ticTacToe':
                 return (
                     <TicTacToeScreen
-                        navigation={{ goBack: () => navigate('home') }}
+                        navigation={{ goBack: () => navigateHomeTab('games') }}
                         route={{
                             params: {
                                 gameId: selectedTicTacToe?._id,
@@ -1524,7 +1537,7 @@ export const AppNavigator = () => {
             case 'wordle':
                 return (
                     <WordleScreen
-                        navigation={{ goBack: () => navigate('home'), navigate }}
+                        navigation={{ goBack: () => navigateHomeTab('games'), navigate }}
                         route={{
                             params: {
                                 gameId: selectedWordle?._id,

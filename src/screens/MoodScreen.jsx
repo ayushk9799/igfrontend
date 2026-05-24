@@ -87,15 +87,17 @@ const MoodListHeader = ({ onBack, partnerName, isRefreshPrompt, moodUpdatedAt })
 
     return (
         <View style={styles.header}>
-            <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                <Text style={styles.backIcon}>×</Text>
-            </TouchableOpacity>
             <View style={styles.headerText}>
                 <Text style={styles.title}>{title}</Text>
                 <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
-            <View style={styles.updatedBadge}>
-                <Text style={styles.updatedBadgeText}>{getLastUpdatedText(moodUpdatedAt)}</Text>
+            <View style={styles.headerRight}>
+                <TouchableOpacity onPress={onBack} style={styles.closeButton}>
+                    <Text style={styles.closeIcon}>×</Text>
+                </TouchableOpacity>
+                <View style={styles.updatedBadge}>
+                    <Text style={styles.updatedBadgeText}>{getLastUpdatedText(moodUpdatedAt)}</Text>
+                </View>
             </View>
         </View>
     );
@@ -254,7 +256,11 @@ const styles = StyleSheet.create({
     headerText: {
         flex: 1,
     },
-    backButton: {
+    headerRight: {
+        alignItems: 'flex-end',
+        gap: 6,
+    },
+    closeButton: {
         width: 36,
         height: 36,
         borderRadius: 18,
@@ -275,7 +281,7 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    backIcon: {
+    closeIcon: {
         fontSize: 22,
         color: colors.text,
         fontWeight: '600',
@@ -363,7 +369,8 @@ const styles = StyleSheet.create({
     },
     shareButton: {
         backgroundColor: colors.primary,
-        paddingVertical: spacing.lg,
+        minHeight: 40,
+        paddingVertical: spacing.xs,
         paddingHorizontal: spacing['2xl'],
         borderRadius: borderRadius.xl,
         alignItems: 'center',
@@ -381,7 +388,7 @@ const styles = StyleSheet.create({
     },
     shareButtonText: {
         color: '#FFFFFF',
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: '700',
     },
     partnerCard: {
