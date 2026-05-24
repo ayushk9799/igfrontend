@@ -13,12 +13,12 @@ import {
     Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import { colors, spacing } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
+import { fontFamily } from '../constants/fonts';
 import GradientBackground from '../components/GradientBackground';
 import Button from '../components/Button';
 import { useSocketContext } from '../context/SocketContext';
@@ -26,6 +26,19 @@ import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
+
+
+
+const SparkleStar = ({ size = 20, color = '#EC4899', style }) => (
+    <Animated.View style={style}>
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M12 2 C12 7.5 16.5 12 22 12 C16.5 12 12 16.5 12 22 C12 16.5 7.5 12 2 12 C7.5 12 12 7.5 12 2 Z"
+                fill={color}
+            />
+        </Svg>
+    </Animated.View>
+);
 
 const WIN_PATTERNS = [
     [0, 1, 2], // top row
@@ -46,7 +59,7 @@ const getCellCenter = (index) => {
     return { x, y };
 };
 
-const AnimatedSymbol = ({ value, mySymbol }) => {
+const AnimatedSymbol = ({ value }) => {
     const scaleAnim = useRef(new Animated.Value(0.3)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -78,15 +91,31 @@ const AnimatedSymbol = ({ value, mySymbol }) => {
             transform: [{ scale: scaleAnim }],
             justifyContent: 'center',
             alignItems: 'center',
+            width: '100%',
+            height: '100%',
         }}>
             {value === 'X' ? (
-                <Text style={[styles.symbolX, value === mySymbol && styles.mySymbol]}>
-                    ✕
-                </Text>
+                <Svg width={56} height={56} viewBox="0 0 60 60">
+                    <Path
+                        d="M16 16 L44 44 M44 16 L16 44"
+                        stroke="#EC4899"
+                        strokeWidth={7.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                </Svg>
             ) : (
-                <Text style={[styles.symbolO, value === mySymbol && styles.mySymbol]}>
-                    ○
-                </Text>
+                <Svg width={56} height={56} viewBox="0 0 60 60">
+                    <Circle
+                        cx="30"
+                        cy="30"
+                        r="18"
+                        stroke="#A855F7"
+                        strokeWidth={7.5}
+                        fill="none"
+                        strokeLinecap="round"
+                    />
+                </Svg>
             )}
         </Animated.View>
     );
@@ -584,20 +613,28 @@ const TicTacToeScreen = ({ navigation, route }) => {
         }
     };
 
+
     const isGameOver = ['won_creator', 'won_partner', 'draw'].includes(status);
     const isNewGame = status === 'new';
     const didIWin = (isCreator && status === 'won_creator') || (!isCreator && status === 'won_partner');
     const didTheyWin = (isCreator && status === 'won_partner') || (!isCreator && status === 'won_creator');
+
+    const leftActive = isMyTurn && !isGameOver;
+    const leftSymbolSize = leftActive ? 52 : 34;
+    const leftSymbolOpacity = leftActive || isGameOver ? 1.0 : 0.55;
+
+    const rightActive = !isMyTurn && !isGameOver;
+    const rightSymbolSize = rightActive ? 52 : 34;
+    const rightSymbolOpacity = rightActive || isGameOver ? 1.0 : 0.55;
 
     const getStatusText = () => {
         if (loading) return 'Loading...';
         if (isGameStarting) return `${gameStartMessage}\n${countdown > 0 ? countdown : 'GO!'}`;
         if (isNewGame) return 'Tap to start game!';
         if (status === 'draw') return "It's a draw! 🤝";
-        if (didIWin) return 'You won! 🎉';
-        if (didTheyWin) return `${partnerName} won! 💜`;
-        if (isMyTurn) return 'Your turn';
-        return `${partnerName}'s turn`;
+        if (didIWin) return `🎉 You won! 💜`;
+        if (didTheyWin) return `🎉 ${partnerName} won! 💜`;
+        return '';
     };
 
     const winningLine = React.useMemo(() => {
@@ -613,6 +650,43 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
     const lineAnim = useRef(new Animated.Value(0)).current;
     const highlightAnim = useRef(new Animated.Value(0)).current;
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const gameOverTextAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const pulse = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 1.12,
+                    duration: 900,
+                    easing: Easing.inOut(Easing.ease),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 0.92,
+                    duration: 900,
+                    easing: Easing.inOut(Easing.ease),
+                    useNativeDriver: true,
+                })
+            ])
+        );
+        pulse.start();
+        return () => pulse.stop();
+    }, [pulseAnim]);
+
+    useEffect(() => {
+        if (isGameOver && (revealGameOverText || status === 'draw')) {
+            gameOverTextAnim.setValue(0);
+            Animated.spring(gameOverTextAnim, {
+                toValue: 1,
+                tension: 45,
+                friction: 5.5,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            gameOverTextAnim.setValue(0);
+        }
+    }, [revealGameOverText, isGameOver, status, gameOverTextAnim]);
 
     const playResultSound = useCallback(async () => {
         try {
@@ -638,7 +712,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
             Animated.timing(lineAnim, {
                 toValue: 1,
-                duration: 500,
+                duration: 1000,
                 easing: Easing.out(Easing.ease),
                 useNativeDriver: true,
             }).start(({ finished }) => {
@@ -656,23 +730,26 @@ const TicTacToeScreen = ({ navigation, route }) => {
         }
     }, [winningLine, playResultSound]);
 
-    const startCenter = winningLine.length > 0 ? getCellCenter(winningLine[0]) : { x: 0, y: 0 };
-    const endCenter = winningLine.length > 0 ? getCellCenter(winningLine[2]) : { x: 0, y: 0 };
-
     const lineData = React.useMemo(() => {
-        if (winningLine.length === 0) return { startX: 0, startY: 0, length: 0, angle: '0rad' };
+        if (winningLine.length === 0) return { startX: 0, startY: 0, length: 0, angle: '0rad', originalLength: 0, padding: 0 };
+        const startCenter = getCellCenter(winningLine[0]);
+        const endCenter = getCellCenter(winningLine[2]);
         const dx = endCenter.x - startCenter.x;
         const dy = endCenter.y - startCenter.y;
         const originalLength = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
         
-        // Extend line by 50px at each end to reach outer edges
-        const startX = startCenter.x - 50 * Math.cos(angle);
-        const startY = startCenter.y - 50 * Math.sin(angle);
-        const length = originalLength + 100;
+        const padding = 28; // Beautiful extra length at each end!
         
-        return { startX, startY, length, angle: `${angle}rad` };
-    }, [winningLine, startCenter, endCenter]);
+        return { 
+            startX: startCenter.x, 
+            startY: startCenter.y, 
+            length: originalLength + padding * 2, 
+            angle: `${angle}rad`,
+            originalLength,
+            padding
+        };
+    }, [winningLine]);
 
     const renderCell = (index) => {
         const value = board[index];
@@ -705,7 +782,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                     }}
                 >
                     {value !== null && (
-                        <AnimatedSymbol value={value} mySymbol={mySymbol} />
+                        <AnimatedSymbol value={value} />
                     )}
                 </TouchableOpacity>
             </Animated.View>
@@ -761,26 +838,94 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
                 {/* Player Info */}
                 <View style={styles.playersContainer}>
-                    <View style={[styles.playerCard, isMyTurn && !isGameOver && styles.activePlayer]}>
-                        <Text style={[styles.playerSymbol, { color: mySymbol === 'X' ? colors.primary : colors.secondary }]}>{mySymbol}</Text>
-                        <Text style={styles.playerName}>You</Text>
+                    {/* Left Card: YOU */}
+                    <View style={[styles.playerCard, leftActive && styles.activePlayer]}>
+                        {leftActive && (
+                            <>
+                                <SparkleStar size={11} color="#C084FC" style={{ position: 'absolute', left: 10, top: 10 }} />
+                                <SparkleStar size={9} color="#C084FC" style={{ position: 'absolute', right: 10, top: 8 }} />
+                            </>
+                        )}
+                        <Animated.View style={[styles.cardSymbolContainer, { opacity: leftSymbolOpacity, transform: leftActive ? [{ scale: pulseAnim }] : [{ scale: 1.0 }] }]}>
+                            {mySymbol === 'O' ? (
+                                <Svg width={leftSymbolSize} height={leftSymbolSize} viewBox="0 0 42 42">
+                                    <Circle cx="21" cy="21" r="13" stroke="#A855F7" strokeWidth="6.5" fill="none" />
+                                </Svg>
+                            ) : (
+                                <Svg width={leftSymbolSize} height={leftSymbolSize} viewBox="0 0 42 42">
+                                    <Path d="M11 11 L31 31 M31 11 L11 31" stroke="#EC4899" strokeWidth="6.5" strokeLinecap="round" />
+                                </Svg>
+                            )}
+                        </Animated.View>
+                        <View style={styles.youBadge}>
+                            <Text style={styles.youBadgeText}>YOU</Text>
+                        </View>
                     </View>
-                    <Text style={styles.vsText}>vs</Text>
-                    <View style={[styles.playerCard, !isMyTurn && !isGameOver && styles.activePlayer]}>
-                        <Text style={[styles.playerSymbol, { color: theirSymbol === 'X' ? colors.primary : colors.secondary }]}>{theirSymbol}</Text>
-                        <Text style={styles.playerName}>{partnerName}</Text>
+
+                    <View style={styles.vsBadge}>
+                        <Text style={styles.vsBadgeText}>vs</Text>
+                    </View>
+
+                    {/* Right Card: Partner */}
+                    <View style={[styles.playerCard, rightActive && styles.activePlayer]}>
+                        {rightActive && (
+                            <>
+                                <SparkleStar size={11} color="#C084FC" style={{ position: 'absolute', left: 10, top: 10 }} />
+                                <SparkleStar size={9} color="#C084FC" style={{ position: 'absolute', right: 10, top: 8 }} />
+                            </>
+                        )}
+                        <Animated.View style={[styles.cardSymbolContainer, { opacity: rightSymbolOpacity, transform: rightActive ? [{ scale: pulseAnim }] : [{ scale: 1.0 }] }]}>
+                            {theirSymbol === 'O' ? (
+                                <Svg width={rightSymbolSize} height={rightSymbolSize} viewBox="0 0 42 42">
+                                    <Circle cx="21" cy="21" r="13" stroke="#A855F7" strokeWidth="6.5" fill="none" />
+                                </Svg>
+                            ) : (
+                                <Svg width={rightSymbolSize} height={rightSymbolSize} viewBox="0 0 42 42">
+                                    <Path d="M11 11 L31 31 M31 11 L11 31" stroke="#EC4899" strokeWidth="6.5" strokeLinecap="round" />
+                                </Svg>
+                            )}
+                        </Animated.View>
+                        <Text style={styles.partnerNameText} numberOfLines={1}>{partnerName}</Text>
                     </View>
                 </View>
 
                 {/* Status */}
                 <View style={styles.statusContainer}>
-                    <Text style={[
-                        styles.statusText,
-                        isGameOver && (didIWin ? styles.statusWin : didTheyWin ? styles.statusLose : styles.statusDraw),
-                        isGameStarting && styles.statusGameStarting
-                    ]}>
-                        {getStatusText()}
-                    </Text>
+                    {isGameOver && (revealGameOverText || status === 'draw') ? (
+                        <Animated.View
+                            style={{
+                                opacity: gameOverTextAnim,
+                                transform: [
+                                    { scale: gameOverTextAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0.4, 1.0]
+                                    }) },
+                                    { translateY: gameOverTextAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [25, 0]
+                                    }) },
+                                    { rotate: gameOverTextAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: ['-8deg', '0deg']
+                                    }) }
+                                ]
+                            }}
+                        >
+                            <Text style={[
+                                styles.statusText,
+                                didIWin ? styles.statusWin : didTheyWin ? styles.statusLose : styles.statusDraw
+                            ]}>
+                                {getStatusText()}
+                            </Text>
+                        </Animated.View>
+                    ) : (
+                        <Text style={[
+                            styles.statusText,
+                            isGameStarting && styles.statusGameStarting
+                        ]}>
+                            {getStatusText()}
+                        </Text>
+                    )}
                     {statusMessage && (
                         <Text style={[
                             styles.inlineStatus,
@@ -811,31 +956,133 @@ const TicTacToeScreen = ({ navigation, route }) => {
                                 style={{
                                     position: 'absolute',
                                     left: lineData.startX,
-                                    top: lineData.startY - 3, // Align vertically with extended start center
-                                    width: lineData.length,
-                                    height: 6,
-                                    borderRadius: 3,
-                                    backgroundColor: colors.secondary,
-                                    transformOrigin: 'left',
+                                    top: lineData.startY,
+                                    width: 0,
+                                    height: 0,
                                     transform: [
-                                        { rotate: lineData.angle },
-                                        { scaleX: lineAnim }
+                                        { rotate: lineData.angle }
                                     ],
-                                    shadowColor: colors.secondary,
-                                    shadowOffset: { width: 0, height: 0 },
-                                    shadowOpacity: 0.8,
-                                    shadowRadius: 10,
-                                    elevation: 5,
                                 }}
-                            />
+                            >
+                                <Animated.View
+                                    style={{
+                                        position: 'absolute',
+                                        left: -lineData.padding,
+                                        top: -9,
+                                        width: lineData.length,
+                                        height: 18,
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        transform: [
+                                            { translateX: lineAnim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [-lineData.length / 2, 0]
+                                            }) },
+                                            { scaleX: lineAnim }
+                                        ],
+                                    }}
+                                >
+                                    {/* Neon Outer Halo Glow */}
+                                    <View
+                                        style={{
+                                            position: 'absolute',
+                                            left: 0,
+                                            right: 0,
+                                            height: 16,
+                                            borderRadius: 8,
+                                            backgroundColor: '#EC4899',
+                                            opacity: 0.65,
+                                            shadowColor: '#EC4899',
+                                            shadowOffset: { width: 0, height: 0 },
+                                            shadowOpacity: 0.9,
+                                            shadowRadius: 12,
+                                            elevation: 4,
+                                        }}
+                                    />
+                                    {/* Bright White Core */}
+                                    <View
+                                        style={{
+                                            position: 'absolute',
+                                            left: 3,
+                                            right: 3,
+                                            height: 6,
+                                            borderRadius: 3,
+                                            backgroundColor: '#FFFFFF',
+                                            shadowColor: '#FFFFFF',
+                                            shadowOffset: { width: 0, height: 0 },
+                                            shadowOpacity: 0.8,
+                                            shadowRadius: 4,
+                                        }}
+                                    />
+                                </Animated.View>
+                                <SparkleStar
+                                    size={22}
+                                    color="#F472B6"
+                                    style={{
+                                        position: 'absolute',
+                                        left: -lineData.padding - 11,
+                                        top: -11,
+                                        width: 22,
+                                        height: 22,
+                                        opacity: lineAnim.interpolate({
+                                            inputRange: [0, 0.8, 1],
+                                            outputRange: [0, 0, 1],
+                                            extrapolate: 'clamp'
+                                        }),
+                                        transform: [{
+                                            scale: lineAnim.interpolate({
+                                                inputRange: [0, 0.8, 1],
+                                                outputRange: [0, 0, 1],
+                                                extrapolate: 'clamp'
+                                            })
+                                        }]
+                                    }}
+                                />
+                                <SparkleStar
+                                    size={22}
+                                    color="#F472B6"
+                                    style={{
+                                        position: 'absolute',
+                                        left: lineData.length - lineData.padding - 11,
+                                        top: -11,
+                                        width: 22,
+                                        height: 22,
+                                        opacity: lineAnim.interpolate({
+                                            inputRange: [0, 0.8, 1],
+                                            outputRange: [0, 0, 1],
+                                            extrapolate: 'clamp'
+                                        }),
+                                        transform: [{
+                                            scale: lineAnim.interpolate({
+                                                inputRange: [0, 0.8, 1],
+                                                outputRange: [0, 0, 1],
+                                                extrapolate: 'clamp'
+                                            })
+                                        }]
+                                    }}
+                                />
+                            </Animated.View>
                         )}
                     </Animated.View>
+
+                    {/* Play Again Button Just Below the Board */}
+                    {isGameOver && (revealGameOverText || status === 'draw') && (
+                        <View style={styles.boardGameOverButtons}>
+                            <TouchableOpacity
+                                onPress={createNewGame}
+                                activeOpacity={0.8}
+                                style={styles.premiumPlayAgainButton}
+                            >
+                                <Text style={styles.premiumPlayAgainText}>Play Again</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
 
-                {/* Notify Partner Button Container - fixed height to prevent layout shift */}
-                {!isGameOver && gameId && (
-                    <View style={styles.notifyButtonContainer}>
-                        {!(isMyTurn || partnerOnline) ? (
+                {/* Bottom Actions Container - fixed height to prevent layout shift */}
+                <View style={styles.bottomActionsContainer}>
+                    {!isGameOver && gameId && !(isMyTurn || partnerOnline) ? (
+                        <View style={styles.notifyButtonContainer}>
                             <Button
                                 title={`Nudge ${partnerName}`}
                                 onPress={notifyPartner}
@@ -856,22 +1103,9 @@ const TicTacToeScreen = ({ navigation, route }) => {
                                 }
                                 style={{ marginHorizontal: 40 }}
                             />
-                        ) : null}
-                    </View>
-                )}
-
-                {/* Play Again / Back buttons */}
-                {isGameOver && (revealGameOverText || status === 'draw') && (
-                    <View style={styles.gameOverButtons}>
-                        <Button
-                            title="Play Again"
-                            onPress={createNewGame}
-                            variant="glow"
-                            size="xl"
-                            fullWidth
-                        />
-                    </View>
-                )}
+                        </View>
+                    ) : null}
+                </View>
 
                 {/* Link Partner Button - shown when no partner is linked */}
                 {!partnerId && (
@@ -999,24 +1233,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: 20,
+        paddingVertical: 24,
         gap: 16,
     },
     playerCard: {
         alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 24,
-        paddingVertical: 16,
-        borderRadius: 16,
-        minWidth: 100,
+        width: 110,
+        height: 125,
+        borderRadius: 24,
         borderWidth: 1,
-        borderColor: '#FAE8FF',
+        borderColor: '#F3E8FF',
+        position: 'relative',
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.05,
-                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.04,
+                shadowRadius: 10,
             },
             android: {
                 elevation: 2,
@@ -1025,53 +1260,86 @@ const styles = StyleSheet.create({
     },
     activePlayer: {
         borderWidth: 2,
-        borderColor: colors.secondary,
-        shadowColor: colors.secondary,
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-        elevation: 3,
+        borderColor: '#E9D5FF',
+        shadowColor: '#A855F7',
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 4,
     },
-    playerSymbol: {
-        fontSize: 32,
-        fontWeight: '800',
+    cardSymbolContainer: {
+        width: 48,
+        height: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    playerName: {
-        fontSize: 14,
-        color: colors.textSecondary,
-        marginTop: 4,
+    youBadge: {
+        backgroundColor: 'rgba(168, 85, 247, 0.08)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginTop: 8,
     },
-    vsText: {
-        fontSize: 16,
+    youBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#A855F7',
+        letterSpacing: 0.5,
+    },
+    partnerNameText: {
+        fontSize: 13,
         fontWeight: '600',
-        color: colors.textMuted,
+        color: '#4B5563',
+        marginTop: 8,
+        textAlign: 'center',
+        width: '90%',
+    },
+    vsBadge: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#FAF5FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#F3E8FF',
+    },
+    vsBadgeText: {
+        fontSize: 12,
+        fontFamily: fontFamily.bold,
+        color: '#A855F7',
     },
     statusContainer: {
         alignItems: 'center',
-        paddingVertical: 16,
+        paddingVertical: 12,
     },
     statusText: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: colors.text,
+        fontSize: 22,
+        fontFamily: fontFamily.extraBold,
+        color: '#EC4899',
+        textAlign: 'center',
     },
     statusWin: {
-        color: colors.success,
+        color: '#EC4899',
+        fontFamily: fontFamily.extraBold,
     },
     statusLose: {
-        color: colors.primary,
+        color: '#EC4899',
+        fontFamily: fontFamily.extraBold,
     },
     statusDraw: {
-        color: colors.accent,
+        color: '#A855F7',
+        fontFamily: fontFamily.extraBold,
     },
     statusGameStarting: {
-        fontSize: 28,
-        color: colors.secondary,
+        fontSize: 26,
+        fontFamily: fontFamily.extraBold,
+        color: '#A855F7',
         textAlign: 'center',
-        lineHeight: 40,
+        lineHeight: 36,
     },
     inlineStatus: {
         fontSize: 13,
-        fontWeight: '600',
+        fontFamily: fontFamily.bold,
         color: '#EF4444',
         marginTop: 6,
         textAlign: 'center',
@@ -1089,21 +1357,21 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     board: {
-        width: 304,
-        height: 304,
+        width: 306,
+        height: 306,
         flexDirection: 'row',
         flexWrap: 'wrap',
-        backgroundColor: 'rgba(255, 255, 255, 0.65)',
-        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#FAE8FF',
+        borderWidth: 1.5,
+        borderColor: '#F3E8FF',
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.06,
-                shadowRadius: 16,
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.05,
+                shadowRadius: 20,
             },
             android: {
                 elevation: 4,
@@ -1111,47 +1379,99 @@ const styles = StyleSheet.create({
         }),
     },
     cell: {
-        width: 100,
-        height: 100,
+        width: 101,
+        height: 101,
         justifyContent: 'center',
         alignItems: 'center',
     },
     cellBorderRight: {
-        borderRightWidth: 1,
-        borderRightColor: '#FAE8FF',
+        borderRightWidth: 1.5,
+        borderRightColor: '#F3E8FF',
     },
     cellBorderBottom: {
-        borderBottomWidth: 1,
-        borderBottomColor: '#FAE8FF',
+        borderBottomWidth: 1.5,
+        borderBottomColor: '#F3E8FF',
     },
     cellWinning: {
-        backgroundColor: 'rgba(74, 222, 128, 0.12)',
+        backgroundColor: 'transparent',
     },
-    symbolX: {
-        fontSize: 56,
-        fontWeight: '300',
-        color: colors.primary,
-    },
-    symbolO: {
-        fontSize: 64,
-        fontWeight: '200',
-        color: colors.secondary,
-    },
-    mySymbol: {
-        opacity: 1,
+    bottomActionsContainer: {
+        height: 90,
+        width: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     notifyButtonContainer: {
-        height: 150, // Fixed height to prevent layout shift
+        width: '100%',
+        paddingHorizontal: 40,
         justifyContent: 'center',
     },
     gameOverButtons: {
+        width: '100%',
         paddingHorizontal: 40,
-        paddingBottom: 30,
-        gap: 12,
+        justifyContent: 'center',
+    },
+    premiumPlayAgainButton: {
+        backgroundColor: colors.primary,
+        minHeight: 40,
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing['2xl'],
+        borderRadius: borderRadius.xl,
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
+    },
+    premiumPlayAgainGradient: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    premiumPlayAgainText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    premiumShareButton: {
+        width: '100%',
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: 'rgba(168, 85, 247, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    premiumShareText: {
+        color: '#A855F7',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    premiumButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
     },
     linkPartnerContainer: {
         paddingHorizontal: 40,
         paddingBottom: 30,
+    },
+    boardGameOverButtons: {
+        width: 306,
+        marginTop: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

@@ -73,6 +73,7 @@ export const AppNavigator = () => {
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
     const [homeInitialTab, setHomeInitialTab] = useState(null); // Track which tab to open in MainTabNavigator
+    const [lastHomeTab, setLastHomeTab] = useState('home'); // Remember active tab before opening full-screen routes
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -282,14 +283,15 @@ export const AppNavigator = () => {
 
     // Listen for Wordle socket events for real-time updates
     useEffect(() => {
-        if (!socket || !userData?.id) return;
+        const userId = userData?.id || userData?._id;
+        if (!socket || !userId) return;
 
         const handleWordleInvite = (data) => {
-            fetchPendingWordle(userData.id);
+            fetchPendingWordle(userId);
         };
 
         const handleWordleUpdate = (data) => {
-            fetchPendingWordle(userData.id);
+            fetchPendingWordle(userId);
         };
 
         socket.on('wordle:invite', handleWordleInvite);
@@ -299,7 +301,7 @@ export const AppNavigator = () => {
             socket.off('wordle:invite', handleWordleInvite);
             socket.off('wordle:update', handleWordleUpdate);
         };
-    }, [socket, userData?.id]);
+    }, [socket, userData?.id, userData?._id]);
 
     // Listen for TicTacToe socket events for real-time updates
     useEffect(() => {
@@ -580,7 +582,8 @@ export const AppNavigator = () => {
 
     // Show local notifications for realtime socket events while both users are online.
     useEffect(() => {
-        if (!socket || !userData?.id) return;
+        const userId = userData?.id || userData?._id;
+        if (!socket || !userId) return;
 
         const sameId = (a, b) => a && b && String(a) === String(b);
         const selectedChatId = selectedChat?._id;
@@ -592,9 +595,16 @@ export const AppNavigator = () => {
             if (!data.chatId) return;
             if (currentScreen === 'chat' && sameId(selectedChatId, data.chatId)) return;
 
+            const title = data.isAnswer && data.questionText
+                ? data.questionText
+                : data.senderName || partnerName;
+            const body = data.isAnswer
+                ? `${data.senderName || partnerName}: ${data.preview || 'Answered a question'}`
+                : data.preview || 'Sent you a message';
+
             showRoutedLocalNotification({
-                title: data.senderName || partnerName,
-                body: data.preview || 'Sent you a message',
+                title,
+                body,
                 data: {
                     type: 'chat',
                     chatId: data.chatId,
@@ -715,6 +725,7 @@ export const AppNavigator = () => {
     }, [
         socket,
         userData?.id,
+        userData?._id,
         userData?.partnerUsername,
         currentScreen,
         selectedChat?._id,
@@ -886,6 +897,11 @@ export const AppNavigator = () => {
                 setHomeInitialTab(null);
             }
         });
+    };
+
+    const navigateHomeTab = (tab = lastHomeTab || 'home') => {
+        setHomeInitialTab(tab);
+        navigate('home');
     };
 
     // Fetch pending TicTacToe games for the user
@@ -1205,8 +1221,13 @@ export const AppNavigator = () => {
                 return true;
             }
 
+            if (['jigsawCreate', 'jigsawPuzzle', 'ticTacToe', 'wordle'].includes(currentScreen)) {
+                navigateHomeTab('games');
+                return true;
+            }
+
             if (homeSubScreens.includes(currentScreen)) {
-                navigate('home');
+                navigateHomeTab();
                 return true; // Prevent default (app exit)
             }
 
@@ -1216,6 +1237,7 @@ export const AppNavigator = () => {
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentScreen, isPremiumVisible]);
 
     // Handle onboarding completion
@@ -1352,6 +1374,7 @@ export const AppNavigator = () => {
                         onPremiumPress={() => navigate('premium')}
                         onLogout={handleLogout}
                         onDeleteAccount={handleDeleteAccount}
+                        onTabChange={setLastHomeTab}
                     />
                 );
 
@@ -1472,7 +1495,7 @@ export const AppNavigator = () => {
             case 'jigsawCreate':
                 return (
                     <JigsawCreateScreen
-                        navigation={{ goBack: () => navigate('home') }}
+                        navigation={{ goBack: () => navigateHomeTab('games') }}
                         route={{
                             params: {
                                 partnerId: userData.partnerId,
@@ -1486,7 +1509,7 @@ export const AppNavigator = () => {
             case 'jigsawPuzzle':
                 return (
                     <JigsawPuzzleScreen
-                        navigation={{ goBack: () => navigate('home') }}
+                        navigation={{ goBack: () => navigateHomeTab('games') }}
                         route={{
                             params: {
                                 puzzleId: selectedPuzzle?._id,
@@ -1499,7 +1522,7 @@ export const AppNavigator = () => {
             case 'ticTacToe':
                 return (
                     <TicTacToeScreen
-                        navigation={{ goBack: () => navigate('home') }}
+                        navigation={{ goBack: () => navigateHomeTab('games') }}
                         route={{
                             params: {
                                 gameId: selectedTicTacToe?._id,
@@ -1514,7 +1537,7 @@ export const AppNavigator = () => {
             case 'wordle':
                 return (
                     <WordleScreen
-                        navigation={{ goBack: () => navigate('home'), navigate }}
+                        navigation={{ goBack: () => navigateHomeTab('games'), navigate }}
                         route={{
                             params: {
                                 gameId: selectedWordle?._id,

@@ -20,7 +20,8 @@ import Svg, { Path } from 'react-native-svg';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import { colors } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
+import { fontFamily } from '../constants/fonts';
 import GradientBackground from '../components/GradientBackground';
 import Button from '../components/Button';
 import { API_BASE } from '../constants/Api';
@@ -218,8 +219,50 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     // Animation
     const shakeAnim = useState(new Animated.Value(0))[0];
 
+    // Error Toast Animations
+    const errorScaleAnim = useRef(new Animated.Value(0)).current;
+    const errorShakeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (errorMessage) {
+            errorScaleAnim.setValue(0);
+            errorShakeAnim.setValue(0);
+
+            Animated.parallel([
+                Animated.spring(errorScaleAnim, {
+                    toValue: 1,
+                    tension: 120,
+                    friction: 7,
+                    useNativeDriver: true,
+                }),
+                Animated.sequence([
+                    Animated.timing(errorShakeAnim, { toValue: 10, duration: 40, useNativeDriver: true }),
+                    Animated.timing(errorShakeAnim, { toValue: -10, duration: 80, useNativeDriver: true }),
+                    Animated.timing(errorShakeAnim, { toValue: 10, duration: 80, useNativeDriver: true }),
+                    Animated.timing(errorShakeAnim, { toValue: -10, duration: 80, useNativeDriver: true }),
+                    Animated.timing(errorShakeAnim, { toValue: 0, duration: 40, useNativeDriver: true }),
+                ])
+            ]).start();
+        } else {
+            Animated.timing(errorScaleAnim, {
+                toValue: 0,
+                duration: 150,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [errorMessage, errorScaleAnim, errorShakeAnim]);
+
     // Input ref for focus management
     const inputRef = useRef(null);
+
+    const openKeyboard = () => {
+        if (!inputRef.current) return;
+
+        inputRef.current.blur();
+        setTimeout(() => {
+            inputRef.current?.focus();
+        }, 50);
+    };
 
     // Track newly submitted guesses for 3D flip animation
     const [lastSubmittedRowIndex, setLastSubmittedRowIndex] = useState(-1);
@@ -275,6 +318,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         } else {
             fetchActiveGame();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Auto-focus input when in create or guess mode
@@ -293,6 +337,20 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             socket.emit('wordle:join', { gameId });
         }
 
+        const isCurrentGameEvent = (data = {}) => data.gameId === gameId;
+
+        // Listen for guess/game updates from partner. The backend may emit either
+        // a specific event or the generic wordle:update used by AppNavigator.
+        const handleGameUpdate = (data = {}) => {
+            if (isCurrentGameEvent(data)) {
+                if (data.status) {
+                    setStatus(data.status);
+                }
+                // Refresh game state to get the latest guesses/secret word.
+                fetchGame(gameId);
+            }
+        };
+
         // Listen for guess updates from partner
         const handleGuessReceived = (data) => {
             if (data.gameId === gameId) {
@@ -302,15 +360,12 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         };
 
         // Listen for game completion
-        const handleGameComplete = (data) => {
-            if (data.gameId === gameId) {
-                setStatus(data.status);
-                fetchGame(gameId);
-            }
-        };
+        const handleGameComplete = handleGameUpdate;
 
         // Listen for new game created by partner
-        const handleNewGame = (data) => {
+        const handleNewGame = (data = {}) => {
+            if (data.gameId && data.gameId === gameId) return;
+
             // Reset state and fetch the new game
             setGuesses([]);
             setCurrentGuess('');
@@ -326,6 +381,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
         socket.on('wordle:guessReceived', handleGuessReceived);
         socket.on('wordle:gameComplete', handleGameComplete);
+        socket.on('wordle:update', handleGameUpdate);
         socket.on('wordle:newGame', handleNewGame);
 
         return () => {
@@ -334,8 +390,10 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             }
             socket.off('wordle:guessReceived', handleGuessReceived);
             socket.off('wordle:gameComplete', handleGameComplete);
+            socket.off('wordle:update', handleGameUpdate);
             socket.off('wordle:newGame', handleNewGame);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket, gameId]);
 
     const loadGameFromData = (data) => {
@@ -433,6 +491,8 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Create game with secret word
     const createGame = async (wordOverride) => {
+        if (submitting) return;
+
         const word = wordOverride || secretWord;
         if (word.length !== 5) {
             setErrorMessage('Word must be 5 letters');
@@ -467,6 +527,8 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     socket.emit('wordle:newGame', {
                         gameId: data.data.gameId,
                         status: 'pending',
+                        creatorId: user?.id,
+                        partnerId,
                     });
                 }
             } else {
@@ -483,6 +545,8 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Submit a guess
     const submitGuess = async (guessOverride) => {
+        if (submitting) return;
+
         const guess = guessOverride || currentGuess;
         if (guess.length !== 5) {
             setErrorMessage('Guess must be 5 letters');
@@ -524,6 +588,12 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                         status: data.data.status,
                         gameComplete: data.data.gameComplete
                     });
+                    socket.emit('wordle:update', {
+                        gameId,
+                        guessResult: data.data.guessResult,
+                        status: data.data.status,
+                        gameComplete: data.data.gameComplete
+                    });
                 }
 
                 if (data.data.gameComplete) {
@@ -536,6 +606,12 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                             gameId,
                             status: data.data.status,
                             winnerId: data.data.isCorrect ? user?.id : null
+                        });
+                        socket.emit('wordle:update', {
+                            gameId,
+                            status: data.data.status,
+                            winnerId: data.data.isCorrect ? user?.id : null,
+                            gameComplete: true
                         });
                     }
                 }
@@ -597,6 +673,8 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Handle text input change - only allow letters
     const handleTextChange = (text) => {
+        if (submitting) return;
+
         ReactNativeHapticFeedback.trigger("selection", {
             enableVibrateFallback: false,
             ignoreAndroidSystemSettings: false,
@@ -684,7 +762,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         return (
             <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => inputRef.current?.focus()}
+                onPress={openKeyboard}
             >
                 <Animated.View style={[styles.guessRow, { transform: [{ translateX: shakeAnim }] }]}>
                     {tiles}
@@ -758,66 +836,14 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                         </View>
                     </View>
 
-                    {/* Status Text */}
-                    <View style={styles.statusContainer}>
-                        {mode === 'create' && (
-                            <Text style={styles.statusText}>Set a word for {partnerName} to guess</Text>
-                        )}
-                        {mode === 'guess' && (
-                            <Text style={styles.statusText}>
-                                Guess the word! ({attemptsRemaining} attempts left)
-                            </Text>
-                        )}
-                        {/* Creator views - different states */}
-                        {mode === 'complete' && isCreator && successMessage && status === 'pending' && (
-                            <Text style={[styles.statusText, styles.statusSuccess]}>
-                                {successMessage}
-                            </Text>
-                        )}
-                        {mode === 'complete' && isCreator && !successMessage && status === 'pending' && (
-                            <Text style={styles.statusText}>
-                                Waiting for {partnerName} to start guessing...
-                            </Text>
-                        )}
-                        {mode === 'complete' && isCreator && status === 'in_progress' && (
-                            <Text style={styles.statusText}>
-                                {partnerName} is guessing... ({guesses.length}/{maxAttempts} tries used)
-                            </Text>
-                        )}
-                        {mode === 'complete' && isCreator && status === 'won' && (
-                            <Text style={[styles.statusText, styles.statusWin]}>
-                                {partnerName} guessed it in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!
-                            </Text>
-                        )}
-                        {mode === 'complete' && isCreator && status === 'lost' && (
-                            <Text style={[styles.statusText, styles.statusLose]}>
-                                {partnerName} couldn't guess "{secretWord}"
-                            </Text>
-                        )}
-                        {/* Guesser views */}
-                        {mode === 'complete' && !isCreator && status === 'won' && (
-                            <Text style={[styles.statusText, styles.statusWin]}>You Won in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!</Text>
-                        )}
-                        {mode === 'complete' && !isCreator && status === 'lost' && (
-                            <Text style={[styles.statusText, styles.statusLose]}>
-                                Game Over - The word was "{revealedWord}"
-                            </Text>
-                        )}
+
+
+                    {/* Message slots stay mounted so validation feedback does not shift the grid. */}
+                    <View style={styles.notifyMessageContainer}>
+                        <Text style={styles.notifyMessageText}>{notifyMessage}</Text>
                     </View>
 
-                    {/* Notify Message */}
-                    {notifyMessage ? (
-                        <View style={styles.notifyMessageContainer}>
-                            <Text style={styles.notifyMessageText}>{notifyMessage}</Text>
-                        </View>
-                    ) : null}
 
-                    {/* Error Message */}
-                    {errorMessage ? (
-                        <View style={styles.errorContainer}>
-                            <Text style={styles.errorText}>{errorMessage}</Text>
-                        </View>
-                    ) : null}
 
                     {/* Game Grid */}
                     <ScrollView
@@ -891,6 +917,53 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                 {guesses.map((guess, i) => renderGuessRow(guess, i))}
                             </>
                         )}
+
+                        {/* Status Text Rendered at the Bottom of the Grid */}
+                        <View style={[styles.statusContainer, { marginTop: 16 }]}>
+                            {mode === 'create' && (
+                                <Text style={styles.statusText}>Set a word for {partnerName} to guess</Text>
+                            )}
+                            {mode === 'guess' && (
+                                <Text style={styles.statusText}>
+                                    Guess the word! ({attemptsRemaining} attempts left)
+                                </Text>
+                            )}
+                            {/* Creator views - different states */}
+                            {mode === 'complete' && isCreator && successMessage && status === 'pending' && (
+                                <Text style={[styles.statusText, styles.statusSuccess]}>
+                                    {successMessage}
+                                </Text>
+                            )}
+                            {mode === 'complete' && isCreator && !successMessage && status === 'pending' && (
+                                <Text style={styles.statusText}>
+                                    Waiting for {partnerName} to start guessing...
+                                </Text>
+                            )}
+                            {mode === 'complete' && isCreator && status === 'in_progress' && (
+                                <Text style={styles.statusText}>
+                                    {partnerName} is guessing... ({guesses.length}/{maxAttempts} tries used)
+                                </Text>
+                            )}
+                            {mode === 'complete' && isCreator && status === 'won' && (
+                                <Text style={[styles.statusText, styles.statusWin]}>
+                                    {partnerName} guessed it in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!
+                                </Text>
+                            )}
+                            {mode === 'complete' && isCreator && status === 'lost' && (
+                                <Text style={[styles.statusText, styles.statusLose]}>
+                                    {partnerName} couldn't guess "{secretWord}"
+                                </Text>
+                            )}
+                            {/* Guesser views */}
+                            {mode === 'complete' && !isCreator && status === 'won' && (
+                                <Text style={[styles.statusText, styles.statusWin]}>You Won in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!</Text>
+                            )}
+                            {mode === 'complete' && !isCreator && status === 'lost' && (
+                                <Text style={[styles.statusText, styles.statusLose]}>
+                                    Game Over - The word was "{revealedWord}"
+                                </Text>
+                            )}
+                        </View>
                     </ScrollView>
 
                     {/* Hidden TextInput for native keyboard */}
@@ -913,13 +986,13 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     {/* 1. Game is finished (won or lost): Show Play Again */}
                     {mode === 'complete' && (status === 'won' || status === 'lost') && (
                         <View style={styles.actionButtons}>
-                            <Button
-                                title="Play Again 🎮"
+                            <TouchableOpacity
                                 onPress={startNewGame}
-                                variant="primary"
-                                size="xl"
-                                fullWidth
-                            />
+                                activeOpacity={0.8}
+                                style={styles.playAgainButton}
+                            >
+                                <Text style={styles.playAgainText}>Play Again</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
 
@@ -946,6 +1019,22 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                             fadeOut={true}
                         />
                     )}
+
+                    <Animated.View
+                        pointerEvents="none"
+                        style={[
+                            styles.floatingErrorContainer,
+                            {
+                                opacity: errorScaleAnim,
+                                transform: [
+                                    { scale: errorScaleAnim },
+                                    { translateX: errorShakeAnim }
+                                ]
+                            }
+                        ]}
+                    >
+                        <Text style={styles.floatingErrorText}>{errorMessage}</Text>
+                    </Animated.View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
         </GradientBackground>
@@ -1056,24 +1145,30 @@ const styles = StyleSheet.create({
     },
     statusText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: fontFamily.bold,
         color: colors.textSecondary,
         textAlign: 'center',
     },
     statusWin: {
         color: colors.success,
         fontSize: 24,
+        fontFamily: fontFamily.extraBold,
     },
     statusLose: {
         color: colors.error,
+        fontSize: 18,
+        fontFamily: fontFamily.extraBold,
     },
     statusSuccess: {
         color: colors.success,
         fontSize: 18,
+        fontFamily: fontFamily.extraBold,
     },
     notifyMessageContainer: {
         alignItems: 'center',
-        paddingVertical: 6,
+        justifyContent: 'center',
+        minHeight: 26,
+        paddingHorizontal: 20,
     },
     notifyMessageText: {
         fontSize: 14,
@@ -1082,17 +1177,53 @@ const styles = StyleSheet.create({
     },
     errorContainer: {
         alignItems: 'center',
-        paddingVertical: 8,
+        justifyContent: 'center',
+        minHeight: 30,
+        paddingHorizontal: 20,
     },
     errorText: {
         fontSize: 14,
         color: colors.error,
         fontWeight: '600',
     },
-    gridContainer: {
+    floatingErrorContainer: {
+        position: 'absolute',
+        bottom: 24,
+        left: '10%',
+        right: '10%',
+        backgroundColor: 'rgba(239, 68, 68, 0.95)',
+        borderRadius: 24,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 20,
+        zIndex: 9999,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#EF4444',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.3,
+                shadowRadius: 10,
+            },
+            android: {
+                elevation: 6,
+            },
+        }),
+    },
+    floatingErrorText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        textAlign: 'center',
+        letterSpacing: 0.3,
+    },
+    gridContainer: {
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        paddingTop: 16,
+        paddingBottom: 20,
         flexGrow: 1,
     },
     guessRow: {
@@ -1104,7 +1235,7 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 12,
-        backgroundColor: 'transparent',
+        backgroundColor: '#FFFFFF',
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
@@ -1113,7 +1244,8 @@ const styles = StyleSheet.create({
                 shadowRadius: 4,
             },
             android: {
-                elevation: 1,
+                elevation: 5,
+                shadowColor: '#8B5CF6',
             },
         }),
     },
@@ -1199,9 +1331,47 @@ const styles = StyleSheet.create({
     },
     actionButtons: {
         alignItems: 'center',
-        paddingVertical: 20,
+        justifyContent: 'center',
         paddingHorizontal: 40,
+        height: 90,
         width: '100%',
+    },
+    playAgainButton: {
+        backgroundColor: colors.primary,
+        minHeight: 40,
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing['2xl'],
+        borderRadius: borderRadius.xl,
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
+    },
+    playAgainGradient: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    playAgainContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    playAgainText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: fontFamily.bold,
     },
 });
 

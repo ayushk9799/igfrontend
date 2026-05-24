@@ -8,36 +8,116 @@ import {
     ActivityIndicator,
     RefreshControl,
     Image,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import LinearGradient from 'react-native-linear-gradient';
 import { colors, spacing, borderRadius } from '../theme';
 import GradientBackground from '../components/GradientBackground';
 import { API_BASE } from '../constants/Api';
-import { TOPIC_CATEGORIES } from '../constants/Categories';
+import { fontFamily, fontWeight } from '../constants/fonts';
+import { storage } from '../utils/authStorage';
 
-// Topic image mapping - matches HomeScreen topic images
-const TOPIC_IMAGES = {
-    hotspicy: require('../../assets/chilli.png'),
-    money: require('../../assets/coins.png'),
-    future: require('../../assets/couplecutout.png'),
-    fitness: require('../../assets/couplerunning.png'),
-    travel: require('../../assets/travel.png'),
-    family: require('../../assets/couplekids5.png'),
+// Topic config matching HomeScreen's CONNECTION_TOPICS exactly
+const TOPIC_CONFIG = {
+    future: {
+        title: 'Future',
+        image: require('../../assets/home/future-crystal.png'),
+        gradient: ['#D9B6FF', '#C79BFF'],
+        textColor: '#7341C8',
+    },
+    money: {
+        title: 'Money',
+        image: require('../../assets/home/money-bag.png'),
+        gradient: ['#B6EBCF', '#D7F4DE'],
+        textColor: '#087D61',
+    },
+    hotspicy: {
+        title: 'Hot & Spicy',
+        image: require('../../assets/home/hot-fire.png'),
+        gradient: ['#FFA8B7', '#FFC3CD'],
+        textColor: '#B63567',
+    },
+    political: {
+        title: 'Political',
+        image: require('../../assets/home/political-ballot.png'),
+        gradient: ['#90C8FF', '#AED6FF'],
+        textColor: '#1C6EBB',
+    },
+    fitness: {
+        title: 'Lifestyle',
+        image: require('../../assets/home/lifestyle-arm.png'),
+        gradient: ['#7ADCE1', '#B5EEF0'],
+        textColor: '#13788D',
+    },
+    travel: {
+        title: 'Travel',
+        image: require('../../assets/home/travel-plane.png'),
+        gradient: ['#FFC35C', '#FFD780'],
+        textColor: '#A45B13',
+    },
+    family: {
+        title: 'Family',
+        image: require('../../assets/home/together-heart-plant.png'),
+        gradient: ['#FFB8D0', '#FFD6E4'],
+        textColor: '#B63567',
+    },
 };
 
-// Fallback emoji for topics without images
-const CATEGORY_EMOJI = {
-    political: '⚖️',
-    dailychallenge: '⭐',
-    likelyto: '🎯',
-    neverhaveiever: '🤫',
-    deep: '💭',
+// Fallback config for categories without images
+const FALLBACK_CONFIG = {
+    dailychallenge: { title: 'Daily Challenge', emoji: '⭐', gradient: ['#FFE0B2', '#FFF3E0'], textColor: '#E65100' },
+    likelyto: { title: 'Most Likely To', emoji: '🎯', gradient: ['#E8EAF6', '#C5CAE9'], textColor: '#283593' },
+    neverhaveiever: { title: 'Never Have I Ever', emoji: '🤫', gradient: ['#FCE4EC', '#F8BBD0'], textColor: '#AD1457' },
+    deep: { title: 'Deep Talk', emoji: '💭', gradient: ['#EDE7F6', '#D1C4E9'], textColor: '#4527A0' },
 };
 
-// Helper to get topic color from TOPIC_CATEGORIES (same as HomeScreen)
-const getTopicColor = (topicId) => {
-    return TOPIC_CATEGORIES[topicId]?.color || colors.primary;
+const DEFAULT_GRADIENT = ['#F3E8FF', '#E8D5FF'];
+const DEFAULT_TEXT_COLOR = '#6B21A8';
+
+const chatListCache = new Map();
+const CHAT_LIST_CACHE_PREFIX = 'chat_list_cache_';
+
+const getCacheKey = (userId) => `${CHAT_LIST_CACHE_PREFIX}${userId}`;
+
+const readStoredChatCache = (userId) => {
+    if (!userId) return null;
+
+    try {
+        const value = storage.getString(getCacheKey(userId));
+        return value ? JSON.parse(value) : null;
+    } catch (error) {
+        console.warn('Error reading chat list cache:', error);
+        return null;
+    }
+};
+
+const writeStoredChatCache = (userId, cacheValue) => {
+    if (!userId) return;
+
+    try {
+        storage.set(getCacheKey(userId), JSON.stringify(cacheValue));
+    } catch (error) {
+        console.warn('Error writing chat list cache:', error);
+    }
+};
+
+const getChatTime = (chat) => new Date(chat.lastMessageAt || chat.updatedAt || chat.createdAt || 0).getTime();
+
+const sortChats = (items) => [...items].sort((a, b) => getChatTime(b) - getChatTime(a));
+
+const mergeChats = (currentChats, changedChats) => {
+    const byId = new Map(currentChats.map(chat => [chat._id, chat]));
+
+    changedChats.forEach(chat => {
+        byId.set(chat._id, {
+            ...byId.get(chat._id),
+            ...chat,
+        });
+    });
+
+    return sortChats(Array.from(byId.values()));
 };
 
 /**
@@ -55,20 +135,56 @@ export default function ChatListScreen({
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
 
-    const fetchChats = useCallback(async () => {
+    const fetchChats = useCallback(async ({ forceFull = false } = {}) => {
+        const cacheKey = userId?.toString();
+        const memoryCache = cacheKey ? chatListCache.get(cacheKey) : null;
+        const storedCache = !memoryCache && cacheKey ? readStoredChatCache(cacheKey) : null;
+        const cached = memoryCache || storedCache;
+
         try {
             setError(null);
-            const response = await fetch(`${API_BASE}/api/chat/user/${userId}`);
+
+            if (cached && !forceFull) {
+                setChats(cached.chats);
+                setLoading(false);
+                if (cacheKey && !memoryCache) {
+                    chatListCache.set(cacheKey, cached);
+                }
+            }
+
+            const url = cached && !forceFull
+                ? `${API_BASE}/api/chat/user/${userId}/changes?since=${encodeURIComponent(cached.syncTime)}`
+                : `${API_BASE}/api/chat/user/${userId}`;
+
+            const response = await fetch(url);
             const json = await response.json();
 
             if (json.success) {
-                setChats(json.data.chats || []);
+                const serverChats = json.data.chats || [];
+                const nextChats = cached && !forceFull
+                    ? mergeChats(cached.chats, serverChats)
+                    : sortChats(serverChats);
+                const syncTime = json.data.syncTime || new Date().toISOString();
+
+                setChats(nextChats);
+
+                if (cacheKey) {
+                    const cacheValue = {
+                        chats: nextChats,
+                        syncTime,
+                    };
+
+                    chatListCache.set(cacheKey, cacheValue);
+                    writeStoredChatCache(cacheKey, cacheValue);
+                }
             } else {
                 setError(json.message || 'Failed to load chats');
             }
         } catch (err) {
             console.error('Error fetching chats:', err);
-            setError('Could not connect to server');
+            if (!cached) {
+                setError('Could not connect to server');
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -81,7 +197,7 @@ export default function ChatListScreen({
 
     const handleRefresh = () => {
         setRefreshing(true);
-        fetchChats();
+        fetchChats({ forceFull: true });
     };
 
     const formatTime = (dateString) => {
@@ -100,33 +216,48 @@ export default function ChatListScreen({
         return date.toLocaleDateString();
     };
 
+    const getTopicConfig = (source) => {
+        if (TOPIC_CONFIG[source]) return { ...TOPIC_CONFIG[source], hasImage: true };
+        if (FALLBACK_CONFIG[source]) return { ...FALLBACK_CONFIG[source], hasImage: false };
+        return {
+            title: source?.charAt(0).toUpperCase() + source?.slice(1) || 'Chat',
+            emoji: '💬',
+            gradient: DEFAULT_GRADIENT,
+            textColor: DEFAULT_TEXT_COLOR,
+            hasImage: false,
+        };
+    };
+
     const renderChatItem = ({ item }) => {
-        const topicImage = TOPIC_IMAGES[item.questionSource];
-        const emoji = CATEGORY_EMOJI[item.questionSource] || '💬';
-        const categoryColor = getTopicColor(item.questionSource);
+        const config = getTopicConfig(item.questionSource);
         const hasUnread = item.unreadCount > 0;
 
         return (
             <TouchableOpacity
                 style={[styles.chatItem, hasUnread && styles.chatItemUnread]}
                 onPress={() => onSelectChat(item)}
-                activeOpacity={0.7}
+                activeOpacity={0.82}
             >
-                {/* Category indicator */}
-                <View style={[styles.categoryIndicator, { backgroundColor: categoryColor }]}>
-                    {topicImage ? (
-                        <Image source={topicImage} style={styles.categoryImage} resizeMode="contain" />
+                {/* Category indicator with gradient - matches HomeScreen topic cards */}
+                <LinearGradient
+                    colors={config.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.categoryIndicator}
+                >
+                    {config.hasImage ? (
+                        <Image source={config.image} style={styles.categoryImage} resizeMode="contain" />
                     ) : (
-                        <Text style={styles.categoryEmoji}>{emoji}</Text>
+                        <Text style={styles.categoryEmoji}>{config.emoji}</Text>
                     )}
-                </View>
+                </LinearGradient>
 
                 {/* Chat content */}
                 <View style={styles.chatContent}>
                     {/* Header with source and time */}
                     <View style={styles.chatHeader}>
-                        <Text style={styles.chatSource}>
-                            {item.questionSource?.charAt(0).toUpperCase() + item.questionSource?.slice(1) || 'Chat'}
+                        <Text style={[styles.chatSource, { color: config.textColor }]}>
+                            {config.title}
                         </Text>
                         <Text style={styles.chatTime}>
                             {formatTime(item.lastMessageAt || item.createdAt)}
@@ -235,6 +366,18 @@ export default function ChatListScreen({
     );
 }
 
+const cardShadow = Platform.select({
+    ios: {
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+    },
+    android: {
+        elevation: 3,
+    },
+});
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -263,22 +406,20 @@ const styles = StyleSheet.create({
         borderColor: '#FAE8FF',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        ...cardShadow,
     },
     headerTitle: {
         fontSize: 20,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         color: colors.text,
         letterSpacing: 0.5,
+        fontFamily: fontFamily.extraBold,
     },
     loadingText: {
         marginTop: spacing.md,
         fontSize: 16,
         color: colors.textSecondary,
+        fontFamily: fontFamily.medium,
     },
     errorContainer: {
         padding: spacing.lg,
@@ -289,6 +430,7 @@ const styles = StyleSheet.create({
         color: colors.error,
         textAlign: 'center',
         marginBottom: spacing.md,
+        fontFamily: fontFamily.medium,
     },
     retryButton: {
         paddingHorizontal: spacing.lg,
@@ -298,7 +440,8 @@ const styles = StyleSheet.create({
     },
     retryText: {
         color: '#FFFFFF',
-        fontWeight: '600',
+        fontWeight: fontWeight('600'),
+        fontFamily: fontFamily.bold,
     },
     listContent: {
         padding: spacing.md,
@@ -309,41 +452,36 @@ const styles = StyleSheet.create({
     chatItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: borderRadius.lg,
-        padding: spacing.md,
-        marginBottom: spacing.sm,
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
-        shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        borderRadius: 18,
+        padding: 14,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#F8DDE8',
+        ...cardShadow,
     },
     chatItemUnread: {
         borderColor: colors.primary,
         borderWidth: 1.5,
+        backgroundColor: 'rgba(255,255,255,0.97)',
     },
     categoryIndicator: {
         width: 52,
         height: 52,
-        borderRadius: 26,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: spacing.md,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 3,
+        marginRight: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.6)',
+        overflow: 'hidden',
     },
     categoryEmoji: {
         fontSize: 24,
     },
     categoryImage: {
-        width: 34,
-        height: 34,
+        width: 38,
+        height: 38,
     },
     chatContent: {
         flex: 1,
@@ -356,18 +494,21 @@ const styles = StyleSheet.create({
     },
     chatSource: {
         fontSize: 14,
-        fontWeight: '700',
-        color: colors.text,
+        fontWeight: fontWeight('800'),
+        fontFamily: fontFamily.extraBold,
     },
     chatTime: {
         fontSize: 12,
         color: colors.textSecondary,
+        fontFamily: fontFamily.medium,
     },
     questionText: {
-        fontSize: 15,
+        fontSize: 14,
         color: colors.text,
-        lineHeight: 20,
+        lineHeight: 19,
         marginBottom: 4,
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('600'),
     },
     chatFooter: {
         flexDirection: 'row',
@@ -377,26 +518,31 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: colors.textSecondary,
         flex: 1,
+        fontFamily: fontFamily.regular,
     },
     statusText: {
         fontSize: 13,
         color: colors.textSecondary,
         fontStyle: 'italic',
+        fontFamily: fontFamily.regular,
     },
     unreadBadge: {
         minWidth: 24,
         height: 24,
         borderRadius: 12,
-        backgroundColor: colors.primary,
+        backgroundColor: '#FF758F',
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 6,
         marginLeft: spacing.sm,
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
     },
     unreadCount: {
-        fontSize: 12,
-        fontWeight: '700',
+        fontSize: 11,
+        fontWeight: fontWeight('900'),
         color: '#FFFFFF',
+        fontFamily: fontFamily.extraBold,
     },
     emptyContainer: {
         flex: 1,
@@ -410,14 +556,16 @@ const styles = StyleSheet.create({
     },
     emptyTitle: {
         fontSize: 20,
-        fontWeight: '800',
+        fontWeight: fontWeight('800'),
         color: colors.text,
         marginBottom: spacing.sm,
+        fontFamily: fontFamily.extraBold,
     },
     emptyText: {
         fontSize: 16,
         color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 22,
+        fontFamily: fontFamily.medium,
     },
 });

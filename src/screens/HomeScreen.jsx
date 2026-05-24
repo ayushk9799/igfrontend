@@ -1,27 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
-    Dimensions,
     Image,
     Platform,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
     StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { getPenguinMoodImage } from '../constants/PenguinMoods';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { storage } from '../utils/authStorage';
 
-const { width } = Dimensions.get('window');
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const SCRIBBLE_PREVIEW_PADDING = 28;
 const SCRIBBLE_PREVIEW_MIN_SIZE = 140;
@@ -72,7 +70,7 @@ const isMoodStale = (mood, now) => {
 };
 
 const HomeText = ({ children, style, ...props }) => (
-    <Text {...props} style={[{ fontFamily: fontFamily.regular }, style]} allowFontScaling={false}>
+    <Text {...props} style={[{ fontFamily: fontFamily.regular }, style]} maxFontSizeMultiplier={1.2}>
         {children}
     </Text>
 );
@@ -85,7 +83,6 @@ const CONNECTION_TOPICS = [
         image: require('../../assets/home/future-crystal.png'),
         gradient: ['#D9B6FF', '#C79BFF'],
         textColor: '#7341C8',
-        arrowColor: '#8A58DD',
     },
     {
         id: 'money',
@@ -94,7 +91,6 @@ const CONNECTION_TOPICS = [
         image: require('../../assets/home/money-bag.png'),
         gradient: ['#B6EBCF', '#D7F4DE'],
         textColor: '#087D61',
-        arrowColor: '#13956D',
     },
     {
         id: 'hotspicy',
@@ -103,7 +99,6 @@ const CONNECTION_TOPICS = [
         image: require('../../assets/home/hot-fire.png'),
         gradient: ['#FFA8B7', '#FFC3CD'],
         textColor: '#B63567',
-        arrowColor: '#D94B69',
     },
     {
         id: 'political',
@@ -112,7 +107,6 @@ const CONNECTION_TOPICS = [
         image: require('../../assets/home/political-ballot.png'),
         gradient: ['#90C8FF', '#AED6FF'],
         textColor: '#1C6EBB',
-        arrowColor: '#357FD1',
     },
     {
         id: 'fitness',
@@ -121,7 +115,6 @@ const CONNECTION_TOPICS = [
         image: require('../../assets/home/lifestyle-arm.png'),
         gradient: ['#7ADCE1', '#B5EEF0'],
         textColor: '#13788D',
-        arrowColor: '#1897A8',
     },
     {
         id: 'travel',
@@ -130,36 +123,14 @@ const CONNECTION_TOPICS = [
         image: require('../../assets/home/travel-plane.png'),
         gradient: ['#FFC35C', '#FFD780'],
         textColor: '#A45B13',
-        arrowColor: '#D78319',
     },
 ];
 
 const IconSvg = ({ type, color = '#7867F6', size = 26 }) => {
     const stroke = color;
-    const fill = type === 'heart' ? color : 'none';
 
     return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-            {type === 'mood' && (
-                <>
-                    <Circle cx="12" cy="12" r="9" fill={color} opacity={0.16} />
-                    <Circle cx="9" cy="10" r="1.4" fill={stroke} />
-                    <Circle cx="15" cy="10" r="1.4" fill={stroke} />
-                    <Path d="M8 14.2C9.2 16 10.5 16.7 12 16.7C13.5 16.7 14.8 16 16 14.2" stroke={stroke} strokeWidth={1.8} strokeLinecap="round" />
-                </>
-            )}
-            {type === 'game' && (
-                <>
-                    <Rect x="4" y="8" width="16" height="10" rx="5" fill={color} opacity={0.16} />
-                    <Path d="M8 13H12M10 11V15M16 12.5H16.01M18 14.5H18.01" stroke={stroke} strokeWidth={1.8} strokeLinecap="round" />
-                </>
-            )}
-            {type === 'scribble' && (
-                <Path d="M16.5 3.8L20.2 7.5L8.4 19.3L3.8 20.2L4.7 15.6L16.5 3.8Z" fill={color} opacity={0.74} />
-            )}
-            {type === 'heart' && (
-                <Path d="M12 20.2L10.8 19.1C6.4 15.1 3.5 12.5 3.5 9.2C3.5 6.6 5.5 4.6 8.1 4.6C9.6 4.6 11 5.3 12 6.4C13 5.3 14.4 4.6 15.9 4.6C18.5 4.6 20.5 6.6 20.5 9.2C20.5 12.5 17.6 15.1 13.2 19.1L12 20.2Z" fill={fill} />
-            )}
             {type === 'bell' && (
                 <Path d="M18 8A6 6 0 006 8C6 15 3 17 3 17H21S18 15 18 8M13.7 21A2 2 0 0110.3 21" stroke={stroke} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
             )}
@@ -169,52 +140,31 @@ const IconSvg = ({ type, color = '#7867F6', size = 26 }) => {
                     <Path d="M19 12A7 7 0 0018.9 10.8L21 9.1L19 5.7L16.5 6.7A7 7 0 0014.5 5.5L14.1 3H10L9.5 5.5A7 7 0 007.5 6.7L5 5.7L3 9.1L5.1 10.8A7 7 0 005.1 13.2L3 14.9L5 18.3L7.5 17.3A7 7 0 009.5 18.5L10 21H14L14.5 18.5A7 7 0 0016.5 17.3L19 18.3L21 14.9L18.9 13.2A7 7 0 0019 12Z" stroke={stroke} strokeWidth={1.4} strokeLinejoin="round" />
                 </>
             )}
-            {type === 'calendar' && (
-                <>
-                    <Rect x="4" y="5" width="16" height="15" rx="3" stroke={stroke} strokeWidth={1.8} />
-                    <Path d="M8 3V7M16 3V7M4 10H20" stroke={stroke} strokeWidth={1.8} strokeLinecap="round" />
-                </>
-            )}
-            {type === 'arrow' && (
-                <Path d="M5 12H18M13 7L18 12L13 17" stroke={stroke} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-            )}
         </Svg>
     );
 };
 
 const HomeScreen = ({
-    partnerName = 'Partner',
-    daysTogether = 0,
     hasPartner = false,
     yourMood = null,
     partnerMood = null,
-    partnerOnline = false,
     partnerScribble = null,
-    pendingInvite = null,
-    pendingPuzzle = null,
-    pendingTicTacToe = null,
-    activeTicTacToe = null,
-    pendingWordle = null,
-    activeWordle = null,
     todayChallenge = null,
     onMoodPress,
     onScribblePress,
     onQuestionPress,
     onFindPartner,
     onSettingsPress,
-    onJigsawCreate,
-    onJigsawPlay,
-    onTicTacToePress,
-    onWordlePress,
     onRefreshPuzzle,
     duelBadgeCount = 0,
     onNotificationPress,
 }) => {
-    const blinkAnim = useRef(new Animated.Value(1)).current;
+    const { width } = useWindowDimensions();
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
     const badgeWiggleAnim = useRef(new Animated.Value(0)).current;
     const badgePulseAnim = useRef(new Animated.Value(1)).current;
-    const hasNudgeAnimated = useRef(storage.getBoolean('has_played_nudge_anim') === true);
+    const playedNudgeKeyRef = useRef(null);
+    const onRefreshPuzzleRef = useRef(onRefreshPuzzle);
     const [now, setNow] = useState(Date.now());
 
     const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
@@ -228,6 +178,7 @@ const HomeScreen = ({
     const totalTasks = todayChallenge?.progress?.totalTasks || 0;
 
     const showNudge = hasPartner && isYourMoodStale;
+    const nudgeKey = yourMood?.updatedAt || 'missing-mood';
 
     let currentTask = null;
     if (todayChallenge?.challenge?.tasks) {
@@ -241,8 +192,12 @@ const HomeScreen = ({
     }
 
     useEffect(() => {
-        onRefreshPuzzle?.();
+        onRefreshPuzzleRef.current = onRefreshPuzzle;
     }, [onRefreshPuzzle]);
+
+    useEffect(() => {
+        onRefreshPuzzleRef.current?.();
+    }, []);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -253,23 +208,6 @@ const HomeScreen = ({
     }, []);
 
     useEffect(() => {
-        if (!pendingTicTacToe && !pendingWordle) {
-            blinkAnim.setValue(1);
-            return undefined;
-        }
-
-        const animation = Animated.loop(
-            Animated.sequence([
-                Animated.timing(blinkAnim, { toValue: 0.25, duration: 600, useNativeDriver: true }),
-                Animated.timing(blinkAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-            ])
-        );
-
-        animation.start();
-        return () => animation.stop();
-    }, [pendingTicTacToe, pendingWordle, blinkAnim]);
-
-    useEffect(() => {
         if (!showNudge) {
             penguinJiggleAnim.setValue(0);
             badgeWiggleAnim.setValue(0);
@@ -277,7 +215,7 @@ const HomeScreen = ({
             return undefined;
         }
 
-        if (hasNudgeAnimated.current) {
+        if (playedNudgeKeyRef.current === nudgeKey) {
             return undefined;
         }
 
@@ -322,8 +260,7 @@ const HomeScreen = ({
 
             animation.start(({ finished }) => {
                 if (finished) {
-                    hasNudgeAnimated.current = true;
-                    storage.set('has_played_nudge_anim', true);
+                    playedNudgeKeyRef.current = nudgeKey;
                 }
             });
         }, 800);
@@ -334,7 +271,7 @@ const HomeScreen = ({
                 animation.stop();
             }
         };
-    }, [showNudge, penguinJiggleAnim, badgeWiggleAnim, badgePulseAnim]);
+    }, [showNudge, nudgeKey, penguinJiggleAnim, badgeWiggleAnim, badgePulseAnim]);
 
     const penguinRotation = penguinJiggleAnim.interpolate({
         inputRange: [-1, 1],
@@ -351,9 +288,8 @@ const HomeScreen = ({
         outputRange: ['-5deg', '5deg'],
     });
 
-   
-
-  
+    const topicCardWidth = (width - 52) / 2;
+    const fullWidthImageStyle = { width };
 
     return (
         <LinearGradient
@@ -361,7 +297,7 @@ const HomeScreen = ({
             locations={[0, 0.34, 0.72, 1]}
             start={{ x: 0.25, y: 0 }}
             end={{ x: 0.75, y: 1 }}
-            style={{ flex: 1 }}
+            style={styles.screenGradient}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <SafeAreaView style={styles.container} edges={['top']}>
@@ -372,10 +308,10 @@ const HomeScreen = ({
                 >
                     <View style={styles.header}>
                         <View style={styles.brandContainer}>
-                            <Image 
-                                source={require('../../assets/images/penguin-text-logo.png')} 
-                                style={styles.brandLogo} 
-                                resizeMode="contain" 
+                            <Image
+                                source={require('../../assets/images/penguin-text-logo.png')}
+                                style={styles.brandLogo}
+                                resizeMode="contain"
                             />
                         </View>
 
@@ -394,10 +330,6 @@ const HomeScreen = ({
                         </View>
                     </View>
 
-                  
-
-                   
-
                     <TouchableOpacity
                         style={styles.hero}
                         onPress={hasPartner ? onMoodPress : onFindPartner}
@@ -407,6 +339,7 @@ const HomeScreen = ({
                         <View style={styles.heroSparkleTwo} />
                         <Animated.View style={[
                             styles.heroImageWrap,
+                            fullWidthImageStyle,
                             showNudge && {
                                 transform: [
                                     { rotate: penguinRotation },
@@ -416,7 +349,7 @@ const HomeScreen = ({
                         ]}>
                             <Image
                                 source={hasPartner ? penguinMoodImage : require('../../assets/penguinmoods/nopartner.png')}
-                                style={styles.heroImage}
+                                style={[styles.heroImage, fullWidthImageStyle]}
                             />
                         </Animated.View>
                         {showNudge && (
@@ -435,12 +368,6 @@ const HomeScreen = ({
                             </Animated.View>
                         )}
                     </TouchableOpacity>
-
-                   
-
-                   
-
-                  
 
                     <View style={styles.twoColumn}>
                         <TouchableOpacity onPress={onScribblePress} activeOpacity={0.9} style={styles.featureCardPressable}>
@@ -485,7 +412,6 @@ const HomeScreen = ({
                                     )}
                                 </View>
 
-                               
                             </LinearGradient>
                         </TouchableOpacity>
 
@@ -495,11 +421,11 @@ const HomeScreen = ({
                                     colors={['#E3F9F0', '#F2FCF8']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 1 }}
-                                    style={[styles.streakCard, { borderColor: '#D0F2E4' }]}
+                                    style={[styles.streakCard, styles.completedStreakCard]}
                                 >
                                     <View style={styles.featureCardHeader}>
-                                        <HomeText style={[styles.smallCardTitle, { color: '#0A5C43' }]}>Challenge Done! ✨</HomeText>
-                                        <HomeText style={[styles.smallCardSub, { color: '#138A68' }]}>You're all caught up</HomeText>
+                                        <HomeText style={[styles.smallCardTitle, styles.completedCardTitle]}>Challenge Done! ✨</HomeText>
+                                        <HomeText style={[styles.smallCardSub, styles.completedCardSub]}>You're all caught up</HomeText>
                                     </View>
                                     <View style={styles.challengeContentCompleted}>
                                         <HomeText style={styles.completedSubText}>
@@ -552,7 +478,6 @@ const HomeScreen = ({
                         )}
                     </View>
 
-                
                     <View style={styles.sectionHeader}>
                         <HomeText style={styles.sectionTitle}>Deepen your connection</HomeText>
                         <HomeText style={styles.sectionSub}>Explore topics that bring you closer</HomeText>
@@ -561,7 +486,7 @@ const HomeScreen = ({
                         {CONNECTION_TOPICS.map((topic) => (
                             <TouchableOpacity
                                 key={topic.id}
-                                style={styles.topicPressable}
+                                style={{ width: topicCardWidth }}
                                 onPress={() => onQuestionPress?.(TOPIC_CATEGORIES[topic.id])}
                                 activeOpacity={0.88}
                             >
@@ -581,7 +506,6 @@ const HomeScreen = ({
                         ))}
                     </View>
 
-                 
                 </ScrollView>
             </SafeAreaView>
         </LinearGradient>
@@ -601,6 +525,9 @@ const cardShadow = Platform.select({
 });
 
 const styles = StyleSheet.create({
+    screenGradient: {
+        flex: 1,
+    },
     container: {
         flex: 1,
     },
@@ -622,7 +549,7 @@ const styles = StyleSheet.create({
     brandContainer: {
         flexDirection: 'column',
         alignItems: 'flex-start',
-       
+
     },
     brandLogo: {
         width: 135,
@@ -663,68 +590,6 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
-    greetingBlock: {
-        marginBottom: 14,
-    },
-    greeting: {
-        fontSize: 25,
-        fontWeight: fontWeight('900'),
-        color: '#171B44',
-        fontFamily: fontFamily.extraBold,
-    },
-    greetingSub: {
-        color: '#6F6998',
-        fontSize: 14,
-        fontWeight: fontWeight('600'),
-        marginTop: 4,
-        fontFamily: fontFamily.bold,
-    },
-    partnerMoodCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        minHeight: 96,
-        borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderWidth: 1,
-        borderColor: '#F8DDE8',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        ...cardShadow,
-    },
-    cardEyebrow: {
-        color: '#272C57',
-        fontSize: 12,
-        fontWeight: fontWeight('800'),
-        fontFamily: fontFamily.extraBold,
-    },
-    partnerMoodText: {
-        color: '#FF6F8F',
-        fontSize: 20,
-        fontWeight: fontWeight('900'),
-        marginTop: 5,
-        fontFamily: fontFamily.extraBold,
-    },
-    cardMeta: {
-        color: '#817A9F',
-        fontSize: 12,
-        fontWeight: fontWeight('600'),
-        marginTop: 5,
-        fontFamily: fontFamily.bold,
-    },
-    moodAvatar: {
-        width: 80,
-        height: 80,
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-    },
-    moodImage: {
-        width: 92,
-        height: 62,
-        borderRadius: 12,
-        resizeMode: 'cover',
-    },
     hero: {
         height: 220,
         alignItems: 'center',
@@ -735,13 +600,11 @@ const styles = StyleSheet.create({
         overflow: 'visible',
     },
     heroImage: {
-        width: width,
         height: 260,
         resizeMode: 'contain',
         opacity: 0.96,
     },
     heroImageWrap: {
-        width: width,
         height: 260,
         backgroundColor: 'transparent',
     },
@@ -771,34 +634,6 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight('700'),
         fontFamily: fontFamily.bold,
     },
-    heroFadeTop: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 36,
-    },
-    heroFadeBottom: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 46,
-    },
-    heroFadeLeft: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        left: 0,
-        width: 42,
-    },
-    heroFadeRight: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        right: 0,
-        width: 42,
-    },
     heroSparkleOne: {
         position: 'absolute',
         top: 28,
@@ -816,110 +651,6 @@ const styles = StyleSheet.create({
         height: 6,
         borderRadius: 3,
         backgroundColor: '#FFB7C8',
-    },
-    quickPanel: {
-        borderRadius: 22,
-        padding: 14,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        borderWidth: 1,
-        borderColor: '#F8DDE8',
-        ...cardShadow,
-    },
-    sectionPrompt: {
-        color: '#272C57',
-        fontSize: 14,
-        fontWeight: fontWeight('900'),
-        marginBottom: 12,
-        fontFamily: fontFamily.extraBold,
-    },
-    quickGrid: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 8,
-    },
-    quickCard: {
-        width: (width - 92) / 4,
-        minHeight: 76,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F4E5F4',
-    },
-    quickIcon: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 7,
-    },
-    quickLabel: {
-        color: '#272C57',
-        fontSize: 11,
-        fontWeight: fontWeight('800'),
-        fontFamily: fontFamily.extraBold,
-    },
-    quoteCard: {
-        marginTop: 14,
-        borderRadius: 18,
-        paddingVertical: 16,
-        paddingHorizontal: 18,
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.82)',
-        borderWidth: 1,
-        borderColor: '#F8DDE8',
-    },
-    quoteText: {
-        color: '#555078',
-        fontSize: 15,
-        fontWeight: fontWeight('700'),
-        fontFamily: fontFamily.bold,
-    },
-    quoteSub: {
-        color: '#6F6998',
-        fontSize: 13,
-        fontWeight: fontWeight('600'),
-        marginTop: 3,
-        fontFamily: fontFamily.bold,
-    },
-    todayCard: {
-        marginTop: 18,
-        borderRadius: 22,
-        padding: 16,
-        backgroundColor: 'rgba(255,255,255,0.92)',
-        borderWidth: 1,
-        borderColor: '#F8DDE8',
-        ...cardShadow,
-    },
-    todayTopRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    todayTitle: {
-        color: '#171B44',
-        fontSize: 20,
-        fontWeight: fontWeight('900'),
-        marginTop: 4,
-        fontFamily: fontFamily.extraBold,
-    },
-    calendarBubble: {
-        width: 44,
-        height: 44,
-        borderRadius: 16,
-        backgroundColor: '#F2EEFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    todayQuestion: {
-        color: '#6F6998',
-        fontSize: 14,
-        lineHeight: 20,
-        fontWeight: fontWeight('600'),
-        marginTop: 12,
-        fontFamily: fontFamily.bold,
     },
     twoColumn: {
         flexDirection: 'row',
@@ -968,29 +699,6 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 18,
         borderBottomRightRadius: 18,
     },
-    scribbleDoodles: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    pencilBubble: {
-        position: 'absolute',
-        right: 12,
-        bottom: 12,
-        width: 48,
-        height: 48,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.38)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.58)',
-    },
-    pencilImage: {
-        width: 34,
-        height: 34,
-        resizeMode: 'contain',
-    },
     streakCard: {
         flex: 1,
         height: 190,
@@ -1001,44 +709,18 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         ...cardShadow,
     },
+    completedStreakCard: {
+        borderColor: '#D0F2E4',
+    },
+    completedCardTitle: {
+        color: '#0A5C43',
+    },
+    completedCardSub: {
+        color: '#138A68',
+    },
     scribbleLottie: {
         width: '100%',
         height: '100%',
-    },
-    togetherContent: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
-    },
-    togetherImage: {
-        width: 78,
-        height: 94,
-        resizeMode: 'contain',
-        marginRight: -10,
-        marginBottom: -8,
-    },
-    daysText: {
-        color: '#FF758F',
-        fontSize: 40,
-        fontWeight: fontWeight('900'),
-        lineHeight: 44,
-        fontFamily: fontFamily.extraBold,
-    },
-    daysLabel: {
-        color: '#171B44',
-        fontSize: 15,
-        lineHeight: 19,
-        fontWeight: fontWeight('900'),
-        fontFamily: fontFamily.extraBold,
-    },
-    daysSub: {
-        color: '#817A9F',
-        fontSize: 11,
-        lineHeight: 14,
-        fontWeight: fontWeight('800'),
-        marginTop: 8,
-        fontFamily: fontFamily.extraBold,
     },
     challengeContent: {
         flex: 1,
@@ -1112,49 +794,11 @@ const styles = StyleSheet.create({
         marginTop: 3,
         fontFamily: fontFamily.bold,
     },
-    horizontalList: {
-        gap: 12,
-        paddingRight: 20,
-    },
-    gameCard: {
-        width: 158,
-        minHeight: 126,
-        borderRadius: 20,
-        padding: 15,
-        justifyContent: 'flex-end',
-        overflow: 'hidden',
-    },
-    liveDot: {
-        position: 'absolute',
-        top: 12,
-        right: 12,
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#FFFFFF',
-    },
-    gameTitle: {
-        color: '#FFFFFF',
-        fontSize: 17,
-        fontWeight: fontWeight('900'),
-        fontFamily: fontFamily.extraBold,
-    },
-    gameSubtitle: {
-        color: 'rgba(255,255,255,0.86)',
-        fontSize: 12,
-        fontWeight: fontWeight('600'),
-        lineHeight: 17,
-        marginTop: 6,
-        fontFamily: fontFamily.bold,
-    },
     topicGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
         rowGap: 12,
-    },
-    topicPressable: {
-        width: (width - 52) / 2,
     },
     topicCard: {
         height: 86,
@@ -1194,41 +838,6 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight('700'),
         marginTop: 4,
         opacity: 0.85,
-        fontFamily: fontFamily.bold,
-    },
-    topicArrow: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.48)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.62)',
-        flexShrink: 0,
-        marginLeft: 5,
-    },
-    linkPartnerCard: {
-        marginTop: 18,
-        borderRadius: 22,
-        padding: 18,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F8DDE8',
-        ...cardShadow,
-    },
-    linkPartnerTitle: {
-        color: '#171B44',
-        fontSize: 20,
-        fontWeight: fontWeight('900'),
-        marginBottom: 7,
-        fontFamily: fontFamily.extraBold,
-    },
-    linkPartnerText: {
-        color: '#6F6998',
-        fontSize: 14,
-        lineHeight: 20,
-        fontWeight: fontWeight('600'),
         fontFamily: fontFamily.bold,
     },
 });

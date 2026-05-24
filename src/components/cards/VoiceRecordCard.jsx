@@ -28,6 +28,7 @@ import { spacing } from '../../theme';
 import { uploadAudioToS3 } from '../../utils/uploadApi';
 
 
+
 /**
  * VoiceRecordCard - Card for recording voice messages
  * Uses react-native-audio-recorder-player v3.6.0 (non-Expo)
@@ -141,14 +142,10 @@ const VoiceRecordCard = React.memo(({
     const requestPermissions = async () => {
         try {
             if (Platform.OS === 'android') {
-                const grants = await PermissionsAndroid.requestMultiple([
+                const granted = await PermissionsAndroid.request(
                     PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-                    PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-                    PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-                ]);
-                const granted =
-                    grants['android.permission.RECORD_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED;
-                setHasPermission(granted);
+                );
+                setHasPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
             } else {
                 // iOS handles permissions automatically when recording starts
                 setHasPermission(true);
@@ -202,9 +199,10 @@ const VoiceRecordCard = React.memo(({
                 // Set audio mode for recording
                 audioRecorderPlayerRef.current.setSubscriptionDuration(0.1); // Update every 100ms
 
+                // On Android, pass undefined to let the native module use the app's cache directory
                 const path = Platform.select({
                     ios: `voice_${Date.now()}.m4a`,
-                    android: `sdcard/voice_${Date.now()}.mp4`,
+                    android: undefined,
                 });
 
                 await audioRecorderPlayerRef.current.startRecorder(path);
