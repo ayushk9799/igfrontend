@@ -636,22 +636,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
             // Play game over result sound effect!
             playResultSound();
 
-            Animated.sequence([
-                // First highlight winning boxes and dim others smoothly
-                Animated.timing(highlightAnim, {
-                    toValue: 1,
-                    duration: 400,
-                    easing: Easing.inOut(Easing.ease),
-                    useNativeDriver: true,
-                }),
-                // Then draw the winning strike-through line from end to end
-                Animated.timing(lineAnim, {
-                    toValue: 1,
-                    duration: 500,
-                    easing: Easing.out(Easing.ease),
-                    useNativeDriver: true,
-                })
-            ]).start(({ finished }) => {
+            Animated.timing(lineAnim, {
+                toValue: 1,
+                duration: 500,
+                easing: Easing.out(Easing.ease),
+                useNativeDriver: true,
+            }).start(({ finished }) => {
                 if (finished) {
                     setRevealGameOverText(true);
                 }
@@ -686,21 +676,11 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
     const renderCell = (index) => {
         const value = board[index];
-        const isWinningCell = winningLine.includes(index);
 
         // Allow tapping if: new game OR (my turn AND cell empty AND game not over)
         const canTap = isNewGame || (isMyTurn && value === null && !isGameOver);
 
-        // Dim non-winning cells smoothly when the game is won, keeping style node type consistent
-        const cellOpacity = (winningLine.length > 0 && !isWinningCell)
-            ? highlightAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0.1]
-            })
-            : highlightAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1]
-            });
+        const cellOpacity = 1;
 
         return (
             <Animated.View
@@ -724,15 +704,6 @@ const TicTacToeScreen = ({ navigation, route }) => {
                         height: '100%'
                     }}
                 >
-                    {isWinningCell && (
-                        <Animated.View
-                            style={[
-                                StyleSheet.absoluteFill,
-                                styles.cellWinning,
-                                { opacity: highlightAnim }
-                            ]}
-                        />
-                    )}
                     {value !== null && (
                         <AnimatedSymbol value={value} mySymbol={mySymbol} />
                     )}
