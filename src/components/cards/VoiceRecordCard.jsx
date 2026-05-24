@@ -27,7 +27,11 @@ import { fontFamily } from '../../constants/fonts';
 import { spacing } from '../../theme';
 import { uploadAudioToS3 } from '../../utils/uploadApi';
 
-
+const WAVEFORM_BAR_HEIGHTS = [
+    0.38, 0.64, 0.46, 0.82, 0.58, 0.94, 0.52, 0.74,
+    0.42, 0.88, 0.68, 0.50, 0.78, 0.56, 0.92, 0.48,
+    0.70, 0.40, 0.84, 0.60,
+];
 
 /**
  * VoiceRecordCard - Card for recording voice messages
@@ -83,6 +87,7 @@ const VoiceRecordCard = React.memo(({
     const [isPlaying, setIsPlaying] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [playbackPosition, setPlaybackPosition] = useState('00:00');
+    const [playbackProgress, setPlaybackProgress] = useState(0);
 
     // Animation for pulsing mic when recording
     const pulseScale = useSharedValue(1);
@@ -96,6 +101,8 @@ const VoiceRecordCard = React.memo(({
             setRecordingDuration('00:00');
             setIsRecording(false);
             setIsPlaying(false);
+            setPlaybackPosition('00:00');
+            setPlaybackProgress(0);
         }
     }, [task._id, isAnswered, previousAnswer]);
 
@@ -256,12 +263,14 @@ const VoiceRecordCard = React.memo(({
                 audioRecorderPlayerRef.current.addPlayBackListener((e) => {
                     const position = audioRecorderPlayerRef.current.mmssss(Math.floor(e.currentPosition));
                     setPlaybackPosition(position.slice(0, 5));
+                    setPlaybackProgress(e.duration ? Math.min(e.currentPosition / e.duration, 1) : 0);
 
                     if (e.currentPosition >= e.duration) {
                         audioRecorderPlayerRef.current.stopPlayer();
                         audioRecorderPlayerRef.current.removePlayBackListener();
                         setIsPlaying(false);
                         setPlaybackPosition('00:00');
+                        setPlaybackProgress(0);
                     }
                 });
 
@@ -278,6 +287,7 @@ const VoiceRecordCard = React.memo(({
         setRecordingUri(null);
         setRecordingDuration('00:00');
         setPlaybackPosition('00:00');
+        setPlaybackProgress(0);
     };
 
     const handleSubmit = async () => {
@@ -313,6 +323,12 @@ const VoiceRecordCard = React.memo(({
         }
     };
 
+    const getWaveformBarStyle = (height, isPlayed) => ({
+        height: 36 * height,
+        backgroundColor: isPlaying && isPlayed ? '#F64D7E' : '#F9A2BD',
+        opacity: isPlaying && !isPlayed ? 0.55 : 1,
+    });
+
     return (
         <LinearGradient colors={['#FFF0F6', '#FFF9FB']} style={voiceStyles.cardInner}>
             {/* Already Answered Overlay */}
@@ -326,7 +342,7 @@ const VoiceRecordCard = React.memo(({
                 </View>
             )}
 
-            <View style={[voiceStyles.cardContent, isAnswered && { opacity: 0.3 }]}>
+            <View style={[voiceStyles.cardContent, isAnswered && voiceStyles.answeredContent]}>
                 {/* Header */}
                 <View style={voiceStyles.topRow}>
                     <View style={voiceStyles.categoryBadge}>
@@ -345,7 +361,10 @@ const VoiceRecordCard = React.memo(({
                 </View>
 
                 {/* Recording UI */}
-                <View style={voiceStyles.recordingContainer}>
+                <View style={[
+                    voiceStyles.recordingContainer,
+                    recordingUri && voiceStyles.previewRecordingContainer
+                ]}>
                     {!recordingUri ? (
                         // Recording Mode
                         <>
@@ -403,20 +422,19 @@ const VoiceRecordCard = React.memo(({
                                 {/* Waveform Visualization */}
                                 <View style={voiceStyles.waveformContainer}>
                                     <View style={voiceStyles.waveformBars}>
-                                        {[0.3, 0.6, 0.8, 0.5, 0.9, 0.7, 0.4, 0.85, 0.6, 0.75, 0.5, 0.9].map((height, idx) => (
-                                            <Animated.View
-                                                key={idx}
-                                                style={[
-                                                    voiceStyles.waveformBar,
-                                                    {
-                                                        height: 30 * height,
-                                                        backgroundColor: isPlaying
-                                                            ? `rgba(255, 255, 255, ${0.4 + height * 0.6})`
-                                                            : 'rgba(255, 255, 255, 0.4)'
-                                                    }
-                                                ]}
-                                            />
-                                        ))}
+                                        {WAVEFORM_BAR_HEIGHTS.map((height, idx) => {
+                                            const isPlayed = playbackProgress > idx / WAVEFORM_BAR_HEIGHTS.length;
+
+                                            return (
+                                                <View
+                                                    key={idx}
+                                                    style={[
+                                                        voiceStyles.waveformBar,
+                                                        getWaveformBarStyle(height, isPlayed)
+                                                    ]}
+                                                />
+                                            );
+                                        })}
                                     </View>
                                     <Text style={voiceStyles.durationText}>
                                         {isPlaying ? playbackPosition : recordingDuration}
@@ -434,7 +452,7 @@ const VoiceRecordCard = React.memo(({
                                     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                         <Path
                                             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                            stroke="rgba(255,255,255,0.8)"
+                                            stroke="#B62D59"
                                             strokeWidth={2}
                                             strokeLinecap="round"
                                             strokeLinejoin="round"
@@ -523,6 +541,9 @@ const voiceStyles = StyleSheet.create({
         paddingTop: spacing.lg,
         paddingBottom: spacing.md,
     },
+    answeredContent: {
+        opacity: 0.3,
+    },
     topRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -572,6 +593,11 @@ const voiceStyles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: spacing.sm,
     },
+    previewRecordingContainer: {
+        justifyContent: 'space-between',
+        paddingTop: spacing['2xl'],
+        paddingBottom: spacing.xs,
+    },
     voiceArtwork: {
         width: 238,
         height: 162,
@@ -619,6 +645,11 @@ const voiceStyles = StyleSheet.create({
         width: '100%',
         borderWidth: 1,
         borderColor: '#FFD1DF',
+        shadowColor: '#F78AAA',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 5,
     },
     playButton: {
         width: 60,
@@ -631,8 +662,8 @@ const voiceStyles = StyleSheet.create({
         borderColor: '#FFFFFF',
     },
     playButtonActive: {
-        backgroundColor: 'rgba(255, 100, 100, 0.3)',
-        borderColor: 'rgba(255, 150, 150, 0.5)',
+        backgroundColor: '#D93668',
+        borderColor: '#FFFFFF',
     },
     playButtonInner: {
         width: '100%',
@@ -649,13 +680,14 @@ const voiceStyles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: 40,
-        paddingHorizontal: spacing.sm,
+        height: 46,
+        paddingHorizontal: spacing.xs,
     },
     waveformBar: {
-        width: 4,
-        borderRadius: 2,
-        marginHorizontal: 2,
+        width: 5,
+        minHeight: 8,
+        borderRadius: 3,
+        marginHorizontal: 1.5,
     },
     durationText: {
         color: '#8B1642',
@@ -668,9 +700,10 @@ const voiceStyles = StyleSheet.create({
     },
     actionsRow: {
         flexDirection: 'row',
-        marginTop: spacing.xl,
         gap: spacing.md,
         width: '100%',
+        paddingHorizontal: spacing.md,
+        paddingBottom: spacing.xs,
     },
     discardButton: {
         flex: 1,
@@ -681,11 +714,11 @@ const voiceStyles = StyleSheet.create({
         borderRadius: 16,
         backgroundColor: '#FFE3EC',
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderColor: '#FFD1DF',
         gap: spacing.sm,
     },
     discardText: {
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: '#B62D59',
         fontSize: 16,
         fontWeight: '600',
         fontFamily: fontFamily.bold,

@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import Button from '../components/Button';
+
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import GradientBackground from '../components/GradientBackground';
@@ -1602,12 +1602,13 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                             <Text style={styles.celebrateSubtitle}>
                                 You did it in {moveCount} moves
                             </Text>
-                            <Button
-                                title="Back to Home"
+                            <TouchableOpacity
                                 onPress={() => navigation.goBack()}
-                                variant="primary"
-                                size="md"
-                            />
+                                activeOpacity={0.8}
+                                style={styles.premiumActionButton}
+                            >
+                                <Text style={styles.premiumActionText}>Back to Home</Text>
+                            </TouchableOpacity>
                         </Animated.View>
                     )}
 
@@ -1864,6 +1865,32 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: colors.textSecondary,
         marginBottom: spacing.md,
+    },
+    premiumActionButton: {
+        backgroundColor: colors.primary,
+        minHeight: 40,
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing['2xl'],
+        borderRadius: borderRadius.xl,
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
+    },
+    premiumActionText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '700',
     },
     referenceOverlay: {
         position: 'absolute',

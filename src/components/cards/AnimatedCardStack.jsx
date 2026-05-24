@@ -43,6 +43,7 @@ const AnimatedCardStack = ({
     hasPartner = false,
     onLinkPartner,
     onIndexChange,
+    onComplete,
     onAnswerSubmit,
     challengeId,
     userAnswers = [],
@@ -125,7 +126,21 @@ const AnimatedCardStack = ({
 
     // Programmatic transition (Skip/Submit)
     const triggerTransition = useCallback(() => {
-        if (!canGoNext || isTransitioning.value) return;
+        if (isTransitioning.value) return;
+
+        if (!canGoNext) {
+            isTransitioning.value = true;
+            const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
+            const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
+
+            activeRot.value = withTiming(-10, { duration: 200 });
+            activeX.value = withTiming(-width * 1.2, { duration: 200 }, (finished) => {
+                if (finished && onComplete) {
+                    runOnJS(onComplete)();
+                }
+            });
+            return;
+        }
 
         isTransitioning.value = true;
         const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
@@ -139,7 +154,7 @@ const AnimatedCardStack = ({
                 runOnJS(goToNextCard)();
             }
         });
-    }, [canGoNext, activeSlotIndex, goToNextCard, isTransitioning, val0.x, val1.x, val0.rot, val1.rot]);
+    }, [canGoNext, activeSlotIndex, goToNextCard, isTransitioning, onComplete, val0.x, val1.x, val0.rot, val1.rot]);
 
     const panGesture = Gesture.Pan()
         .onStart(() => {
@@ -167,7 +182,7 @@ const AnimatedCardStack = ({
             if (isTransitioning.value) return;
 
             const shouldSwipeLeft =
-                (event.translationX < -SWIPE_THRESHOLD || event.velocityX < -SWIPE_VELOCITY_THRESHOLD) && canGoNext && !isCurrentCardLocked;
+                (event.translationX < -SWIPE_THRESHOLD || event.velocityX < -SWIPE_VELOCITY_THRESHOLD) && !isCurrentCardLocked;
             const shouldSwipeRight =
                 (event.translationX > SWIPE_THRESHOLD || event.velocityX > SWIPE_VELOCITY_THRESHOLD) && canGoPrev;
 
@@ -179,7 +194,13 @@ const AnimatedCardStack = ({
                 isTransitioning.value = true;
                 runOnJS(triggerHaptic)();
                 activeX.value = withTiming(-width * 1.2, { duration: 200 }, (finished) => {
-                    if (finished) runOnJS(goToNextCard)();
+                    if (finished) {
+                        if (canGoNext) {
+                            runOnJS(goToNextCard)();
+                        } else if (onComplete) {
+                            runOnJS(onComplete)();
+                        }
+                    }
                 });
             } else if (shouldSwipeRight) {
                 isTransitioning.value = true;

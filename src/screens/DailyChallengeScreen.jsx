@@ -66,6 +66,7 @@ export default function DailyChallengeScreen({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState([]); // Track local answers
   const [isComplete, setIsComplete] = useState(false);
+  const [hasReachedEndOfStack, setHasReachedEndOfStack] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
@@ -77,10 +78,12 @@ export default function DailyChallengeScreen({
       // Get user's local date in YYYY-MM-DD format (avoids timezone issues with server's "today")
       const now = new Date();
       // const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-       const userLocalDate='2026-05-18'
+       const userLocalDate='2026-05-20'
       const res = await fetch(`${API_BASE}/api/daily-challenge/date/${userLocalDate}`);
       const json = await res.json();
       setChallenge(json.data);
+      setCurrentIndex(0);
+      setHasReachedEndOfStack(false);
 
       // Also fetch user's saved answers if userId is available
       if (userId && json.data?._id) {
@@ -132,11 +135,19 @@ export default function DailyChallengeScreen({
       });
   }, [tasks, userAnswers]);
 
+  const hasAnsweredAllTasks = tasks.length > 0 && unansweredTasks.length === 0;
+  const hasMovedPastVisibleCards = tasks.length > 0 && unansweredTasks.length > 0 && currentIndex >= unansweredTasks.length;
+  const shouldShowDoneScreen = isComplete || hasAnsweredAllTasks || hasReachedEndOfStack || hasMovedPastVisibleCards;
+
 
 
   // Callback for AnimatedCardStack to update the index
   const handleIndexChange = useCallback((newIndex) => {
     setCurrentIndex(newIndex);
+  }, []);
+
+  const handleStackComplete = useCallback(() => {
+    setHasReachedEndOfStack(true);
   }, []);
 
   // Callback to submit answer to backend
@@ -239,9 +250,9 @@ export default function DailyChallengeScreen({
     );
   }
 
-  // Show completion screen ONLY when ALL tasks are complete
-  // Also handle edge case where unansweredTasks is empty but isComplete hasn't updated yet
-  if (isComplete || (tasks.length > 0 && unansweredTasks.length === 0)) {
+  // Show done screen when the user has gone through the visible stack.
+  // Some cards may be skipped, so this is separate from all questions being answered.
+  if (shouldShowDoneScreen) {
     return (
       <DailyChallengeDoneScreen
         partnerName={partnerName}
@@ -263,7 +274,7 @@ export default function DailyChallengeScreen({
             if (json.success) {
               Alert.alert('Reminder Sent!', `${partnerName} will get a notification 💕`);
             } else {
-              Alert.alert('Oops', json.message || 'Could not send reminder');
+              Alert.alert('Reminder Not Sent', json.message || 'Could not send reminder');
             }
           } catch (error) {
             Alert.alert('Error', 'Could not send reminder. Try again later.');
@@ -307,6 +318,7 @@ export default function DailyChallengeScreen({
                 hasPartner={hasPartner}
                 onLinkPartner={onLinkPartner}
                 onIndexChange={handleIndexChange}
+                onComplete={handleStackComplete}
                 onAnswerSubmit={handleAnswerSubmit}
                 challengeId={challenge._id}
                 userAnswers={userAnswers}
@@ -393,4 +405,3 @@ const styles = StyleSheet.create({
     width: 20,
   },
 });
-

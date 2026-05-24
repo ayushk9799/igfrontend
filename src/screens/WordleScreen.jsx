@@ -23,7 +23,7 @@ import ConfettiCannon from 'react-native-confetti-cannon';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import GradientBackground from '../components/GradientBackground';
-import Button from '../components/Button';
+
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
@@ -863,13 +863,13 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                         <Text style={styles.linkPartnerText}>
                                             Link a partner to send this word
                                         </Text>
-                                        <Button
-                                            title="Link Partner 🔗"
+                                        <TouchableOpacity
                                             onPress={onLinkPartner}
-                                            variant="primary"
-                                            size="xl"
-                                            fullWidth
-                                        />
+                                            activeOpacity={0.8}
+                                            style={styles.playAgainButton}
+                                        >
+                                            <Text style={styles.playAgainText}>Link Partner 🔗</Text>
+                                        </TouchableOpacity>
                                     </View>
                                 )}
                             </>
@@ -999,15 +999,21 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     {/* 2. Creator is waiting & partner is offline: Show Nudge */}
                     {mode === 'complete' && isCreator && (status === 'pending' || status === 'in_progress') && partnerOnline !== true && (
                         <View style={styles.actionButtons}>
-                            <Button
-                                title={`Nudge ${partnerName}`}
+                            <TouchableOpacity
                                 onPress={notifyPartner}
-                                variant="primary"
-                                size="xl"
+                                activeOpacity={0.8}
                                 disabled={notifying}
-                                loading={notifying}
-                                fullWidth
-                            />
+                                style={[
+                                    styles.playAgainButton,
+                                    notifying && { opacity: 0.5 },
+                                ]}
+                            >
+                                {notifying ? (
+                                    <ActivityIndicator color="#FFFFFF" />
+                                ) : (
+                                    <Text style={styles.playAgainText}>{`Nudge ${partnerName}`}</Text>
+                                )}
+                            </TouchableOpacity>
                         </View>
                     )}
 

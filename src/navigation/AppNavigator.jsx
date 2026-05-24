@@ -400,6 +400,11 @@ export const AppNavigator = () => {
         };
 
         try {
+            if (data.route === 'dailyChallenge' || data.tab === 'dailyChallenge') {
+                openHomeTab('dailyChallenge');
+                return;
+            }
+
             switch (data.type) {
                 case 'chat': {
                     if (!data.chatId) return;
@@ -472,6 +477,7 @@ export const AppNavigator = () => {
                     break;
                 }
 
+                case 'daily_challenge':
                 case 'daily_challenge_reminder':
                     openHomeTab('dailyChallenge');
                     break;

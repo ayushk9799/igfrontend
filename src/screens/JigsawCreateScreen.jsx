@@ -24,7 +24,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { usePuzzle } from '../hooks/usePuzzle';
-import Button from '../components/Button';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -404,18 +404,23 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                 {/* Footer with Send Button */}
                 <View style={styles.footer}>
                     {partnerId ? (
-                        <Button
-                            title={`Send to ${partnerName} 🧩`}
+                        <TouchableOpacity
                             onPress={handleSendPuzzle}
-                            variant="glow"
-                            size="xl"
-                            fullWidth
+                            activeOpacity={0.8}
                             disabled={!previewUri || isSending}
-                            loading={isSending}
-                        />
+                            style={[
+                                styles.premiumActionButton,
+                                (!previewUri || isSending) && styles.premiumActionButtonDisabled,
+                            ]}
+                        >
+                            {isSending ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                                <Text style={styles.premiumActionText}>{`Send to ${partnerName} 🧩`}</Text>
+                            )}
+                        </TouchableOpacity>
                     ) : (
-                        <Button
-                            title="Link Partner to Send 🔗"
+                        <TouchableOpacity
                             onPress={() => {
                                 if (onLinkPartner) {
                                     onLinkPartner();
@@ -423,10 +428,11 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                     navigation.goBack();
                                 }
                             }}
-                            variant="primary"
-                            size="xl"
-                            fullWidth
-                        />
+                            activeOpacity={0.8}
+                            style={styles.premiumActionButton}
+                        >
+                            <Text style={styles.premiumActionText}>Link Partner to Send 🔗</Text>
+                        </TouchableOpacity>
                     )}
                 </View>
             </SafeAreaView>
@@ -645,6 +651,35 @@ const styles = StyleSheet.create({
         width: '100%',
         marginTop: 0,
         paddingBottom: spacing['2xl'],
+    },
+    premiumActionButton: {
+        backgroundColor: colors.primary,
+        minHeight: 40,
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing['2xl'],
+        borderRadius: borderRadius.xl,
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        ...Platform.select({
+            ios: {
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
+    },
+    premiumActionButtonDisabled: {
+        opacity: 0.5,
+    },
+    premiumActionText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '700',
     },
 
 
