@@ -17,6 +17,7 @@ import Svg, { Path, Image as SvgImage, ClipPath, Defs, Text as SvgText } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import Button from '../components/Button';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
@@ -27,6 +28,8 @@ import * as Haptics from 'expo-haptics';
 const MAX_GRID_SIZE = 9;
 const SHOW_DEV_NUMBERS = false; // Set to false to hide numbers in production
 const TRAY_PIECE_HEIGHT = 110;
+const PIECE_SHADOW_OFFSET = { x: 0.5, y: 0.5 };
+const PIECE_DRAG_SHADOW_OFFSET = { x: 5, y: 7 };
 
 const getEdgePath = (x1, y1, x2, y2, nx, ny) => {
     if (nx === 0 && ny === 0) {
@@ -96,6 +99,28 @@ const getPiecePath = (row, col, gridDim, pieceSize, tabSize) => {
         `${getEdgePath(BL.x, BL.y, TL.x, TL.y, leftN.x, leftN.y)} Z`;
 };
 
+const getPieceEdgePaths = (row, col, gridDim, pieceSize, tabSize) => {
+    const P = pieceSize;
+    const T = tabSize;
+
+    const TL = { x: T, y: T };
+    const TR = { x: T + P, y: T };
+    const BR = { x: T + P, y: T + P };
+    const BL = { x: T, y: T + P };
+
+    const topDir = row === 0 ? 0 : ((row - 1 + col) % 2 === 0 ? 1 : -1);
+    const rightDir = col === gridDim - 1 ? 0 : ((row + col) % 2 === 0 ? 1 : -1);
+    const bottomDir = row === gridDim - 1 ? 0 : ((row + col) % 2 === 0 ? 1 : -1);
+    const leftDir = col === 0 ? 0 : ((row + col - 1) % 2 === 0 ? 1 : -1);
+
+    return {
+        top: `M ${TL.x} ${TL.y} ${getEdgePath(TL.x, TL.y, TR.x, TR.y, 0, topDir)}`,
+        right: `M ${TR.x} ${TR.y} ${getEdgePath(TR.x, TR.y, BR.x, BR.y, rightDir, 0)}`,
+        bottom: `M ${BR.x} ${BR.y} ${getEdgePath(BR.x, BR.y, BL.x, BL.y, 0, bottomDir)}`,
+        left: `M ${BL.x} ${BL.y} ${getEdgePath(BL.x, BL.y, TL.x, TL.y, leftDir, 0)}`,
+    };
+};
+
 const getPieceEdgeProtrusions = (r, c, gridDim) => {
     // Top edge
     const topDir = r === 0 ? 0 : ((r - 1 + c) % 2 === 0 ? 1 : -1);
@@ -114,6 +139,64 @@ const getPieceEdgeProtrusions = (r, c, gridDim) => {
     const right = rightDir === 0 ? 0 : (rightDir === 1 ? 1 : -1);
 
     return { top, bottom, left, right };
+};
+
+const RaisedPieceEdges = ({
+    path,
+    edgePaths,
+    hiddenEdges = {},
+    isDragging = false,
+    includeShadow = true,
+    includeBevel = true,
+}) => {
+    const shadowOffset = isDragging ? PIECE_DRAG_SHADOW_OFFSET : PIECE_SHADOW_OFFSET;
+    const shadowOpacity = isDragging ? 0 : 0;
+    const hasHiddenEdges = Object.values(hiddenEdges).some(Boolean);
+    const visibleEdgePaths = edgePaths
+        ? Object.entries(edgePaths).filter(([edge]) => !hiddenEdges[edge]).map(([, edgePath]) => edgePath)
+        : [];
+
+    return (
+        <>
+            {includeShadow && hasHiddenEdges && visibleEdgePaths.map((edgePath, index) => (
+                <Path
+                    key={`shadow-edge-${index}`}
+                    d={edgePath}
+                    fill="none"
+                    stroke={`rgba(35, 18, 56, ${shadowOpacity})`}
+                    strokeWidth={isDragging ? 5 : 4}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    transform={`translate(${shadowOffset.x} ${shadowOffset.y})`}
+                />
+            ))}
+            {includeShadow && !hasHiddenEdges && (
+                <Path
+                    d={path}
+                    fill={`rgba(35, 18, 56, ${shadowOpacity})`}
+                    transform={`translate(${shadowOffset.x} ${shadowOffset.y})`}
+                />
+            )}
+            {includeBevel && (hasHiddenEdges ? visibleEdgePaths : [path]).map((edgePath, index) => (
+                <React.Fragment key={`bevel-edge-${index}`}>
+                    <Path
+                        d={edgePath}
+                        fill="none"
+                        stroke="rgba(255, 255, 255, 0.82)"
+                        strokeWidth={isDragging ? 2.4 : 1.9}
+                        transform="translate(-1 -1)"
+                    />
+                    <Path
+                        d={edgePath}
+                        fill="none"
+                        stroke="rgba(44, 20, 72, 0.34)"
+                        strokeWidth={isDragging ? 2.8 : 2.2}
+                        transform="translate(1.2 1.6)"
+                    />
+                </React.Fragment>
+            ))}
+        </>
+    );
 };
 
 // Check if a single slot's piece collides with its immediate neighbors.
@@ -319,6 +402,49 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     const originalPiecesRef = useRef(null);
     const originalGridSizeRef = useRef(null);
     const trayScrollViewRef = useRef(null);
+    const audioPlayerRef = useRef(null);
+    const jigsawSoundUriRef = useRef(null);
+    const jigsawSoundPlayingRef = useRef(false);
+    const jigsawSoundTimeoutRef = useRef(null);
+
+    useEffect(() => {
+        audioPlayerRef.current = new AudioRecorderPlayer();
+        const soundAsset = require('../../assets/sounds/jigsaw.mp3');
+        jigsawSoundUriRef.current = Image.resolveAssetSource(soundAsset).uri;
+
+        return () => {
+            if (jigsawSoundTimeoutRef.current) {
+                clearTimeout(jigsawSoundTimeoutRef.current);
+            }
+            audioPlayerRef.current?.stopPlayer().catch(() => {});
+        };
+    }, []);
+
+    const playJigsawSound = useCallback(async () => {
+        try {
+            if (!audioPlayerRef.current) return;
+            const soundUri = jigsawSoundUriRef.current;
+            if (!soundUri) return;
+
+            if (jigsawSoundPlayingRef.current) {
+                await audioPlayerRef.current.stopPlayer().catch(() => {});
+            }
+
+            await audioPlayerRef.current.startPlayer(soundUri);
+            await audioPlayerRef.current.setVolume(1.0);
+            jigsawSoundPlayingRef.current = true;
+
+            if (jigsawSoundTimeoutRef.current) {
+                clearTimeout(jigsawSoundTimeoutRef.current);
+            }
+            jigsawSoundTimeoutRef.current = setTimeout(() => {
+                jigsawSoundPlayingRef.current = false;
+            }, 700);
+        } catch (error) {
+            jigsawSoundPlayingRef.current = false;
+            console.error('Failed to play jigsaw sound:', error);
+        }
+    }, []);
 
     // Handle dev jiggle positions & rotations
     useEffect(() => {
@@ -635,6 +761,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                 setPieces(currentPieces);
                 setMoveCount(prev => prev + 1);
                 setTrayOrder(prev => prev.filter(idx => idx !== originalPieceFrom));
+                playJigsawSound();
 
                 if (puzzleId) {
                     movePiece(puzzleId, fromIndex, toIndex, currentPieces).catch(err => {
@@ -697,6 +824,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
         setPieces(currentPieces);
         setMoveCount(prev => prev + 1);
+        playJigsawSound();
 
         // Update trayOrder directly when moving from/to tray
         if (pieceFrom < 0) {
@@ -732,7 +860,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             } catch (e) {}
         }
         return true;
-    }, [puzzleId, movePiece, checkSolved, playCelebration, gridDim]);
+    }, [puzzleId, movePiece, checkSolved, playCelebration, playJigsawSound, gridDim]);
 
     // Memoized pan responders
     const panResponders = useRef(
@@ -1200,6 +1328,25 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                 const originalRow = renderPieceIndex !== -1 ? Math.floor(renderPieceIndex / gridDim) : 0;
                                 const originalCol = renderPieceIndex !== -1 ? renderPieceIndex % gridDim : 0;
                                 const isColliding = isHovered && checkHoverCollision(currentIndex);
+                                const renderedPiecePath = renderPieceIndex !== -1
+                                    ? getPiecePath(originalRow, originalCol, gridDim, pieceSize, tabSize)
+                                    : null;
+                                const renderedPieceEdgePaths = renderPieceIndex !== -1
+                                    ? getPieceEdgePaths(originalRow, originalCol, gridDim, pieceSize, tabSize)
+                                    : null;
+                                const slotPiecePath = getPiecePath(slotRow, slotCol, gridDim, pieceSize, tabSize);
+                                const isCorrectlyPlaced = renderPieceIndex === currentIndex;
+                                const hasVisibleBoardPiece = (slotIndex) => {
+                                    if (slotIndex < 0 || slotIndex >= pieces.length) return false;
+                                    if (devShowCorrect || devJiggle) return true;
+                                    return pieces[slotIndex] >= 0 || (hoverTarget === slotIndex && draggingPiece);
+                                };
+                                const sharedEdges = {
+                                    top: slotRow > 0 && hasVisibleBoardPiece(currentIndex - gridDim),
+                                    right: slotCol < gridDim - 1 && hasVisibleBoardPiece(currentIndex + 1),
+                                    bottom: slotRow < gridDim - 1 && hasVisibleBoardPiece(currentIndex + gridDim),
+                                    left: slotCol > 0 && hasVisibleBoardPiece(currentIndex - 1),
+                                };
 
                                 const idleY = devJiggle ? idleAnim.interpolate({
                                     inputRange: [0, 1],
@@ -1255,13 +1402,22 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                             width={pieceSize + 2 * tabSize}
                                             height={pieceSize + 2 * tabSize}
                                             viewBox={`0 0 ${pieceSize + 2 * tabSize} ${pieceSize + 2 * tabSize}`}
+                                            overflow="visible"
                                         >
                                             {renderPieceIndex !== -1 && (
                                                 <Defs>
                                                     <ClipPath id={`clip-${currentIndex}`}>
-                                                        <Path d={getPiecePath(originalRow, originalCol, gridDim, pieceSize, tabSize)} />
+                                                        <Path d={renderedPiecePath} />
                                                     </ClipPath>
                                                 </Defs>
+                                            )}
+                                            {renderedPiecePath && (
+                                                <RaisedPieceEdges
+                                                    path={renderedPiecePath}
+                                                    edgePaths={renderedPieceEdgePaths}
+                                                    hiddenEdges={sharedEdges}
+                                                    includeBevel={false}
+                                                />
                                             )}
                                             {renderPieceIndex !== -1 && (
                                                 <SvgImage
@@ -1273,9 +1429,25 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                                     clipPath={`url(#clip-${currentIndex})`}
                                                 />
                                             )}
+                                            {renderedPiecePath && isCorrectlyPlaced && (
+                                                <Path
+                                                    d={renderedPiecePath}
+                                                    fill="none"
+                                                    stroke="rgba(34, 197, 94, 0.9)"
+                                                    strokeWidth={2.4}
+                                                />
+                                            )}
+                                            {renderedPiecePath && (
+                                                <RaisedPieceEdges
+                                                    path={renderedPiecePath}
+                                                    edgePaths={renderedPieceEdgePaths}
+                                                    hiddenEdges={sharedEdges}
+                                                    includeShadow={false}
+                                                />
+                                            )}
                                             {showGridLines && !isSolved && (val < 0 || isColliding) && (
                                                 <Path
-                                                    d={getPiecePath(slotRow, slotCol, gridDim, pieceSize, tabSize)}
+                                                    d={slotPiecePath}
                                                     fill="none"
                                                     stroke={isColliding ? "rgba(255, 75, 75, 0.9)" : "rgba(255, 255, 255, 0.55)"}
                                                     strokeWidth={isColliding ? 2.5 : 1.5}
@@ -1342,6 +1514,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
                                     const originalRow = Math.floor(originalIndex / gridDim);
                                     const originalCol = originalIndex % gridDim;
+                                    const trayPiecePath = getPiecePath(originalRow, originalCol, gridDim, pieceSize, tabSize);
                                     
                                     const trayScale = TRAY_PIECE_HEIGHT / (pieceSize + 2 * tabSize);
                                     const trayPieceSize = (pieceSize + 2 * tabSize) * trayScale;
@@ -1371,12 +1544,14 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                                     width={pieceSize + 2 * tabSize}
                                                     height={pieceSize + 2 * tabSize}
                                                     viewBox={`0 0 ${pieceSize + 2 * tabSize} ${pieceSize + 2 * tabSize}`}
+                                                    overflow="visible"
                                                 >
                                                     <Defs>
                                                         <ClipPath id={`clip-tray-${originalIndex}`}>
-                                                            <Path d={getPiecePath(originalRow, originalCol, gridDim, pieceSize, tabSize)} />
+                                                            <Path d={trayPiecePath} />
                                                         </ClipPath>
                                                     </Defs>
+                                                    <RaisedPieceEdges path={trayPiecePath} includeBevel={false} />
                                                     <SvgImage
                                                         href={puzzle.imageUrl}
                                                         x={tabSize - originalCol * pieceSize + imgOffsetX}
@@ -1385,8 +1560,9 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                                         height={scaledImgH}
                                                         clipPath={`url(#clip-tray-${originalIndex})`}
                                                     />
+                                                    <RaisedPieceEdges path={trayPiecePath} includeShadow={false} />
                                                     <Path
-                                                        d={getPiecePath(originalRow, originalCol, gridDim, pieceSize, tabSize)}
+                                                        d={trayPiecePath}
                                                         fill="none"
                                                         stroke="rgba(255, 255, 255, 0.7)"
                                                         strokeWidth={1.5}
@@ -1455,43 +1631,42 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                     ]}
                     pointerEvents="none"
                 >
+                    {(() => {
+                        const dragRow = Math.floor(draggingPiece.originalIndex / gridDim);
+                        const dragCol = draggingPiece.originalIndex % gridDim;
+                        const dragPiecePath = getPiecePath(dragRow, dragCol, gridDim, pieceSize, tabSize);
+
+                        return (
                     <Svg
                         width={pieceSize + 2 * tabSize}
                         height={pieceSize + 2 * tabSize}
                         viewBox={`0 0 ${pieceSize + 2 * tabSize} ${pieceSize + 2 * tabSize}`}
+                        overflow="visible"
                     >
                         <Defs>
                             <ClipPath id={`clip-drag-${draggingPiece.originalIndex}`}>
-                                <Path d={getPiecePath(
-                                    Math.floor(draggingPiece.originalIndex / gridDim),
-                                    draggingPiece.originalIndex % gridDim,
-                                    gridDim,
-                                    pieceSize,
-                                    tabSize
-                                )} />
+                                <Path d={dragPiecePath} />
                             </ClipPath>
                         </Defs>
+                        <RaisedPieceEdges path={dragPiecePath} isDragging includeBevel={false} />
                         <SvgImage
                             href={puzzle.imageUrl}
-                            x={tabSize - (draggingPiece.originalIndex % gridDim) * pieceSize + imgOffsetX}
-                            y={tabSize - Math.floor(draggingPiece.originalIndex / gridDim) * pieceSize + imgOffsetY}
+                            x={tabSize - dragCol * pieceSize + imgOffsetX}
+                            y={tabSize - dragRow * pieceSize + imgOffsetY}
                             width={scaledImgW}
                             height={scaledImgH}
                             clipPath={`url(#clip-drag-${draggingPiece.originalIndex})`}
                         />
+                        <RaisedPieceEdges path={dragPiecePath} isDragging includeShadow={false} />
                         <Path
-                            d={getPiecePath(
-                                Math.floor(draggingPiece.originalIndex / gridDim),
-                                draggingPiece.originalIndex % gridDim,
-                                gridDim,
-                                pieceSize,
-                                tabSize
-                            )}
+                            d={dragPiecePath}
                             fill="none"
                             stroke="rgba(255, 255, 255, 0.8)"
                             strokeWidth={2}
                         />
                     </Svg>
+                        );
+                    })()}
                 </Animated.View>
             )}
         </View>

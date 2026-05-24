@@ -12,14 +12,14 @@ import {
     Animated,
     Dimensions,
     InteractionManager,
+    Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 
 import { Camera } from 'react-native-camera-kit';
-import { ImageManipulator, FlipType, SaveFormat } from 'expo-image-manipulator';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
@@ -30,18 +30,17 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     const { partnerId, partnerName } = route.params || {};
-    const { createPuzzle, isUploading } = usePuzzle();
+    const { createPuzzle } = usePuzzle();
 
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
 
     const [hasPermission, setHasPermission] = useState(false);
     const [previewUri, setPreviewUri] = useState(null);
-    const [showCamera, setShowCamera] = useState(true);
+    const [showCamera, setShowCamera] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [cameraType, setCameraType] = useState('back');
 
-    // 2. Add state to track if navigation transition is done
     const [isCameraInitialized, setIsCameraInitialized] = useState(false);
 
     // Animations
@@ -51,7 +50,6 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     const piece2Rotate = useRef(new Animated.Value(0)).current;
     const piece3Rotate = useRef(new Animated.Value(0)).current;
 
-    // 3. Wait for navigation animation to finish before loading camera
     useEffect(() => {
         const task = InteractionManager.runAfterInteractions(() => {
             setIsCameraInitialized(true);
@@ -86,7 +84,8 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
     const checkCameraPermission = async () => {
         if (Platform.OS === 'ios') {
-            setHasPermission(true);
+            const { status } = await ImagePicker.getCameraPermissionsAsync();
+            setHasPermission(status === 'granted');
             return;
         }
         const granted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
@@ -95,8 +94,20 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
     const requestCameraPermission = async () => {
         if (Platform.OS === 'ios') {
-            setHasPermission(true);
-            return true;
+            const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+            const granted = status === 'granted';
+            setHasPermission(granted);
+            if (!granted && !canAskAgain) {
+                Alert.alert(
+                    'Camera Permission Needed',
+                    'Camera access was denied. Please enable it in Settings to take puzzle photos.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                    ]
+                );
+            }
+            return granted;
         }
         const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
         const granted = result === PermissionsAndroid.RESULTS.GRANTED;
@@ -115,16 +126,30 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     };
 
     const handleOpenCamera = async () => {
-        // If coming from gallery back to camera, ensure perms
-        const granted = await requestCameraPermission();
-        setShowCamera(true);
+        const granted = hasPermission || (await requestCameraPermission());
+        if (granted) {
+            setPreviewUri(null);
+            setShowCamera(true);
+        }
     };
 
     const toggleCamera = () => {
+        if (!showCamera) {
+            handleOpenCamera();
+            return;
+        }
         setCameraType(prev => prev === 'back' ? 'front' : 'back');
     };
 
     const handleCapture = async () => {
+        if (!showCamera) {
+            handleOpenCamera();
+            return;
+        }
+        if (!hasPermission) {
+            handleOpenCamera();
+            return;
+        }
         if (isProcessingRef.current) return;
         isProcessingRef.current = true;
 
@@ -175,6 +200,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
             const finalUri = sourceUri.startsWith('file://') ? sourceUri : `file://${sourceUri}`;
             setPreviewUri({ uri: finalUri, isFrontCamera: false });
+            setShowCamera(false);
         } catch (e) {
         }
     };
@@ -251,7 +277,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                         </Svg>
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Create Puzzle</Text>
-                    <View style={{ width: 40 }} />
+                    <View style={styles.headerSpacer} />
                 </View>
 
                 <Animated.View style={[styles.floatingPiece, styles.piece1, { transform: [{ rotate: piece1Spin }] }]}>
@@ -282,14 +308,14 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                 />
                             ) : !hasPermission && isCameraInitialized ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', marginBottom: 16, paddingHorizontal: 20 }}>
+                                    <Text style={styles.cameraPermissionText}>
                                         Camera access is needed to take puzzle photos
                                     </Text>
                                     <TouchableOpacity
                                         onPress={requestCameraPermission}
-                                        style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 }}
+                                        style={styles.grantCameraButton}
                                     >
-                                        <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Grant Camera Access</Text>
+                                        <Text style={styles.grantCameraText}>Grant Camera Access</Text>
                                     </TouchableOpacity>
                                 </View>
                             ) : (
@@ -297,7 +323,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                     <ActivityIndicator size="large" color={colors.primary} />
                                 </View>
                             )
-                        ) : (
+                        ) : previewUri ? (
                             <Image
                                 source={{ uri: typeof previewUri === 'string' ? previewUri : previewUri?.uri }}
                                 style={[
@@ -306,6 +332,14 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                 ]}
                                 resizeMode="cover"
                             />
+                        ) : (
+                            <View style={styles.pickPhotoContainer}>
+                                <Animated.View style={{ transform: [{ translateY: puzzleFloat }] }}>
+                                    <BigPuzzleIcon />
+                                </Animated.View>
+                                <Text style={styles.pickPhotoTitle}>Choose a puzzle photo</Text>
+                                <Text style={styles.pickPhotoSubtitle}>Use your camera or pick one from your gallery.</Text>
+                            </View>
                         )}
                         {/* Grid Overlay on Preview */}
                         {previewUri && (
@@ -319,7 +353,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
                     {/* Controls Row */}
                     <View style={styles.controlsRow}>
-                        {!previewUri ? (
+                        {!previewUri && showCamera ? (
                             <>
                                 <TouchableOpacity onPress={handlePickFromGallery} style={styles.controlBtnSecondary}>
                                     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -340,8 +374,27 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                     </Svg>
                                 </TouchableOpacity>
                             </>
+                        ) : !previewUri ? (
+                            <>
+                                <TouchableOpacity onPress={handlePickFromGallery} style={styles.optionButton}>
+                                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                        <Rect x="3" y="3" width="18" height="18" rx="2" stroke={colors.text} strokeWidth={2} />
+                                        <Path d="M3 15l5-5 4 4 3-3 6 6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                        <Circle cx="8.5" cy="8.5" r="1.5" fill={colors.text} />
+                                    </Svg>
+                                    <Text style={styles.optionButtonText}>Gallery</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity onPress={handleOpenCamera} style={[styles.optionButton, styles.optionButtonPrimary]}>
+                                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                        <Path d="M4 7h3l1.5-2h7L17 7h3a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                                        <Circle cx="12" cy="13" r="3" stroke="#FFFFFF" strokeWidth={2} />
+                                    </Svg>
+                                    <Text style={[styles.optionButtonText, styles.optionButtonPrimaryText]}>Camera</Text>
+                                </TouchableOpacity>
+                            </>
                         ) : (
-                            <TouchableOpacity onPress={() => { setPreviewUri(null); setShowCamera(true); }} style={styles.controlBtnText}>
+                            <TouchableOpacity onPress={handleOpenCamera} style={styles.controlBtnText}>
                                 <Text style={styles.retakeText}>Retake Photo</Text>
                             </TouchableOpacity>
                         )}
@@ -424,6 +477,7 @@ const styles = StyleSheet.create({
         }),
     },
     headerTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
+    headerSpacer: { width: 40 },
     content: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.md },
     title: { color: colors.text, fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: spacing.xs },
     subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.sm },
@@ -452,7 +506,45 @@ const styles = StyleSheet.create({
         height: '177%',
     },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    cameraPermissionText: {
+        color: colors.textSecondary,
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: spacing.md,
+        paddingHorizontal: spacing.xl,
+    },
+    grantCameraButton: {
+        backgroundColor: colors.primary,
+        paddingHorizontal: spacing.xl,
+        paddingVertical: spacing.md,
+        borderRadius: borderRadius.full,
+    },
+    grantCameraText: {
+        color: '#FFFFFF',
+        fontWeight: '600',
+        fontSize: 15,
+    },
     previewImage: { flex: 1 },
+    pickPhotoContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: spacing.xl,
+    },
+    pickPhotoTitle: {
+        color: colors.text,
+        fontSize: 20,
+        fontWeight: '700',
+        textAlign: 'center',
+        marginTop: spacing.md,
+    },
+    pickPhotoSubtitle: {
+        color: colors.textSecondary,
+        fontSize: 14,
+        lineHeight: 20,
+        textAlign: 'center',
+        marginTop: spacing.xs,
+    },
 
     // Controls
     controlsRow: {
@@ -516,6 +608,36 @@ const styles = StyleSheet.create({
         color: colors.text,
         fontWeight: '600',
         fontSize: 16,
+    },
+    optionButton: {
+        minWidth: 132,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: spacing.sm,
+        paddingHorizontal: spacing.lg,
+        borderWidth: 1,
+        borderColor: '#FAE8FF',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    optionButtonPrimary: {
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
+    },
+    optionButtonText: {
+        color: colors.text,
+        fontWeight: '700',
+        fontSize: 15,
+    },
+    optionButtonPrimaryText: {
+        color: '#FFFFFF',
     },
 
     // Footer / Send
