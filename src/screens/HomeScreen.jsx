@@ -21,8 +21,8 @@ import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
-const SCRIBBLE_PREVIEW_PADDING = 28;
-const SCRIBBLE_PREVIEW_MIN_SIZE = 140;
+const SCRIBBLE_PREVIEW_PADDING = 26;
+const SCRIBBLE_PREVIEW_MIN_SIZE = 132;
 
 const getScribblePreviewBox = (paths = []) => {
     const points = [];
@@ -124,6 +124,14 @@ const CONNECTION_TOPICS = [
         gradient: ['#FFC35C', '#FFD780'],
         textColor: '#A45B13',
     },
+    {
+        id: 'family',
+        title: 'Family',
+        subtitle: 'Kids, parents\n& future',
+        image: require('../../assets/home/family.png'),
+        gradient: ['#FFB8D0', '#FFD6E4'],
+        textColor: '#B63567',
+    },
 ];
 
 const IconSvg = ({ type, color = '#7867F6', size = 26 }) => {
@@ -143,6 +151,32 @@ const IconSvg = ({ type, color = '#7867F6', size = 26 }) => {
         </Svg>
     );
 };
+
+const HeartDoodle = ({ color = '#FF8CAD', size = 28, style }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+        <Path
+            d="M12 20.2C8.2 16.7 4.5 13.6 4.5 9.7C4.5 7.6 6 6 8 6C9.3 6 10.6 6.8 11.3 8C12 6.8 13.3 6 14.7 6C16.8 6 18.4 7.6 18.4 9.7C18.4 13.6 15.8 15.4 12 20.2Z"
+            stroke={color}
+            strokeWidth={1.7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </Svg>
+);
+
+const ArrowCircle = ({ color = '#7762E8' }) => (
+    <View style={[styles.cardArrowButton, { backgroundColor: color }]}>
+        <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M5 12H18M13 7L18 12L13 17"
+                stroke="#FFFFFF"
+                strokeWidth={2.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </Svg>
+    </View>
+);
 
 const HomeScreen = ({
     hasPartner = false,
@@ -175,7 +209,6 @@ const HomeScreen = ({
     const isYourMoodStale = hasPartner && isMoodStale(yourMood, now);
     const isChallengeComplete = todayChallenge?.progress?.isComplete || false;
     const completedCount = todayChallenge?.progress?.completedCount || 0;
-    const totalTasks = todayChallenge?.progress?.totalTasks || 0;
 
     const showNudge = hasPartner && isYourMoodStale;
     const nudgeKey = yourMood?.updatedAt || 'missing-mood';
@@ -372,30 +405,35 @@ const HomeScreen = ({
                     <View style={styles.twoColumn}>
                         <TouchableOpacity onPress={onScribblePress} activeOpacity={0.9} style={styles.featureCardPressable}>
                             <LinearGradient
-                                colors={['#F4E8FF', '#FFF9FF']}
+                                colors={['#EFE4FF', '#FAF3FF', '#F3E6FF']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
-                                style={styles.canvasCard}
+                                style={[styles.featureMiniCard, styles.canvasCard]}
                             >
                                 <View style={styles.featureCardHeader}>
-                                    <HomeText style={styles.smallCardTitle}>Scribble board</HomeText>
-                                    <HomeText style={styles.smallCardSub}>Draw your thoughts</HomeText>
+                                    <View style={styles.cardTitleRow}>
+                                        <HomeText style={[styles.smallCardTitle, styles.scribbleCardTitle]}>Scribble board</HomeText>
+                                        <HeartDoodle style={styles.cardTitleHeart} color="#FF8BB8" size={24} />
+                                    </View>
+                                    <HomeText style={styles.smallCardSub}>send cute doodles</HomeText>
                                 </View>
 
                                 <View style={styles.scribblePaper}>
+                                  
                                     {partnerScribble?.paths?.length > 0 ? (
                                         <Svg
                                             width="100%"
                                             height="100%"
                                             viewBox={scribblePreviewBox}
                                             preserveAspectRatio="xMidYMid meet"
+                                            style={styles.partnerScribblePreview}
                                         >
                                             {partnerScribble.paths.slice(0, 40).map((path, index) => (
                                                 <Path
                                                     key={`${path.d}-${index}`}
                                                     d={path.d}
                                                     stroke={path.color}
-                                                    strokeWidth={path.strokeWidth}
+                                                    strokeWidth={path.strokeWidth || 4}
                                                     fill="none"
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"
@@ -403,14 +441,18 @@ const HomeScreen = ({
                                             ))}
                                         </Svg>
                                     ) : (
-                                        <LottieView
-                                            source={require('../../assets/canvas.lottie')}
-                                            autoPlay
-                                            loop={false}
-                                            style={styles.scribbleLottie}
-                                        />
+                                        <>
+                                            <LottieView
+                                                source={require('../../assets/canvas.lottie')}
+                                                autoPlay
+                                                loop
+                                                style={styles.scribbleLottie}
+                                            />
+                                        </>
                                     )}
+                                  
                                 </View>
+                                <ArrowCircle color="#7962E6" />
 
                             </LinearGradient>
                         </TouchableOpacity>
@@ -418,61 +460,63 @@ const HomeScreen = ({
                         {isChallengeComplete ? (
                             <TouchableOpacity onPress={() => onQuestionPress?.()} activeOpacity={0.9} style={styles.featureCardPressable}>
                                 <LinearGradient
-                                    colors={['#E3F9F0', '#F2FCF8']}
+                                    colors={['#FFEFEF', '#FFF7F4', '#FFE1E3']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 1 }}
-                                    style={[styles.streakCard, styles.completedStreakCard]}
+                                    style={[styles.featureMiniCard, styles.streakCard, styles.completedStreakCard]}
                                 >
                                     <View style={styles.featureCardHeader}>
-                                        <HomeText style={[styles.smallCardTitle, styles.completedCardTitle]}>Challenge Done! ✨</HomeText>
-                                        <HomeText style={[styles.smallCardSub, styles.completedCardSub]}>You're all caught up</HomeText>
-                                    </View>
-                                    <View style={styles.challengeContentCompleted}>
-                                        <HomeText style={styles.completedSubText}>
-                                            Great job! Come back tomorrow for new prompts.
-                                        </HomeText>
-                                        <View style={styles.completedBadge}>
-                                            <Image source={require('../../assets/home/together-heart-plant.png')} style={styles.completedImage} />
+                                        <View style={styles.cardTitleRow}>
+                                            <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
+                                            <HeartDoodle style={styles.cardTitleHeart} color="#FF8AA4" size={24} />
                                         </View>
+                                        <HomeText style={[styles.smallCardSub, styles.ritualCardSub]}>You're all caught up{'\n'}come back tomorrow</HomeText>
                                     </View>
+                                    <View style={[styles.ritualPaper, styles.completedRitualPaper]}>
+                                        <View style={styles.paperTape} />
+                                        <HomeText style={styles.ritualQuestion} numberOfLines={3}>
+                                            Challenge done! Come back tomorrow for a new prompt.
+                                        </HomeText>
+                                    </View>
+                                    <ArrowCircle color="#FF4568" />
                                 </LinearGradient>
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity onPress={() => onQuestionPress?.()} activeOpacity={0.9} style={styles.featureCardPressable}>
                                 <LinearGradient
-                                    colors={['#FFF0F2', '#FFE5EA']}
+                                    colors={['#FFEFEF', '#FFF7F4', '#FFE1E3']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 1 }}
-                                    style={styles.streakCard}
+                                    style={[styles.featureMiniCard, styles.streakCard]}
                                 >
                                     <View style={styles.featureCardHeader}>
-                                        <HomeText style={styles.smallCardTitle}>Daily Ritual</HomeText>
-                                        <HomeText style={styles.smallCardSub}>
-                                            {todayChallenge ? `Task ${Math.min(completedCount + 1, totalTasks || 1)} of ${totalTasks || 3}` : 'Daily Prompts'}
+                                        <View style={styles.cardTitleRow}>
+                                            <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
+                                            <HeartDoodle style={styles.cardTitleHeart} color="#FF8AA4" size={24} />
+                                        </View>
+                                        <HomeText style={[styles.smallCardSub, styles.ritualCardSub]}>
+                                            Answer today's questions...
                                         </HomeText>
                                     </View>
-                                    <View style={styles.challengeContent}>
+                                    <View style={styles.ritualPaper}>
+                                        <View style={styles.paperTape} />
                                         {currentTask ? (
                                             <View style={styles.challengePromptContainer}>
-                                                <HomeText style={styles.challengeCategory}>
-                                                    {currentTask.category === 'likelyto' && 'Most likely to... 👑'}
-                                                    {currentTask.category === 'neverhaveiever' && 'Never have I ever... 🙈'}
-                                                    {currentTask.category === 'deep' && 'Deep question... 💭'}
-                                                    {currentTask.category === 'takephoto' && 'Photo challenge... 📸'}
-                                                    {!['likelyto', 'neverhaveiever', 'deep', 'takephoto'].includes(currentTask.category) && 'Daily prompt... 📝'}
-                                                </HomeText>
-                                                <HomeText style={styles.challengeQuestion} numberOfLines={3}>
+                                                <HomeText style={styles.ritualQuestion} numberOfLines={3}>
                                                     {currentTask.taskstatement}
                                                 </HomeText>
                                             </View>
                                         ) : (
                                             <View style={styles.challengePromptContainer}>
-                                                <HomeText style={styles.challengeQuestion} numberOfLines={3}>
+                                                <HomeText style={styles.ritualQuestion} numberOfLines={3}>
                                                     Tap to answer today's questions and build your bond!
                                                 </HomeText>
                                             </View>
                                         )}
+                                        <HeartDoodle style={styles.ritualPaperHeartOne} color="#FF9BB5" size={16} />
+                                        <HeartDoodle style={styles.ritualPaperHeartTwo} color="#FF9BB5" size={13} />
                                     </View>
+                                    <ArrowCircle color="#FF4568" />
                                 </LinearGradient>
                             </TouchableOpacity>
                         )}
@@ -654,16 +698,16 @@ const styles = StyleSheet.create({
     },
     twoColumn: {
         flexDirection: 'row',
-        gap: 12,
-        marginTop: 18,
+        gap: 8,
+        marginTop: 8,
         marginHorizontal: -20,
         paddingHorizontal: 20,
     },
     featureCardPressable: {
         flex: 1,
     },
-    canvasCard: {
-        height: 190,
+    featureMiniCard: {
+        height: 232,
         borderRadius: 18,
         overflow: 'hidden',
         padding: 0,
@@ -671,16 +715,29 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255,255,255,0.88)',
         ...cardShadow,
     },
+    canvasCard: {
+        shadowColor: '#B899F0',
+    },
     featureCardHeader: {
-        minHeight: 42,
+        minHeight: 78,
         zIndex: 2,
-        paddingTop: 16,
+        paddingTop: 14,
         paddingHorizontal: 16,
     },
     smallCardTitle: {
         color: '#171B44',
-        fontSize: 14,
+        fontSize: 15,
         lineHeight: 18,
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.extraBold,
+    },
+    scribbleCardTitle: {
+        color: '#15134F',
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.extraBold,
+    },
+    ritualCardTitle: {
+        color: '#A71F1F',
         fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
@@ -689,28 +746,50 @@ const styles = StyleSheet.create({
         fontSize: 11,
         lineHeight: 15,
         fontWeight: fontWeight('700'),
-        marginTop: 4,
+        marginTop: 2,
         fontFamily: fontFamily.bold,
     },
+    ritualCardSub: {
+        color: '#8C2F2F',
+    },
+    cardTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    cardTitleHeart: {
+        marginTop: -1,
+    },
     scribblePaper: {
-        flex: 1,
-        width: '100%',
+        position: 'absolute',
+        left: 15,
+        right: 15,
+        bottom: 18,
+        height: 140,
         overflow: 'hidden',
-        borderBottomLeftRadius: 18,
-        borderBottomRightRadius: 18,
+        borderRadius: 11,
+        backgroundColor: '#FFFDF9',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.95)',
+        transform: [{ rotate: '-3deg' }],
+        ...Platform.select({
+            ios: {
+                shadowColor: '#7A5FC8',
+                shadowOffset: { width: 0, height: 7 },
+                shadowOpacity: 0.16,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 5,
+            },
+        }),
     },
     streakCard: {
         flex: 1,
-        height: 190,
-        borderRadius: 18,
-        padding: 0,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.9)',
-        overflow: 'hidden',
-        ...cardShadow,
+        shadowColor: '#F5A2A2',
     },
     completedStreakCard: {
-        borderColor: '#D0F2E4',
+        borderColor: 'rgba(255,255,255,0.9)',
     },
     completedCardTitle: {
         color: '#0A5C43',
@@ -719,8 +798,67 @@ const styles = StyleSheet.create({
         color: '#138A68',
     },
     scribbleLottie: {
-        width: '100%',
-        height: '100%',
+        position: 'absolute',
+        right: -12,
+        bottom: -20,
+        width: 166,
+        height: 166,
+        transform: [{ rotate: '3deg' }],
+    },
+    partnerScribblePreview: {
+        transform: [{ scale: 0.98 }],
+    },
+    scribblePaperText: {
+        position: 'absolute',
+        left: 26,
+        top: 18,
+        color: '#1F2034',
+        fontSize: 16,
+        lineHeight: 21,
+        fontWeight: fontWeight('800'),
+        fontFamily: fontFamily.bold,
+        transform: [{ rotate: '2deg' }],
+        zIndex: 2,
+    },
+    scribbleDoodles: {
+        position: 'absolute',
+        left: 9,
+        top: 9,
+        width: 86,
+        height: 56,
+        opacity: 0.78,
+        zIndex: 1,
+    },
+    scribblePencil: {
+        position: 'absolute',
+        right: -6,
+        bottom: 2,
+        width: 45,
+        height: 62,
+        zIndex: 4,
+        transform: [{ rotate: '18deg' }],
+    },
+    cardArrowButton: {
+        position: 'absolute',
+        left: 14,
+        bottom: 14,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 8,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 5 },
+                shadowOpacity: 0.16,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     },
     challengeContent: {
         flex: 1,
@@ -731,7 +869,7 @@ const styles = StyleSheet.create({
     challengePromptContainer: {
         flex: 1,
         justifyContent: 'center',
-        marginTop: 4,
+        marginTop: 0,
     },
     challengeCategory: {
         color: '#FF6F8F',
@@ -747,6 +885,63 @@ const styles = StyleSheet.create({
         lineHeight: 17,
         fontWeight: fontWeight('700'),
         fontFamily: fontFamily.bold,
+    },
+    ritualPaper: {
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        bottom: 20,
+        height: 140,
+        borderRadius: 11,
+        backgroundColor: '#FFFDF9',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.96)',
+        paddingHorizontal: 14,
+        paddingTop: 18,
+        paddingBottom: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#CF7777',
+                shadowOffset: { width: 0, height: 7 },
+                shadowOpacity: 0.15,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 5,
+            },
+        }),
+    },
+    completedRitualPaper: {
+        paddingHorizontal: 12,
+    },
+    ritualQuestion: {
+        color: '#222133',
+        fontSize: 15,
+        lineHeight: 21,
+        fontWeight: fontWeight('800'),
+        fontFamily: fontFamily.bold,
+        textAlign: 'center',
+    },
+    paperTape: {
+        position: 'absolute',
+        top: -9,
+        alignSelf: 'center',
+        width: 38,
+        height: 15,
+        borderRadius: 2,
+        backgroundColor: 'rgba(244, 188, 181, 0.78)',
+    },
+    ritualPaperHeartOne: {
+        position: 'absolute',
+        right: 20,
+        bottom: 10,
+    },
+    ritualPaperHeartTwo: {
+        position: 'absolute',
+        right: 8,
+        bottom: 19,
     },
     challengeContentCompleted: {
         flex: 1,

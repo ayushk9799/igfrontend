@@ -18,12 +18,12 @@ import { fontFamily } from '../constants/fonts';
 
 // Topic image mapping - matches HomeScreen topic images
 const TOPIC_IMAGES = {
-    hotspicy: require('../../assets/chilli.png'),
-    money: require('../../assets/coins.png'),
-    future: require('../../assets/couplecutout.png'),
-    fitness: require('../../assets/couplerunning.png'),
-    travel: require('../../assets/travel.png'),
-    family: require('../../assets/couplekids5.png'),
+    hotspicy: require('../../assets/home/hot-fire.png'),
+    money: require('../../assets/home/money-bag.png'),
+    future: require('../../assets/home/future-crystal.png'),
+    fitness: require('../../assets/home/lifestyle-arm.png'),
+    travel: require('../../assets/home/travel-plane.png'),
+    family: require('../../assets/home/family.png'),
 };
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';

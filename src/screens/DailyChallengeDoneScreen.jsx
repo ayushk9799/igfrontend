@@ -28,7 +28,6 @@ const completionAssets = {
     hero: require('../../assets/daily-done/completion-hero.png'),
     penguinLeft: require('../../assets/daily-done/penguin-left.png'),
     penguinRight: require('../../assets/daily-done/penguin-right.png'),
-    penguinBackPair: require('../../assets/daily-done/penguin-back-pair.png'),
 };
 
 // Sparkle star component
@@ -344,7 +343,7 @@ export default function DailyChallengeDoneScreen({
                     {isComplete ? (
                         <TouchableOpacity style={styles.compareBtn} onPress={onCompareWithPartner}>
                             <BookIcon color="#FFFFFF" size={23} />
-                            <Text style={styles.compareBtnText}>Compare Answers with {partnerName}</Text>
+                            <Text style={styles.compareBtnText}>Chat about today with {partnerName}</Text>
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity style={styles.remindBtn} onPress={onRemindPartner}>

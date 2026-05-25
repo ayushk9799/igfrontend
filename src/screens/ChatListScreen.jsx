@@ -59,7 +59,7 @@ const TOPIC_CONFIG = {
     },
     family: {
         title: 'Family',
-        image: require('../../assets/home/together-heart-plant.png'),
+        image: require('../../assets/home/family.png'),
         gradient: ['#FFB8D0', '#FFD6E4'],
         textColor: '#B63567',
     },

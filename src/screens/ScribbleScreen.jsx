@@ -592,16 +592,9 @@ export const ScribbleScreen = ({
                             </Svg>
                         </TouchableOpacity>
                         {/* Widget Button */}
-                        <TouchableOpacity style={[styles.headerAction, styles.widgetButton]} onPress={() => setShowWidgetTutorial(true)}>
-                            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                                <Path
-                                    d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
-                                    stroke={colors.text}
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </Svg>
+                        <TouchableOpacity style={styles.addHomeButton} onPress={() => setShowWidgetTutorial(true)} activeOpacity={0.85}>
+                           
+                            <Text style={styles.addHomeButtonText}> + Add to Home Screen</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -754,14 +747,33 @@ export const ScribbleScreen = ({
                         </Text>
                     )}
                     {hasPartner ? (
-                        <Button
-                            title="Send to Your Love"
+                        <TouchableOpacity
                             onPress={handleSend}
-                            variant="glow"
-                            size="xl"
-                            fullWidth
                             disabled={paths.length === 0}
-                        />
+                            activeOpacity={0.9}
+                            style={[
+                                styles.scribbleSendButton,
+                                paths.length === 0 && styles.scribbleSendButtonDisabled,
+                            ]}
+                        >
+                            <View style={styles.scribbleSendContent}>
+                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M21 4L10 15M21 4l-7 17-4-6-6-4 17-7z"
+                                        stroke={paths.length === 0 ? colors.textMuted : '#FFFFFF'}
+                                        strokeWidth={2.1}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </Svg>
+                                <Text style={[
+                                    styles.scribbleSendText,
+                                    paths.length === 0 && styles.scribbleSendTextDisabled,
+                                ]}>
+                                    Send to Your Love
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
                     ) : (
                         <Button
                             title="Link Partner to Send 🔗"
@@ -1121,6 +1133,7 @@ const styles = StyleSheet.create({
     },
     headerActions: {
         flexDirection: 'row',
+        alignItems: 'center',
         gap: 8,
     },
     headerAction: {
@@ -1358,6 +1371,42 @@ const styles = StyleSheet.create({
         marginTop: '0',
         paddingBottom: spacing['2xl'],
     },
+    scribbleSendButton: {
+        width: '100%',
+        minHeight: 58,
+        borderRadius: 20,
+        backgroundColor: colors.primary,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.88)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.16,
+        shadowRadius: 18,
+        elevation: 5,
+    },
+    scribbleSendButtonDisabled: {
+        backgroundColor: '#F1DDE8',
+        shadowOpacity: 0.08,
+        elevation: 2,
+    },
+    scribbleSendContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingHorizontal: spacing.lg,
+    },
+    scribbleSendText: {
+        color: '#FFFFFF',
+        fontSize: 17,
+        fontWeight: '800',
+        textAlign: 'center',
+    },
+    scribbleSendTextDisabled: {
+        color: colors.textMuted,
+    },
     connectionErrorText: {
         fontSize: 13,
         fontWeight: '600',
@@ -1413,10 +1462,31 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         fontWeight: '500',
     },
-    // Widget button style
-    widgetButton: {
-        backgroundColor: 'rgba(255,255,255,0.86)',
-        borderColor: '#F7DDEA',
+    addHomeButton: {
+        minHeight: 42,
+        maxWidth: 170,
+        borderRadius: 21,
+        paddingHorizontal: 12,
+        backgroundColor: colors.primary,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        borderWidth: 1,
+        borderColor: colors.primary,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.22,
+        shadowRadius: 18,
+        elevation: 6,
+    },
+    addHomeButtonText: {
+        flexShrink: 1,
+        color: '#FFFFFF',
+        fontSize: 12,
+        lineHeight: 14,
+        fontWeight: '800',
+        textAlign: 'center',
     },
     // Modal styles
     modalOverlay: {

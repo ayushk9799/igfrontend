@@ -20,7 +20,7 @@ import Onboarding3Screen from '../screens/Onboarding3Screen';
 import NotificationPermissionScreen from '../screens/NotificationPermissionScreen';
 
 import { TOPIC_CATEGORIES } from '../constants/Categories';
-import InviteAcceptedScreen from '../screens/InviteAcceptedScreen';
+
 import JigsawCreateScreen from '../screens/JigsawCreateScreen';
 import JigsawPuzzleScreen from '../screens/JigsawPuzzleScreen';
 import TicTacToeScreen from '../screens/TicTacToeScreen';
@@ -1134,15 +1134,7 @@ export const AppNavigator = () => {
         });
     };
 
-    // Handle when partner accepts the invite
-    const handleInviteAccepted = () => {
-        startTransition(() => {
-            setPendingInvite(null); // Clear pending invite
-            dispatch(setOnboarded(true));
-            setOnboardedStorage(true);
-            setCurrentScreen('home');
-        });
-    };
+
 
     // Handle logout - clear auth and go to login
     const handleLogout = () => {
@@ -1331,14 +1323,7 @@ export const AppNavigator = () => {
                     />
                 );
 
-            case 'inviteAccepted':
-                return (
-                    <InviteAcceptedScreen
-                        yourName={userData.name || 'You'}
-                        partnerName="Emma"
-                        onContinue={handleInviteAccepted}
-                    />
-                );
+
 
             case 'home':
                 return (
