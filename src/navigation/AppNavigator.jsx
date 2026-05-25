@@ -99,24 +99,12 @@ export const AppNavigator = () => {
                 : 'goog_MgqwBDTfVyuiMCQtLAKlcxcbhZG';
 
             await Purchases.configure({ apiKey });
-
-            // Verify SDK is actually working by fetching customer info
-            await Purchases.getCustomerInfo();
             purchasesConfiguredRef.current = true;
         } catch (e) {
             purchasesConfiguredRef.current = false;
             const errorInfo = e?.message || e?.underlyingErrorMessage || String(e);
             const errorCode = e?.code;
             console.error(`❌ RevenueCat SDK configuration failed (Code: ${errorCode}):`, errorInfo);
-
-            // Only alert if it's a critical non-network error
-            if (__DEV__ || (errorCode !== 0 && errorCode !== 1)) {
-                Alert.alert(
-                    'Subscription Service Error',
-                    `Failed to initialize the subscription service. Error Code: ${errorCode}\n\n${errorInfo}`,
-                    [{ text: 'OK' }]
-                );
-            }
         }
     }, []);
 
@@ -133,7 +121,7 @@ export const AppNavigator = () => {
             }
 
             if (purchasesConfiguredRef.current) {
-                const result = await Purchases.logIn(String(appUserId));
+                await Purchases.logIn(String(appUserId));
             }
         } catch (e) {
         }
@@ -241,7 +229,7 @@ export const AppNavigator = () => {
 
     useEffect(() => {
         initPurchases();
-    }, []);
+    }, [initPurchases]);
 
     useEffect(() => {
         if (currentScreen === null || hasHiddenBootSplashRef.current) return;
