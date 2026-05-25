@@ -52,6 +52,7 @@ export const MainTabNavigator = ({
     onLogout,
     onDeleteAccount,
     onTabChange,
+    canAutoOpenMoodPrompt = true,
 }) => {
     const [currentTab, setCurrentTab] = useState(initialTab || 'home');
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
@@ -110,7 +111,13 @@ export const MainTabNavigator = ({
     }, []);
 
     useEffect(() => {
-        if (!hasPartner || isMoodVisible || !isMoodPastRefreshWindow(yourMood, moodRefreshNow)) {
+        if (
+            !canAutoOpenMoodPrompt ||
+            currentTab !== 'home' ||
+            !hasPartner ||
+            isMoodVisible ||
+            !isMoodPastRefreshWindow(yourMood, moodRefreshNow)
+        ) {
             return;
         }
 
@@ -121,7 +128,7 @@ export const MainTabNavigator = ({
         lastAutoOpenedMoodRef.current = yourMood.updatedAt;
         setIsMoodRefreshPrompt(true);
         setIsMoodVisible(true);
-    }, [hasPartner, isMoodVisible, moodRefreshNow, yourMood]);
+    }, [canAutoOpenMoodPrompt, currentTab, hasPartner, isMoodVisible, moodRefreshNow, yourMood]);
 
     const openMoodPicker = useCallback(() => {
         setIsMoodRefreshPrompt(false);

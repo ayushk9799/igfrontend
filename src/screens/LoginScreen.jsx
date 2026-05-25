@@ -21,6 +21,7 @@ import Svg, { Path } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
 import { spacing } from '../theme';
 import { API_BASE } from '../constants/Api';
+import { getDeviceInfo } from '../utils/deviceInfo';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -262,6 +263,8 @@ export const LoginScreen = ({
                 throw new Error('No ID token received from Google');
             }
 
+            const deviceInfo = getDeviceInfo();
+
             // Send token to backend for verification
             const response = await fetch(`${API_BASE}/api/login/google/loginSignUp`, {
                 method: 'POST',
@@ -270,7 +273,7 @@ export const LoginScreen = ({
                 },
                 body: JSON.stringify({
                     token: idToken,
-                    platform: Platform.OS,
+                    ...deviceInfo,
                 })
             });
 
@@ -308,6 +311,8 @@ export const LoginScreen = ({
                 throw new Error('No ID token received from Apple');
             }
 
+            const deviceInfo = getDeviceInfo();
+
             // Send token to backend for verification
             const response = await fetch(`${API_BASE}/api/login/apple/loginSignUp`, {
                 method: 'POST',
@@ -318,6 +323,7 @@ export const LoginScreen = ({
                     idToken: appleCredential.idToken,
                     displayName: appleCredential.displayName,
                     email: appleCredential.email,
+                    ...deviceInfo,
                 }),
             });
 

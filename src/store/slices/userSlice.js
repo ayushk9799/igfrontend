@@ -21,6 +21,8 @@ const initialState = {
     premiumExpiresAt: null,
     premiumPlan: null,
     premiumSource: null,           // 'self' | 'partner' | null
+    timezone: null,
+    platform: 'unknown',
     // Partner premium fields (for couple premium)
     partnerIsPremium: false,
     partnerPremiumPlan: null,
@@ -92,4 +94,3 @@ export const selectDaysTogether = (state) => {
 };
 
 export default userSlice.reducer;
-

@@ -39,6 +39,7 @@ import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedAp
 import { clearPendingLocalNotificationRoute, getInitialLocalNotification, getPendingLocalNotificationRoute, onLocalNotificationPress, showLocalNotification } from '../utils/localNotifications';
 import { API_BASE } from '../constants/Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
+import { getDeviceInfo } from '../utils/deviceInfo';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
@@ -137,6 +138,40 @@ export const AppNavigator = () => {
         } catch (e) {
         }
     }, [initPurchases]);
+
+    const syncDeviceInfo = React.useCallback(async (userId) => {
+        if (!userId) return null;
+
+        try {
+            const deviceInfo = getDeviceInfo();
+            const response = await fetch(`${API_BASE}/api/user/device-info`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    ...deviceInfo,
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success || !data.user) {
+                return null;
+            }
+
+            updateUserStorage({
+                timezone: data.user.timezone,
+                platform: data.user.platform,
+            });
+            dispatch(updateUser({
+                timezone: data.user.timezone,
+                platform: data.user.platform,
+            }));
+
+            return data.user;
+        } catch (error) {
+            return null;
+        }
+    }, [dispatch]);
 
     // Sync premium status from RevenueCat on app startup
     const syncPremiumFromRevenueCat = React.useCallback(async (userId) => {
@@ -765,6 +800,8 @@ export const AppNavigator = () => {
                     // User is authenticated - dispatch to Redux
                     dispatch(setUser(storedUser));
 
+                    syncDeviceInfo(storedUser.id);
+
                     // Connect to socket for real-time sync
                     connect();
 
@@ -874,7 +911,7 @@ export const AppNavigator = () => {
         };
 
         checkAuthState();
-    }, [connect, dispatch]);
+    }, [connect, dispatch, syncDeviceInfo]);
 
     // Fetch pending puzzles for the user
     const fetchPendingPuzzle = async (userId) => {
@@ -990,6 +1027,8 @@ export const AppNavigator = () => {
 
             // Register FCM token for push notifications (critical for reinstalls!)
             registerFCMToken();
+
+            syncDeviceInfo(user.id);
 
             // FIRST check if user has a nickname - required before anything else
             if (!user.nickname) {
@@ -1379,6 +1418,7 @@ export const AppNavigator = () => {
                         onLogout={handleLogout}
                         onDeleteAccount={handleDeleteAccount}
                         onTabChange={setLastHomeTab}
+                        canAutoOpenMoodPrompt={hasPlayedSplashAnimation}
                     />
                 );
 

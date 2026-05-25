@@ -19,6 +19,7 @@ import {
 } from '@react-native-firebase/messaging';
 import { getUser } from './authStorage';
 import { API_BASE } from '../constants/Api';
+import { getDeviceInfo } from './deviceInfo';
 
 /**
  * Check if notification permission is already granted (silent - no dialog)
@@ -115,6 +116,7 @@ export const registerFCMToken = async () => {
         }
 
         // Register token with backend
+        const deviceInfo = getDeviceInfo();
         const response = await fetch(`${API_BASE}/api/user/fcm-token`, {
             method: 'POST',
             headers: {
@@ -122,7 +124,8 @@ export const registerFCMToken = async () => {
             },
             body: JSON.stringify({
                 userId: user.id,
-                fcmToken: token
+                fcmToken: token,
+                ...deviceInfo,
             }),
         });
 
