@@ -19,6 +19,8 @@
 		79DE0ED82EF2D2410075C877 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 79DE0ED72EF2D2410075C877 /* GoogleService-Info.plist */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		93871D47ECD1D59C195AE07D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6579EE432FEA87A6E5FD6098 /* ExpoModulesProvider.swift */; };
+		99612FE47B2546708C810F5C /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F5A4D72143B4B438B3413B0 /* Colors.xcassets */; };
+		A764CB4441D641DD8D37D3BD /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C52A718E38E3436B83499749 /* BootSplash.storyboard */; };
 		AA1111112EF9000000000001 /* ScribbleWidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1111112EF9000000000002 /* ScribbleWidgetBridge.swift */; };
 		AA1111112EF9000000000003 /* ScribbleWidgetBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = AA1111112EF9000000000004 /* ScribbleWidgetBridge.m */; };
 		BFB424267EEDBFEF3234254E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
@@ -63,6 +65,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = frontend/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = frontend/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-frontend.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-frontend.debug.xcconfig"; path = "Target Support Files/Pods-frontend/Pods-frontend.debug.xcconfig"; sourceTree = "<group>"; };
+		4F5A4D72143B4B438B3413B0 /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = frontend/Colors.xcassets; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-frontend.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-frontend.release.xcconfig"; path = "Target Support Files/Pods-frontend/Pods-frontend.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-frontend.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-frontend.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6579EE432FEA87A6E5FD6098 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-frontend/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
@@ -80,6 +83,7 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = frontend/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		AA1111112EF9000000000002 /* ScribbleWidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScribbleWidgetBridge.swift; path = frontend/ScribbleWidgetBridge.swift; sourceTree = "<group>"; };
 		AA1111112EF9000000000004 /* ScribbleWidgetBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ScribbleWidgetBridge.m; path = frontend/ScribbleWidgetBridge.m; sourceTree = "<group>"; };
+		C52A718E38E3436B83499749 /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = frontend/BootSplash.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F0AA00022F0A000000000001 /* Nunito.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Nunito.ttf; path = frontend/Nunito.ttf; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -176,6 +180,8 @@
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				AA1111112EF9000000000002 /* ScribbleWidgetBridge.swift */,
 				AA1111112EF9000000000004 /* ScribbleWidgetBridge.m */,
+				C52A718E38E3436B83499749 /* BootSplash.storyboard */,
+				4F5A4D72143B4B438B3413B0 /* Colors.xcassets */,
 			);
 			name = frontend;
 			sourceTree = "<group>";
@@ -374,6 +380,8 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				F0AA00012F0A000000000001 /* Nunito.ttf in Resources */,
 				BFB424267EEDBFEF3234254E /* PrivacyInfo.xcprivacy in Resources */,
+				A764CB4441D641DD8D37D3BD /* BootSplash.storyboard in Resources */,
+				99612FE47B2546708C810F5C /* Colors.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
