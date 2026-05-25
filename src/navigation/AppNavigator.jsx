@@ -2,6 +2,7 @@
 import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
 import { View, StyleSheet, Alert, Platform, BackHandler, Modal, AppState } from 'react-native';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
+import BootSplash from 'react-native-bootsplash';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
 import NicknameScreen from '../screens/NicknameScreen';
@@ -14,6 +15,7 @@ import LikelyToQuestionScreen from '../screens/LikelyToQuestionScreen';
 import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
 import ChatScreen from '../screens/ChatScreen';
+import AnimatedSplashScreen from '../screens/AnimatedSplashScreen';
 import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
 import OnboardingFeaturesScreen from '../screens/OnboardingFeaturesScreen';
 import Onboarding3Screen from '../screens/Onboarding3Screen';
@@ -67,6 +69,7 @@ export const AppNavigator = () => {
 
     // Local state (navigation & UI only)
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
+    const [hasPlayedSplashAnimation, setHasPlayedSplashAnimation] = useState(false);
     const [isPremiumVisible, setIsPremiumVisible] = useState(false);
     const [yourMood, setYourMood] = useState(null);
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
@@ -84,6 +87,7 @@ export const AppNavigator = () => {
     const pendingNotificationRef = React.useRef(null); // Store notification that launched the app from quit state
     const recentLocalNotificationKeysRef = React.useRef(new Map());
     const purchasesConfiguredRef = React.useRef(false);
+    const hasHiddenBootSplashRef = React.useRef(false);
     const initPurchases = React.useCallback(async () => {
         try {
             if (purchasesConfiguredRef.current) return;
@@ -203,6 +207,13 @@ export const AppNavigator = () => {
     useEffect(() => {
         initPurchases();
     }, []);
+
+    useEffect(() => {
+        if (currentScreen === null || hasHiddenBootSplashRef.current) return;
+
+        hasHiddenBootSplashRef.current = true;
+        BootSplash.hide({ fade: true }).catch(() => {});
+    }, [currentScreen]);
 
     // ── In-app update check (runs once on launch, skipped in dev) ──
     useEffect(() => {
@@ -1248,14 +1259,16 @@ export const AppNavigator = () => {
         });
     };
 
+    const handleSplashAnimationFinish = useCallback(() => {
+        setHasPlayedSplashAnimation(true);
+    }, []);
+
     const renderScreen = () => {
 
         // Loading state while checking auth
         if (currentScreen === null) {
             return (
-                <View style={styles.loadingContainer}>
-                    <View style={styles.loadingDot} />
-                </View>
+                <View style={styles.loadingContainer} />
             );
         }
 
@@ -1575,6 +1588,12 @@ export const AppNavigator = () => {
     return (
         <View style={styles.container}>
             {renderScreen()}
+            {currentScreen !== null && !hasPlayedSplashAnimation && (
+                <AnimatedSplashScreen
+                    style={styles.splashOverlay}
+                    onFinish={handleSplashAnimationFinish}
+                />
+            )}
             <Modal
                 visible={isPremiumVisible}
                 animationType="slide"
@@ -1597,16 +1616,12 @@ const styles = StyleSheet.create({
     },
     loadingContainer: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: colors.background,
+        backgroundColor: '#F8DDF4',
     },
-    loadingDot: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: colors.primary,
-        opacity: 0.6,
+    splashOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 10,
+        elevation: 10,
     },
 });
 

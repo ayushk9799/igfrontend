@@ -17,14 +17,14 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="SplashLogo" translatesAutoresizingMaskIntoConstraints="NO" id="logo-image-view">
-                                <rect key="frame" x="96.666666666666671" y="326" width="200" height="200"/>
+                                <rect key="frame" x="37" y="186" width="320" height="480"/>
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="200" id="width-constraint"/>
-                                    <constraint firstAttribute="height" constant="200" id="height-constraint"/>
+                                    <constraint firstAttribute="width" constant="320" id="width-constraint"/>
+                                    <constraint firstAttribute="height" constant="480" id="height-constraint"/>
                                 </constraints>
                             </imageView>
                         </subviews>
-                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <color key="backgroundColor" red="0.97254901960784312" green="0.8666666666666667" blue="0.95686274509803926" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="logo-image-view" firstAttribute="centerX" secondItem="Bcu-3y-fUS" secondAttribute="centerX" id="centerX-constraint"/>
                             <constraint firstItem="logo-image-view" firstAttribute="centerY" secondItem="Bcu-3y-fUS" secondAttribute="centerY" id="centerY-constraint"/>
@@ -38,6 +38,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="SplashLogo" width="1024" height="1024"/>
+        <image name="SplashLogo" width="1024" height="1536"/>
     </resources>
 </document>

@@ -6,12 +6,12 @@ import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import com.zoontek.rnbootsplash.RNBootSplash
 
 class MainActivity : ReactActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    // Switch from SplashTheme to AppTheme once the app loads
-    setTheme(R.style.AppTheme)
+    RNBootSplash.init(this, R.style.BootTheme)
     super.onCreate(null)
     WindowCompat.setDecorFitsSystemWindows(window, false)
   }
