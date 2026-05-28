@@ -188,8 +188,10 @@ const VoiceRecordCard = React.memo(({
         } else {
             // Start recording
             if (!hasPermission) {
-                Alert.alert('Permission Required', 'Please allow microphone access to record voice messages.');
-                requestPermissions();
+                Alert.alert('Microphone Needed', 'Microphone access is needed to record voice messages.');
+                if (Platform.OS === 'android') {
+                    requestPermissions();
+                }
                 return;
             }
 
@@ -222,8 +224,8 @@ const VoiceRecordCard = React.memo(({
                 setIsRecording(true);
                 setRecordingUri(null);
             } catch (error) {
-                console.error('Failed to start recording:', error);
-                Alert.alert('Error', 'Failed to start recording. Please try again.');
+                setHasPermission(false);
+                Alert.alert('Microphone Needed', 'Microphone access is needed to record voice messages.');
             }
         }
     };

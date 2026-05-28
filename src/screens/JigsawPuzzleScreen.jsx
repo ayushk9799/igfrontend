@@ -1067,7 +1067,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to pick a custom dev image!');
+                Alert.alert('Photo Library Needed', 'Photo library access is needed to choose a custom dev image.');
                 return;
             }
 
