@@ -58,6 +58,41 @@ const SPECTRUM_COLORS = [
     '#0000FF', '#FF00FF', '#FF0000',
 ];
 
+const pointsToSvgPath = (points) => {
+    if (points.length === 0) return '';
+    const p0 = points[0];
+    if (points.length === 1) {
+        return `M${p0.x.toFixed(1)},${p0.y.toFixed(1)} L${p0.x.toFixed(1)},${p0.y.toFixed(1)}`;
+    }
+    
+    let d = `M${p0.x.toFixed(1)},${p0.y.toFixed(1)}`;
+    
+    if (points.length === 2) {
+        const p1 = points[1];
+        d += ` L${p1.x.toFixed(1)},${p1.y.toFixed(1)}`;
+        return d;
+    }
+    
+    // For 3 or more points, use quadratic Bezier curve to midpoints
+    const p1 = points[1];
+    const midX = (p0.x + p1.x) / 2;
+    const midY = (p0.y + p1.y) / 2;
+    d += ` L${midX.toFixed(1)},${midY.toFixed(1)}`;
+    
+    for (let i = 1; i < points.length - 1; i++) {
+        const cp = points[i];
+        const next = points[i + 1];
+        const mx = (cp.x + next.x) / 2;
+        const my = (cp.y + next.y) / 2;
+        d += ` Q${cp.x.toFixed(1)},${cp.y.toFixed(1)} ${mx.toFixed(1)},${my.toFixed(1)}`;
+    }
+    
+    const last = points[points.length - 1];
+    d += ` L${last.x.toFixed(1)},${last.y.toFixed(1)}`;
+    return d;
+};
+
+
 
 // Full Spectrum Color Picker Component
 const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
@@ -131,7 +166,7 @@ const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
                 const newHue = Math.max(0, Math.min(hueStartRef.current + deltaPct * 360, 360));
                 hueRef.current = newHue;
                 hueThumbX.setValue((newHue / 360) * w);
-                // No setState during move — zero re-renders
+                setHue(newHue);
             },
             onPanResponderRelease: () => {
                 setHue(hueRef.current);
@@ -162,7 +197,7 @@ const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
                 const newPos = Math.max(0, Math.min(shadeStartRef.current + deltaPct, 1));
                 shadePosRef.current = newPos;
                 shadeThumbX.setValue(newPos * w);
-                // No setState during move — zero re-renders
+                setShadePos(newPos);
             },
             onPanResponderRelease: () => {
                 setShadePos(shadePosRef.current);
@@ -203,7 +238,10 @@ const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
                         end={{ x: 1, y: 0 }}
                         style={styles.spectrumBar}
                     />
-                    <Animated.View style={[styles.spectrumThumb, { left: hueThumbX }]}>
+                    <Animated.View 
+                        style={[styles.spectrumThumb, { left: 0, transform: [{ translateX: hueThumbX }] }]}
+                        pointerEvents="none"
+                    >
                         <View style={[styles.spectrumThumbDot, { backgroundColor: pureHueColor }]} />
                     </Animated.View>
                 </View>
@@ -255,7 +293,10 @@ const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
                             end={{ x: 1, y: 0 }}
                             style={styles.spectrumBar}
                         />
-                        <Animated.View style={[styles.spectrumThumb, { left: shadeThumbX }]}>
+                        <Animated.View 
+                            style={[styles.spectrumThumb, { left: 0, transform: [{ translateX: shadeThumbX }] }]}
+                            pointerEvents="none"
+                        >
                             <View style={[styles.spectrumThumbDot, { backgroundColor: displayColor }]} />
                         </Animated.View>
                     </View>
@@ -396,7 +437,7 @@ export const ScribbleScreen = ({
     const [paths, setPaths] = useState([]);
     const [currentPath, setCurrentPath] = useState('');
     const [selectedColor, setSelectedColor] = useState('#FF0000');
-    const [selectedSize, setSelectedSize] = useState(8);
+    const [selectedSize, setSelectedSize] = useState(6);
     const [inkSplash, setInkSplash] = useState(null);
     const [sentScribble, setSentScribble] = useState(null); // Store sent scribble for preview
     const [showWidgetTutorial, setShowWidgetTutorial] = useState(false);
@@ -457,6 +498,7 @@ export const ScribbleScreen = ({
 
     // Use refs to avoid stale closures in PanResponder
     const currentPathRef = useRef('');
+    const currentPointsRef = useRef([]);
     const selectedColorRef = useRef(selectedColor);
     const selectedSizeRef = useRef(selectedSize);
     const pathIdCounter = useRef(0);
@@ -484,7 +526,8 @@ export const ScribbleScreen = ({
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: (evt) => {
                 const { locationX, locationY } = evt.nativeEvent;
-                const newPath = `M${locationX.toFixed(1)},${locationY.toFixed(1)}`;
+                currentPointsRef.current = [{ x: locationX, y: locationY }];
+                const newPath = pointsToSvgPath(currentPointsRef.current);
                 currentPathRef.current = newPath;
                 setCurrentPath(newPath);
 
@@ -494,7 +537,18 @@ export const ScribbleScreen = ({
             },
             onPanResponderMove: (evt) => {
                 const { locationX, locationY } = evt.nativeEvent;
-                const updatedPath = `${currentPathRef.current} L${locationX.toFixed(1)},${locationY.toFixed(1)}`;
+                const points = currentPointsRef.current;
+                const lastPoint = points[points.length - 1];
+                if (lastPoint) {
+                    const dx = locationX - lastPoint.x;
+                    const dy = locationY - lastPoint.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    // Filter out tiny micro-movements to reduce rendering load and jitter
+                    if (dist < 3) return;
+                }
+
+                points.push({ x: locationX, y: locationY });
+                const updatedPath = pointsToSvgPath(points);
                 currentPathRef.current = updatedPath;
                 setCurrentPath(updatedPath);
             },
@@ -508,6 +562,7 @@ export const ScribbleScreen = ({
                     };
                     setPaths(prev => [...prev, newPath]);
                     currentPathRef.current = '';
+                    currentPointsRef.current = [];
                     setCurrentPath('');
                 }
             },
@@ -517,6 +572,7 @@ export const ScribbleScreen = ({
     const handleClear = () => {
         setPaths([]);
         setCurrentPath('');
+        currentPointsRef.current = [];
     };
 
     const handleUndo = () => {
