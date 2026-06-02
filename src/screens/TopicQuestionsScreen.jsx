@@ -281,6 +281,10 @@ export default function TopicQuestionsScreen({
             taskstatement: q.taskstatement || q.question,
             category: q.category || q.visualType,  // Fallback to visualType if category not set
             options: q.options || [],
+            minValue: q.minValue,
+            maxValue: q.maxValue,
+            minLabel: q.minLabel,
+            maxLabel: q.maxLabel,
             topic: q.topic,
             visualType: q.visualType,  // Keep original for debugging
             order: q.order,  // Include order for premium restriction check
