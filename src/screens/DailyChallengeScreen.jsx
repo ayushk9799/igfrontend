@@ -77,8 +77,8 @@ export default function DailyChallengeScreen({
     try {
       // Get user's local date in YYYY-MM-DD format (avoids timezone issues with server's "today")
       const now = new Date();
-      // const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-       const userLocalDate='2026-05-20'
+      const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      //  const userLocalDate='2026-05-20'
       const res = await fetch(`${API_BASE}/api/daily-challenge/date/${userLocalDate}`);
       const json = await res.json();
       setChallenge(json.data);

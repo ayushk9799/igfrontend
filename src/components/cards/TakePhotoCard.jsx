@@ -44,7 +44,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
             duration: 300,
             useNativeDriver: true,
         }).start();
-    }, [showCamera]);
+    }, [cameraAnim, showCamera]);
 
     useEffect(() => {
         // Reset state only when task ID actually changes
@@ -57,13 +57,23 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
 
     const requestCameraPermission = async () => {
         try {
+            if (Platform.OS === 'ios') {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                const granted = status === 'granted';
+                if (!granted) {
+                    Alert.alert('Camera Needed', 'Camera access is needed to take a photo.');
+                    return false;
+                }
+                return true;
+            }
+
             if (Platform.OS === 'android') {
                 const result = await PermissionsAndroid.request(
                     PermissionsAndroid.PERMISSIONS.CAMERA
                 );
                 const granted = result === PermissionsAndroid.RESULTS.GRANTED;
                 if (!granted) {
-                    Alert.alert('Permission required', 'Please allow Camera access to take a photo.');
+                    Alert.alert('Camera Needed', 'Camera access is needed to take a photo.');
                     return false;
                 }
                 return true;
@@ -115,7 +125,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
         try {
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
-                Alert.alert('Permission required', 'Please allow gallery access to select a photo.');
+                Alert.alert('Photo Library Needed', 'Photo library access is needed to choose a photo.');
                 return;
             }
 

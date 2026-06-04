@@ -12,7 +12,6 @@ import {
     Animated,
     Dimensions,
     InteractionManager,
-    Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
@@ -94,17 +93,14 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
     const requestCameraPermission = async () => {
         if (Platform.OS === 'ios') {
-            const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
             const granted = status === 'granted';
             setHasPermission(granted);
-            if (!granted && !canAskAgain) {
+            if (!granted) {
                 Alert.alert(
                     'Camera Permission Needed',
-                    'Camera access was denied. Please enable it in Settings to take puzzle photos.',
-                    [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
-                    ]
+                    'Camera access is needed to take puzzle photos. You can still choose a photo from Gallery.',
+                    [{ text: 'OK' }]
                 );
             }
             return granted;
@@ -115,7 +111,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
         if (!granted) {
             Alert.alert(
                 'Camera Permission Needed',
-                'We need camera access to take photos for puzzles. Please grant camera permission.',
+                'Camera access is needed to take puzzle photos. You can still choose a photo from Gallery.',
                 [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Try Again', onPress: () => requestCameraPermission() },
@@ -179,7 +175,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             if (!perm.granted) {
                 Alert.alert(
                     'Gallery Permission Needed',
-                    'We need gallery access to pick photos for puzzles. Please grant gallery permission.',
+                    'Photo library access is needed to choose a puzzle photo.',
                     [
                         { text: 'Cancel', style: 'cancel' },
                         { text: 'Try Again', onPress: () => handlePickFromGallery() },
@@ -315,7 +311,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                         onPress={requestCameraPermission}
                                         style={styles.grantCameraButton}
                                     >
-                                        <Text style={styles.grantCameraText}>Grant Camera Access</Text>
+                                        <Text style={styles.grantCameraText}>Continue</Text>
                                     </TouchableOpacity>
                                 </View>
                             ) : (

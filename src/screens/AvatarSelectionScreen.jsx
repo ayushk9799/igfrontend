@@ -12,7 +12,6 @@ import {
     Animated,
     Dimensions,
     InteractionManager,
-    Linking,
     StatusBar,
 } from 'react-native';
 import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
@@ -34,12 +33,6 @@ const isCompactHeight = height < 760;
 const navy = '#050E3E';
 
 // --- SVG Icons ---
-const CloseIcon = () => (
-    <Svg width={12} height={12} viewBox="0 0 14 14" fill="none">
-        <Path d="M13 1L1 13M1 1l12 12" stroke="#FF5E97" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-);
-
 const TinyHeart = ({ color = "#FFB5D0" }) => (
     <Svg width={14} height={12} viewBox="0 0 14 12" fill="none">
         <Path d="M7 12L6.0125 11.0825C2.4 7.755 0 5.5425 0 2.8425C0 0.81 1.575 -0.75 3.5 -0.75C4.585 -0.75 5.6175 -0.255 6.265 0.4425C6.545 0.705 6.7825 1.0125 7 1.3425C7.2175 1.0125 7.455 0.705 7.735 0.4425C8.3825 -0.255 9.415 -0.75 10.5 -0.75C12.425 -0.75 14 0.81 14 2.8425C14 5.5425 11.6 7.755 7.9875 11.09L7 12Z" fill={color} />
@@ -134,17 +127,14 @@ const AvatarSelectionScreen = ({ onComplete }) => {
 
     const requestCameraPermission = async () => {
         if (Platform.OS === 'ios') {
-            const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
             const granted = status === 'granted';
             setHasPermission(granted);
-            if (!granted && !canAskAgain) {
+            if (!granted) {
                 Alert.alert(
                     'Camera Permission Needed',
-                    'Camera access was denied. Please enable it in Settings to take your profile photo.',
-                    [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
-                    ]
+                    'Camera access is needed to take your profile photo. You can still choose a photo from Gallery.',
+                    [{ text: 'OK' }]
                 );
             }
             return;
@@ -155,7 +145,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
         if (!granted) {
             Alert.alert(
                 'Camera Permission Needed',
-                'We need camera access to take your profile photo. Please grant camera permission.',
+                'Camera access is needed to take your profile photo. You can still choose a photo from Gallery.',
                 [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Try Again', onPress: () => requestCameraPermission() },
@@ -209,7 +199,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
         try {
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
-                Alert.alert('Permission required', 'Please allow gallery access.');
+                Alert.alert('Photo Library Needed', 'Photo library access is needed to choose a profile photo.');
                 return;
             }
 
@@ -313,8 +303,8 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                             style={styles.brandLogo} 
                             resizeMode="contain" 
                         />
-                        <TouchableOpacity onPress={onComplete} style={styles.closeButton}>
-                            <CloseIcon />
+                        <TouchableOpacity onPress={onComplete} style={styles.skipButton} activeOpacity={0.85}>
+                            <Text style={styles.skipButtonText}>Skip</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -402,6 +392,9 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                             style={styles.mascotImage} 
                                             resizeMode="contain" 
                                         />
+                                        <Text style={styles.permissionPromptText}>
+                                            Camera access is needed to take your profile photo
+                                        </Text>
                                         <TouchableOpacity style={styles.grantButton} onPress={requestCameraPermission} activeOpacity={0.85}>
                                             <LinearGradient 
                                                 colors={['#FF5E97', '#FFA1C9']} 
@@ -410,7 +403,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                                 style={styles.grantButtonGradient}
                                             >
                                                 <CameraIconOutline color="#FFFFFF" />
-                                                <Text style={styles.grantButtonText}>Grant Camera Access</Text>
+                                                <Text style={styles.grantButtonText}>Continue</Text>
                                             </LinearGradient>
                                         </TouchableOpacity>
                                     </View>
@@ -502,18 +495,18 @@ const styles = StyleSheet.create({
         height: isCompactHeight ? 36 : 42,
         marginLeft: -14,
     },
-    closeButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#FFFFFF',
+    skipButton: {
+        minWidth: 48,
+        minHeight: 34,
+        paddingHorizontal: 4,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#FFB5D0',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+    },
+    skipButtonText: {
+        fontFamily: fontFamily.bold,
+        fontSize: 14,
+        fontWeight: fontWeight('700'),
+        color: '#FF5E97',
     },
     titleBlock: {
         alignItems: 'center',
@@ -598,6 +591,15 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: isCompactHeight ? '-24%' : '-18%',
         zIndex: 2,
+    },
+    permissionPromptText: {
+        fontFamily: fontFamily.medium,
+        fontSize: isCompactHeight ? 13 : 14,
+        fontWeight: fontWeight('500'),
+        color: '#7380A1',
+        textAlign: 'center',
+        marginBottom: 12,
+        zIndex: 3,
     },
     permissionInfoBox: {
         flexDirection: 'row',
