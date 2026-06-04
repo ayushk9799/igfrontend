@@ -26,7 +26,7 @@ import { fontFamily } from '../../constants/fonts';
 /**
  * TakePhotoCard - Card for capturing or selecting photos
  */
-const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userName, hasPartner = false, onLinkPartner, onSubmit, onSkip, isLastCard, onAnswerSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
+const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partnerName, userName, hasPartner = false, onLinkPartner, onSubmit, onSkip, isLastCard, onAnswerSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
     const config = categoryConfig.takephoto;
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
@@ -209,7 +209,7 @@ const TakePhotoCard = React.memo(({ task, index, totalCards, partnerName, userNa
                         </Svg>
                         <Text style={photoStyles.categoryText}>{config.label}</Text>
                     </View>
-                    <Text style={photoStyles.counterText}>{index + 1} / {totalCards}</Text>
+                    <Text style={photoStyles.counterText}>{displayIndex || index + 1} / {totalCards}</Text>
                 </View>
 
                 <View style={photoStyles.questionSection}>

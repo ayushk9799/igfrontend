@@ -23,8 +23,70 @@ import Button from '../components/Button';
 import { colors, spacing, borderRadius, shadows, timing } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const CANVAS_SIZE = width - 40;
+const LIVE_CANVAS_WIDTH = width;
+const LIVE_CANVAS_HEIGHT = height;
+
+const LIVE_STARS = [
+    { x: 0.12, y: 0.08, r: 1.8, o: 0.75 },
+    { x: 0.28, y: 0.15, r: 1.2, o: 0.55 },
+    { x: 0.48, y: 0.07, r: 2.1, o: 0.8 },
+    { x: 0.72, y: 0.13, r: 1.5, o: 0.65 },
+    { x: 0.9, y: 0.09, r: 2.4, o: 0.85 },
+    { x: 0.18, y: 0.34, r: 1.4, o: 0.55 },
+    { x: 0.38, y: 0.42, r: 2.2, o: 0.72 },
+    { x: 0.64, y: 0.31, r: 1.2, o: 0.52 },
+    { x: 0.84, y: 0.38, r: 1.8, o: 0.7 },
+    { x: 0.1, y: 0.62, r: 2.1, o: 0.75 },
+    { x: 0.31, y: 0.7, r: 1.3, o: 0.55 },
+    { x: 0.58, y: 0.62, r: 2, o: 0.7 },
+    { x: 0.77, y: 0.76, r: 1.4, o: 0.6 },
+    { x: 0.92, y: 0.66, r: 2.2, o: 0.76 },
+    { x: 0.22, y: 0.9, r: 1.7, o: 0.65 },
+    { x: 0.51, y: 0.86, r: 1.1, o: 0.5 },
+    { x: 0.86, y: 0.92, r: 1.6, o: 0.68 },
+];
+
+const LIVE_GRADIENTS = [
+    { colors: ['#9EDCF6', '#61B8EE', '#2767D9', '#071144'], locations: [0, 0.34, 0.66, 1] },
+    { colors: ['#F8D9EC', '#F089B7', '#8D4FBA', '#26145F'], locations: [0, 0.38, 0.72, 1] },
+    { colors: ['#A7F3D0', '#34D399', '#0EA5E9', '#0F172A'], locations: [0, 0.34, 0.68, 1] },
+    { colors: ['#FDE68A', '#FB923C', '#EF4444', '#451A03'], locations: [0, 0.36, 0.7, 1] },
+    { colors: ['#E0E7FF', '#818CF8', '#312E81', '#020617'], locations: [0, 0.35, 0.66, 1] },
+];
+
+const noop = () => { };
+
+const normalizePath = (path, prefix, index = 0) => {
+    if (!path?.d) return null;
+    return {
+        ...path,
+        id: path.id || `${prefix}-${index}-${path.d.length}`,
+    };
+};
+
+const normalizePaths = (paths, prefix) => (
+    Array.isArray(paths)
+        ? paths.map((path, index) => normalizePath(path, prefix, index)).filter(Boolean)
+        : []
+);
+
+const getPathsSignature = (paths = []) => (
+    paths.map(path => `${path.id || ''}:${path.d || ''}:${path.color || ''}:${path.strokeWidth || ''}`).join('|')
+);
+
+const formatLiveTime = (date) => date.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+}).replace(/\s?(AM|PM)$/i, '');
+
+const formatLiveDate = (date) => date.toLocaleDateString([], {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+});
 
 const brushSizes = [
     { size: 4, name: 'S' },
@@ -433,8 +495,12 @@ export const ScribbleScreen = ({
     onBack = () => { },
     hasPartner = false,
     onLinkPartner = () => { },
+    onLiveModeChange = noop,
+    userName = 'You',
+    partnerName = 'Your Love',
+    initialPaths = [],
 }) => {
-    const [paths, setPaths] = useState([]);
+    const [paths, setPaths] = useState(() => normalizePaths(initialPaths, 'initial'));
     const [currentPath, setCurrentPath] = useState('');
     const [selectedColor, setSelectedColor] = useState('#FF0000');
     const [selectedSize, setSelectedSize] = useState(6);
@@ -443,11 +509,21 @@ export const ScribbleScreen = ({
     const [showWidgetTutorial, setShowWidgetTutorial] = useState(false);
     const [tutorialStep, setTutorialStep] = useState(0);
     const [connectionError, setConnectionError] = useState(false);
+    const [liveMode, setLiveMode] = useState(false);
+    const [liveSaving, setLiveSaving] = useState(false);
+    const [livePartnerAvailable, setLivePartnerAvailable] = useState(false);
+    const [liveClock, setLiveClock] = useState(new Date());
+    const [showLivePicker, setShowLivePicker] = useState(false);
+    const [showLiveBrushPicker, setShowLiveBrushPicker] = useState(false);
+    const [showLiveGradientPicker, setShowLiveGradientPicker] = useState(false);
+    const [liveGradientIndex, setLiveGradientIndex] = useState(0);
     const insets = useSafeAreaInsets();
-    const { socket, isConnected } = useSocketContext();
+    const { socket, isConnected, partnerOnline } = useSocketContext();
     const canvasOpacity = useRef(new Animated.Value(0)).current;
     const modalOpacity = useRef(new Animated.Value(0)).current;
     const modalScale = useRef(new Animated.Value(0.85)).current;
+    const canvasWidth = CANVAS_SIZE;
+    const canvasHeight = CANVAS_SIZE;
 
     // Animate modal entrance
     useEffect(() => {
@@ -502,6 +578,11 @@ export const ScribbleScreen = ({
     const selectedColorRef = useRef(selectedColor);
     const selectedSizeRef = useRef(selectedSize);
     const pathIdCounter = useRef(0);
+    const liveModeRef = useRef(false);
+    const livePartnerAvailableRef = useRef(false);
+    const isConnectedRef = useRef(isConnected);
+    const socketRef = useRef(socket);
+    const initialPathsSignatureRef = useRef(getPathsSignature(paths));
 
     // Keep refs in sync with state
     React.useEffect(() => {
@@ -513,6 +594,51 @@ export const ScribbleScreen = ({
     }, [selectedSize]);
 
     React.useEffect(() => {
+        liveModeRef.current = liveMode;
+        onLiveModeChange(liveMode);
+        if (liveMode) {
+            setSentScribble(null);
+        } else {
+            setShowLivePicker(false);
+            setShowLiveBrushPicker(false);
+            setShowLiveGradientPicker(false);
+        }
+    }, [liveMode, onLiveModeChange]);
+
+    React.useEffect(() => {
+        return () => {
+            onLiveModeChange(false);
+        };
+    }, [onLiveModeChange]);
+
+    React.useEffect(() => {
+        socketRef.current = socket;
+    }, [socket]);
+
+    React.useEffect(() => {
+        isConnectedRef.current = isConnected;
+    }, [isConnected]);
+
+    React.useEffect(() => {
+        const nextPaths = normalizePaths(initialPaths, 'shared');
+        const nextSignature = getPathsSignature(nextPaths);
+
+        if (nextSignature !== initialPathsSignatureRef.current) {
+            initialPathsSignatureRef.current = nextSignature;
+            setPaths(nextPaths);
+            setCurrentPath('');
+            currentPointsRef.current = [];
+            setSentScribble(null);
+        }
+    }, [initialPaths]);
+
+    React.useEffect(() => {
+        const available = Boolean(partnerOnline && isConnected);
+        setLivePartnerAvailable(available);
+        livePartnerAvailableRef.current = available;
+    }, [partnerOnline, isConnected]);
+
+    React.useEffect(() => {
         Animated.timing(canvasOpacity, {
             toValue: 1,
             duration: 500,
@@ -520,11 +646,83 @@ export const ScribbleScreen = ({
         }).start();
     }, [canvasOpacity]);
 
+    React.useEffect(() => {
+        if (!liveMode) return undefined;
+
+        setLiveClock(new Date());
+        const timer = setInterval(() => {
+            setLiveClock(new Date());
+        }, 30000);
+
+        return () => clearInterval(timer);
+    }, [liveMode]);
+
+    React.useEffect(() => {
+        if (!socket) return;
+
+        const handleLiveStrokeReceived = (data = {}) => {
+            if (!data.stroke?.d) return;
+            const nextPath = normalizePath(data.stroke, `remote-${Date.now()}`, 0);
+            if (nextPath) {
+                setPaths(prev => [...prev, nextPath]);
+            }
+            setSentScribble(null);
+        };
+
+        const handleLiveCleared = () => {
+            setPaths([]);
+            setCurrentPath('');
+            currentPointsRef.current = [];
+            setSentScribble(null);
+        };
+
+        const handleLiveUndone = (data = {}) => {
+            if (!data.strokeId) return;
+            setPaths(prev => prev.filter(path => path.id !== data.strokeId));
+        };
+
+        const handleLiveStatus = (data = {}) => {
+            const available = Boolean(data.partnerAvailable && isConnectedRef.current);
+            setLivePartnerAvailable(available);
+            livePartnerAvailableRef.current = available;
+            if (!available) {
+                setLiveSaving(false);
+            }
+        };
+
+        const handleLiveSaved = () => {
+            setLiveSaving(false);
+        };
+
+        socket.on('scribble:liveStrokeReceived', handleLiveStrokeReceived);
+        socket.on('scribble:liveCleared', handleLiveCleared);
+        socket.on('scribble:liveUndone', handleLiveUndone);
+        socket.on('scribble:liveStatus', handleLiveStatus);
+        socket.on('scribble:liveSaved', handleLiveSaved);
+
+        return () => {
+            socket.off('scribble:liveStrokeReceived', handleLiveStrokeReceived);
+            socket.off('scribble:liveCleared', handleLiveCleared);
+            socket.off('scribble:liveUndone', handleLiveUndone);
+            socket.off('scribble:liveStatus', handleLiveStatus);
+            socket.off('scribble:liveSaved', handleLiveSaved);
+        };
+    }, [socket]);
+
+    const canSendLiveStroke = () => (
+        liveModeRef.current &&
+        isConnectedRef.current &&
+        socketRef.current?.connected
+    );
+
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
             onPanResponderGrant: (evt) => {
+                setShowLivePicker(false);
+                setShowLiveBrushPicker(false);
+                setShowLiveGradientPicker(false);
                 const { locationX, locationY } = evt.nativeEvent;
                 currentPointsRef.current = [{ x: locationX, y: locationY }];
                 const newPath = pointsToSvgPath(currentPointsRef.current);
@@ -554,13 +752,25 @@ export const ScribbleScreen = ({
             },
             onPanResponderRelease: () => {
                 if (currentPathRef.current) {
+                    const pathId = `live-${Date.now()}-${pathIdCounter.current++}`;
                     const newPath = {
-                        id: pathIdCounter.current++,
+                        id: pathId,
                         d: currentPathRef.current,
                         color: selectedColorRef.current,
                         strokeWidth: selectedSizeRef.current
                     };
                     setPaths(prev => [...prev, newPath]);
+                    if (canSendLiveStroke()) {
+                        setLiveSaving(true);
+                        socketRef.current.emit('scribble:liveStrokeEnd', {
+                            stroke: {
+                                id: newPath.id,
+                                d: newPath.d,
+                                color: newPath.color,
+                                strokeWidth: newPath.strokeWidth,
+                            },
+                        });
+                    }
                     currentPathRef.current = '';
                     currentPointsRef.current = [];
                     setCurrentPath('');
@@ -573,10 +783,41 @@ export const ScribbleScreen = ({
         setPaths([]);
         setCurrentPath('');
         currentPointsRef.current = [];
+        setSentScribble(null);
+        if (isConnectedRef.current && socketRef.current?.connected) {
+            socketRef.current.emit('scribble:liveClear');
+        }
     };
 
     const handleUndo = () => {
-        setPaths(prev => prev.slice(0, -1));
+        setPaths(prev => {
+            const removedPath = prev[prev.length - 1];
+            if (removedPath?.id && canSendLiveStroke()) {
+                socketRef.current.emit('scribble:liveUndo', { strokeId: removedPath.id });
+            }
+            return prev.slice(0, -1);
+        });
+    };
+
+    const handleLiveToggle = () => {
+        const nextLiveMode = !liveMode;
+        liveModeRef.current = nextLiveMode;
+        setLiveMode(nextLiveMode);
+        setConnectionError(false);
+        if (socket && isConnected) {
+            socket.emit(nextLiveMode ? 'scribble:liveStart' : 'scribble:liveEnd');
+        }
+    };
+
+    const handleLiveBack = () => {
+        liveModeRef.current = false;
+        setLiveMode(false);
+        setShowLivePicker(false);
+        setShowLiveBrushPicker(false);
+        setShowLiveGradientPicker(false);
+        if (socket && isConnected) {
+            socket.emit('scribble:liveEnd');
+        }
     };
 
     const handleSend = () => {
@@ -593,13 +834,8 @@ export const ScribbleScreen = ({
 
             socket.emit('scribble:send', { paths: pathsToSend });
 
-            // Save sent scribble for preview and clear canvas
-            setSentScribble({
-                paths: [...paths],
-                sentAt: new Date(),
-            });
-            setPaths([]);
             setCurrentPath('');
+            setSentScribble(null);
 
             // Call parent's onSend if provided
             onSend(pathsToSend);
@@ -608,6 +844,297 @@ export const ScribbleScreen = ({
             setTimeout(() => setConnectionError(false), 3000);
         }
     };
+
+    if (liveMode) {
+        return (
+            <LinearGradient
+                colors={LIVE_GRADIENTS[liveGradientIndex].colors}
+                locations={LIVE_GRADIENTS[liveGradientIndex].locations}
+                start={{ x: 0.18, y: 0 }}
+                end={{ x: 0.82, y: 1 }}
+                style={styles.liveFullscreen}
+            >
+                <StatusBar hidden />
+                <Svg
+                    width={LIVE_CANVAS_WIDTH}
+                    height={LIVE_CANVAS_HEIGHT}
+                    style={styles.liveStarsLayer}
+                    pointerEvents="none"
+                >
+                    {LIVE_STARS.map((star, index) => (
+                        <React.Fragment key={`fullscreen-star-bg-${index}`}>
+                            <SvgCircle
+                                cx={star.x * LIVE_CANVAS_WIDTH}
+                                cy={star.y * LIVE_CANVAS_HEIGHT}
+                                r={star.r}
+                                fill="#FFFFFF"
+                                opacity={star.o}
+                            />
+                            {index % 3 === 0 && (
+                                <Path
+                                    d={`M${(star.x * LIVE_CANVAS_WIDTH - 5).toFixed(1)},${(star.y * LIVE_CANVAS_HEIGHT).toFixed(1)} L${(star.x * LIVE_CANVAS_WIDTH + 5).toFixed(1)},${(star.y * LIVE_CANVAS_HEIGHT).toFixed(1)} M${(star.x * LIVE_CANVAS_WIDTH).toFixed(1)},${(star.y * LIVE_CANVAS_HEIGHT - 5).toFixed(1)} L${(star.x * LIVE_CANVAS_WIDTH).toFixed(1)},${(star.y * LIVE_CANVAS_HEIGHT + 5).toFixed(1)}`}
+                                    stroke="#FFFFFF"
+                                    strokeWidth={1}
+                                    strokeLinecap="round"
+                                    opacity={star.o * 0.55}
+                                />
+                            )}
+                        </React.Fragment>
+                    ))}
+                </Svg>
+                <TouchableOpacity
+                    style={styles.liveDismissLayer}
+                    onPress={() => {
+                        setShowLivePicker(false);
+                        setShowLiveBrushPicker(false);
+                        setShowLiveGradientPicker(false);
+                    }}
+                    activeOpacity={1}
+                />
+                <TouchableOpacity
+                    style={[styles.liveBackButton, { top: insets.top + 12 }]}
+                    onPress={handleLiveBack}
+                    activeOpacity={0.86}
+                >
+                    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                        <Path
+                            d="M15 18l-6-6 6-6"
+                            stroke="#FFFFFF"
+                            strokeWidth={2.5}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                    </Svg>
+                </TouchableOpacity>
+                <View style={[styles.liveLockHeader, { paddingTop: insets.top + 72 }]}>
+                    <Text style={styles.liveLockDate}>{formatLiveDate(liveClock)}</Text>
+                    <Text style={styles.liveLockTime}>{formatLiveTime(liveClock)}</Text>
+                    <View style={styles.liveNamesBadge}>
+                        <Text style={styles.liveNamesText} numberOfLines={1}>
+                            {userName} + {partnerName}
+                        </Text>
+                    </View>
+                </View>
+                <View style={styles.livePaperStage}>
+                    <View style={[styles.livePaperFrame, { width: CANVAS_SIZE + 3, height: CANVAS_SIZE + 3 }]}>
+                        <View style={styles.livePaperClip}>
+                            <View
+                                style={[styles.canvas, styles.liveTransparentCanvas, { width: canvasWidth, height: canvasHeight }]}
+                                {...panResponder.panHandlers}
+                            >
+                                <Svg width={canvasWidth} height={canvasHeight}>
+                                    {paths.map((path, index) => (
+                                        <Path
+                                            key={path.id || `live-path-${index}`}
+                                            d={path.d}
+                                            stroke={path.color}
+                                            strokeWidth={path.strokeWidth}
+                                            fill="none"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    ))}
+                                    {currentPath && (
+                                        <Path
+                                            d={currentPath}
+                                            stroke={selectedColor}
+                                            strokeWidth={selectedSize}
+                                            fill="none"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    )}
+                                    {inkSplash && (
+                                        <>
+                                            <SvgCircle
+                                                key="live-splash-outer"
+                                                cx={inkSplash.x}
+                                                cy={inkSplash.y}
+                                                r={selectedSize + 8}
+                                                fill={selectedColor}
+                                                opacity={0.3}
+                                            />
+                                            <SvgCircle
+                                                key="live-splash-inner"
+                                                cx={inkSplash.x}
+                                                cy={inkSplash.y}
+                                                r={selectedSize + 4}
+                                                fill={selectedColor}
+                                                opacity={0.5}
+                                            />
+                                        </>
+                                    )}
+                                </Svg>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+                {showLivePicker && (
+                    <View style={[styles.livePickerPanel, { bottom: insets.bottom + 92 }]}>
+                        <View style={styles.livePickerSection}>
+                            <SpectrumColorPicker
+                                selectedColor={selectedColor}
+                                onColorChange={setSelectedColor}
+                            />
+                        </View>
+                    </View>
+                )}
+                {showLiveBrushPicker && (
+                    <View style={[styles.liveBrushPanel, { bottom: insets.bottom + 92 }]}>
+                        <BrushSlider
+                            min={2}
+                            max={30}
+                            value={selectedSize}
+                            onChange={setSelectedSize}
+                            selectedColor={selectedColor}
+                        />
+                    </View>
+                )}
+                {showLiveGradientPicker && (
+                    <View style={[styles.liveGradientPanel, { bottom: insets.bottom + 92 }]}>
+                        {LIVE_GRADIENTS.map((gradient, index) => (
+                            <TouchableOpacity
+                                key={gradient.colors.join('-')}
+                                style={[
+                                    styles.liveGradientOption,
+                                    liveGradientIndex === index && styles.liveGradientOptionActive,
+                                ]}
+                                onPress={() => {
+                                    setLiveGradientIndex(index);
+                                    setShowLiveGradientPicker(false);
+                                }}
+                                activeOpacity={0.86}
+                            >
+                                <LinearGradient
+                                    colors={gradient.colors}
+                                    locations={gradient.locations}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.liveGradientSwatch}
+                                />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+                <View style={[styles.liveFloatingToolbar, { bottom: insets.bottom + 18 }]}>
+                    <TouchableOpacity style={styles.liveToolButton} onPress={handleUndo}>
+                        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5"
+                                stroke="#FFFFFF"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.liveSelectedColorButton,
+                            showLivePicker && styles.liveSelectedColorButtonActive,
+                        ]}
+                        onPress={() => {
+                            setShowLivePicker(prev => !prev);
+                            setShowLiveBrushPicker(false);
+                            setShowLiveGradientPicker(false);
+                        }}
+                        activeOpacity={0.86}
+                    >
+                        <View style={[styles.liveSelectedColorDot, { backgroundColor: selectedColor }]}>
+                            <View
+                                style={[
+                                    styles.liveSelectedBrushDot,
+                                    {
+                                        width: Math.max(6, Math.min(selectedSize, 18)),
+                                        height: Math.max(6, Math.min(selectedSize, 18)),
+                                        borderRadius: Math.max(3, Math.min(selectedSize, 18) / 2),
+                                    },
+                                ]}
+                            />
+                        </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.liveBrushButton,
+                            showLiveBrushPicker && styles.liveBrushButtonActive,
+                        ]}
+                        onPress={() => {
+                            setShowLiveBrushPicker(prev => !prev);
+                            setShowLivePicker(false);
+                            setShowLiveGradientPicker(false);
+                        }}
+                        activeOpacity={0.86}
+                    >
+                        <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="m11 10 3 3"
+                                stroke="#FFFFFF"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                            <Path
+                                d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z"
+                                stroke="#FFFFFF"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                            <Path
+                                d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031"
+                                stroke="#FFFFFF"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
+                        <View
+                            style={[
+                                styles.liveBrushButtonDot,
+                                {
+                                    width: Math.max(5, Math.min(selectedSize, 13)),
+                                    height: Math.max(5, Math.min(selectedSize, 13)),
+                                    borderRadius: Math.max(2.5, Math.min(selectedSize, 13) / 2),
+                                    backgroundColor: selectedColor,
+                                },
+                            ]}
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.liveGradientButton,
+                            showLiveGradientPicker && styles.liveGradientButtonActive,
+                        ]}
+                        onPress={() => {
+                            setShowLiveGradientPicker(prev => !prev);
+                            setShowLivePicker(false);
+                            setShowLiveBrushPicker(false);
+                        }}
+                        activeOpacity={0.86}
+                    >
+                        <LinearGradient
+                            colors={LIVE_GRADIENTS[liveGradientIndex].colors}
+                            locations={LIVE_GRADIENTS[liveGradientIndex].locations}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.liveGradientButtonPreview}
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.liveToolButton} onPress={handleClear}>
+                        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                                stroke="#FFFFFF"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
+                    </TouchableOpacity>
+                </View>
+            </LinearGradient>
+        );
+    }
 
     return (
         <LinearGradient
@@ -621,56 +1148,85 @@ export const ScribbleScreen = ({
             <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.lg }]}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <View style={styles.headerContent}>
-                        <Text style={styles.title}>Canvas</Text>
-                    </View>
-                    <View style={styles.headerActions}>
-                        <TouchableOpacity style={styles.headerAction} onPress={handleUndo}>
-                            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                                <Path
-                                    d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5"
-                                    stroke={colors.text}
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </Svg>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.headerAction} onPress={handleClear}>
-                            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                                <Path
-                                    d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
-                                    stroke={colors.text}
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </Svg>
-                        </TouchableOpacity>
-                        {/* Widget Button */}
-                        <TouchableOpacity style={styles.addHomeButton} onPress={() => setShowWidgetTutorial(true)} activeOpacity={0.85}>
-                           
-                            <Text style={styles.addHomeButtonText}> + Add to Home Screen</Text>
-                        </TouchableOpacity>
+                    <View style={styles.headerTopRow}>
+                        <View style={styles.headerContent}>
+                            <Text style={styles.title} numberOfLines={1}>Canvas</Text>
+                        </View>
+                        <View style={styles.headerSecondaryActions}>
+                            {/* Widget Button */}
+                            <TouchableOpacity style={styles.addHomeButton} onPress={() => setShowWidgetTutorial(true)} activeOpacity={0.85}>
+                                <Text style={styles.addHomeButtonText}>+ Home Screen</Text>
+                            </TouchableOpacity>
+                            {hasPartner && (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.liveToggleButton,
+                                        liveMode && styles.liveToggleButtonActive,
+                                    ]}
+                                    onPress={handleLiveToggle}
+                                    activeOpacity={0.85}
+                                >
+                                    <Text style={[
+                                        styles.liveToggleText,
+                                        liveMode && styles.liveToggleTextActive,
+                                    ]}>
+                                        {liveMode ? 'Live On' : 'Live Off'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
                 </View>
 
                 {/* Canvas */}
-                <Animated.View style={[styles.canvasShadowContainer, { opacity: canvasOpacity }]}>
-                    <View style={styles.canvasClippedContainer}>
+                <Animated.View
+                    style={[
+                        styles.canvasShadowContainer,
+                        liveMode && styles.liveCanvasShadowContainer,
+                        { opacity: canvasOpacity, width: canvasWidth + 3, height: canvasHeight + 3 },
+                    ]}
+                >
+                    <View style={[styles.canvasClippedContainer, liveMode && styles.liveCanvasClippedContainer]}>
                         <LinearGradient
-                            colors={['#FFFFFF', '#FFF9FB']}
+                            colors={liveMode ? ['#1B1237', '#4B2E83', '#EC7AB7'] : ['#FFFFFF', '#FFF9FB']}
+                            locations={liveMode ? [0, 0.56, 1] : undefined}
+                            start={liveMode ? { x: 0.15, y: 0 } : { x: 0, y: 0 }}
+                            end={liveMode ? { x: 0.85, y: 1 } : { x: 1, y: 1 }}
                             style={styles.canvasGradient}
                         >
                         <View
-                            style={[styles.canvas, { width: CANVAS_SIZE, height: CANVAS_SIZE }]}
+                            style={[
+                                styles.canvas,
+                                liveMode && styles.liveCanvas,
+                                { width: canvasWidth, height: canvasHeight },
+                            ]}
                             {...panResponder.panHandlers}
                         >
-                            <Svg width={CANVAS_SIZE} height={CANVAS_SIZE}>
+                            <Svg width={canvasWidth} height={canvasHeight}>
+                                {liveMode && LIVE_STARS.map((star, index) => (
+                                    <React.Fragment key={`star-${index}`}>
+                                        <SvgCircle
+                                            cx={star.x * canvasWidth}
+                                            cy={star.y * canvasHeight}
+                                            r={star.r}
+                                            fill="#FFFFFF"
+                                            opacity={star.o}
+                                        />
+                                        {index % 3 === 0 && (
+                                            <Path
+                                                d={`M${(star.x * canvasWidth - 5).toFixed(1)},${(star.y * canvasHeight).toFixed(1)} L${(star.x * canvasWidth + 5).toFixed(1)},${(star.y * canvasHeight).toFixed(1)} M${(star.x * canvasWidth).toFixed(1)},${(star.y * canvasHeight - 5).toFixed(1)} L${(star.x * canvasWidth).toFixed(1)},${(star.y * canvasHeight + 5).toFixed(1)}`}
+                                                stroke="#FFFFFF"
+                                                strokeWidth={1}
+                                                strokeLinecap="round"
+                                                opacity={star.o * 0.55}
+                                            />
+                                        )}
+                                    </React.Fragment>
+                                ))}
                                 {/* Draw completed paths */}
-                                {paths.map((path) => (
+                                {paths.map((path, index) => (
                                     <Path
-                                        key={path.id}
+                                        key={path.id || `path-${index}`}
                                         d={path.d}
                                         stroke={path.color}
                                         strokeWidth={path.strokeWidth}
@@ -717,8 +1273,8 @@ export const ScribbleScreen = ({
                             {paths.length === 0 && !currentPath && !sentScribble && (
                                 <View style={styles.emptyState}>
                                     <Text style={styles.emptyEmoji}>💕</Text>
-                                    <Text style={styles.emptyText}>Draw with your finger</Text>
-                                    <Text style={styles.emptyHint}>Express your love through art</Text>
+                                    <Text style={[styles.emptyText, liveMode && styles.liveEmptyText]}>Draw with your finger</Text>
+                                    <Text style={[styles.emptyHint, liveMode && styles.liveEmptyHint]}>Express your love through art</Text>
                                 </View>
                             )}
 
@@ -748,9 +1304,9 @@ export const ScribbleScreen = ({
                                     {/* Preview of sent scribble */}
                                     <View style={styles.sentPreviewInCanvas}>
                                         <Svg width={140} height={140} viewBox={`0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}`}>
-                                            {sentScribble.paths.map((path) => (
+                                            {sentScribble.paths.map((path, index) => (
                                                 <Path
-                                                    key={path.id}
+                                                    key={path.id || `sent-path-${index}`}
                                                     d={path.d}
                                                     stroke={path.color}
                                                     strokeWidth={path.strokeWidth}
@@ -774,26 +1330,55 @@ export const ScribbleScreen = ({
                 </View>
             </Animated.View>
 
-                {/* Color Picker */}
-                <View style={styles.toolSection}>
-                    <Text style={styles.toolLabel}>Color</Text>
-                    <SpectrumColorPicker
-                        selectedColor={selectedColor}
-                        onColorChange={setSelectedColor}
-                    />
+                <View style={styles.canvasActions}>
+                    <TouchableOpacity style={styles.canvasActionButton} onPress={handleUndo}>
+                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5"
+                                stroke={colors.text}
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.canvasActionButton} onPress={handleClear}>
+                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                                stroke={colors.text}
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
+                    </TouchableOpacity>
                 </View>
 
-                {/* Brush Size */}
-                <View style={styles.toolSection}>
-                    <Text style={styles.toolLabel}>Brush Size</Text>
-                    <BrushSlider 
-                        min={2}
-                        max={30}
-                        value={selectedSize}
-                        onChange={setSelectedSize}
-                        selectedColor={selectedColor}
-                    />
-                </View>
+                {!liveMode && (
+                    <>
+                        {/* Color Picker */}
+                        <View style={styles.toolSection}>
+                            <Text style={styles.toolLabel}>Color</Text>
+                            <SpectrumColorPicker
+                                selectedColor={selectedColor}
+                                onColorChange={setSelectedColor}
+                            />
+                        </View>
+
+                        {/* Brush Size */}
+                        <View style={styles.toolSection}>
+                            <Text style={styles.toolLabel}>Brush Size</Text>
+                            <BrushSlider 
+                                min={2}
+                                max={30}
+                                value={selectedSize}
+                                onChange={setSelectedSize}
+                                selectedColor={selectedColor}
+                            />
+                        </View>
+                    </>
+                )}
 
                 {/* Send Button */}
                 <View style={styles.sendContainer}>
@@ -802,7 +1387,15 @@ export const ScribbleScreen = ({
                             Not connected to server. Please try again.
                         </Text>
                     )}
-                    {hasPartner ? (
+                    {liveMode ? (
+                        <View style={styles.liveStatusBox}>
+                            <Text style={styles.liveStatusText}>
+                                {livePartnerAvailable
+                                    ? (liveSaving ? 'Live On - Saving...' : 'Live On - Auto sending')
+                                    : 'Live On - Partner offline'}
+                            </Text>
+                        </View>
+                    ) : hasPartner ? (
                         <TouchableOpacity
                             onPress={handleSend}
                             disabled={paths.length === 0}
@@ -1147,10 +1740,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     header: {
+        marginTop: 8,
+        marginBottom: 10,
+    },
+    headerTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 8,
-        marginBottom: 18,
+        justifyContent: 'space-between',
+        gap: 8,
     },
     backButton: {
         width: 48,
@@ -1174,9 +1771,10 @@ const styles = StyleSheet.create({
     headerContent: {
         flex: 1,
         marginLeft: 0,
+        minWidth: 0,
     },
     title: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '600',
         color: colors.text,
         // letterSpacing: -0.5,
@@ -1190,25 +1788,306 @@ const styles = StyleSheet.create({
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
+        flexShrink: 0,
     },
     headerAction: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         backgroundColor: 'rgba(255,255,255,0.86)',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#F7DDEA',
         shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 18,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 3,
     },
     actionIcon: {
         fontSize: 18,
+    },
+    liveFullscreen: {
+        flex: 1,
+        backgroundColor: '#61B8EE',
+    },
+    liveStarsLayer: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    liveDismissLayer: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    liveBackButton: {
+        position: 'absolute',
+        left: 16,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(7,17,68,0.28)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 4,
+    },
+    liveLockHeader: {
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    liveLockDate: {
+        color: '#FFFFFF',
+        fontSize: 28,
+        lineHeight: 34,
+        fontWeight: '800',
+    },
+    liveLockTime: {
+        color: '#FFFFFF',
+        fontSize: 122,
+        lineHeight: 132,
+        fontWeight: '800',
+    },
+    liveNamesBadge: {
+        maxWidth: '86%',
+        minHeight: 34,
+        borderRadius: 17,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.28)',
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: -6,
+    },
+    liveNamesText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    livePaperStage: {
+        flex: 1,
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        paddingTop: 32,
+        paddingBottom: 94,
+    },
+    livePaperFrame: {
+        borderRadius: 24,
+        backgroundColor: 'transparent',
+        shadowColor: '#02235F',
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        elevation: 0,
+    },
+    livePaperClip: {
+        flex: 1,
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 0,
+        borderColor: 'transparent',
+        backgroundColor: 'transparent',
+    },
+    liveTransparentCanvas: {
+        backgroundColor: 'transparent',
+    },
+    liveFloatingToolbar: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        minHeight: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(7,17,68,0.42)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 14,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.18,
+        shadowRadius: 22,
+        elevation: 8,
+    },
+    liveToolButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
+    },
+    liveSelectedColorButton: {
+        width: 68,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    liveSelectedColorButtonActive: {
+        borderColor: '#FFFFFF',
+        backgroundColor: 'rgba(255,255,255,0.24)',
+    },
+    liveSelectedColorDot: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    liveSelectedBrushDot: {
+        backgroundColor: 'rgba(255,255,255,0.82)',
+    },
+    liveBrushButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+    },
+    liveBrushButtonActive: {
+        borderColor: '#FFFFFF',
+        backgroundColor: 'rgba(255,255,255,0.24)',
+    },
+    liveBrushButtonDot: {
+        position: 'absolute',
+        right: 8,
+        bottom: 8,
+        borderWidth: 1,
+        borderColor: '#FFFFFF',
+    },
+    liveBrushPanel: {
+        position: 'absolute',
+        left: 28,
+        right: 28,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.34)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.38)',
+        paddingHorizontal: 14,
+        paddingTop: 12,
+        paddingBottom: 10,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+        elevation: 10,
+    },
+    liveGradientButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    liveGradientButtonActive: {
+        borderColor: '#FFFFFF',
+        backgroundColor: 'rgba(255,255,255,0.24)',
+    },
+    liveGradientButtonPreview: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.72)',
+    },
+    liveGradientPanel: {
+        position: 'absolute',
+        left: 28,
+        right: 28,
+        minHeight: 66,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.34)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.38)',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+        elevation: 10,
+    },
+    liveGradientOption: {
+        width: 48,
+        height: 42,
+        borderRadius: 16,
+        padding: 3,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    liveGradientOptionActive: {
+        borderColor: '#FFFFFF',
+        backgroundColor: 'rgba(255,255,255,0.22)',
+    },
+    liveGradientSwatch: {
+        flex: 1,
+        borderRadius: 13,
+        overflow: 'hidden',
+    },
+    livePickerPanel: {
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.34)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.38)',
+        paddingHorizontal: 12,
+        paddingTop: 10,
+        paddingBottom: 6,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+        elevation: 10,
+    },
+    livePickerSection: {
+        marginBottom: 4,
+    },
+    canvasActions: {
+        flexDirection: 'row',
+        alignSelf: 'center',
+        alignItems: 'center',
+        gap: 10,
+        marginTop: -10,
+        marginBottom: spacing.sm,
+    },
+    canvasActionButton: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#F7DDEA',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.08,
+        shadowRadius: 9,
+        elevation: 3,
     },
     canvasShadowContainer: {
         width: CANVAS_SIZE + 3,
@@ -1221,7 +2100,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.18,
         shadowRadius: 24,
         elevation: 8,
-        marginBottom: spacing.xl,
+        marginBottom: spacing.md,
+    },
+    liveCanvasShadowContainer: {
+        borderRadius: 26,
+        backgroundColor: '#27194F',
+        shadowColor: '#EC7AB7',
+        shadowOpacity: 0.24,
+        shadowRadius: 26,
+        marginBottom: spacing.sm,
     },
     canvasClippedContainer: {
         flex: 1,
@@ -1230,6 +2117,10 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: '#F7DDEA',
     },
+    liveCanvasClippedContainer: {
+        borderRadius: 26,
+        borderColor: 'rgba(255,255,255,0.28)',
+    },
     canvasGradient: {
         flex: 1,
     },
@@ -1237,6 +2128,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
         overflow: 'hidden',
         position: 'relative',
+    },
+    liveCanvas: {
+        backgroundColor: '#1B1237',
     },
     paperTexture: {
         ...StyleSheet.absoluteFillObject,
@@ -1266,16 +2160,22 @@ const styles = StyleSheet.create({
         marginTop: spacing.xs,
         opacity: 0.7,
     },
+    liveEmptyText: {
+        color: '#FFFFFF',
+        opacity: 0.92,
+    },
+    liveEmptyHint: {
+        color: 'rgba(255,255,255,0.76)',
+        opacity: 1,
+    },
     toolSection: {
-        marginBottom: spacing.lg,
+        marginBottom: spacing.md,
     },
     toolLabel: {
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: '700',
-        color: colors.textSecondary,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: spacing.md,
+        color: '#000000',
+        marginBottom: 4,
         marginLeft: spacing.xs,
     },
     spectrumContainer: {
@@ -1315,7 +2215,7 @@ const styles = StyleSheet.create({
     spectrumShadeLabel: {
         fontSize: 10,
         fontWeight: '700',
-        color: colors.textMuted,
+        color: '#FFFFFF',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         width: 36,
@@ -1470,6 +2370,23 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: 8,
     },
+    liveStatusBox: {
+        width: '100%',
+        minHeight: 52,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderWidth: 1,
+        borderColor: '#F7DDEA',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: spacing.lg,
+    },
+    liveStatusText: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: colors.text,
+        textAlign: 'center',
+    },
     // Sent state - displays inside the canvas
     sentState: {
         ...StyleSheet.absoluteFillObject,
@@ -1519,10 +2436,10 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     addHomeButton: {
-        minHeight: 42,
-        maxWidth: 170,
-        borderRadius: 21,
-        paddingHorizontal: 12,
+        minHeight: 32,
+        maxWidth: 118,
+        borderRadius: 16,
+        paddingHorizontal: 8,
         backgroundColor: colors.primary,
         flexDirection: 'row',
         alignItems: 'center',
@@ -1531,18 +2448,50 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.primary,
         shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.22,
-        shadowRadius: 18,
-        elevation: 6,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.16,
+        shadowRadius: 12,
+        elevation: 4,
     },
     addHomeButtonText: {
         flexShrink: 1,
         color: '#FFFFFF',
-        fontSize: 12,
-        lineHeight: 14,
+        fontSize: 11,
+        lineHeight: 13,
         fontWeight: '800',
         textAlign: 'center',
+    },
+    liveToggleButton: {
+        minHeight: 32,
+        minWidth: 68,
+        borderRadius: 16,
+        paddingHorizontal: 8,
+        backgroundColor: 'rgba(255,255,255,0.86)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#F7DDEA',
+    },
+    liveToggleButtonActive: {
+        backgroundColor: '#22C55E',
+        borderColor: '#22C55E',
+    },
+    liveToggleText: {
+        color: colors.textSecondary,
+        fontSize: 11,
+        lineHeight: 13,
+        fontWeight: '800',
+        textAlign: 'center',
+    },
+    liveToggleTextActive: {
+        color: '#FFFFFF',
+    },
+    headerSecondaryActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: 6,
+        flexShrink: 0,
     },
     // Modal styles
     modalOverlay: {

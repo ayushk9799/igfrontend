@@ -40,6 +40,7 @@ const WAVEFORM_BAR_HEIGHTS = [
 const VoiceRecordCard = React.memo(({
     task,
     index,
+    displayIndex,
     totalCards,
     partnerName,
     userName,
@@ -352,7 +353,7 @@ const VoiceRecordCard = React.memo(({
                         </Svg>
                         <Text style={voiceStyles.categoryText}>{config.label}</Text>
                     </View>
-                    <Text style={voiceStyles.counterText}>{index + 1} / {totalCards}</Text>
+                    <Text style={voiceStyles.counterText}>{displayIndex || index + 1} / {totalCards}</Text>
                 </View>
 
                 {/* Question */}

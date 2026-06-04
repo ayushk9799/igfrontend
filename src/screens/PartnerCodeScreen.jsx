@@ -281,6 +281,8 @@ export const PartnerCodeScreen = ({
                     partnerUsername: data.partner.name,
                     partnerAvatar: data.partner.avatar || null,
                     connectionDate: data.partner.connectionDate,
+                    relationshipStartDate: data.partner.relationshipStartDate,
+                    shouldAskRelationshipStartDate: data.partner.shouldAskRelationshipStartDate || false,
                 });
 
                 // Show connected screen with floating hearts

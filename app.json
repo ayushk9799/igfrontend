@@ -1,4 +1,7 @@
 {
   "name": "Penguin",
-  "displayName": "Penguin"
+  "displayName": "Penguin",
+  "plugins": [
+    "@react-native-community/datetimepicker"
+  ]
 }

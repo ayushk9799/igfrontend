@@ -50,6 +50,8 @@ const AnimatedCardStack = ({
     autoAdvanceOnSubmit = true,
     isPremium = false,
     onNavigateToPremium = () => { },
+    totalCardsOverride,
+    displayIndexOffset = 0,
 }) => {
     // Current active slot (0 or 1)
     const activeSlotIndex = currentIndex % 2;
@@ -290,7 +292,8 @@ const AnimatedCardStack = ({
             return {
                 task: t,
                 index: i,
-                totalCards: tasks.length,
+                displayIndex: displayIndexOffset + i + 1,
+                totalCards: totalCardsOverride || tasks.length,
                 partnerName,
                 userName,
                 userAvatar,

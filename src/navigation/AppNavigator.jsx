@@ -6,6 +6,7 @@ import BootSplash from 'react-native-bootsplash';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
 import NicknameScreen from '../screens/NicknameScreen';
+import RelationshipStartDateScreen from '../screens/RelationshipStartDateScreen';
 import PartnerCodeScreen from '../screens/PartnerCodeScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MoodScreen from '../screens/MoodScreen';
@@ -81,6 +82,10 @@ export const AppNavigator = () => {
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
+
+    const needsRelationshipStartDate = (user) => !!user?.partnerId
+        && !user?.relationshipStartDate
+        && user?.shouldAskRelationshipStartDate === true;
 
     // In-app update instance (debug flag mirrors __DEV__)
     const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
@@ -376,6 +381,8 @@ export const AppNavigator = () => {
                         partnerUsername: statusData.partner.name,
                         partnerAvatar: statusData.partner.avatar || null,
                         connectionDate: statusData.connectionDate,
+                        relationshipStartDate: statusData.relationshipStartDate,
+                        shouldAskRelationshipStartDate: statusData.shouldAskRelationshipStartDate || false,
                         partnerIsPremium: statusData.partner.isPremium || false,
                         partnerPremiumPlan: statusData.partner.premiumPlan || null,
                         partnerPremiumExpiresAt: statusData.partner.premiumExpiresAt || null,
@@ -393,6 +400,8 @@ export const AppNavigator = () => {
                         name: statusData.partner.name,
                         avatar: statusData.partner.avatar || null,
                         connectionDate: statusData.connectionDate,
+                        relationshipStartDate: statusData.relationshipStartDate,
+                        shouldAskRelationshipStartDate: statusData.shouldAskRelationshipStartDate || false,
                     }));
                     setOnboardedStorage(true);
 
@@ -414,6 +423,29 @@ export const AppNavigator = () => {
             socket.off('partner:paired', handlePartnerPaired);
         };
     }, [socket, userData?.id, userData?.isPremium, currentScreen, dispatch]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleRelationshipStartDateUpdated = (data) => {
+            const relationshipStartDate = data?.relationshipStartDate;
+            if (!relationshipStartDate) return;
+
+            const updates = {
+                relationshipStartDate,
+                shouldAskRelationshipStartDate: false,
+            };
+
+            updateUserStorage(updates);
+            dispatch(updateUser(updates));
+        };
+
+        socket.on('couple:relationshipStartDateUpdated', handleRelationshipStartDateUpdated);
+
+        return () => {
+            socket.off('couple:relationshipStartDateUpdated', handleRelationshipStartDateUpdated);
+        };
+    }, [socket, dispatch]);
 
     // Navigate to the correct screen based on push notification data
     const handleNotificationNavigation = async (remoteMessage) => {
@@ -809,6 +841,8 @@ export const AppNavigator = () => {
                                 partnerUsername: statusData.partner.name,
                                 partnerAvatar: statusData.partner.avatar || null,
                                 connectionDate: statusData.connectionDate,
+                                relationshipStartDate: statusData.relationshipStartDate,
+                                shouldAskRelationshipStartDate: statusData.shouldAskRelationshipStartDate || false,
                                 partnerIsPremium: statusData.partner.isPremium || false,
                                 partnerPremiumPlan: statusData.partner.premiumPlan || null,
                                 partnerPremiumExpiresAt: statusData.partner.premiumExpiresAt || null,
@@ -838,6 +872,8 @@ export const AppNavigator = () => {
                                 partnerUsername: null,
                                 partnerAvatar: null,
                                 connectionDate: null,
+                                relationshipStartDate: null,
+                                shouldAskRelationshipStartDate: false,
                                 partnerIsPremium: false,
                                 partnerPremiumPlan: null,
                                 partnerPremiumExpiresAt: null,
@@ -861,6 +897,11 @@ export const AppNavigator = () => {
                         // No nickname yet - show nickname screen first
                         setCurrentScreen('nickname');
                     } else if (storedUser.partnerId) {
+                        if (needsRelationshipStartDate(storedUser)) {
+                            setCurrentScreen('relationshipStartDate');
+                            return;
+                        }
+
                         // Has nickname and is paired - go to home
                         dispatch(setOnboarded(true));
                         setOnboardedStorage(true);
@@ -1023,6 +1064,11 @@ export const AppNavigator = () => {
                 // No nickname yet - show nickname screen first
                 setCurrentScreen('nickname');
             } else if (user.partnerId) {
+                if (needsRelationshipStartDate(user)) {
+                    setCurrentScreen('relationshipStartDate');
+                    return;
+                }
+
                 // Has nickname and is paired - go to home
                 dispatch(setOnboarded(true));
                 setOnboardedStorage(true);
@@ -1054,8 +1100,44 @@ export const AppNavigator = () => {
         }
 
         startTransition(() => {
-            // After nickname, go to avatar selection
+            // After nickname, continue profile setup before pairing.
             setCurrentScreen('avatarSelection');
+        });
+    };
+
+    // Handle relationship start date completion
+    const handleRelationshipStartDateComplete = async (relationshipStartDate) => {
+        if (relationshipStartDate) {
+            updateUserStorage({ relationshipStartDate, shouldAskRelationshipStartDate: false });
+            dispatch(updateUser({ relationshipStartDate, shouldAskRelationshipStartDate: false }));
+
+            try {
+                const response = await fetch(`${API_BASE}/api/user/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: userData.id, relationshipStartDate }),
+                });
+                const data = await response.json();
+                const savedRelationshipStartDate = data?.user?.relationshipStartDate;
+                if (data?.success && savedRelationshipStartDate) {
+                    updateUserStorage({ relationshipStartDate: savedRelationshipStartDate, shouldAskRelationshipStartDate: false });
+                    dispatch(updateUser({ relationshipStartDate: savedRelationshipStartDate, shouldAskRelationshipStartDate: false }));
+                }
+            } catch (err) {
+                console.error('Failed to save relationship start date to server:', err);
+            }
+        }
+
+        startTransition(() => {
+            if (userData.partnerId) {
+                dispatch(setOnboarded(true));
+                setOnboardedStorage(true);
+                checkNotificationPermission().then((hasPermission) => {
+                    setCurrentScreen(hasPermission ? 'home' : 'notificationPermission');
+                });
+            } else {
+                setCurrentScreen('partnerCode');
+            }
         });
     };
 
@@ -1088,6 +1170,8 @@ export const AppNavigator = () => {
             partnerUsername: partner.name,
             partnerAvatar: partner.avatar || null,
             connectionDate: partner.connectionDate,
+            relationshipStartDate: partner.relationshipStartDate,
+            shouldAskRelationshipStartDate: partner.shouldAskRelationshipStartDate || false,
         };
         updateUserStorage(partnerData);
         dispatch(setPartner(partner));
@@ -1096,6 +1180,11 @@ export const AppNavigator = () => {
         // Check if notification permission is already granted
         const hasPermission = await checkNotificationPermission();
         startTransition(() => {
+            if (needsRelationshipStartDate({ ...userData, ...partnerData })) {
+                setCurrentScreen('relationshipStartDate');
+                return;
+            }
+
             if (hasPermission) {
                 setCurrentScreen('home');
             } else {
@@ -1336,6 +1425,14 @@ export const AppNavigator = () => {
                     />
                 );
 
+            case 'relationshipStartDate':
+                return (
+                    <RelationshipStartDateScreen
+                        onComplete={handleRelationshipStartDateComplete}
+                        onBack={() => navigate('partnerCode')}
+                    />
+                );
+
             case 'avatarSelection':
                 return (
                     <AvatarSelectionScreen
@@ -1431,6 +1528,9 @@ export const AppNavigator = () => {
                         onBack={() => navigate('home')}
                         hasPartner={!!userData?.partnerId}
                         onLinkPartner={() => navigate('partnerCode')}
+                        userName={userData?.name || 'You'}
+                        partnerName={userData?.partnerUsername || 'Your Love'}
+                        initialPaths={partnerScribble?.paths}
                     />
                 );
 

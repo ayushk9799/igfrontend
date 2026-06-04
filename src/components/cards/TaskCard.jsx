@@ -209,6 +209,7 @@ const lockedStyles = StyleSheet.create({
 const TaskCard = React.memo(({
     task,
     index,
+    displayIndex,
     totalCards,
     partnerName,
     userName,
@@ -235,6 +236,7 @@ const TaskCard = React.memo(({
     const commonProps = {
         task,
         index,
+        displayIndex,
         totalCards,
         partnerName,
         userName,
@@ -287,4 +289,3 @@ const TaskCard = React.memo(({
 });
 
 export default TaskCard;
-

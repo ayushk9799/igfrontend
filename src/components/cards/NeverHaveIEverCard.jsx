@@ -51,6 +51,7 @@ const ChoiceButton = ({ choice, isSelected, onPress, disabled }) => {
 const NeverHaveIEverCard = React.memo(({
     task,
     index,
+    displayIndex,
     totalCards,
     partnerName,
     userName,
@@ -129,7 +130,7 @@ const NeverHaveIEverCard = React.memo(({
                         <Text style={styles.badgeEmoji}>🔥</Text>
                         <Text style={styles.categoryText}>{config.label}</Text>
                     </View>
-                    <Text style={styles.counterText}>{index + 1} / {totalCards}</Text>
+                    <Text style={styles.counterText}>{displayIndex || index + 1} / {totalCards}</Text>
                 </View>
 
                 {/* Question Area */}

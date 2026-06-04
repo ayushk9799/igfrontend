@@ -28,6 +28,33 @@ const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
 const navy = '#050E3E';
 
+const formatRelationshipDuration = (startDate) => {
+    if (!startDate) return null;
+
+    const start = new Date(startDate);
+    if (Number.isNaN(start.getTime())) return null;
+
+    const today = new Date();
+    const totalDays = Math.max(0, Math.floor((today - start) / (1000 * 60 * 60 * 24)));
+
+    if (totalDays < 30) {
+        return `${totalDays || 1} ${totalDays === 1 ? 'day' : 'days'} together`;
+    }
+
+    const totalMonths = Math.floor(totalDays / 30);
+    if (totalMonths < 12) {
+        return `${totalMonths} ${totalMonths === 1 ? 'month' : 'months'} together`;
+    }
+
+    const years = Math.floor(totalMonths / 12);
+    const months = totalMonths % 12;
+    if (!months) {
+        return `${years} ${years === 1 ? 'year' : 'years'} together`;
+    }
+
+    return `${years} ${years === 1 ? 'year' : 'years'}, ${months} ${months === 1 ? 'month' : 'months'} together`;
+};
+
 // --- SVG Icons ---
 const CrownIcon = ({ size = 20, color = '#FFB800' }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
@@ -126,6 +153,7 @@ export const AccountScreen = ({
 
     const [localAvatar, setLocalAvatar] = useState(userData.avatarThumbnail || userData.avatar || null);
     const { isUploading, uploadProgress, error, uploadAvatar, clearError } = useAvatarUpload();
+    const relationshipDuration = formatRelationshipDuration(userData.relationshipStartDate || userData.connectionDate);
 
     useEffect(() => {
         // Prefer thumbnail for fast loading, fallback to full avatar URL
@@ -315,6 +343,9 @@ export const AccountScreen = ({
                                 <Text style={styles.partnerBadgeText}>
                                     💕 With {partnerNickname || partnerName}
                                 </Text>
+                                {relationshipDuration && (
+                                    <Text style={styles.partnerDurationText}>{relationshipDuration}</Text>
+                                )}
                             </View>
                         )}
                     </View>
@@ -539,6 +570,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
+        alignItems: 'center',
         shadowColor: '#FFB5D0',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
@@ -549,6 +581,12 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#FF5E97',
         fontWeight: '700',
+    },
+    partnerDurationText: {
+        fontSize: 11,
+        color: '#7380A1',
+        fontWeight: '600',
+        marginTop: 2,
     },
     menuSection: {
         marginBottom: isCompactHeight ? 18 : 24,

@@ -31,6 +31,7 @@ const TRACK_HEIGHT = 12;
 const SliderCard = React.memo(({
     task,
     index,
+    displayIndex,
     totalCards,
     partnerName,
     userName,
@@ -188,7 +189,7 @@ const SliderCard = React.memo(({
                         </Svg>
                         <Text style={styles.categoryText}>Rate It</Text>
                     </View>
-                    <Text style={styles.counterText}>{index + 1}/{totalCards}</Text>
+                    <Text style={styles.counterText}>{displayIndex || index + 1}/{totalCards}</Text>
                 </View>
 
                 {/* Question */}

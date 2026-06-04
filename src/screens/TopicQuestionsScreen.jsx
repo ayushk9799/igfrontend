@@ -68,6 +68,8 @@ export default function TopicQuestionsScreen({
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userAnswers, setUserAnswers] = useState([]);
     const [error, setError] = useState(null);
+    const [totalActiveQuestions, setTotalActiveQuestions] = useState(0);
+    const [startingOrder, setStartingOrder] = useState(0);
 
     // Progress Tracking Refs
     const maxSeenOrderRef = React.useRef(0);
@@ -146,9 +148,13 @@ export default function TopicQuestionsScreen({
 
             if (json.success && json.data?.questions) {
                 const newQuestions = json.data.questions;
+                const questionTotal = json.data.totalActiveQuestions ?? json.data.total ?? 0;
+
+                setTotalActiveQuestions(questionTotal);
 
                 if (isInitial) {
                     setQuestions(newQuestions);
+                    setStartingOrder(json.data.startingOrder || 0);
                     // Initialize maxSeen based on loaded questions? 
                     // No, maxSeen tracks *user action*. 
                     // But we should start maxSeen at the first question's order - 1?
@@ -381,6 +387,8 @@ export default function TopicQuestionsScreen({
                             userAnswers={userAnswers}
                             isPremium={isPremium}
                             onNavigateToPremium={onNavigateToPremium}
+                            totalCardsOverride={totalActiveQuestions}
+                            displayIndexOffset={startingOrder}
                         />
                     </View>
                 </View>

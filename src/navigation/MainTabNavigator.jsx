@@ -65,6 +65,7 @@ export const MainTabNavigator = ({
     const [isMoodRefreshPrompt, setIsMoodRefreshPrompt] = useState(false);
     const [moodRefreshNow, setMoodRefreshNow] = useState(Date.now());
     const [moodPreview, setMoodPreview] = useState(null);
+    const [isScribbleLiveFullscreen, setIsScribbleLiveFullscreen] = useState(false);
     const lastAutoOpenedMoodRef = React.useRef(null);
 
     useEffect(() => {
@@ -76,6 +77,12 @@ export const MainTabNavigator = ({
     useEffect(() => {
         onTabChange?.(currentTab);
     }, [currentTab, onTabChange]);
+
+    useEffect(() => {
+        if (currentTab !== 'canvas') {
+            setIsScribbleLiveFullscreen(false);
+        }
+    }, [currentTab]);
 
     // Redux state
     const userData = useSelector(selectUser);
@@ -266,6 +273,10 @@ export const MainTabNavigator = ({
                         onBack={() => setCurrentTab('home')}
                         hasPartner={hasPartner}
                         onLinkPartner={onFindPartner}
+                        onLiveModeChange={setIsScribbleLiveFullscreen}
+                        userName={userData?.name || 'You'}
+                        partnerName={partnerName || 'Your Love'}
+                        initialPaths={partnerScribble?.paths}
                     />
                 );
             case 'dailyChallenge':
@@ -347,11 +358,13 @@ export const MainTabNavigator = ({
     return (
         <View style={styles.container}>
             {renderScreen()}
-            <BottomTabBar
-                currentTab={currentTab}
-                onTabChange={setCurrentTab}
-                chatBadge={chatBadge}
-            />
+            {!isScribbleLiveFullscreen && (
+                <BottomTabBar
+                    currentTab={currentTab}
+                    onTabChange={setCurrentTab}
+                    chatBadge={chatBadge}
+                />
+            )}
 
             <Modal
                 visible={isAccountVisible}

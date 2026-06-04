@@ -194,6 +194,41 @@ export const SocketProvider = ({ children }) => {
             savePathsToWidget(data.paths, data.fromUserName, data.timestamp);
         });
 
+        socketInstance.on('scribble:liveStrokeReceived', (data) => {
+            if (!data.stroke?.d) return;
+            setPartnerScribble(prev => {
+                const nextPaths = [...(prev?.paths || []), data.stroke];
+                savePathsToWidget(nextPaths, data.fromUserName, data.timestamp);
+                return {
+                    paths: nextPaths,
+                    fromUserName: data.fromUserName,
+                    timestamp: data.timestamp,
+                };
+            });
+        });
+
+        socketInstance.on('scribble:liveCleared', (data) => {
+            setPartnerScribble({
+                paths: [],
+                fromUserName: data.fromUserName,
+                timestamp: data.timestamp,
+            });
+            savePathsToWidget([], data.fromUserName, data.timestamp);
+        });
+
+        socketInstance.on('scribble:liveUndone', (data) => {
+            if (!data.strokeId) return;
+            setPartnerScribble(prev => {
+                const nextPaths = (prev?.paths || []).filter(path => path.id !== data.strokeId);
+                savePathsToWidget(nextPaths, data.fromUserName, data.timestamp);
+                return {
+                    paths: nextPaths,
+                    fromUserName: data.fromUserName,
+                    timestamp: data.timestamp,
+                };
+            });
+        });
+
         socketInstance.on('scribble:sent', (data) => {
         });
 
@@ -211,6 +246,13 @@ export const SocketProvider = ({ children }) => {
                 });
                 // Save paths to App Group for widget
                 savePathsToWidget(data.paths, data.fromUserName, data.timestamp);
+            } else if (Array.isArray(data.paths) && data.paths.length === 0) {
+                setPartnerScribble({
+                    paths: [],
+                    fromUserName: data.fromUserName,
+                    timestamp: data.timestamp,
+                });
+                savePathsToWidget([], data.fromUserName, data.timestamp);
             }
         });
 

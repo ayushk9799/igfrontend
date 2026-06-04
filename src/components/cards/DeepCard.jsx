@@ -12,7 +12,7 @@ import { fontFamily } from '../../constants/fonts';
 /**
  * DeepCard - High-impact text-based card for deep questions and sharing
  */
-const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
+const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
     const [answer, setAnswer] = useState(previousAnswer || '');
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
@@ -120,7 +120,7 @@ const DeepCard = React.memo(({ task, index, totalCards, hasPartner = false, onLi
                             </Svg>
                             <Text style={styles.categoryText}>{config.label}</Text>
                         </View>
-                        <Text style={styles.counterText}>{index + 1} / {totalCards}</Text>
+                        <Text style={styles.counterText}>{displayIndex || index + 1} / {totalCards}</Text>
                     </View>
 
                     {/* Question Area */}
