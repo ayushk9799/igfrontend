@@ -9,7 +9,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Svg, { Path } from 'react-native-svg';
 import { useSelector } from 'react-redux';
@@ -57,7 +56,6 @@ const getSetEmoji = (format, title) => {
 
     return '✨'; // default
 };
-
 
 export default function TopicQuestionsV2Screen({
     topic,
@@ -373,25 +371,20 @@ export default function TopicQuestionsV2Screen({
     };
 
     return (
-        <LinearGradient
-            colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
-            locations={[0, 0.34, 0.72, 1]}
-            start={{ x: 0.25, y: 0 }}
-            end={{ x: 0.75, y: 1 }}
-            style={styles.screen}
-        >
+        <View style={styles.screen}>
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <GestureHandlerRootView style={styles.container}>
                 {renderHeader()}
                 {selectedSet ? renderPlayer() : renderSets()}
             </GestureHandlerRootView>
-        </LinearGradient>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     screen: {
         flex: 1,
+        backgroundColor: '#FFF7FA',
     },
     container: {
         flex: 1,
