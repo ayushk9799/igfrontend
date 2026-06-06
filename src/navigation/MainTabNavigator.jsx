@@ -8,7 +8,7 @@ import AccountScreen from '../screens/AccountScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import GamesScreen from '../screens/GamesScreen';
 import DailyChallengeScreen from '../screens/DailyChallengeScreen';
-import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
+import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
 import ChatListScreen from '../screens/ChatListScreen';
 import NotificationCenterScreen from '../screens/NotificationCenterScreen';
 import PremiumScreen from '../screens/PremiumScreen';
@@ -315,7 +315,7 @@ export const MainTabNavigator = ({
                     return null;
                 }
                 return (
-                    <TopicQuestionsScreen
+                    <TopicQuestionsV2Screen
                         topic={selectedTopic}
                         topicTitle={topicConfig.title}
                         topicEmoji={topicConfig.emoji}
@@ -358,7 +358,7 @@ export const MainTabNavigator = ({
     return (
         <View style={styles.container}>
             {renderScreen()}
-            {!isScribbleLiveFullscreen && (
+            {!isScribbleLiveFullscreen && currentTab !== 'topicQuestions' && (
                 <BottomTabBar
                     currentTab={currentTab}
                     onTabChange={setCurrentTab}

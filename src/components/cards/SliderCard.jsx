@@ -165,7 +165,7 @@ const SliderCard = React.memo(({
     }
 
     return (
-        <LinearGradient colors={['#EFFFF8', '#F9FFFD']} style={styles.cardInner}>
+        <LinearGradient colors={['#20E3B2', '#065F46']} style={styles.cardInner}>
             {/* Already Answered Overlay */}
             {isAnswered && (
                 <View style={cardStyles.answeredOverlay}>
@@ -277,7 +277,6 @@ const SliderCard = React.memo(({
                         disabled={locked || isAnswered || !hasInteracted}
                         style={[
                             styles.submitButton,
-                            { backgroundColor: config.color },
                             (!hasInteracted || locked) && styles.submitButtonDisabled
                         ]}
                     >
@@ -308,10 +307,10 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#B9ECD9',
-        shadowColor: '#7DDCC2',
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        shadowColor: '#065F46',
         shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.20,
+        shadowOpacity: 0.22,
         shadowRadius: 22,
         elevation: 10,
         marginRight: 10,
@@ -336,17 +335,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#D6F5E9',
-        backgroundColor: 'rgba(255,255,255,0.82)',
+        borderColor: 'rgba(255, 255, 255, 0.22)',
+        backgroundColor: 'rgba(255,255,255,0.12)',
     },
     categoryText: {
-        color: '#16B98F',
+        color: '#FFFFFF',
         fontWeight: '800',
         fontSize: 14,
         fontFamily: fontFamily.bold,
     },
     counterText: {
-        color: '#083D45',
+        color: 'rgba(255, 255, 255, 0.75)',
         fontWeight: '800',
         fontSize: 16,
         fontFamily: fontFamily.bold,
@@ -359,17 +358,17 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xs,
     },
     questionText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
-        color: '#083D45',
-        lineHeight: 32,
+        color: '#FFFFFF',
+        lineHeight: 26,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
     starImage: {
         alignSelf: 'center',
-        width: 130,
-        height: 100,
+        width: 100,
+        height: 80,
         marginTop: spacing.xs,
         marginBottom: 0,
     },
@@ -385,7 +384,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 22,
         paddingVertical: 9,
         borderRadius: 36,
-        backgroundColor: 'rgba(255,255,255,0.94)',
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.22)',
         flexDirection: 'row',
         alignItems: 'baseline',
         justifyContent: 'center',
@@ -398,13 +399,13 @@ const styles = StyleSheet.create({
     valueText: {
         fontSize: 48,
         fontWeight: '900',
-        color: '#16B98F',
+        color: '#FFFFFF',
         fontFamily: fontFamily.extraBold,
     },
     valueMax: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#7A6D80',
+        color: 'rgba(255, 255, 255, 0.75)',
         marginLeft: 4,
         fontFamily: fontFamily.bold,
     },
@@ -419,16 +420,16 @@ const styles = StyleSheet.create({
         right: 0,
         height: 52,
         borderRadius: 26,
-        backgroundColor: 'rgba(255,255,255,0.72)',
+        backgroundColor: 'rgba(255,255,255,0.08)',
         borderWidth: 1,
-        borderColor: '#D9EFE8',
+        borderColor: 'rgba(255,255,255,0.14)',
     },
     trackBackground: {
         position: 'absolute',
         left: KNOB_SIZE / 2,
         right: KNOB_SIZE / 2,
         height: TRACK_HEIGHT,
-        backgroundColor: '#E7EEEE',
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
         borderRadius: TRACK_HEIGHT / 2,
         overflow: 'hidden',
     },
@@ -490,7 +491,7 @@ const styles = StyleSheet.create({
     labelText: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#0A5962',
+        color: 'rgba(255, 255, 255, 0.75)',
         fontFamily: fontFamily.bold,
     },
     actionRow: {
@@ -504,10 +505,10 @@ const styles = StyleSheet.create({
         paddingVertical: 13,
         paddingHorizontal: spacing.lg,
         borderRadius: 22,
-        backgroundColor: '#DFF7EF',
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
     },
     skipText: {
-        color: '#0A8E72',
+        color: 'rgba(255, 255, 255, 0.75)',
         fontSize: 16,
         fontWeight: '500',
         fontFamily: fontFamily.medium,
@@ -517,7 +518,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         borderRadius: 25,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.7)',
+        borderColor: '#FFFFFF',
+        backgroundColor: '#FFFFFF',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
@@ -525,12 +527,13 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     submitButtonDisabled: {
-        opacity: 0.5,
+        backgroundColor: 'rgba(255, 255, 255, 0.45)',
+        borderColor: 'transparent',
     },
     submitText: {
-        color: '#FFFFFF',
+        color: '#0D7C5F',
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: '800',
         fontFamily: fontFamily.bold,
     },
     swipeHint: {
@@ -541,7 +544,7 @@ const styles = StyleSheet.create({
         paddingTop: spacing.sm,
     },
     swipeText: {
-        color: '#8A9C9A',
+        color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 12,
         fontWeight: '700',
         fontFamily: fontFamily.medium,
@@ -552,7 +555,7 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#DDF7EE',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
 
 });

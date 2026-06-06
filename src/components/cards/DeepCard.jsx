@@ -18,7 +18,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
     const lastTaskIdRef = useRef(task._id);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const imageOpacity = useRef(new Animated.Value(1)).current;
-    const imageHeight = useRef(new Animated.Value(150)).current;
+    const imageHeight = useRef(new Animated.Value(100)).current;
     const scrollViewRef = useRef(null);
 
     // Reset answer only when task ID actually changes (not during swipe gestures)
@@ -60,7 +60,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                         useNativeDriver: false,
                     }),
                     Animated.timing(imageHeight, {
-                        toValue: 150,
+                        toValue: 100,
                         duration: 250,
                         useNativeDriver: false,
                     }),
@@ -71,7 +71,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
             showSub.remove();
             hideSub.remove();
         };
-    }, []);
+    }, [imageHeight, imageOpacity]);
 
     // Track if this card was just submitted
     const [justSubmitted, setJustSubmitted] = useState(false);
@@ -103,7 +103,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
 
     return (
         <LinearGradient
-            colors={['#F8EDFF', '#FFF8FF']}
+            colors={['#9F62EC', '#6D28D9']}
             style={styles.cardContainer}
         >
             <KeyboardAvoidingView
@@ -145,7 +145,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                         <TextInput
                             style={styles.textInput}
                             placeholder="Type your response..."
-                            placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                            placeholderTextColor="rgba(255, 255, 255, 0.5)"
                             multiline
                             value={answer}
                             onChangeText={setAnswer}
@@ -166,9 +166,9 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                                 disabled={!answer.trim()}
                             >
                                 <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M5 12L10 17L20 7" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                    <Path d="M5 12L10 17L20 7" stroke={answer.trim() ? "#8B5CF6" : "rgba(139, 92, 246, 0.45)"} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                                 </Svg>
-                                <Text style={styles.submitButtonText}>Submit</Text>
+                                <Text style={[styles.submitButtonText, !answer.trim() && { color: 'rgba(139, 92, 246, 0.45)' }]}>Submit</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -195,10 +195,10 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#DEC8FF',
-        shadowColor: '#B794F4',
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        shadowColor: '#6D28D9',
         shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.20,
+        shadowOpacity: 0.22,
         shadowRadius: 22,
         elevation: 10,
         marginRight: 10,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     categoryBadge: {
-        backgroundColor: 'rgba(255,255,255,0.82)',
+        backgroundColor: 'rgba(255,255,255,0.12)',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 7,
@@ -227,16 +227,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#EFE1FF',
+        borderColor: 'rgba(255,255,255,0.22)',
     },
     categoryText: {
-        color: '#8B5CF6',
+        color: '#FFFFFF',
         fontWeight: '800',
         fontSize: 14,
         fontFamily: fontFamily.bold,
     },
     counterText: {
-        color: '#17204D',
+        color: 'rgba(255,255,255,0.75)',
         fontWeight: '800',
         fontSize: 16,
         fontFamily: fontFamily.bold,
@@ -248,10 +248,10 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     questionText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
-        color: '#14245A',
-        lineHeight: 32,
+        color: '#FFFFFF',
+        lineHeight: 26,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
@@ -262,13 +262,13 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
         borderRadius: 24,
         padding: spacing.md,
         paddingBottom: spacing.md,
         marginBottom: spacing.sm,
         borderWidth: 1,
-        borderColor: '#F0E3FF',
+        borderColor: 'rgba(255, 255, 255, 0.22)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.16,
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     textInput: {
-        color: '#17204D',
+        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '500',
         flex: 1,
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
         paddingTop: spacing.sm,
     },
     charCount: {
-        color: '#A69BB8',
+        color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 13,
         fontWeight: '700',
         fontFamily: fontFamily.bold,
@@ -298,24 +298,24 @@ const styles = StyleSheet.create({
     submitButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#A970E8',
+        backgroundColor: '#FFFFFF',
         paddingVertical: 11,
         paddingHorizontal: 18,
         borderRadius: 22,
         gap: 6,
-        shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.24,
-        shadowRadius: 12,
-        elevation: 7,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
     },
     submitButtonDisabled: {
-        backgroundColor: 'rgba(169, 112, 232, 0.42)',
+        backgroundColor: 'rgba(255, 255, 255, 0.45)',
     },
     submitButtonText: {
-        color: '#FFFFFF',
+        color: '#8B5CF6',
         fontSize: 14,
-        fontWeight: '700',
+        fontWeight: '800',
         fontFamily: fontFamily.bold,
     },
     swipeHint: {
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
         paddingTop: spacing.xs,
     },
     swipeText: {
-        color: '#9B90A6',
+        color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 12,
         fontWeight: '700',
         fontFamily: fontFamily.medium,
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#EFE2FF',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
 });
 

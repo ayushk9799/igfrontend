@@ -230,6 +230,23 @@ export const SocketProvider = ({ children }) => {
         });
 
         socketInstance.on('scribble:sent', (data) => {
+            if (!Array.isArray(data.paths)) return;
+            setPartnerScribble({
+                paths: data.paths,
+                fromUserName: data.fromUserName,
+                timestamp: data.timestamp,
+            });
+            savePathsToWidget(data.paths, data.fromUserName, data.timestamp);
+        });
+
+        socketInstance.on('scribble:liveSaved', (data) => {
+            if (!Array.isArray(data.paths)) return;
+            setPartnerScribble({
+                paths: data.paths,
+                fromUserName: data.fromUserName,
+                timestamp: data.timestamp,
+            });
+            savePathsToWidget(data.paths, data.fromUserName, data.timestamp);
         });
 
         socketInstance.on('scribble:error', (data) => {

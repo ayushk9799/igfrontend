@@ -582,6 +582,7 @@ export const ScribbleScreen = ({
     const livePartnerAvailableRef = useRef(false);
     const isConnectedRef = useRef(isConnected);
     const socketRef = useRef(socket);
+    const pathsRef = useRef(paths);
     const initialPathsSignatureRef = useRef(getPathsSignature(paths));
 
     // Keep refs in sync with state
@@ -616,6 +617,10 @@ export const ScribbleScreen = ({
     }, [socket]);
 
     React.useEffect(() => {
+        pathsRef.current = paths;
+    }, [paths]);
+
+    React.useEffect(() => {
         isConnectedRef.current = isConnected;
     }, [isConnected]);
 
@@ -625,6 +630,7 @@ export const ScribbleScreen = ({
 
         if (nextSignature !== initialPathsSignatureRef.current) {
             initialPathsSignatureRef.current = nextSignature;
+            pathsRef.current = nextPaths;
             setPaths(nextPaths);
             setCurrentPath('');
             currentPointsRef.current = [];
@@ -664,12 +670,17 @@ export const ScribbleScreen = ({
             if (!data.stroke?.d) return;
             const nextPath = normalizePath(data.stroke, `remote-${Date.now()}`, 0);
             if (nextPath) {
-                setPaths(prev => [...prev, nextPath]);
+                setPaths(prev => {
+                    const nextPaths = [...prev, nextPath];
+                    pathsRef.current = nextPaths;
+                    return nextPaths;
+                });
             }
             setSentScribble(null);
         };
 
         const handleLiveCleared = () => {
+            pathsRef.current = [];
             setPaths([]);
             setCurrentPath('');
             currentPointsRef.current = [];
@@ -678,7 +689,11 @@ export const ScribbleScreen = ({
 
         const handleLiveUndone = (data = {}) => {
             if (!data.strokeId) return;
-            setPaths(prev => prev.filter(path => path.id !== data.strokeId));
+            setPaths(prev => {
+                const nextPaths = prev.filter(path => path.id !== data.strokeId);
+                pathsRef.current = nextPaths;
+                return nextPaths;
+            });
         };
 
         const handleLiveStatus = (data = {}) => {
@@ -711,6 +726,7 @@ export const ScribbleScreen = ({
 
     const canSendLiveStroke = () => (
         liveModeRef.current &&
+        livePartnerAvailableRef.current &&
         isConnectedRef.current &&
         socketRef.current?.connected
     );
@@ -759,7 +775,9 @@ export const ScribbleScreen = ({
                         color: selectedColorRef.current,
                         strokeWidth: selectedSizeRef.current
                     };
-                    setPaths(prev => [...prev, newPath]);
+                    const nextPaths = [...pathsRef.current, newPath];
+                    pathsRef.current = nextPaths;
+                    setPaths(nextPaths);
                     if (canSendLiveStroke()) {
                         setLiveSaving(true);
                         socketRef.current.emit('scribble:liveStrokeEnd', {
@@ -769,6 +787,7 @@ export const ScribbleScreen = ({
                                 color: newPath.color,
                                 strokeWidth: newPath.strokeWidth,
                             },
+                            paths: nextPaths,
                         });
                     }
                     currentPathRef.current = '';
@@ -780,23 +799,28 @@ export const ScribbleScreen = ({
     ).current;
 
     const handleClear = () => {
+        pathsRef.current = [];
         setPaths([]);
         setCurrentPath('');
         currentPointsRef.current = [];
         setSentScribble(null);
-        if (isConnectedRef.current && socketRef.current?.connected) {
+        if (canSendLiveStroke()) {
             socketRef.current.emit('scribble:liveClear');
         }
     };
 
     const handleUndo = () => {
-        setPaths(prev => {
-            const removedPath = prev[prev.length - 1];
-            if (removedPath?.id && canSendLiveStroke()) {
-                socketRef.current.emit('scribble:liveUndo', { strokeId: removedPath.id });
-            }
-            return prev.slice(0, -1);
-        });
+        const previousPaths = pathsRef.current;
+        const removedPath = previousPaths[previousPaths.length - 1];
+        const nextPaths = previousPaths.slice(0, -1);
+        pathsRef.current = nextPaths;
+        setPaths(nextPaths);
+        if (removedPath?.id && canSendLiveStroke()) {
+            socketRef.current.emit('scribble:liveUndo', {
+                strokeId: removedPath.id,
+                paths: nextPaths,
+            });
+        }
     };
 
     const handleLiveToggle = () => {
@@ -844,6 +868,9 @@ export const ScribbleScreen = ({
             setTimeout(() => setConnectionError(false), 3000);
         }
     };
+
+    const hasPendingScribbleChanges = paths.length > 0
+        && getPathsSignature(paths) !== initialPathsSignatureRef.current;
 
     if (liveMode) {
         return (
@@ -1402,6 +1429,8 @@ export const ScribbleScreen = ({
                             activeOpacity={0.9}
                             style={[
                                 styles.scribbleSendButton,
+                                !hasPendingScribbleChanges && styles.scribbleSendButtonIdle,
+                                hasPendingScribbleChanges && styles.scribbleSendButtonPending,
                                 paths.length === 0 && styles.scribbleSendButtonDisabled,
                             ]}
                         >
@@ -1409,7 +1438,7 @@ export const ScribbleScreen = ({
                                 <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                     <Path
                                         d="M21 4L10 15M21 4l-7 17-4-6-6-4 17-7z"
-                                        stroke={paths.length === 0 ? colors.textMuted : '#FFFFFF'}
+                                        stroke={hasPendingScribbleChanges ? '#FFFFFF' : colors.textSecondary}
                                         strokeWidth={2.1}
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
@@ -1417,7 +1446,7 @@ export const ScribbleScreen = ({
                                 </Svg>
                                 <Text style={[
                                     styles.scribbleSendText,
-                                    paths.length === 0 && styles.scribbleSendTextDisabled,
+                                    !hasPendingScribbleChanges && styles.scribbleSendTextIdle,
                                 ]}>
                                     Send to Your Love
                                 </Text>
@@ -2347,6 +2376,23 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         elevation: 2,
     },
+    scribbleSendButtonIdle: {
+        backgroundColor: '#EEF0F3',
+        borderColor: '#D9DEE7',
+        shadowColor: '#94A3B8',
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 2,
+    },
+    scribbleSendButtonPending: {
+        backgroundColor: colors.primary,
+        borderColor: '#FFFFFF',
+        shadowColor: '#EC4899',
+        shadowOpacity: 0.38,
+        shadowRadius: 24,
+        elevation: 10,
+        transform: [{ translateY: -1 }],
+    },
     scribbleSendContent: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -2360,8 +2406,8 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         textAlign: 'center',
     },
-    scribbleSendTextDisabled: {
-        color: colors.textMuted,
+    scribbleSendTextIdle: {
+        color: colors.textSecondary,
     },
     connectionErrorText: {
         fontSize: 13,

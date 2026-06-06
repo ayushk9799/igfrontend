@@ -14,17 +14,17 @@ import { fontFamily } from '../../constants/fonts';
  */
 const ChoiceButton = ({ choice, isSelected, onPress, disabled }) => {
     const choiceConfig = {
-        'I have': { bg: '#FFF0EC', border: '#FFDDD3', textColor: '#E86B4A', selectedBg: '#FFDDD3' },
-        'Never': { bg: '#E8F8F5', border: '#C8EDE6', textColor: '#2E8B7A', selectedBg: '#C8EDE6' },
+        'I have': { bg: 'rgba(255, 255, 255, 0.12)', border: 'rgba(255, 255, 255, 0.22)', textColor: '#FFFFFF', selectedBg: '#FFFFFF', selectedTextColor: '#D84315' },
+        'Never': { bg: 'rgba(255, 255, 255, 0.12)', border: 'rgba(255, 255, 255, 0.22)', textColor: '#FFFFFF', selectedBg: '#FFFFFF', selectedTextColor: '#2E8B7A' },
     };
-    const cfg = choiceConfig[choice] || { bg: '#F3F4F6', border: '#E5E7EB', textColor: '#6B7280', selectedBg: '#E5E7EB' };
+    const cfg = choiceConfig[choice] || { bg: 'rgba(255,255,255,0.12)', border: 'rgba(255,255,255,0.22)', textColor: '#FFFFFF', selectedBg: '#FFFFFF', selectedTextColor: '#333333' };
 
     return (
         <TouchableOpacity
             style={[
                 styles.choiceButton,
                 { backgroundColor: cfg.bg, borderColor: cfg.border },
-                isSelected && { backgroundColor: cfg.selectedBg, borderColor: cfg.textColor, borderWidth: 2.5 },
+                isSelected && { backgroundColor: cfg.selectedBg, borderColor: '#FFFFFF', borderWidth: 2.5 },
             ]}
             onPress={() => onPress(choice)}
             activeOpacity={0.8}
@@ -32,12 +32,12 @@ const ChoiceButton = ({ choice, isSelected, onPress, disabled }) => {
         >
             <Text style={[
                 styles.choiceLabel,
-                { color: cfg.textColor },
+                { color: isSelected ? cfg.selectedTextColor : cfg.textColor },
                 isSelected && { fontWeight: '900' },
             ]}>{choice}</Text>
             {isSelected && (
-                <View style={[styles.choiceCheckBadge, { backgroundColor: cfg.textColor }]}>
-                    <Text style={styles.choiceCheck}>✓</Text>
+                <View style={[styles.choiceCheckBadge, { backgroundColor: cfg.selectedTextColor }]}>
+                    <Text style={[styles.choiceCheck, { color: '#FFFFFF' }]}>✓</Text>
                 </View>
             )}
         </TouchableOpacity>
@@ -120,7 +120,7 @@ const NeverHaveIEverCard = React.memo(({
 
     return (
         <LinearGradient
-            colors={['#FFF3EC', '#FFF9F5']}
+            colors={['#FF8A65', '#D84315']}
             style={styles.cardContainer}
         >
             <View style={styles.cardContent}>
@@ -171,7 +171,7 @@ const NeverHaveIEverCard = React.memo(({
                         >
                             <Text style={styles.skipText}>Skip</Text>
                             <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                                <Path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="#E86B4A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                                <Path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="rgba(255, 255, 255, 0.75)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
                             </Svg>
                         </TouchableOpacity>
                     </View>
@@ -187,10 +187,10 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#FFDCC8',
-        shadowColor: '#FF8C5A',
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        shadowColor: '#D84315',
         shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.22,
         shadowRadius: 22,
         elevation: 10,
         marginRight: 10,
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     categoryBadge: {
-        backgroundColor: 'rgba(255,255,255,0.85)',
+        backgroundColor: 'rgba(255,255,255,0.12)',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
@@ -216,19 +216,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#FFE4D4',
+        borderColor: 'rgba(255,255,255,0.22)',
     },
     badgeEmoji: {
         fontSize: 14,
     },
     categoryText: {
-        color: '#E86B4A',
+        color: '#FFFFFF',
         fontWeight: '800',
         fontSize: 13,
         fontFamily: fontFamily.bold,
     },
     counterText: {
-        color: '#17204D',
+        color: 'rgba(255, 255, 255, 0.75)',
         fontWeight: '800',
         fontSize: 16,
         fontFamily: fontFamily.bold,
@@ -250,19 +250,19 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     questionText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
-        color: '#E86B4A',
-        lineHeight: 32,
+        color: '#FFFFFF',
+        lineHeight: 26,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
     heroImage: {
         alignSelf: 'center',
         width: '65%',
-        height: 150,
+        height: 110,
         marginTop: spacing.xs,
-        marginBottom: spacing.lg,
+        marginBottom: spacing.md,
     },
     choicesRow: {
         flexDirection: 'row',
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     choiceButton: {
         flex: 1,
         borderRadius: 20,
-        paddingVertical: spacing.xl,
+        paddingVertical: spacing.md,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1.5,
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     skipText: {
-        color: '#E86B4A',
+        color: 'rgba(255, 255, 255, 0.75)',
         fontSize: 16,
         fontWeight: '700',
         fontFamily: fontFamily.bold,

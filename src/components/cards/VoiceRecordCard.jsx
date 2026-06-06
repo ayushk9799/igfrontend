@@ -333,7 +333,7 @@ const VoiceRecordCard = React.memo(({
     });
 
     return (
-        <LinearGradient colors={['#FFF0F6', '#FFF9FB']} style={voiceStyles.cardInner}>
+        <LinearGradient colors={['#F43F5E', '#9F1239']} style={voiceStyles.cardInner}>
             {/* Already Answered Overlay */}
             {isAnswered && (
                 <View style={styles.answeredOverlay}>
@@ -350,8 +350,8 @@ const VoiceRecordCard = React.memo(({
                 <View style={voiceStyles.topRow}>
                     <View style={voiceStyles.categoryBadge}>
                         <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
-                            <Path d="M12 2a4 4 0 00-4 4v6a4 4 0 008 0V6a4 4 0 00-4-4z" fill="#F64D7E" />
-                            <Path d="M19 11a7 7 0 01-14 0M12 18v4M8 22h8" stroke="#F64D7E" strokeWidth={2.4} strokeLinecap="round" />
+                            <Path d="M12 2a4 4 0 00-4 4v6a4 4 0 008 0V6a4 4 0 00-4-4z" fill="#FF8FA3" />
+                            <Path d="M19 11a7 7 0 01-14 0M12 18v4M8 22h8" stroke="#FF8FA3" strokeWidth={2.4} strokeLinecap="round" />
                         </Svg>
                         <Text style={voiceStyles.categoryText}>{config.label}</Text>
                     </View>
@@ -455,7 +455,7 @@ const VoiceRecordCard = React.memo(({
                                     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                         <Path
                                             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                            stroke="#B62D59"
+                                            stroke="#FF8FA3"
                                             strokeWidth={2}
                                             strokeLinecap="round"
                                             strokeLinejoin="round"
@@ -530,10 +530,10 @@ const voiceStyles = StyleSheet.create({
         borderRadius: 28,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#FFB6CA',
-        shadowColor: '#F78AAA',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        shadowColor: '#9F1239',
         shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.18,
+        shadowOpacity: 0.30,
         shadowRadius: 22,
         elevation: 10,
         marginRight: 10,
@@ -551,27 +551,27 @@ const voiceStyles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: spacing.lg,
+        marginBottom: spacing.md,
     },
     categoryBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 7,
-        backgroundColor: 'rgba(255,255,255,0.82)',
+        backgroundColor: 'rgba(255,255,255,0.06)',
         paddingVertical: 9,
         paddingHorizontal: 16,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#FFD6E2',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
     },
     categoryText: {
-        color: '#F64D7E',
+        color: '#FFFFFF',
         fontWeight: '800',
         fontSize: 14,
         fontFamily: fontFamily.bold,
     },
     counterText: {
-        color: '#8B1642',
+        color: '#FF8FA3',
         fontWeight: '800',
         fontSize: 16,
         fontFamily: fontFamily.bold,
@@ -579,14 +579,14 @@ const voiceStyles = StyleSheet.create({
     questionSection: {
         justifyContent: 'center',
         paddingHorizontal: spacing.lg,
-        marginTop: spacing.xl,
-        marginBottom: spacing.sm,
+        marginTop: spacing.sm,
+        marginBottom: spacing.xs,
     },
     questionText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
-        color: '#8B1642',
-        lineHeight: 33,
+        color: '#FFFFFF',
+        lineHeight: 26,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
@@ -602,12 +602,12 @@ const voiceStyles = StyleSheet.create({
         paddingBottom: spacing.xs,
     },
     voiceArtwork: {
-        width: 238,
-        height: 162,
+        width: 170,
+        height: 115,
         alignSelf: 'center',
     },
     instructionText: {
-        color: '#8B1642',
+        color: '#FF8FA3',
         fontSize: 16,
         marginTop: spacing.xs,
         fontWeight: '500',
@@ -617,12 +617,12 @@ const voiceStyles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: spacing.md,
-        backgroundColor: '#FFE3EC',
+        backgroundColor: 'rgba(255, 255, 255, 0.06)',
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#FFD1DF',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
     },
     recordingDot: {
         width: 10,
@@ -632,7 +632,7 @@ const voiceStyles = StyleSheet.create({
         marginRight: spacing.sm,
     },
     timerText: {
-        color: '#8B1642',
+        color: '#FF8FA3',
         fontSize: 18,
         fontWeight: '600',
         fontVariant: ['tabular-nums'],
@@ -641,14 +641,14 @@ const voiceStyles = StyleSheet.create({
     previewContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.74)',
+        backgroundColor: 'rgba(255,255,255,0.06)',
         borderRadius: 24,
         padding: spacing.lg,
         paddingHorizontal: spacing.lg,
         width: '100%',
         borderWidth: 1,
-        borderColor: '#FFD1DF',
-        shadowColor: '#F78AAA',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
+        shadowColor: '#9F1239',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.12,
         shadowRadius: 16,
@@ -693,7 +693,7 @@ const voiceStyles = StyleSheet.create({
         marginHorizontal: 1.5,
     },
     durationText: {
-        color: '#8B1642',
+        color: '#FF8FA3',
         fontSize: 14,
         fontWeight: '600',
         fontVariant: ['tabular-nums'],
@@ -715,13 +715,13 @@ const voiceStyles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 14,
         borderRadius: 16,
-        backgroundColor: '#FFE3EC',
+        backgroundColor: 'rgba(255, 255, 255, 0.06)',
         borderWidth: 1,
-        borderColor: '#FFD1DF',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
         gap: spacing.sm,
     },
     discardText: {
-        color: '#B62D59',
+        color: '#FF8FA3',
         fontSize: 16,
         fontWeight: '600',
         fontFamily: fontFamily.bold,
@@ -760,12 +760,12 @@ const voiceStyles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: spacing.lg,
         borderRadius: 22,
-        backgroundColor: '#FFE3EC',
+        backgroundColor: 'rgba(255, 255, 255, 0.06)',
         borderWidth: 1,
-        borderColor: '#FFD1DF',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
     },
     skipText: {
-        color: '#B62D59',
+        color: '#FF8FA3',
         fontSize: 16,
         fontWeight: '500',
         fontFamily: fontFamily.medium,
@@ -798,7 +798,7 @@ const voiceStyles = StyleSheet.create({
         paddingTop: spacing.sm,
     },
     swipeText: {
-        color: '#A88996',
+        color: '#A396B2',
         fontSize: 12,
         fontWeight: '700',
         fontFamily: fontFamily.medium,
@@ -809,7 +809,7 @@ const voiceStyles = StyleSheet.create({
         borderRadius: 15,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFDDE8',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
 
 });

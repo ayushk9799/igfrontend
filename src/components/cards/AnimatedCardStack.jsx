@@ -292,8 +292,8 @@ const AnimatedCardStack = ({
             return {
                 task: t,
                 index: i,
-                displayIndex: displayIndexOffset + i + 1,
-                totalCards: totalCardsOverride || tasks.length,
+                displayIndex: displayIndexOffset + (t.originalIndex ?? i) + 1,
+                totalCards: totalCardsOverride ?? tasks.length,
                 partnerName,
                 userName,
                 userAvatar,
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 0,
         overflow: 'hidden',
-        backgroundColor: '#FFFFFF', // Prevent transparency flicker
+        backgroundColor: 'transparent', // Prevent transparency flicker
         ...Platform.select({
             android: {
                 elevation: 0,

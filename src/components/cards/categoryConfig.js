@@ -52,6 +52,12 @@ export const categoryConfig = {
         bgGradient: ['#880E4F', '#AD1457', '#D81B60'],
         label: 'Would You Rather',
     },
+    thisorthat: {
+        emoji: '💜',
+        color: '#5E35B1',
+        bgGradient: ['#4527A0', '#5E35B1', '#7E57C2'],
+        label: 'This or That',
+    },
     bucketlist: {
         emoji: '🌟',
         color: '#6200EA',

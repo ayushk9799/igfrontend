@@ -81,7 +81,7 @@ const LikelyToCard = React.memo(({
 
     return (
         <LinearGradient
-            colors={['#FFF0F3', '#FFF8FA']}
+            colors={['#FF6480', '#C2185B']}
             style={styles.cardContainer}
         >
             <View style={styles.cardContent}>
@@ -124,8 +124,7 @@ const LikelyToCard = React.memo(({
                     >
                         <Text style={[
                             styles.choiceLabel,
-                            styles.choiceLabelPartner,
-                            selectedAnswer === 'partner' && styles.choiceLabelSelected,
+                            selectedAnswer === 'partner' ? { color: '#C2185B' } : { color: '#FFFFFF' }
                         ]}>You</Text>
                        
                     </TouchableOpacity>
@@ -143,8 +142,7 @@ const LikelyToCard = React.memo(({
                     >
                         <Text style={[
                             styles.choiceLabel,
-                            styles.choiceLabelMe,
-                            selectedAnswer === 'you' && styles.choiceLabelSelected,
+                            selectedAnswer === 'you' ? { color: '#6D28D9' } : { color: '#FFFFFF' }
                         ]}>ME</Text>
                        
                     </TouchableOpacity>
@@ -160,7 +158,7 @@ const LikelyToCard = React.memo(({
                         >
                             <Text style={styles.skipText}>Skip</Text>
                             <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                                <Path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="#E8758A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                                <Path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="rgba(255, 255, 255, 0.75)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
                             </Svg>
                         </TouchableOpacity>
                     </View>
@@ -176,10 +174,10 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#FFCDD6',
-        shadowColor: '#FF6B8A',
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        shadowColor: '#C2185B',
         shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.22,
         shadowRadius: 22,
         elevation: 10,
         marginRight: 10,
@@ -197,7 +195,7 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     categoryBadge: {
-        backgroundColor: 'rgba(255,255,255,0.85)',
+        backgroundColor: 'rgba(255,255,255,0.12)',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
@@ -205,19 +203,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#FFE0E6',
+        borderColor: 'rgba(255,255,255,0.22)',
     },
     badgeEmoji: {
         fontSize: 14,
     },
     categoryText: {
-        color: '#E8758A',
+        color: '#FFFFFF',
         fontWeight: '800',
         fontSize: 13,
         fontFamily: fontFamily.bold,
     },
     counterText: {
-        color: '#17204D',
+        color: 'rgba(255, 255, 255, 0.75)',
         fontWeight: '800',
         fontSize: 16,
         fontFamily: fontFamily.bold,
@@ -239,17 +237,17 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     questionText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
-        color: '#14245A',
-        lineHeight: 32,
+        color: '#FFFFFF',
+        lineHeight: 26,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
     heroImage: {
         alignSelf: 'center',
         width: '80%',
-        height: 170,
+        height: 110,
         marginTop: spacing.xs,
         marginBottom: spacing.md,
     },
@@ -263,7 +261,7 @@ const styles = StyleSheet.create({
     choiceButton: {
         flex: 1,
         borderRadius: 20,
-        paddingVertical: spacing.lg,
+        paddingVertical: spacing.md,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1.5,
@@ -274,19 +272,20 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     choicePartner: {
-        backgroundColor: '#FFF0F3',
-        borderColor: '#FFD0D9',
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderColor: 'rgba(255, 255, 255, 0.22)',
     },
     choiceMe: {
-        backgroundColor: '#F0ECF8',
-        borderColor: '#DDD5EE',
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderColor: 'rgba(255, 255, 255, 0.22)',
     },
     choiceSelected: {
         borderWidth: 2.5,
-        borderColor: '#E8758A',
+        borderColor: '#FFFFFF',
+        backgroundColor: '#FFFFFF',
         shadowOpacity: 0.18,
         shadowRadius: 14,
-        shadowColor: '#E8758A',
+        shadowColor: '#FFFFFF',
     },
     choiceLabel: {
         fontSize: 22,
@@ -295,13 +294,13 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     choiceLabelPartner: {
-        color: '#E8758A',
+        color: '#FF8FA3',
     },
     choiceLabelMe: {
-        color: '#8B7DB8',
+        color: '#C084FC',
     },
     choiceLabelSelected: {
-        color: '#E8758A',
+        color: '#FFFFFF',
     },
     choiceSublabelRow: {
         flexDirection: 'row',
@@ -328,7 +327,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     skipText: {
-        color: '#E8758A',
+        color: 'rgba(255, 255, 255, 0.75)',
         fontSize: 16,
         fontWeight: '700',
         fontFamily: fontFamily.bold,

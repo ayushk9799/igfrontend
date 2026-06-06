@@ -14,7 +14,7 @@ import ScribbleScreen from '../screens/ScribbleScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
 import LikelyToQuestionScreen from '../screens/LikelyToQuestionScreen';
 import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
-import TopicQuestionsScreen from '../screens/TopicQuestionsScreen';
+import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
 import ChatScreen from '../screens/ChatScreen';
 import AnimatedSplashScreen from '../screens/AnimatedSplashScreen';
 import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
@@ -1589,7 +1589,7 @@ export const AppNavigator = () => {
                 const topicConfig = TOPIC_CATEGORIES[selectedCategory?.id];
                 if (topicConfig) {
                     return (
-                        <TopicQuestionsScreen
+                        <TopicQuestionsV2Screen
                             topic={selectedCategory.id}
                             topicTitle={topicConfig.title}
                             topicEmoji={topicConfig.emoji}
@@ -1601,6 +1601,7 @@ export const AppNavigator = () => {
                             partnerId={userData.partnerId}
                             hasPartner={!!userData.partnerId}
                             onLinkPartner={() => navigate('partnerCode')}
+                            onNavigateToPremium={() => navigate('premium')}
                             onBack={() => navigate('home')}
                         />
                     );

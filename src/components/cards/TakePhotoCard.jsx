@@ -206,7 +206,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
     const camScale = cameraAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] });
 
     return (
-        <LinearGradient colors={['#F3EAFF', '#FCF8FF']} style={photoStyles.cardInner}>
+        <LinearGradient colors={['#A855F7', '#6B21A8']} style={photoStyles.cardInner}>
             {/* Card Content - fades out when camera opens */}
             <Animated.View style={[photoStyles.cardContent, { opacity: cardOpacity, transform: [{ scale: cardScale }] }]}
                 pointerEvents={showCamera ? 'none' : 'auto'}
@@ -214,7 +214,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                 <View style={photoStyles.topRow}>
                     <View style={photoStyles.categoryBadge}>
                         <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
-                            <Path d="M4 7h3.2L9 4.5h6L16.8 7H20a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2Z" fill="#8B5CF6" />
+                            <Path d="M4 7h3.2L9 4.5h6L16.8 7H20a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2Z" fill="#C084FC" />
                             <Path d="M12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7Z" fill="#FFFFFF" opacity={0.9} />
                         </Svg>
                         <Text style={photoStyles.categoryText}>{config.label}</Text>
@@ -359,10 +359,10 @@ const photoStyles = StyleSheet.create({
         borderRadius: 28,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#D8C4FF',
-        shadowColor: '#B48CFF',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        shadowColor: '#6B21A8',
         shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.20,
+        shadowOpacity: 0.30,
         shadowRadius: 22,
         elevation: 10,
         marginRight: 10,
@@ -377,27 +377,27 @@ const photoStyles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: spacing.lg,
+        marginBottom: spacing.md,
     },
     categoryBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 7,
-        backgroundColor: 'rgba(255,255,255,0.82)',
+        backgroundColor: 'rgba(255,255,255,0.06)',
         paddingVertical: 9,
         paddingHorizontal: 16,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E8DBFF',
+        borderColor: 'rgba(255,255,255,0.12)',
     },
     categoryText: {
-        color: '#8B5CF6',
+        color: '#FFFFFF',
         fontWeight: '800',
         fontSize: 14,
         fontFamily: fontFamily.bold,
     },
     counterText: {
-        color: '#17204D',
+        color: '#C084FC',
         fontWeight: '800',
         fontSize: 16,
         fontFamily: fontFamily.bold,
@@ -405,23 +405,23 @@ const photoStyles = StyleSheet.create({
     questionSection: {
         justifyContent: 'center',
         paddingHorizontal: spacing.lg,
-        marginTop: spacing.xl,
-        marginBottom: spacing.lg,
+        marginTop: spacing.sm,
+        marginBottom: spacing.xs,
     },
     questionText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
-        color: '#14245A',
-        lineHeight: 33,
+        color: '#FFFFFF',
+        lineHeight: 26,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
     illustrationFrame: {
         alignSelf: 'center',
-        width: '84%',
+        width: '65%',
         aspectRatio: 1.08,
-        marginTop: spacing.sm,
-        marginBottom: spacing.lg,
+        marginTop: spacing.xs,
+        marginBottom: spacing.sm,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -434,35 +434,35 @@ const photoStyles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: spacing.lg,
-        paddingTop: spacing.sm,
+        paddingTop: spacing.xs,
         paddingBottom: spacing.xs,
         marginTop: 'auto',
     },
     iconButton: {
-        width: 72,
-        height: 72,
-        borderRadius: 34,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: '#8B5CF6',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#FFFFFF',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.20,
-        shadowRadius: 14,
+        shadowRadius: 10,
         elevation: 7,
     },
     skipButton: {
-        paddingVertical: 12,
+        paddingVertical: 10,
         paddingHorizontal: spacing.lg,
         borderRadius: 22,
-        backgroundColor: '#F0E7FF',
+        backgroundColor: 'rgba(255, 255, 255, 0.06)',
         borderWidth: 1,
-        borderColor: '#E3D4FF',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
     },
     skipText: {
-        color: '#8B5CF6',
+        color: '#C084FC',
         fontSize: 16,
         fontWeight: '500',
         fontFamily: fontFamily.medium,
@@ -492,7 +492,7 @@ const photoStyles = StyleSheet.create({
         borderRadius: 15,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#EFE2FF',
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
 
 });

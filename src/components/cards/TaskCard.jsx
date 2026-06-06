@@ -10,6 +10,7 @@ import TakePhotoCard from './TakePhotoCard';
 import DeepCard from './DeepCard';
 import SliderCard from './SliderCard';
 import VoiceRecordCard from './VoiceRecordCard';
+import ChoiceQuestionCard from './ChoiceQuestionCard';
 import PremiumLockOverlay from './PremiumLockOverlay';
 import { categoryConfig, defaultConfig } from './categoryConfig';
 import { spacing } from '../../theme';
@@ -268,6 +269,8 @@ const TaskCard = React.memo(({
         card = <SliderCard {...commonProps} />;
     } else if (task.category === 'voicerecord') {
         card = <VoiceRecordCard {...commonProps} />;
+    } else if (task.category === 'wouldyourather' || task.category === 'thisorthat') {
+        card = <ChoiceQuestionCard {...commonProps} />;
     } else {
         card = <DeepCard {...commonProps} />;
     }
