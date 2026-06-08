@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { StyleSheet, Dimensions, View, Platform } from 'react-native';
+import { StyleSheet, Dimensions, View, Platform, Text, TouchableOpacity } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     useSharedValue,
@@ -13,6 +13,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 
 import TaskCard from './TaskCard';
+import { fontFamily } from '../../constants/fonts';
 
 const { width } = Dimensions.get('window');
 
@@ -52,6 +53,7 @@ const AnimatedCardStack = ({
     onNavigateToPremium = () => { },
     totalCardsOverride,
     displayIndexOffset = 0,
+    cardHeight,
 }) => {
     // Current active slot (0 or 1)
     const activeSlotIndex = currentIndex % 2;
@@ -82,6 +84,9 @@ const AnimatedCardStack = ({
     const FREE_QUESTION_ORDER_LIMIT = 6; // Questions with order >= 6 are premium
     const currentTask = tasks[currentIndex];
     const isCurrentCardLocked = !isPremium && currentTask?.order >= FREE_QUESTION_ORDER_LIMIT;
+    const currentAnswerIndex = currentTask?.originalIndex ?? currentIndex;
+    const currentCardAnswered = !!(userAnswers[currentAnswerIndex]?.answer);
+    const showSkipButton = !!currentTask && canGoNext && !currentCardAnswered;
 
     // Reset the INACTIVE slot when index changes
     useEffect(() => {
@@ -232,6 +237,7 @@ const AnimatedCardStack = ({
         const task = tasks[taskIndex];
 
         // Animated Styles
+        // eslint-disable-next-line react-hooks/rules-of-hooks
         const slotStyle = useAnimatedStyle(() => {
             const myVals = slotIndex === 0 ? val0 : val1;
             const otherVals = slotIndex === 0 ? val1 : val0; // The active card if I am inactive
@@ -252,20 +258,9 @@ const AnimatedCardStack = ({
                 // We create a "Peek" effect.
                 const activeCardX = otherVals.x.value;
 
-                // Scale 0.94 -> 1.0 as active card moves away
-                const scale = interpolate(
-                    Math.abs(activeCardX),
-                    [0, SWIPE_THRESHOLD],
-                    [0.94, 1],
-                    Extrapolate.CLAMP
-                );
-
-                const translateY = interpolate(
-                    Math.abs(activeCardX),
-                    [0, SWIPE_THRESHOLD],
-                    [-20, 0],
-                    Extrapolate.CLAMP
-                );
+                // Keep cards exactly the same size with no scale or translation changes
+                const scale = 1;
+                const translateY = 0;
 
                 const opacity = interpolate(
                     Math.abs(activeCardX),
@@ -343,14 +338,21 @@ const AnimatedCardStack = ({
     return (
         <View style={styles.container}>
             <GestureDetector gesture={panGesture}>
-                <View style={styles.cardWrapper}>
+                <View style={[styles.cardWrapper, cardHeight ? [styles.fixedCardWrapper, { height: cardHeight }] : null]}>
                     {/* Render Both Slots */}
                     {renderSlot(0)}
                     {renderSlot(1)}
                 </View>
             </GestureDetector>
 
-
+            <TouchableOpacity
+                style={[styles.skipButton, !showSkipButton && { opacity: 0 }]}
+                disabled={!showSkipButton}
+                onPress={isCurrentCardLocked ? onNavigateToPremium : triggerTransition}
+                activeOpacity={0.82}
+            >
+                <Text style={styles.skipText}>{'Swipe to skip ->'}</Text>
+            </TouchableOpacity>
         </View>
     );
 };
@@ -364,11 +366,14 @@ const styles = StyleSheet.create({
     },
     cardWrapper: {
         width: width - 32,
-        height: '100%',
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         // Important: this wrapper shouldn't clip if we want swipe out to be visible
         // but often we want the stack contained.
+    },
+    fixedCardWrapper: {
+        flex: 0,
     },
     fullCard: {
         width: '100%', // defined by wrapper
@@ -376,19 +381,24 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         position: 'absolute',
         top: 0,
+        left: 0,
+        right: 0,
         overflow: 'hidden',
         backgroundColor: 'transparent', // Prevent transparency flicker
-        ...Platform.select({
-            android: {
-                elevation: 0,
-            },
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 12 },
-                shadowOpacity: 0.25,
-                shadowRadius: 24,
-            },
-        }),
+    },
+    skipButton: {
+        marginTop: 22,
+        marginBottom: 2,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    skipText: {
+        color: 'rgba(46, 30, 60, 0.58)',
+        fontSize: 16,
+        fontWeight: '800',
+        fontFamily: fontFamily.bold,
     },
     swipeHint: {
         position: 'absolute',

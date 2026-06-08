@@ -13,7 +13,7 @@ export const cardStyles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
-        borderWidth: 1,
+        borderWidth: 6,
         borderColor: 'rgba(255,255,255,0.22)',
     },
     cardContent: { flex: 1, padding: spacing.lg },
@@ -473,21 +473,5 @@ export const cardStyles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 4,
         elevation: 3,
-    },
-
-    // Submitted text indicator (shown above question)
-    submittedText: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        textAlign: 'center',
-        fontSize: 14,
-        fontWeight: '700',
-        color: 'rgba(255, 255, 255, 0.85)',
-        letterSpacing: 1,
-        textTransform: 'uppercase',
-        paddingVertical: spacing.xs,
-        fontFamily: fontFamily.bold,
     },
 });

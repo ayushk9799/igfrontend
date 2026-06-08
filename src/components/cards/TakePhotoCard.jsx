@@ -26,7 +26,7 @@ import { fontFamily } from '../../constants/fonts';
 /**
  * TakePhotoCard - Card for capturing or selecting photos
  */
-const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partnerName, userName, hasPartner = false, onLinkPartner, onSubmit, onSkip, isLastCard, onAnswerSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
+const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partnerName, userName, hasPartner = false, onLinkPartner, onSubmit, onAnswerSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
     const config = categoryConfig.takephoto;
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
@@ -35,7 +35,6 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
     const [showCamera, setShowCamera] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [cameraType, setCameraType] = useState('back');
-    const [justSubmitted, setJustSubmitted] = useState(false);
     const cameraAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -186,11 +185,9 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
             const s3Url = await uploadImageToS3(imageUri, 'daily-photos');
 
             await onAnswerSubmit(task.originalIndex ?? index, s3Url, 'photo');
-            setJustSubmitted(true);
             // Only auto-advance if the parent screen doesn't filter answered tasks
             if (autoAdvanceOnSubmit && onSubmit) {
-                // Delay swipe to show "Submitted" text first
-                setTimeout(() => onSubmit(s3Url), 600);
+                onSubmit(s3Url);
             }
         } catch (error) {
             console.error('🎯 [TakePhotoCard] Upload failed:', error);
@@ -223,7 +220,6 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                 </View>
 
                 <View style={photoStyles.questionSection}>
-                    {(isAnswered || justSubmitted) && <Text style={styles.submittedText}>Submitted ✓</Text>}
                     <Text style={photoStyles.questionText}>{task.taskstatement}</Text>
                 </View>
 
@@ -273,11 +269,6 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                             </Svg>
                         </TouchableOpacity>
 
-                        {/* Skip - Center */}
-                        <TouchableOpacity onPress={isLocked ? onNavigateToPremium : onSkip} style={photoStyles.skipButton}>
-                            <Text style={photoStyles.skipText}>Skip</Text>
-                        </TouchableOpacity>
-
                         {/* Camera Icon - Right */}
                         <TouchableOpacity onPress={isLocked ? onNavigateToPremium : handleOpenCamera} style={photoStyles.iconButton}>
                             <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
@@ -287,14 +278,6 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                         </TouchableOpacity>
                         </View>
 
-                        <View style={photoStyles.swipeHint}>
-                            <Text style={photoStyles.swipeText}>Swipe to see next</Text>
-                            <View style={photoStyles.swipeDot}>
-                                <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M9 18L15 12L9 6" stroke="#8B5CF6" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-                                </Svg>
-                            </View>
-                        </View>
                     </>
                 )}
             </Animated.View>
@@ -358,14 +341,8 @@ const photoStyles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
-        shadowColor: '#6B21A8',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.30,
-        shadowRadius: 22,
-        elevation: 10,
-        marginRight: 10,
+        borderWidth: 6,
+        borderColor: 'rgba(255, 255, 255, 0.18)',
     },
     cardContent: {
         flex: 1,
@@ -430,10 +407,11 @@ const photoStyles = StyleSheet.create({
         height: '100%',
     },
     bottomBar: {
+        width: '90%',
+        alignSelf: 'center',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: spacing.lg,
         paddingTop: spacing.xs,
         paddingBottom: spacing.xs,
         marginTop: 'auto',
@@ -453,48 +431,12 @@ const photoStyles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 7,
     },
-    skipButton: {
-        paddingVertical: 10,
-        paddingHorizontal: spacing.lg,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.12)',
-    },
-    skipText: {
-        color: '#C084FC',
-        fontSize: 16,
-        fontWeight: '500',
-        fontFamily: fontFamily.medium,
-    },
     cameraContentArea: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: spacing.lg,
     },
-    swipeHint: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        paddingTop: spacing.xs,
-    },
-    swipeText: {
-        color: '#9B90A6',
-        fontSize: 12,
-        fontWeight: '700',
-        fontFamily: fontFamily.medium,
-    },
-    swipeDot: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    },
-
 });
 
 const cameraStyles = StyleSheet.create({

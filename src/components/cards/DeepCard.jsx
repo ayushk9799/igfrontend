@@ -4,7 +4,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
 import { categoryConfig, defaultConfig } from './categoryConfig';
-import { cardStyles } from './cardStyles';
 import { spacing } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
 
@@ -16,7 +15,6 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
     const [answer, setAnswer] = useState(previousAnswer || '');
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
-    const [keyboardVisible, setKeyboardVisible] = useState(false);
     const imageOpacity = useRef(new Animated.Value(1)).current;
     const imageHeight = useRef(new Animated.Value(100)).current;
     const scrollViewRef = useRef(null);
@@ -34,7 +32,6 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
         const showSub = Keyboard.addListener(
             Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
             () => {
-                setKeyboardVisible(true);
                 Animated.parallel([
                     Animated.timing(imageOpacity, {
                         toValue: 0,
@@ -52,7 +49,6 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
         const hideSub = Keyboard.addListener(
             Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
             () => {
-                setKeyboardVisible(false);
                 Animated.parallel([
                     Animated.timing(imageOpacity, {
                         toValue: 1,
@@ -73,9 +69,6 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
         };
     }, [imageHeight, imageOpacity]);
 
-    // Track if this card was just submitted
-    const [justSubmitted, setJustSubmitted] = useState(false);
-
     const handleSubmit = () => {
         // Block if locked (premium restriction)
         if (isLocked) {
@@ -92,11 +85,9 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
 
             onAnswerSubmit(task.originalIndex ?? index, answer.trim());
             Keyboard.dismiss();
-            setJustSubmitted(true);
             // Only auto-advance if the parent screen doesn't filter answered tasks
             if (autoAdvanceOnSubmit && onSubmit) {
-                // Delay swipe to show "Submitted" text first
-                setTimeout(() => onSubmit(answer.trim()), 600);
+                onSubmit(answer.trim());
             }
         }
     };
@@ -125,7 +116,6 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
 
                     {/* Question Area */}
                     <View style={styles.questionSection}>
-                        {(isAnswered || justSubmitted) && <Text style={cardStyles.submittedText}>Submitted ✓</Text>}
                         <Text style={styles.questionText}>
                             {task.taskstatement}
                         </Text>
@@ -173,16 +163,6 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                         </View>
                     </View>
 
-                    {!keyboardVisible && (
-                        <View style={styles.swipeHint}>
-                            <Text style={styles.swipeText}>Swipe to see next</Text>
-                            <View style={styles.swipeDot}>
-                                <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M9 18L15 12L9 6" stroke="#9B6BE8" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-                                </Svg>
-                            </View>
-                        </View>
-                    )}
                 </View>
             </KeyboardAvoidingView>
         </LinearGradient>
@@ -194,14 +174,8 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        shadowColor: '#6D28D9',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.22,
-        shadowRadius: 22,
-        elevation: 10,
-        marginRight: 10,
+        borderWidth: 6,
+        borderColor: 'rgba(255, 255, 255, 0.20)',
     },
     keyboardAvoid: {
         flex: 1,
@@ -262,6 +236,8 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         flex: 1,
+        width: '90%',
+        alignSelf: 'center',
         backgroundColor: 'rgba(255, 255, 255, 0.12)',
         borderRadius: 24,
         padding: spacing.md,
@@ -284,6 +260,7 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.medium,
     },
     inputFooter: {
+        width: '100%',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -317,27 +294,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '800',
         fontFamily: fontFamily.bold,
-    },
-    swipeHint: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        paddingTop: spacing.xs,
-    },
-    swipeText: {
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontSize: 12,
-        fontWeight: '700',
-        fontFamily: fontFamily.medium,
-    },
-    swipeDot: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
     },
 });
 

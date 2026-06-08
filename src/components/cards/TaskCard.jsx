@@ -104,6 +104,8 @@ const lockedStyles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
+        borderWidth: 6,
+        borderColor: 'rgba(255, 255, 255, 0.20)',
     },
     content: {
         flex: 1,

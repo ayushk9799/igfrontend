@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import Svg, { Path } from 'react-native-svg';
 
 import { categoryConfig } from './categoryConfig';
-import { cardStyles } from './cardStyles';
 import { spacing } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
 
@@ -60,8 +58,6 @@ const NeverHaveIEverCard = React.memo(({
     hasPartner = false,
     onLinkPartner,
     onSubmit,
-    onSkip,
-    isLastCard,
     onAnswerSubmit,
     isAnswered = false,
     previousAnswer = null,
@@ -110,8 +106,7 @@ const NeverHaveIEverCard = React.memo(({
             onAnswerSubmit?.(task.originalIndex ?? index, choice);
             // Only auto-advance if the parent screen doesn't filter answered tasks
             if (autoAdvanceOnSubmit && onSubmit) {
-                // Delay swipe to show "Submitted" text first
-                setTimeout(() => onSubmit(choice), 600);
+                onSubmit(choice);
             }
         } catch (err) {
             console.error('handleChoiceSelect error:', err);
@@ -135,7 +130,6 @@ const NeverHaveIEverCard = React.memo(({
 
                 {/* Question Area */}
                 <View style={styles.questionSection}>
-                    {locked && <Text style={styles.submittedText}>Submitted ✓</Text>}
                     <Text style={styles.questionText}>
                         {task.taskstatement}
                     </Text>
@@ -161,21 +155,6 @@ const NeverHaveIEverCard = React.memo(({
                     ))}
                 </View>
 
-                {/* Skip Button */}
-                {!isLastCard && (
-                    <View style={[styles.skipRow, locked && { opacity: 0 }]}>
-                        <TouchableOpacity
-                            onPress={isLocked ? onNavigateToPremium : onSkip}
-                            style={styles.skipButton}
-                            disabled={locked}
-                        >
-                            <Text style={styles.skipText}>Skip</Text>
-                            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                                <Path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="rgba(255, 255, 255, 0.75)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                            </Svg>
-                        </TouchableOpacity>
-                    </View>
-                )}
             </View>
         </LinearGradient>
     );
@@ -186,14 +165,8 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        shadowColor: '#D84315',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.22,
-        shadowRadius: 22,
-        elevation: 10,
-        marginRight: 10,
+        borderWidth: 6,
+        borderColor: 'rgba(255, 255, 255, 0.20)',
     },
     cardContent: {
         flex: 1,
@@ -239,16 +212,6 @@ const styles = StyleSheet.create({
         marginTop: spacing.sm,
         marginBottom: spacing.sm,
     },
-    submittedText: {
-        textAlign: 'center',
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#E86B4A',
-        letterSpacing: 1,
-        textTransform: 'uppercase',
-        paddingVertical: spacing.xs,
-        fontFamily: fontFamily.bold,
-    },
     questionText: {
         fontSize: 20,
         fontWeight: '800',
@@ -265,9 +228,10 @@ const styles = StyleSheet.create({
         marginBottom: spacing.md,
     },
     choicesRow: {
+        width: '90%',
+        alignSelf: 'center',
         flexDirection: 'row',
         gap: spacing.md,
-        paddingHorizontal: spacing.xs,
         marginBottom: spacing.md,
         marginTop: 'auto',
     },
@@ -304,25 +268,6 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '700',
         color: '#FFFFFF',
-        fontFamily: fontFamily.bold,
-    },
-    skipRow: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: spacing.xs,
-    },
-    skipButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-    },
-    skipText: {
-        color: 'rgba(255, 255, 255, 0.75)',
-        fontSize: 16,
-        fontWeight: '700',
         fontFamily: fontFamily.bold,
     },
 });

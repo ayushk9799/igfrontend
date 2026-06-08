@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Dimensions,
     Platform,
     ScrollView,
     StatusBar,
@@ -20,6 +21,8 @@ import { fontFamily } from '../constants/fonts';
 import { selectIsPremium, selectUser } from '../store/slices/userSlice';
 
 const PAGE_SIZE = 10;
+const { height } = Dimensions.get('window');
+const CARD_HEIGHT = height * 0.7;
 
 const formatLabel = {
     deep: 'Deep',
@@ -365,6 +368,7 @@ export default function TopicQuestionsV2Screen({
                     isPremium={isPremium}
                     onNavigateToPremium={onNavigateToPremium}
                     totalCardsOverride={page.totalQuestions || tasks.length}
+                    cardHeight={CARD_HEIGHT}
                 />
             </View>
         );
@@ -588,6 +592,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: spacing.md,
-        paddingBottom: Platform.OS === 'ios' ? 114 : 96,
+        paddingBottom: Platform.OS === 'ios' ? 28 : 24,
     },
 });

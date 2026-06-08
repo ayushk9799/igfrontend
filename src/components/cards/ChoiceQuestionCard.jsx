@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import Svg, { Path } from 'react-native-svg';
 
 import { categoryConfig } from './categoryConfig';
 import { spacing } from '../../theme';
@@ -20,8 +19,6 @@ const ChoiceQuestionCard = React.memo(({
     hasPartner = false,
     onLinkPartner,
     onSubmit,
-    onSkip,
-    isLastCard,
     onAnswerSubmit,
     isAnswered = false,
     previousAnswer = null,
@@ -58,7 +55,7 @@ const ChoiceQuestionCard = React.memo(({
         setLocked(true);
         onAnswerSubmit?.(task.originalIndex ?? index, choice, 'choice');
         if (autoAdvanceOnSubmit && onSubmit) {
-            setTimeout(() => onSubmit(choice), 600);
+            onSubmit(choice);
         }
     };
 
@@ -74,7 +71,6 @@ const ChoiceQuestionCard = React.memo(({
                 </View>
 
                 <View style={styles.questionSection}>
-                    {locked && <Text style={styles.submittedText}>Submitted ✓</Text>}
                     <Text style={styles.questionText}>{task.taskstatement}</Text>
                 </View>
 
@@ -100,20 +96,6 @@ const ChoiceQuestionCard = React.memo(({
                     ))}
                 </View>
 
-                {!isLastCard && (
-                    <View style={[styles.skipRow, locked && styles.hidden]}>
-                        <TouchableOpacity
-                            onPress={isLocked ? onNavigateToPremium : onSkip}
-                            style={styles.skipButton}
-                            disabled={locked}
-                        >
-                            <Text style={styles.skipText}>Skip</Text>
-                            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                                <Path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="rgba(255, 255, 255, 0.75)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                            </Svg>
-                        </TouchableOpacity>
-                    </View>
-                )}
             </View>
         </LinearGradient>
     );
@@ -124,14 +106,8 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        shadowColor: '#C2185B',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.22,
-        shadowRadius: 22,
-        elevation: 10,
-        marginRight: 10,
+        borderWidth: 6,
+        borderColor: 'rgba(255, 255, 255, 0.20)',
     },
     cardContent: {
         flex: 1,
@@ -176,13 +152,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: spacing.sm,
     },
-    submittedText: {
-        fontSize: 14,
-        color: '#10B981',
-        textAlign: 'center',
-        marginBottom: spacing.sm,
-        fontFamily: fontFamily.bold,
-    },
     questionText: {
         fontSize: 20,
         fontWeight: '800',
@@ -192,10 +161,15 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
     },
     choicesColumn: {
+        width: '90%',
+        alignSelf: 'center',
+        alignItems: 'stretch',
         gap: spacing.sm,
         marginBottom: spacing.md,
     },
     choiceButton: {
+        width: '100%',
+        alignSelf: 'center',
         minHeight: 52,
         borderRadius: 20,
         backgroundColor: 'rgba(255, 255, 255, 0.12)',
@@ -220,24 +194,8 @@ const styles = StyleSheet.create({
     choiceLabelSelected: {
         color: '#C2185B',
     },
-    skipRow: {
-        alignItems: 'center',
-    },
     hidden: {
         opacity: 0,
-    },
-    skipButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 10,
-        paddingHorizontal: 18,
-    },
-    skipText: {
-        fontSize: 15,
-        color: 'rgba(255, 255, 255, 0.75)',
-        fontWeight: '800',
-        fontFamily: fontFamily.bold,
     },
 });
 

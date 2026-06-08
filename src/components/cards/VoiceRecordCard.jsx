@@ -47,8 +47,6 @@ const VoiceRecordCard = React.memo(({
     hasPartner = false,
     onLinkPartner,
     onSubmit,
-    onSkip,
-    isLastCard,
     onAnswerSubmit,
     isAnswered = false,
     previousAnswer = null,
@@ -316,8 +314,7 @@ const VoiceRecordCard = React.memo(({
             await onAnswerSubmit(task.originalIndex ?? index, s3Url, 'voice');
             // Only auto-advance if the parent screen doesn't filter answered tasks
             if (autoAdvanceOnSubmit && onSubmit) {
-                // Delay swipe to show completion state first
-                setTimeout(() => onSubmit(s3Url), 600);
+                onSubmit(s3Url);
             }
         } catch (error) {
             console.error('🎙️ [VoiceRecordCard] Upload failed:', error);
@@ -340,7 +337,6 @@ const VoiceRecordCard = React.memo(({
                     <View style={styles.answeredBadge}>
                         <Text style={styles.answeredEmoji}>🎙️</Text>
                         <Text style={styles.answeredTitle}>Voice Message Sent</Text>
-                        <Text style={styles.answeredHint}>Swipe to continue →</Text>
                     </View>
                 </View>
             )}
@@ -496,9 +492,6 @@ const VoiceRecordCard = React.memo(({
 
                 {!recordingUri && !isRecording && (
                     <View style={voiceStyles.bottomActions}>
-                        <TouchableOpacity onPress={isLocked ? onNavigateToPremium : onSkip} style={voiceStyles.skipButton}>
-                            <Text style={voiceStyles.skipText}>Skip</Text>
-                        </TouchableOpacity>
                         <TouchableOpacity
                             onPress={handleSubmit}
                             style={[voiceStyles.idleSubmitButton, !recordingUri && voiceStyles.idleSubmitDisabled]}
@@ -508,16 +501,6 @@ const VoiceRecordCard = React.memo(({
                         </TouchableOpacity>
                     </View>
                 )}
-
-                <View style={voiceStyles.swipeHint}>
-                    <Text style={voiceStyles.swipeText}>Swipe to see next</Text>
-                    <View style={voiceStyles.swipeDot}>
-                        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                            <Path d="M9 18L15 12L9 6" stroke="#F64D7E" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-                        </Svg>
-                    </View>
-                </View>
-
 
             </View>
         </LinearGradient>
@@ -529,14 +512,8 @@ const voiceStyles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
-        shadowColor: '#9F1239',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.30,
-        shadowRadius: 22,
-        elevation: 10,
-        marginRight: 10,
+        borderWidth: 6,
+        borderColor: 'rgba(255, 255, 255, 0.18)',
     },
     cardContent: {
         flex: 1,
@@ -639,13 +616,14 @@ const voiceStyles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     previewContainer: {
+        width: '90%',
+        alignSelf: 'center',
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.06)',
         borderRadius: 24,
         padding: spacing.lg,
         paddingHorizontal: spacing.lg,
-        width: '100%',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.12)',
         shadowColor: '#9F1239',
@@ -702,10 +680,10 @@ const voiceStyles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     actionsRow: {
+        width: '90%',
+        alignSelf: 'center',
         flexDirection: 'row',
         gap: spacing.md,
-        width: '100%',
-        paddingHorizontal: spacing.md,
         paddingBottom: spacing.xs,
     },
     discardButton: {
@@ -750,25 +728,12 @@ const voiceStyles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     bottomActions: {
+        width: '90%',
+        alignSelf: 'center',
         marginTop: 'auto',
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
-        paddingHorizontal: spacing.lg,
-    },
-    skipButton: {
-        paddingVertical: 12,
-        paddingHorizontal: spacing.lg,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.12)',
-    },
-    skipText: {
-        color: '#FF8FA3',
-        fontSize: 16,
-        fontWeight: '500',
-        fontFamily: fontFamily.medium,
     },
     idleSubmitButton: {
         paddingVertical: 14,
@@ -790,28 +755,6 @@ const voiceStyles = StyleSheet.create({
         fontWeight: '800',
         fontFamily: fontFamily.bold,
     },
-    swipeHint: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        paddingTop: spacing.sm,
-    },
-    swipeText: {
-        color: '#A396B2',
-        fontSize: 12,
-        fontWeight: '700',
-        fontFamily: fontFamily.medium,
-    },
-    swipeDot: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    },
-
 });
 
 export default VoiceRecordCard;

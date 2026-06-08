@@ -20,7 +20,10 @@ import { fontFamily } from '../../constants/fonts';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SLIDER_WIDTH = SCREEN_WIDTH - 80;
+const CARD_WIDTH = SCREEN_WIDTH - 32;
+const CARD_BORDER_WIDTH = 6;
+const CARD_CONTENT_HORIZONTAL_PADDING = spacing.lg * 2;
+const SLIDER_WIDTH = Math.max(220, CARD_WIDTH - CARD_BORDER_WIDTH * 2 - CARD_CONTENT_HORIZONTAL_PADDING - spacing.lg * 2);
 const KNOB_SIZE = 44;
 const TRACK_HEIGHT = 12;
 
@@ -38,8 +41,6 @@ const SliderCard = React.memo(({
     hasPartner = false,
     onLinkPartner,
     onSubmit,
-    onSkip,
-    isLastCard,
     onAnswerSubmit,
     isAnswered = false,
     previousAnswer = null,
@@ -150,8 +151,7 @@ const SliderCard = React.memo(({
             onAnswerSubmit?.(task.originalIndex ?? index, currentValue);
             // Only auto-advance if the parent screen doesn't filter answered tasks
             if (autoAdvanceOnSubmit && onSubmit) {
-                // Delay swipe to show "Submitted" text first
-                setTimeout(() => onSubmit(currentValue), 600);
+                onSubmit(currentValue);
             }
         } catch (err) {
             console.error('handleSubmit error:', err);
@@ -175,7 +175,6 @@ const SliderCard = React.memo(({
                         <Text style={cardStyles.answeredText}>
                             You rated: {previousAnswer} / {maxValue}
                         </Text>
-                        <Text style={cardStyles.answeredHint}>Swipe to continue →</Text>
                     </View>
                 </View>
             )}
@@ -265,14 +264,6 @@ const SliderCard = React.memo(({
                 {/* Submit Button */}
                 <View style={styles.actionRow}>
                     <TouchableOpacity
-                        onPress={isLocked ? onNavigateToPremium : onSkip}
-                        style={styles.skipButton}
-                        disabled={locked}
-                    >
-                        <Text style={styles.skipText}>Skip</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
                         onPress={handleSubmit}
                         disabled={locked || isAnswered || !hasInteracted}
                         style={[
@@ -280,21 +271,9 @@ const SliderCard = React.memo(({
                             (!hasInteracted || locked) && styles.submitButtonDisabled
                         ]}
                     >
-                        <Text style={styles.submitText}>
-                            {locked ? 'Submitted ✓' : '✓  Submit'}
-                        </Text>
+                        <Text style={styles.submitText}>✓  Submit</Text>
                     </TouchableOpacity>
                 </View>
-
-                <View style={styles.swipeHint}>
-                    <Text style={styles.swipeText}>Swipe to see next</Text>
-                    <View style={styles.swipeDot}>
-                        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-                            <Path d="M9 18L15 12L9 6" stroke="#16B98F" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-                        </Svg>
-                    </View>
-                </View>
-
 
             </View>
         </LinearGradient>
@@ -306,14 +285,8 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        shadowColor: '#065F46',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.22,
-        shadowRadius: 22,
-        elevation: 10,
-        marginRight: 10,
+        borderWidth: 6,
+        borderColor: 'rgba(255, 255, 255, 0.20)',
     },
     cardContent: {
         flex: 1,
@@ -410,8 +383,9 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     sliderContainer: {
+        width: SLIDER_WIDTH,
+        alignSelf: 'center',
         height: 62,
-        marginHorizontal: spacing.md,
         justifyContent: 'center',
     },
     sliderGlass: {
@@ -482,9 +456,10 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
     },
     labelsRow: {
+        width: SLIDER_WIDTH,
+        alignSelf: 'center',
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing.lg,
         marginTop: 2,
         marginBottom: spacing.md,
     },
@@ -495,23 +470,12 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     actionRow: {
+        width: SLIDER_WIDTH,
+        alignSelf: 'center',
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
-        paddingHorizontal: spacing.md,
         paddingBottom: 0,
-    },
-    skipButton: {
-        paddingVertical: 13,
-        paddingHorizontal: spacing.lg,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    },
-    skipText: {
-        color: 'rgba(255, 255, 255, 0.75)',
-        fontSize: 16,
-        fontWeight: '500',
-        fontFamily: fontFamily.medium,
     },
     submitButton: {
         paddingVertical: 14,
@@ -536,28 +500,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         fontFamily: fontFamily.bold,
     },
-    swipeHint: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        paddingTop: spacing.sm,
-    },
-    swipeText: {
-        color: 'rgba(255, 255, 255, 0.7)',
-        fontSize: 12,
-        fontWeight: '700',
-        fontFamily: fontFamily.medium,
-    },
-    swipeDot: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    },
-
 });
 
 export default SliderCard;
