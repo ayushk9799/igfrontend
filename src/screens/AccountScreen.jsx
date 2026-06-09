@@ -147,6 +147,7 @@ export const AccountScreen = ({
     onFindPartner,
     onDeleteAccount,
     onNavigateToPremium,
+    onWidgetsPress,
     onBack,
 }) => {
     const insets = useSafeAreaInsets();
@@ -424,7 +425,14 @@ export const AccountScreen = ({
                         </View>
                     )}
 
-
+                    <View style={styles.menuSection}>
+                        <Text style={styles.sectionTitle}>Widgets</Text>
+                        <MenuItem
+                            title="Widgets Library"
+                            subtitle="Time Together and Scribble"
+                            onPress={onWidgetsPress}
+                        />
+                    </View>
 
                     <View style={styles.menuSection}>
                         <Text style={styles.sectionTitle}>Support</Text>

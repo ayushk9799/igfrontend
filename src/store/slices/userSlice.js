@@ -7,6 +7,7 @@ const initialState = {
     email: '',
     nickname: '',
     relationshipStartDate: null,
+    pendingRelationshipStartDate: null,
     shouldAskRelationshipStartDate: false,
     avatar: null,
     avatarThumbnail: null,        // Base64 compressed thumbnail (~100x100)
@@ -53,6 +54,7 @@ const userSlice = createSlice({
                 partnerAvatar: action.payload.avatar || null,
                 connectionDate: action.payload.connectionDate,
                 relationshipStartDate: action.payload.relationshipStartDate || state.relationshipStartDate,
+                pendingRelationshipStartDate: action.payload.pendingRelationshipStartDate || state.pendingRelationshipStartDate,
                 shouldAskRelationshipStartDate: action.payload.shouldAskRelationshipStartDate || false,
                 partnerIsPremium: partnerPremium,
                 partnerPremiumPlan: action.payload.premiumPlan || null,
@@ -94,7 +96,7 @@ export const selectIsPremium = (state) => {
     return isDateActive(state.user.premiumExpiresAt) || isDateActive(state.user.partnerPremiumExpiresAt);
 }
 export const selectDaysTogether = (state) => {
-    const startDate = state.user.relationshipStartDate || state.user.connectionDate;
+    const startDate = state.user.relationshipStartDate || state.user.pendingRelationshipStartDate || state.user.connectionDate;
     if (!startDate) return 0;
     return Math.floor((new Date() - new Date(startDate)) / (1000 * 60 * 60 * 24));
 };

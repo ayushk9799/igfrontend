@@ -324,7 +324,6 @@ struct ScribbleWidgetEntryView: View {
 }
 
 // MARK: - Widget Configuration
-@main
 struct ScribbleWidget: Widget {
     let kind: String = "ScribbleWidget"
     
@@ -342,6 +341,231 @@ struct ScribbleWidget: Widget {
         .description("See doodles from your loved one")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
+    }
+}
+
+// MARK: - Together Countdown Widget
+struct TogetherEntry: TimelineEntry {
+    let date: Date
+    let startDate: Date?
+}
+
+struct TogetherProvider: TimelineProvider {
+    private let appGroupIdentifier = "group.com.thousandways.love"
+    private let isoFormatter = ISO8601DateFormatter()
+    private let fractionalIsoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    func placeholder(in context: Context) -> TogetherEntry {
+        TogetherEntry(date: Date(), startDate: Calendar.current.date(byAdding: .day, value: -1954, to: Date()))
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (TogetherEntry) -> Void) {
+        completion(TogetherEntry(date: Date(), startDate: loadStartDate()))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TogetherEntry>) -> Void) {
+        let startDate = loadStartDate()
+        let now = Date()
+        let entries = (0..<60).map { offset in
+            TogetherEntry(date: now.addingTimeInterval(TimeInterval(offset)), startDate: startDate)
+        }
+        let nextRefresh = now.addingTimeInterval(60)
+        completion(Timeline(entries: entries, policy: .after(nextRefresh)))
+    }
+
+    private func loadStartDate() -> Date? {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+            return nil
+        }
+
+        let jsonURL = containerURL.appendingPathComponent("together.json")
+        guard let data = try? Data(contentsOf: jsonURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let startDateString = json["startDate"] as? String else {
+            return nil
+        }
+
+        return fractionalIsoFormatter.date(from: startDateString) ?? isoFormatter.date(from: startDateString)
+    }
+}
+
+struct TogetherCountdownView: View {
+    let entry: TogetherEntry
+    @Environment(\.widgetFamily) var family
+
+    private var elapsed: Int {
+        guard let startDate = entry.startDate else { return 0 }
+        return max(0, Int(entry.date.timeIntervalSince(startDate)))
+    }
+
+    private var days: Int { elapsed / 86400 }
+    private var hours: Int { (elapsed % 86400) / 3600 }
+    private var minutes: Int { (elapsed % 3600) / 60 }
+    private var seconds: Int { elapsed % 60 }
+
+    var body: some View {
+        ZStack {
+            if entry.startDate == nil {
+                Text("Set anniversary")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .minimumScaleFactor(0.7)
+                    .padding(.horizontal, 8)
+            } else {
+                VStack(spacing: 3) {
+                    HStack(spacing: 4) {
+                        Text("together for")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundStyle(.white)
+
+                    HStack(alignment: .lastTextBaseline, spacing: 9) {
+                        TimeColumn(value: days, label: "days", minDigits: 1)
+                        TimeColumn(value: hours, label: "hr", minDigits: 2)
+                        TimeColumn(value: minutes, label: "min", minDigits: 2)
+                        TimeColumn(value: seconds, label: "sec", minDigits: 2)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+            }
+        }
+    }
+}
+
+struct TimeColumn: View {
+    let value: Int
+    let label: String
+    let minDigits: Int
+
+    private var displayValue: String {
+        String(format: "%0\(minDigits)d", value)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(displayValue)
+                .font(.system(size: 19, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
+
+            Text(label)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.84))
+                .lineLimit(1)
+        }
+    }
+}
+
+struct TogetherDaysView: View {
+    let entry: TogetherEntry
+
+    private var days: Int {
+        guard let startDate = entry.startDate else { return 0 }
+        return max(0, Int(entry.date.timeIntervalSince(startDate)) / 86400)
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(.white.opacity(0.18))
+                .overlay(
+                    Circle()
+                        .stroke(.white.opacity(0.28), lineWidth: 1)
+                )
+
+            if entry.startDate == nil {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white)
+            } else {
+                VStack(spacing: 0) {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white)
+
+                    Text("\(days)")
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.45)
+
+                    Text("days")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.84))
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 4)
+            }
+        }
+    }
+}
+
+struct TogetherCountdownWidget: Widget {
+    let kind: String = "TogetherCountdownWidget"
+
+    private var families: [WidgetFamily] {
+        if #available(iOSApplicationExtension 16.0, *) {
+            return [.accessoryRectangular]
+        }
+        return []
+    }
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: TogetherProvider()) { entry in
+            if #available(iOSApplicationExtension 17.0, *) {
+                TogetherCountdownView(entry: entry)
+                    .containerBackground(.clear, for: .widget)
+            } else {
+                TogetherCountdownView(entry: entry)
+            }
+        }
+        .configurationDisplayName("Time Together")
+        .description("Shows the time elapsed since your anniversary.")
+        .supportedFamilies(families)
+    }
+}
+
+struct TogetherDaysWidget: Widget {
+    let kind: String = "TogetherDaysWidget"
+
+    private var families: [WidgetFamily] {
+        if #available(iOSApplicationExtension 16.0, *) {
+            return [.accessoryCircular]
+        }
+        return []
+    }
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: TogetherProvider()) { entry in
+            if #available(iOSApplicationExtension 17.0, *) {
+                TogetherDaysView(entry: entry)
+                    .containerBackground(.clear, for: .widget)
+            } else {
+                TogetherDaysView(entry: entry)
+            }
+        }
+        .configurationDisplayName("Days Together")
+        .description("Shows only your days together on the Lock Screen.")
+        .supportedFamilies(families)
+    }
+}
+
+@main
+struct PenguinWidgets: WidgetBundle {
+    var body: some Widget {
+        ScribbleWidget()
+        TogetherCountdownWidget()
+        TogetherDaysWidget()
     }
 }
 

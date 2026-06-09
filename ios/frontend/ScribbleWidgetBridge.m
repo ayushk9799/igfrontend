@@ -22,6 +22,13 @@ RCT_EXTERN_METHOD(saveScribbleImage:(NSString *)imagePath
 RCT_EXTERN_METHOD(refreshWidget:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(saveTogetherStartDate:(NSString *)startDate
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(clearTogetherStartDate:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(isWidgetAvailable:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 

@@ -13,6 +13,7 @@ import ChatListScreen from '../screens/ChatListScreen';
 import NotificationCenterScreen from '../screens/NotificationCenterScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import MoodScreen from '../screens/MoodScreen';
+import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
@@ -60,6 +61,7 @@ export const MainTabNavigator = ({
     const [todayChallenge, setTodayChallenge] = useState(null);
     const [isAccountVisible, setIsAccountVisible] = useState(false);
     const [isPremiumOpenInAccount, setIsPremiumOpenInAccount] = useState(false);
+    const [isWidgetsLibraryVisible, setIsWidgetsLibraryVisible] = useState(false);
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
     const [isMoodVisible, setIsMoodVisible] = useState(false);
     const [isMoodRefreshPrompt, setIsMoodRefreshPrompt] = useState(false);
@@ -374,6 +376,7 @@ export const MainTabNavigator = ({
                 onRequestClose={() => {
                     setIsAccountVisible(false);
                     setIsPremiumOpenInAccount(false);
+                    setIsWidgetsLibraryVisible(false);
                 }}
             >
                 <AccountScreen
@@ -388,20 +391,24 @@ export const MainTabNavigator = ({
                     onLogout={() => {
                         setIsAccountVisible(false);
                         setIsPremiumOpenInAccount(false);
+                        setIsWidgetsLibraryVisible(false);
                         onLogout();
                     }}
                     onDeleteAccount={() => {
                         setIsAccountVisible(false);
                         setIsPremiumOpenInAccount(false);
+                        setIsWidgetsLibraryVisible(false);
                         onDeleteAccount();
                     }}
                     onEditProfile={onEditProfile}
                     onAvatarPress={onAvatarPress}
                     onFindPartner={onFindPartner}
                     onNavigateToPremium={() => setIsPremiumOpenInAccount(true)}
+                    onWidgetsPress={() => setIsWidgetsLibraryVisible(true)}
                     onBack={() => {
                         setIsAccountVisible(false);
                         setIsPremiumOpenInAccount(false);
+                        setIsWidgetsLibraryVisible(false);
                     }}
                 />
 
@@ -414,6 +421,19 @@ export const MainTabNavigator = ({
                 >
                     <PremiumScreen
                         onBack={() => setIsPremiumOpenInAccount(false)}
+                    />
+                </Modal>
+
+                <Modal
+                    visible={isWidgetsLibraryVisible}
+                    animationType="slide"
+                    transparent={false}
+                    statusBarTranslucent={true}
+                    onRequestClose={() => setIsWidgetsLibraryVisible(false)}
+                >
+                    <WidgetsLibraryScreen
+                        userData={userData}
+                        onBack={() => setIsWidgetsLibraryVisible(false)}
                     />
                 </Modal>
             </Modal>

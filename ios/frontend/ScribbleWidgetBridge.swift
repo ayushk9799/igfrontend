@@ -123,6 +123,53 @@ class ScribbleWidgetBridge: NSObject {
             resolver(false)
         }
     }
+
+    /// Save relationship start date for the Time Together lock screen widget
+    @objc
+    func saveTogetherStartDate(_ startDate: NSString, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        guard let containerURL = getSharedContainerURL() else {
+            rejecter("ERROR", "App Group container not found. Make sure App Group is configured.", nil)
+            return
+        }
+
+        do {
+            let togetherData: [String: Any] = [
+                "startDate": String(startDate),
+                "savedAt": ISO8601DateFormatter().string(from: Date())
+            ]
+            let jsonURL = containerURL.appendingPathComponent("together.json")
+            let jsonData = try JSONSerialization.data(withJSONObject: togetherData, options: .prettyPrinted)
+            try jsonData.write(to: jsonURL, options: .atomic)
+
+            if #available(iOS 14.0, *) {
+                WidgetCenter.shared.reloadTimelines(ofKind: "TogetherCountdownWidget")
+                WidgetCenter.shared.reloadTimelines(ofKind: "TogetherDaysWidget")
+            }
+
+            resolver(true)
+        } catch {
+            rejecter("ERROR", "Failed to save together date: \(error.localizedDescription)", error)
+        }
+    }
+
+    /// Clear relationship start date for the Time Together lock screen widget
+    @objc
+    func clearTogetherStartDate(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        guard let containerURL = getSharedContainerURL() else {
+            resolver(false)
+            return
+        }
+
+        let jsonURL = containerURL.appendingPathComponent("together.json")
+        try? FileManager.default.removeItem(at: jsonURL)
+
+        if #available(iOS 14.0, *) {
+            WidgetCenter.shared.reloadTimelines(ofKind: "TogetherCountdownWidget")
+            WidgetCenter.shared.reloadTimelines(ofKind: "TogetherDaysWidget")
+        }
+
+        resolver(true)
+    }
     
     /// Check if widget is available
     @objc

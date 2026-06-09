@@ -1,6 +1,6 @@
 // Updated Navigator with premium theme and auth persistence
 import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Alert, Platform, BackHandler, Modal, AppState } from 'react-native';
+import { View, StyleSheet, Alert, Platform, BackHandler, Modal, AppState, NativeModules } from 'react-native';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import BootSplash from 'react-native-bootsplash';
 import { useSelector, useDispatch } from 'react-redux';
@@ -61,6 +61,42 @@ const getMoodUpdateMetadata = () => {
     };
 };
 
+const saveTogetherWidgetStartDate = async (relationshipStartDate) => {
+    if (Platform.OS !== 'ios') return;
+
+    const { ScribbleWidgetBridge } = NativeModules;
+    if (!ScribbleWidgetBridge) {
+        console.warn('Time Together widget bridge is not available. Rebuild the iOS app.');
+        return;
+    }
+
+    if (!relationshipStartDate) {
+        if (!ScribbleWidgetBridge.clearTogetherStartDate) {
+            console.warn('Time Together widget clear method is missing. Rebuild the iOS app.');
+            return;
+        }
+        await ScribbleWidgetBridge.clearTogetherStartDate();
+        return;
+    }
+
+    const startDate = new Date(relationshipStartDate);
+    if (Number.isNaN(startDate.getTime())) return;
+
+    if (!ScribbleWidgetBridge.saveTogetherStartDate) {
+        console.warn('Time Together widget native method is missing. Rebuild the iOS app.');
+        return;
+    }
+
+    await ScribbleWidgetBridge.saveTogetherStartDate(startDate.toISOString());
+};
+
+const getTogetherWidgetStartDate = (user) => (
+    user?.relationshipStartDate ||
+    user?.pendingRelationshipStartDate ||
+    user?.connectionDate ||
+    null
+);
+
 export const AppNavigator = () => {
     const dispatch = useDispatch();
 
@@ -68,6 +104,7 @@ export const AppNavigator = () => {
     const userData = useSelector(state => state.user);
     const games = useSelector(state => state.games);
     const { pendingPuzzle, selectedPuzzle, pendingTicTacToe, activeTicTacToe, selectedTicTacToe, pendingWordle, activeWordle, selectedWordle } = games;
+    const togetherWidgetStartDate = getTogetherWidgetStartDate(userData);
 
     // Local state (navigation & UI only)
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
@@ -151,14 +188,17 @@ export const AppNavigator = () => {
                 return null;
             }
 
-            updateUserStorage({
+            const userUpdates = {
                 timezone: data.user.timezone,
                 platform: data.user.platform,
-            });
-            dispatch(updateUser({
-                timezone: data.user.timezone,
-                platform: data.user.platform,
-            }));
+                relationshipStartDate: data.user.relationshipStartDate || null,
+                pendingRelationshipStartDate: data.user.pendingRelationshipStartDate || null,
+                shouldAskRelationshipStartDate: data.user.shouldAskRelationshipStartDate || false,
+            };
+
+            updateUserStorage(userUpdates);
+            dispatch(updateUser(userUpdates));
+            saveTogetherWidgetStartDate(getTogetherWidgetStartDate({ ...getUser(), ...userUpdates })).catch(() => {});
 
             return data.user;
         } catch (error) {
@@ -235,6 +275,18 @@ export const AppNavigator = () => {
     useEffect(() => {
         initPurchases();
     }, [initPurchases]);
+
+    useEffect(() => {
+        if (!userData?.isAuthenticated) return;
+
+        console.log('Time Together widget date:', togetherWidgetStartDate);
+        saveTogetherWidgetStartDate(togetherWidgetStartDate).catch((error) => {
+            console.warn('Failed to update Time Together widget:', error?.message || error);
+        });
+    }, [
+        userData?.isAuthenticated,
+        togetherWidgetStartDate,
+    ]);
 
     useEffect(() => {
         if (currentScreen === null || hasHiddenBootSplashRef.current) return;
@@ -382,6 +434,7 @@ export const AppNavigator = () => {
                         partnerAvatar: statusData.partner.avatar || null,
                         connectionDate: statusData.connectionDate,
                         relationshipStartDate: statusData.relationshipStartDate,
+                        pendingRelationshipStartDate: statusData.pendingRelationshipStartDate || null,
                         shouldAskRelationshipStartDate: statusData.shouldAskRelationshipStartDate || false,
                         partnerIsPremium: statusData.partner.isPremium || false,
                         partnerPremiumPlan: statusData.partner.premiumPlan || null,
@@ -433,6 +486,7 @@ export const AppNavigator = () => {
 
             const updates = {
                 relationshipStartDate,
+                pendingRelationshipStartDate: null,
                 shouldAskRelationshipStartDate: false,
             };
 
@@ -842,6 +896,7 @@ export const AppNavigator = () => {
                                 partnerAvatar: statusData.partner.avatar || null,
                                 connectionDate: statusData.connectionDate,
                                 relationshipStartDate: statusData.relationshipStartDate,
+                                pendingRelationshipStartDate: statusData.pendingRelationshipStartDate || null,
                                 shouldAskRelationshipStartDate: statusData.shouldAskRelationshipStartDate || false,
                                 partnerIsPremium: statusData.partner.isPremium || false,
                                 partnerPremiumPlan: statusData.partner.premiumPlan || null,
@@ -873,6 +928,7 @@ export const AppNavigator = () => {
                                 partnerAvatar: null,
                                 connectionDate: null,
                                 relationshipStartDate: null,
+                                pendingRelationshipStartDate: storedUser.pendingRelationshipStartDate || null,
                                 shouldAskRelationshipStartDate: false,
                                 partnerIsPremium: false,
                                 partnerPremiumPlan: null,
@@ -1110,6 +1166,9 @@ export const AppNavigator = () => {
         if (relationshipStartDate) {
             updateUserStorage({ relationshipStartDate, shouldAskRelationshipStartDate: false });
             dispatch(updateUser({ relationshipStartDate, shouldAskRelationshipStartDate: false }));
+            saveTogetherWidgetStartDate(relationshipStartDate).catch((error) => {
+                console.warn('Failed to save submitted relationship date to widget:', error?.message || error);
+            });
 
             try {
                 const response = await fetch(`${API_BASE}/api/user/profile`, {
@@ -1120,8 +1179,9 @@ export const AppNavigator = () => {
                 const data = await response.json();
                 const savedRelationshipStartDate = data?.user?.relationshipStartDate;
                 if (data?.success && savedRelationshipStartDate) {
-                    updateUserStorage({ relationshipStartDate: savedRelationshipStartDate, shouldAskRelationshipStartDate: false });
-                    dispatch(updateUser({ relationshipStartDate: savedRelationshipStartDate, shouldAskRelationshipStartDate: false }));
+                    const pendingRelationshipStartDate = data?.user?.pendingRelationshipStartDate || null;
+                    updateUserStorage({ relationshipStartDate: savedRelationshipStartDate, pendingRelationshipStartDate, shouldAskRelationshipStartDate: false });
+                    dispatch(updateUser({ relationshipStartDate: savedRelationshipStartDate, pendingRelationshipStartDate, shouldAskRelationshipStartDate: false }));
                 }
             } catch (err) {
                 console.error('Failed to save relationship start date to server:', err);
@@ -1171,6 +1231,7 @@ export const AppNavigator = () => {
             partnerAvatar: partner.avatar || null,
             connectionDate: partner.connectionDate,
             relationshipStartDate: partner.relationshipStartDate,
+            pendingRelationshipStartDate: partner.pendingRelationshipStartDate || null,
             shouldAskRelationshipStartDate: partner.shouldAskRelationshipStartDate || false,
         };
         updateUserStorage(partnerData);
