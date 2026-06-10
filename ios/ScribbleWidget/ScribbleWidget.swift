@@ -8,6 +8,7 @@
 
 import WidgetKit
 import SwiftUI
+import Foundation
 
 // MARK: - Widget Entry
 struct ScribbleEntry: TimelineEntry {
@@ -560,12 +561,228 @@ struct TogetherDaysWidget: Widget {
     }
 }
 
+// MARK: - Distance Widget
+struct DistanceEntry: TimelineEntry {
+    let date: Date
+    let distanceKm: Double?
+    let isTogether: Bool
+    let userInitial: String
+    let partnerInitial: String
+    let updatedAt: String?
+}
+
+struct DistanceProvider: TimelineProvider {
+    private let appGroupIdentifier = "group.com.thousandways.love"
+
+    func placeholder(in context: Context) -> DistanceEntry {
+        DistanceEntry(date: Date(), distanceKm: 381, isTogether: false, userInitial: "T", partnerInitial: "K", updatedAt: nil)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (DistanceEntry) -> Void) {
+        completion(loadDistanceEntry())
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<DistanceEntry>) -> Void) {
+        let entry = loadDistanceEntry()
+        let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
+        completion(Timeline(entries: [entry], policy: .after(refreshDate)))
+    }
+
+    private func loadDistanceEntry() -> DistanceEntry {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, userInitial: "?", partnerInitial: "?", updatedAt: nil)
+        }
+
+        let jsonURL = containerURL.appendingPathComponent("distance.json")
+        guard let data = try? Data(contentsOf: jsonURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, userInitial: "?", partnerInitial: "?", updatedAt: nil)
+        }
+
+        let rawDistance = json["distanceKm"]
+        let distanceKm: Double?
+        if let value = rawDistance as? Double {
+            distanceKm = value
+        } else if let value = rawDistance as? Int {
+            distanceKm = Double(value)
+        } else {
+            distanceKm = nil
+        }
+
+        return DistanceEntry(
+            date: Date(),
+            distanceKm: distanceKm,
+            isTogether: json["isTogether"] as? Bool ?? false,
+            userInitial: json["userInitial"] as? String ?? "?",
+            partnerInitial: json["partnerInitial"] as? String ?? "?",
+            updatedAt: json["updatedAt"] as? String
+        )
+    }
+}
+
+struct DistanceWidgetView: View {
+    let entry: DistanceEntry
+    private let circleSize: CGFloat = 34
+    private let heartWidth: CGFloat = 22
+    private let heartSafeGap: CGFloat = 0
+
+    private var distanceCloseness: CGFloat {
+        guard let distanceKm = entry.distanceKm else {
+            return 0
+        }
+        if entry.isTogether || distanceKm <= 0.1 {
+            return 1
+        }
+
+        let closeKm = 0.1
+        let farKm = 500.0
+        let boundedDistance = min(max(distanceKm, closeKm), farKm)
+        let raw = 1 - ((log10(boundedDistance) - log10(closeKm)) / (log10(farKm) - log10(closeKm)))
+
+        return CGFloat(pow(raw, 0.65))
+    }
+
+    private func circleCenters(for width: CGFloat) -> (left: CGFloat, right: CGFloat) {
+        let minimumCenterSeparation = circleSize + heartWidth + heartSafeGap * 2
+        let maximumCenterSeparation = max(minimumCenterSeparation, width - circleSize)
+        let centerSeparation = minimumCenterSeparation
+            + (maximumCenterSeparation - minimumCenterSeparation) * (1 - distanceCloseness)
+        let centerX = width / 2
+
+        return (
+            left: centerX - centerSeparation / 2,
+            right: centerX + centerSeparation / 2
+        )
+    }
+
+    private var titleText: String {
+        if entry.isTogether {
+            return "We're together!"
+        }
+        guard let distanceKm = entry.distanceKm else {
+            return "Share location"
+        }
+        if distanceKm >= 10 {
+            return "Our distance: \(Int(distanceKm.rounded())) km"
+        }
+        return "Our distance: \(String(format: "%.1f", distanceKm)) km"
+    }
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(titleText)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            ZStack {
+                GeometryReader { proxy in
+                    let centers = circleCenters(for: proxy.size.width)
+                    let y = proxy.size.height / 2
+                    let lineStart = centers.left + circleSize / 2
+                    let lineEnd = centers.right - circleSize / 2
+
+                    if !entry.isTogether {
+                        Path { path in
+                            path.move(to: CGPoint(x: lineStart, y: y))
+                            path.addLine(to: CGPoint(x: max(lineStart, lineEnd), y: y))
+                        }
+                        .stroke(
+                            .white.opacity(0.9),
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [1, 4])
+                        )
+                    }
+
+                    DistanceDoubleHeart()
+                        .position(x: proxy.size.width / 2, y: y)
+
+                    DistanceInitialCircle(initial: entry.userInitial)
+                        .position(x: centers.left, y: y)
+
+                    DistanceInitialCircle(initial: entry.partnerInitial)
+                        .position(x: centers.right, y: y)
+                }
+                .frame(height: circleSize)
+            }
+            .frame(height: circleSize)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+    }
+}
+
+struct DistanceDoubleHeart: View {
+    var body: some View {
+        ZStack {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.white.opacity(0.92))
+                .shadow(color: .black.opacity(0.3), radius: 2.5, x: 0, y: 1.5)
+                .offset(x: 5, y: -4)
+
+            Image(systemName: "heart.fill")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white)
+                .offset(x: -4, y: 1)
+                .shadow(color: .black.opacity(0.35), radius: 3, x: 0, y: 1.5)
+        }
+        .frame(width: 22, height: 19)
+    }
+}
+
+struct DistanceInitialCircle: View {
+    let initial: String
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(.white.opacity(0.18))
+                .overlay(
+                    Circle()
+                        .stroke(.white.opacity(0.35), lineWidth: 1)
+                )
+
+            Text(String(initial.prefix(1)))
+                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+        }
+        .frame(width: 34, height: 34)
+    }
+}
+
+struct DistanceWidget: Widget {
+    let kind: String = "DistanceWidget"
+
+    private var families: [WidgetFamily] {
+        if #available(iOSApplicationExtension 16.0, *) {
+            return [.accessoryRectangular]
+        }
+        return []
+    }
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: DistanceProvider()) { entry in
+            if #available(iOSApplicationExtension 17.0, *) {
+                DistanceWidgetView(entry: entry)
+                    .containerBackground(.clear, for: .widget)
+            } else {
+                DistanceWidgetView(entry: entry)
+            }
+        }
+        .configurationDisplayName("Our Distance")
+        .description("Shows your distance from your partner.")
+        .supportedFamilies(families)
+    }
+}
+
 @main
 struct PenguinWidgets: WidgetBundle {
     var body: some Widget {
         ScribbleWidget()
         TogetherCountdownWidget()
         TogetherDaysWidget()
+        DistanceWidget()
     }
 }
 

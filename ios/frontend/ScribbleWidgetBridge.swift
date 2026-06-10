@@ -2,12 +2,16 @@ import Foundation
 import UIKit
 import WidgetKit
 import React
+import CoreLocation
 
 @objc(ScribbleWidgetBridge)
-class ScribbleWidgetBridge: NSObject {
+class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     
     // App Group identifier - must match widget's App Group
     private let appGroupIdentifier = "group.com.thousandways.love"
+    private var locationManager: CLLocationManager?
+    private var locationResolver: RCTPromiseResolveBlock?
+    private var locationRejecter: RCTPromiseRejectBlock?
     
     /// Get the shared container URL for App Group
     private func getSharedContainerURL() -> URL? {
@@ -166,6 +170,124 @@ class ScribbleWidgetBridge: NSObject {
         if #available(iOS 14.0, *) {
             WidgetCenter.shared.reloadTimelines(ofKind: "TogetherCountdownWidget")
             WidgetCenter.shared.reloadTimelines(ofKind: "TogetherDaysWidget")
+        }
+
+        resolver(true)
+    }
+
+    /// Request current location for the distance widget setup flow
+    @objc
+    func requestCurrentLocation(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        DispatchQueue.main.async {
+            if CLLocationManager.locationServicesEnabled() == false {
+                rejecter("LOCATION_DISABLED", "Location services are disabled.", nil)
+                return
+            }
+
+            let manager = CLLocationManager()
+            self.locationManager = manager
+            self.locationResolver = resolver
+            self.locationRejecter = rejecter
+            manager.delegate = self
+            manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+
+            let status = manager.authorizationStatus
+            switch status {
+            case .notDetermined:
+                manager.requestWhenInUseAuthorization()
+            case .authorizedWhenInUse, .authorizedAlways:
+                manager.requestLocation()
+            case .denied, .restricted:
+                rejecter("LOCATION_DENIED", "Location permission is not granted.", nil)
+                self.clearLocationPromise()
+            @unknown default:
+                rejecter("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
+                self.clearLocationPromise()
+            }
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            manager.requestLocation()
+        case .denied, .restricted:
+            locationRejecter?("LOCATION_DENIED", "Location permission is not granted.", nil)
+            clearLocationPromise()
+        case .notDetermined:
+            break
+        @unknown default:
+            locationRejecter?("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
+            clearLocationPromise()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else {
+            locationRejecter?("LOCATION_UNAVAILABLE", "Current location is unavailable.", nil)
+            clearLocationPromise()
+            return
+        }
+
+        locationResolver?([
+            "latitude": location.coordinate.latitude,
+            "longitude": location.coordinate.longitude,
+            "accuracy": location.horizontalAccuracy,
+            "timestamp": ISO8601DateFormatter().string(from: location.timestamp)
+        ])
+        clearLocationPromise()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        locationRejecter?("LOCATION_ERROR", "Failed to get current location: \(error.localizedDescription)", error)
+        clearLocationPromise()
+    }
+
+    private func clearLocationPromise() {
+        locationResolver = nil
+        locationRejecter = nil
+        locationManager?.delegate = nil
+        locationManager = nil
+    }
+
+    /// Save distance data for the distance lock screen widget
+    @objc
+    func saveDistanceWidgetData(_ distanceData: NSDictionary, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        guard let containerURL = getSharedContainerURL() else {
+            rejecter("ERROR", "App Group container not found. Make sure App Group is configured.", nil)
+            return
+        }
+
+        do {
+            let jsonURL = containerURL.appendingPathComponent("distance.json")
+            var payload = distanceData as? [String: Any] ?? [:]
+            payload["savedAt"] = ISO8601DateFormatter().string(from: Date())
+            let jsonData = try JSONSerialization.data(withJSONObject: payload, options: .prettyPrinted)
+            try jsonData.write(to: jsonURL, options: .atomic)
+
+            if #available(iOS 14.0, *) {
+                WidgetCenter.shared.reloadTimelines(ofKind: "DistanceWidget")
+            }
+
+            resolver(true)
+        } catch {
+            rejecter("ERROR", "Failed to save distance widget data: \(error.localizedDescription)", error)
+        }
+    }
+
+    /// Clear distance data for the distance lock screen widget
+    @objc
+    func clearDistanceWidgetData(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        guard let containerURL = getSharedContainerURL() else {
+            resolver(false)
+            return
+        }
+
+        let jsonURL = containerURL.appendingPathComponent("distance.json")
+        try? FileManager.default.removeItem(at: jsonURL)
+
+        if #available(iOS 14.0, *) {
+            WidgetCenter.shared.reloadTimelines(ofKind: "DistanceWidget")
         }
 
         resolver(true)

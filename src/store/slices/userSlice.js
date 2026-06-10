@@ -27,6 +27,8 @@ const initialState = {
     premiumSource: null,           // 'self' | 'partner' | null
     timezone: null,
     platform: 'unknown',
+    locationSharingEnabled: false,
+    locationUpdatedAt: null,
     // Partner premium fields (for couple premium)
     partnerIsPremium: false,
     partnerPremiumPlan: null,

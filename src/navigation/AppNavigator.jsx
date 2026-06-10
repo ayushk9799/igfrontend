@@ -41,6 +41,7 @@ import { clearPendingLocalNotificationRoute, getInitialLocalNotification, getPen
 import { API_BASE } from '../constants/Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
 import { getDeviceInfo } from '../utils/deviceInfo';
+import { syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
@@ -97,6 +98,8 @@ const getTogetherWidgetStartDate = (user) => (
     null
 );
 
+const DISTANCE_WIDGET_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+
 export const AppNavigator = () => {
     const dispatch = useDispatch();
 
@@ -131,6 +134,46 @@ export const AppNavigator = () => {
     const recentLocalNotificationKeysRef = React.useRef(new Map());
     const purchasesConfiguredRef = React.useRef(false);
     const hasHiddenBootSplashRef = React.useRef(false);
+    const userDataRef = React.useRef(userData);
+    const distanceSyncInFlightRef = React.useRef(false);
+    const lastDistanceSyncAtRef = React.useRef(0);
+
+    useEffect(() => {
+        userDataRef.current = userData;
+    }, [userData]);
+
+    const syncDistanceWidgetSilently = useCallback(async ({ force = false } = {}) => {
+        if (Platform.OS !== 'ios') return;
+
+        const storedUser = getUser();
+        const activeUser = {
+            ...(userDataRef.current || {}),
+            ...(storedUser || {}),
+        };
+        const userId = activeUser?._id || activeUser?.id;
+
+        if (!userId || activeUser.locationSharingEnabled !== true) return;
+        if (distanceSyncInFlightRef.current) return;
+
+        const now = Date.now();
+        if (!force && now - lastDistanceSyncAtRef.current < DISTANCE_WIDGET_SYNC_INTERVAL_MS) {
+            return;
+        }
+
+        try {
+            distanceSyncInFlightRef.current = true;
+            const result = await syncDistanceWidgetLocation({ user: activeUser });
+            lastDistanceSyncAtRef.current = Date.now();
+
+            if (result?.user) {
+                dispatch(updateUser(result.user));
+            }
+        } catch (error) {
+            console.warn('Distance widget auto sync failed:', error?.message || error);
+        } finally {
+            distanceSyncInFlightRef.current = false;
+        }
+    }, [dispatch]);
     const initPurchases = React.useCallback(async () => {
         try {
             if (purchasesConfiguredRef.current) return;
@@ -286,6 +329,35 @@ export const AppNavigator = () => {
     }, [
         userData?.isAuthenticated,
         togetherWidgetStartDate,
+    ]);
+
+    useEffect(() => {
+        const userId = userData?.id || userData?._id;
+        if (!userData?.isAuthenticated || !userId) return;
+
+        syncDistanceWidgetSilently({ force: true });
+
+        const interval = setInterval(() => {
+            if (AppState.currentState === 'active') {
+                syncDistanceWidgetSilently();
+            }
+        }, DISTANCE_WIDGET_SYNC_INTERVAL_MS);
+
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active') {
+                syncDistanceWidgetSilently({ force: true });
+            }
+        });
+
+        return () => {
+            clearInterval(interval);
+            subscription?.remove();
+        };
+    }, [
+        userData?.id,
+        userData?._id,
+        userData?.isAuthenticated,
+        syncDistanceWidgetSilently,
     ]);
 
     useEffect(() => {

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import {
+    Platform,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -9,7 +10,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { colors } from '../theme';
 
 const BackIcon = () => (
@@ -90,24 +91,6 @@ const LockDaysCard = ({ days }) => (
     </View>
 );
 
-const LockTogetherCard = () => (
-    <View style={styles.lockWidgetTileWide}>
-        <LinearGradient colors={['#FFD0DE', '#D7C6FF', '#BDE9FF']} style={styles.lockPhonePreviewWide}>
-            <Text style={styles.lockMockDate}>Tue 9 Jun</Text>
-            <Text style={styles.lockMockTime}>11:44</Text>
-            <View style={styles.accessoryRect}>
-                <Text style={styles.accessoryTitle}>We're together!</Text>
-                <View style={styles.accessoryCoupleRow}>
-                    <Avatar label="R" style={styles.accessoryAvatar} />
-                    <HeartIcon size={18} color="#FFFFFF" />
-                    <Avatar label="?" variant="lavender" style={styles.accessoryAvatar} />
-                </View>
-            </View>
-        </LinearGradient>
-        <Text style={styles.widgetTileName}>Together Status</Text>
-    </View>
-);
-
 const LockCountdownCard = ({ relationshipStartDate }) => (
     <View style={styles.lockWidgetTileWide}>
         <LinearGradient colors={['#B9A7FF', '#FF9EBD', '#8ED8FF']} style={styles.lockPhonePreviewWide}>
@@ -121,41 +104,46 @@ const LockCountdownCard = ({ relationshipStartDate }) => (
     </View>
 );
 
-const MapPattern = () => (
-    <Svg width="100%" height="100%" viewBox="0 0 260 170" style={StyleSheet.absoluteFill}>
-        <Path d="M0 54 C44 23 66 80 106 50 S184 18 260 46" stroke="#A7C7E7" strokeWidth={4} fill="none" opacity={0.65} />
-        <Path d="M6 122 C60 96 99 136 142 104 S214 82 260 111" stroke="#7EA4CA" strokeWidth={5} fill="none" opacity={0.7} />
-        <Path d="M32 0 68 170M116 0 86 170M188 0 220 170" stroke="#9FB9D1" strokeWidth={2} opacity={0.45} />
-        <Path d="M0 18H260M0 82H260M0 148H260" stroke="#9FB9D1" strokeWidth={2} opacity={0.35} />
-        <Circle cx={58} cy={90} r={34} fill="#1D9E87" opacity={0.3} />
-        <Circle cx={206} cy={48} r={42} fill="#366B91" opacity={0.25} />
-    </Svg>
-);
-
-const DistanceCard = () => (
-    <View style={styles.homeTile}>
-        <MapPattern />
-        <View style={styles.messagePill}>
-            <Text style={styles.messageText}>Thinking of you</Text>
+const MiniDoubleHeart = () => (
+    <View style={styles.miniHeartWrap}>
+        <View style={[styles.miniHeart, styles.miniHeartBack]}>
+            <HeartIcon size={14} color="rgba(255,255,255,0.92)" />
         </View>
-        <View style={styles.distancePill}>
-            <Text style={styles.distanceText}>325 km</Text>
+        <View style={[styles.miniHeart, styles.miniHeartFront]}>
+            <HeartIcon size={17} color="#FFFFFF" />
         </View>
-        <View style={styles.dottedLine} />
-        <Avatar label="R" style={styles.mapAvatarSingle} />
     </View>
 );
 
-const TogetherMapCard = () => (
-    <View style={styles.homeTile}>
-        <MapPattern />
-        <View style={styles.mapCoupleAvatars}>
-            <Avatar label="R" />
-            <Avatar label="?" variant="lavender" style={styles.overlapAvatar} />
-        </View>
-        <View style={styles.togetherPill}>
-            <Text style={styles.messageText}>We're together!</Text>
-        </View>
+const LockDistanceCard = () => (
+    <View style={styles.lockWidgetTileWide}>
+        <LinearGradient colors={['#D4B3FF', '#9CCBFF', '#FFB3C8']} style={styles.lockPhonePreviewWide}>
+            <Text style={styles.lockMockDate}>Tue 9 Jun</Text>
+            <Text style={styles.lockMockTime}>11:44</Text>
+            <View style={styles.distanceAccessoryRect}>
+                <Text style={styles.distanceAccessoryTitle}>Our distance: 381 km</Text>
+                <View style={styles.distanceAccessoryRow}>
+                    <Svg width="100%" height={34} viewBox="0 0 128 34" style={styles.distanceAccessoryDots}>
+                        <Path
+                            d="M17 17H111"
+                            stroke="#FFFFFF"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeDasharray="1 4"
+                            opacity={0.9}
+                        />
+                    </Svg>
+                    <View style={[styles.distanceMiniAvatar, styles.distanceMiniAvatarLeft]}>
+                        <Text style={styles.distanceMiniAvatarText}>R</Text>
+                    </View>
+                    <MiniDoubleHeart />
+                    <View style={[styles.distanceMiniAvatar, styles.distanceMiniAvatarRight]}>
+                        <Text style={styles.distanceMiniAvatarText}>?</Text>
+                    </View>
+                </View>
+            </View>
+        </LinearGradient>
+        <Text style={styles.widgetTileName}>Our Distance</Text>
     </View>
 );
 
@@ -214,6 +202,8 @@ export const WidgetsLibraryScreen = ({
     const relationshipStartDate = userData.relationshipStartDate ||
         userData.pendingRelationshipStartDate ||
         userData.connectionDate;
+    const primaryWidgetSectionTitle = Platform.OS === 'ios' ? 'Lock screen' : 'Home screen';
+    const showSeparateHomeSectionTitle = Platform.OS === 'ios';
 
     const daysTogether = useMemo(() => {
         const start = relationshipStartDate ? new Date(relationshipStartDate) : null;
@@ -247,29 +237,24 @@ export const WidgetsLibraryScreen = ({
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.sectionTitle}>Lock screen</Text>
+                    <Text style={styles.sectionTitle}>{primaryWidgetSectionTitle}</Text>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.horizontalShelf}
                     >
                         <LockDaysCard days={daysTogether} />
-                        <LockTogetherCard />
                         <LockCountdownCard relationshipStartDate={relationshipStartDate} />
+                        <LockDistanceCard />
                     </ScrollView>
 
-                    <Text style={[styles.sectionTitle, styles.homeTitle]}>Home screen</Text>
-                    <Text style={styles.subsectionTitle}>Our Distance</Text>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.horizontalShelf}
-                    >
-                        <DistanceCard />
-                        <TogetherMapCard />
-                    </ScrollView>
-
-                    <Text style={styles.subsectionTitle}>Days Together</Text>
+                    {showSeparateHomeSectionTitle && (
+                        <Text style={[styles.sectionTitle, styles.homeTitle]}>Home screen</Text>
+                    )}
+                    <Text style={[
+                        styles.subsectionTitle,
+                        !showSeparateHomeSectionTitle && styles.subsectionTitleAfterShelf,
+                    ]}>Days Together</Text>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -335,6 +320,9 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '800',
         letterSpacing: 0,
+    },
+    subsectionTitleAfterShelf: {
+        marginTop: 26,
     },
     horizontalShelf: {
         paddingRight: 4,
@@ -436,23 +424,83 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 6,
     },
-    accessoryTitle: {
+    distanceAccessoryRect: {
+        marginTop: 7,
+        width: 154,
+        minHeight: 48,
+        borderRadius: 13,
+        backgroundColor: 'rgba(46,30,60,0.34)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.24)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+    },
+    distanceAccessoryTitle: {
         color: '#FFFFFF',
-        fontSize: 11,
+        fontSize: 12,
+        fontWeight: '800',
+        letterSpacing: 0,
+    },
+    distanceAccessoryRow: {
+        marginTop: 4,
+        width: 128,
+        height: 34,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    distanceAccessoryDots: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+    },
+    distanceMiniAvatar: {
+        position: 'absolute',
+        top: 0,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.35)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    distanceMiniAvatarLeft: {
+        left: 0,
+    },
+    distanceMiniAvatarRight: {
+        right: 0,
+    },
+    distanceMiniAvatarText: {
+        color: '#FFFFFF',
+        fontSize: 17,
         fontWeight: '900',
         letterSpacing: 0,
     },
-    accessoryCoupleRow: {
-        marginTop: 5,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
+    miniHeartWrap: {
+        position: 'absolute',
+        top: 7,
+        left: 53,
+        width: 22,
+        height: 19,
     },
-    accessoryAvatar: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        borderWidth: 1,
+    miniHeart: {
+        position: 'absolute',
+        shadowColor: '#000000',
+        shadowOpacity: 0.28,
+        shadowOffset: { width: 0, height: 1 },
+        shadowRadius: 3,
+        elevation: 2,
+    },
+    miniHeartBack: {
+        left: 9,
+        top: -3,
+    },
+    miniHeartFront: {
+        left: 0,
+        top: 1,
     },
     avatar: {
         width: 40,
@@ -511,88 +559,8 @@ const styles = StyleSheet.create({
         fontSize: 8,
         fontWeight: '800',
     },
-    homeTile: {
-        width: 174,
-        height: 122,
-        borderRadius: 18,
-        backgroundColor: '#3F566B',
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.18)',
-    },
-    messagePill: {
-        position: 'absolute',
-        top: 22,
-        left: 30,
-        paddingHorizontal: 10,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    messageText: {
-        color: '#111111',
-        fontSize: 12,
-        fontWeight: '900',
-        letterSpacing: 0,
-    },
-    distancePill: {
-        position: 'absolute',
-        left: 8,
-        top: 62,
-        height: 26,
-        paddingHorizontal: 10,
-        borderRadius: 13,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 2,
-    },
-    distanceText: {
-        color: '#111111',
-        fontSize: 12,
-        fontWeight: '900',
-        letterSpacing: 0,
-    },
-    dottedLine: {
-        position: 'absolute',
-        left: 62,
-        top: 76,
-        width: 58,
-        borderTopWidth: 2,
-        borderStyle: 'dashed',
-        borderColor: '#FFFFFF',
-        transform: [{ rotate: '10deg' }],
-    },
-    mapAvatarSingle: {
-        position: 'absolute',
-        right: 22,
-        bottom: 24,
-        width: 46,
-        height: 46,
-        borderRadius: 23,
-        borderColor: '#FFFFFF',
-        backgroundColor: '#FFEBD8',
-    },
-    mapCoupleAvatars: {
-        marginTop: 27,
-        flexDirection: 'row',
-        alignSelf: 'center',
-    },
     overlapAvatar: {
         marginLeft: -8,
-    },
-    togetherPill: {
-        position: 'absolute',
-        left: 30,
-        right: 30,
-        bottom: 20,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     daysTogetherCard: {
         width: 250,
