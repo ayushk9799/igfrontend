@@ -1,5 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Modal,
     Platform,
     ScrollView,
     StatusBar,
@@ -11,7 +15,9 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
+import { syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 
 const BackIcon = () => (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
@@ -39,19 +45,33 @@ const Avatar = ({ label, variant = 'pink', style }) => (
 );
 
 const TimeTogetherWidget = ({ relationshipStartDate }) => {
-    const values = useMemo(() => {
-        const start = relationshipStartDate ? new Date(relationshipStartDate) : null;
-        const elapsed = start && !Number.isNaN(start.getTime())
-            ? Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000))
-            : 0;
+    const [elapsed, setElapsed] = useState(0);
 
+    useEffect(() => {
+        const start = relationshipStartDate ? new Date(relationshipStartDate) : null;
+        if (!start || Number.isNaN(start.getTime())) {
+            setElapsed(0);
+            return;
+        }
+
+        const updateElapsed = () => {
+            const diff = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
+            setElapsed(diff);
+        };
+
+        updateElapsed();
+        const interval = setInterval(updateElapsed, 1000);
+        return () => clearInterval(interval);
+    }, [relationshipStartDate]);
+
+    const values = useMemo(() => {
         return {
             days: Math.floor(elapsed / 86400),
             hr: Math.floor((elapsed % 86400) / 3600),
             min: Math.floor((elapsed % 3600) / 60),
             sec: elapsed % 60,
         };
-    }, [relationshipStartDate]);
+    }, [elapsed]);
 
     return (
         <View style={styles.timeWidgetPreview}>
@@ -94,8 +114,8 @@ const LockDaysCard = ({ days }) => (
 const LockCountdownCard = ({ relationshipStartDate }) => (
     <View style={styles.lockWidgetTileWide}>
         <LinearGradient colors={['#B9A7FF', '#FF9EBD', '#8ED8FF']} style={styles.lockPhonePreviewWide}>
-            <Text style={styles.lockMockDate}>Tue 9 Jun</Text>
-            <Text style={styles.lockMockTime}>11:44</Text>
+            <Text style={styles.lockMockDateWide}>Tue 9 Jun</Text>
+            <Text style={styles.lockMockTimeWide}>11:44</Text>
             <View style={styles.accessoryRect}>
                 <TimeTogetherWidget relationshipStartDate={relationshipStartDate} />
             </View>
@@ -104,47 +124,174 @@ const LockCountdownCard = ({ relationshipStartDate }) => (
     </View>
 );
 
-const MiniDoubleHeart = () => (
-    <View style={styles.miniHeartWrap}>
+const MiniDoubleHeart = ({ style }) => (
+    <Animated.View style={[styles.miniHeartWrap, style]}>
         <View style={[styles.miniHeart, styles.miniHeartBack]}>
             <HeartIcon size={14} color="rgba(255,255,255,0.92)" />
         </View>
         <View style={[styles.miniHeart, styles.miniHeartFront]}>
             <HeartIcon size={17} color="#FFFFFF" />
         </View>
-    </View>
+    </Animated.View>
 );
 
-const LockDistanceCard = () => (
-    <View style={styles.lockWidgetTileWide}>
-        <LinearGradient colors={['#D4B3FF', '#9CCBFF', '#FFB3C8']} style={styles.lockPhonePreviewWide}>
-            <Text style={styles.lockMockDate}>Tue 9 Jun</Text>
-            <Text style={styles.lockMockTime}>11:44</Text>
-            <View style={styles.distanceAccessoryRect}>
-                <Text style={styles.distanceAccessoryTitle}>Our distance: 381 km</Text>
-                <View style={styles.distanceAccessoryRow}>
-                    <Svg width="100%" height={34} viewBox="0 0 128 34" style={styles.distanceAccessoryDots}>
-                        <Path
-                            d="M17 17H111"
-                            stroke="#FFFFFF"
-                            strokeWidth={2}
-                            strokeLinecap="round"
-                            strokeDasharray="1 4"
-                            opacity={0.9}
-                        />
-                    </Svg>
-                    <View style={[styles.distanceMiniAvatar, styles.distanceMiniAvatarLeft]}>
-                        <Text style={styles.distanceMiniAvatarText}>R</Text>
-                    </View>
-                    <MiniDoubleHeart />
-                    <View style={[styles.distanceMiniAvatar, styles.distanceMiniAvatarRight]}>
-                        <Text style={styles.distanceMiniAvatarText}>?</Text>
-                    </View>
-                </View>
+const AnimatedDistanceAccessory = () => {
+    const animationProgress = React.useRef(new Animated.Value(0)).current;
+    const [distanceText, setDistanceText] = useState('Our distance: 1,000 km');
+
+    useEffect(() => {
+        const id = animationProgress.addListener(({ value }) => {
+            const steps = [
+                'Our distance: 1,000 km',
+                'Our distance: 700 km',
+                'Our distance: 500 km',
+                'Our distance: 300 km',
+                'Our distance: 100 km',
+                'Our distance: 50 km',
+                "We're together!"
+            ];
+            const idx = Math.min(steps.length - 1, Math.floor(value * steps.length));
+            setDistanceText(steps[idx]);
+        });
+
+        const startAnimation = () => {
+            animationProgress.setValue(0);
+            Animated.sequence([
+                // Hold at 1,000 km distance state
+                Animated.delay(2000),
+                // Smooth transition (slide and fade)
+                Animated.timing(animationProgress, {
+                    toValue: 1,
+                    duration: 3500,
+                    useNativeDriver: false,
+                }),
+                // Hold at together state
+                Animated.delay(3000),
+                // Smooth transition back
+                Animated.timing(animationProgress, {
+                    toValue: 0,
+                    duration: 3000,
+                    useNativeDriver: false,
+                }),
+            ]).start(() => {
+                startAnimation();
+            });
+        };
+
+        startAnimation();
+
+        return () => {
+            animationProgress.stopAnimation();
+            animationProgress.removeListener(id);
+        };
+    }, [animationProgress]);
+
+    // Interpolations for left avatar sliding right
+    const leftTranslate = animationProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 24],
+    });
+
+    // Interpolations for right avatar sliding left
+    const rightTranslate = animationProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, -24],
+    });
+
+    // Animate container width: shrinking from 70px to 22px
+    const dotsWidth = animationProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [70, 22],
+    });
+
+    // Animate container left: shifting from 34px to 58px to stay centered
+    const dotsLeft = animationProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [34, 58],
+    });
+
+    // Animate inner SVG left: offset by negative parent left so it stays fixed in screen coordinates
+    const svgLeft = animationProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-34, -58],
+    });
+
+    return (
+        <View style={styles.distanceAccessoryRect}>
+            {/* Title Container */}
+            <View style={styles.distanceTitleContainer}>
+                <Text style={styles.distanceAccessoryTitle}>
+                    {distanceText}
+                </Text>
             </View>
+
+            {/* Row with dotted line, sliding avatars and double heart */}
+            <View style={styles.distanceAccessoryRow}>
+                <Animated.View style={[
+                    styles.distanceAccessoryDots,
+                    {
+                        left: dotsLeft,
+                        width: dotsWidth,
+                        height: 34,
+                        overflow: 'hidden',
+                        opacity: 0.9,
+                    }
+                ]}>
+                    <Animated.View style={{
+                        position: 'absolute',
+                        left: svgLeft,
+                        width: 138,
+                        height: 34,
+                    }}>
+                        <Svg width="138" height={34} viewBox="0 0 138 34">
+                            <Path
+                                d="M34 17H104"
+                                stroke="#FFFFFF"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeDasharray="1 2.5"
+                            />
+                        </Svg>
+                    </Animated.View>
+                </Animated.View>
+
+                {/* Left Avatar */}
+                <Animated.View style={[
+                    styles.distanceMiniAvatar,
+                    styles.distanceMiniAvatarLeft,
+                    { transform: [{ translateX: leftTranslate }] }
+                ]}>
+                    <Text style={styles.distanceMiniAvatarText}>R</Text>
+                </Animated.View>
+
+                {/* Double Heart */}
+                <MiniDoubleHeart />
+
+                {/* Right Avatar */}
+                <Animated.View style={[
+                    styles.distanceMiniAvatar,
+                    styles.distanceMiniAvatarRight,
+                    { transform: [{ translateX: rightTranslate }] }
+                ]}>
+                    <Text style={styles.distanceMiniAvatarText}>?</Text>
+                </Animated.View>
+            </View>
+        </View>
+    );
+};
+
+const LockDistanceCard = ({ onPress, isEnabled }) => (
+    <TouchableOpacity style={styles.lockWidgetTileFull} onPress={onPress} activeOpacity={0.85}>
+        <LinearGradient colors={['#D4B3FF', '#9CCBFF', '#FFB3C8']} style={styles.lockPhonePreviewWide}>
+            <Text style={styles.lockMockDateWide}>Tue 9 Jun</Text>
+            <Text style={styles.lockMockTimeWide}>11:44</Text>
+            <AnimatedDistanceAccessory />
         </LinearGradient>
         <Text style={styles.widgetTileName}>Our Distance</Text>
-    </View>
+        <Text style={[styles.widgetPermissionHint, isEnabled && styles.widgetPermissionEnabled]}>
+            {isEnabled ? 'Location sharing active ✓' : 'Requires location permission'}
+        </Text>
+    </TouchableOpacity>
 );
 
 const DaysTogetherCard = ({ days }) => (
@@ -163,34 +310,21 @@ const DaysTogetherCard = ({ days }) => (
             <Text style={styles.daysTogetherNumber}>{days} days</Text>
             <Text style={styles.daysTogetherText}>together</Text>
         </View>
-        <View style={styles.anniversaryPhoto}>
-            <HeartIcon size={24} color="#FFFFFF" />
-            <Text style={styles.anniversaryText}>Anniversary</Text>
-        </View>
     </View>
 );
 
 const ScribbleCard = () => (
-    <View style={styles.scribbleCard}>
-        <BrushIcon />
-        <Svg width="100%" height="100%" viewBox="0 0 260 120" style={styles.scribbleLine}>
-            <Path
-                d="M18 74 C42 20 77 104 106 53 S174 38 197 77 S236 93 248 39"
-                stroke="#FF758F"
-                strokeWidth={9}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
+    <View style={styles.lockWidgetTile}>
+        <View style={styles.scribbleCard}>
+            <LottieView
+                source={require('../../assets/canvas.lottie')}
+                autoPlay
+                loop
+                style={styles.scribbleCardLottie}
             />
-            <Path
-                d="M45 88 C87 44 130 105 177 52"
-                stroke="#8B5CF6"
-                strokeWidth={7}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-            />
-        </Svg>
+        </View>
+        <Text style={styles.widgetTileName}>Scribble</Text>
+        <Text style={styles.widgetDescription}>Send doodles to home screen</Text>
     </View>
 );
 
@@ -212,6 +346,55 @@ export const WidgetsLibraryScreen = ({
         }
         return Math.max(0, Math.floor((Date.now() - start.getTime()) / 86400000));
     }, [relationshipStartDate]);
+
+    const [locationSyncing, setLocationSyncing] = useState(false);
+    const [distanceModalVisible, setDistanceModalVisible] = useState(false);
+    const [customAlert, setCustomAlert] = useState(null);
+
+    const handleConfirmLocation = useCallback(async () => {
+        if (locationSyncing) return;
+        setLocationSyncing(true);
+        const isAlreadyEnabled = userData?.locationSharingEnabled === true;
+        try {
+            const result = await syncDistanceWidgetLocation({
+                user: userData,
+                enableSharing: true,
+            });
+            setDistanceModalVisible(false);
+            if (result?.skipped) {
+                setCustomAlert({
+                    title: 'Location Saved',
+                    message: 'Your initials have been saved to the widget. Full distance tracking requires location access.',
+                    type: 'info',
+                });
+            } else {
+                setCustomAlert({
+                    title: isAlreadyEnabled ? 'Location Synced ✓' : 'Location Enabled ✓',
+                    message: isAlreadyEnabled
+                        ? 'Your latest coordinates have been synced and the widget updated!'
+                        : 'Distance widget is now active! Add it to your lock screen.',
+                    type: 'success',
+                });
+            }
+        } catch (error) {
+            setDistanceModalVisible(false);
+            setCustomAlert({
+                title: 'Could Not Enable',
+                message: error?.message || 'Failed to enable location sharing. Please try again.',
+                type: 'error',
+            });
+        } finally {
+            setLocationSyncing(false);
+        }
+    }, [userData, locationSyncing]);
+
+    const handleEnableDistance = useCallback(() => {
+        if (userData?.locationSharingEnabled === true) {
+            handleConfirmLocation();
+        } else {
+            setDistanceModalVisible(true);
+        }
+    }, [userData?.locationSharingEnabled, handleConfirmLocation]);
 
     return (
         <View style={styles.root}>
@@ -238,33 +421,170 @@ export const WidgetsLibraryScreen = ({
                     </View>
 
                     <Text style={styles.sectionTitle}>{primaryWidgetSectionTitle}</Text>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.horizontalShelf}
-                    >
+                    <View style={styles.widgetGrid}>
                         <LockDaysCard days={daysTogether} />
                         <LockCountdownCard relationshipStartDate={relationshipStartDate} />
-                        <LockDistanceCard />
-                    </ScrollView>
+                        <LockDistanceCard
+                            onPress={handleEnableDistance}
+                            isEnabled={userData?.locationSharingEnabled === true}
+                        />
+                    </View>
 
                     {showSeparateHomeSectionTitle && (
                         <Text style={[styles.sectionTitle, styles.homeTitle]}>Home screen</Text>
                     )}
-                    <Text style={[
-                        styles.subsectionTitle,
-                        !showSeparateHomeSectionTitle && styles.subsectionTitleAfterShelf,
-                    ]}>Days Together</Text>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.horizontalShelf}
-                    >
-                        <DaysTogetherCard days={daysTogether} />
+                    <View style={styles.widgetGrid}>
                         <ScribbleCard />
-                    </ScrollView>
+                    </View>
                 </ScrollView>
             </LinearGradient>
+
+            {/* Distance Permission Modal */}
+            <Modal
+                visible={distanceModalVisible}
+                transparent
+                animationType="fade"
+                statusBarTranslucent
+                onRequestClose={() => !locationSyncing && setDistanceModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        <LinearGradient
+                            colors={['#D4B3FF', '#9CCBFF', '#FFB3C8']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.modalIconCircle}
+                        >
+                            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"
+                                    fill="#FFFFFF"
+                                />
+                            </Svg>
+                        </LinearGradient>
+
+                        <Text style={styles.modalTitle}>Enable Location Sharing</Text>
+                        <Text style={styles.modalBody}>
+                            To show the distance between you and your partner on your lock screen widget, we need access to your location.
+                        </Text>
+                        <Text style={styles.modalNote}>
+                            Your partner will also need to enable this for the widget to work.
+                        </Text>
+
+                        <TouchableOpacity
+                            style={styles.modalEnableButton}
+                            onPress={handleConfirmLocation}
+                            activeOpacity={0.85}
+                            disabled={locationSyncing}
+                        >
+                            <LinearGradient
+                                colors={['#C084FC', '#8B5CF6']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.modalEnableGradient}
+                            >
+                                {locationSyncing ? (
+                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                ) : (
+                                    <Text style={styles.modalEnableText}>Enable Location</Text>
+                                )}
+                            </LinearGradient>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.modalCancelButton}
+                            onPress={() => setDistanceModalVisible(false)}
+                            activeOpacity={0.7}
+                            disabled={locationSyncing}
+                        >
+                            <Text style={styles.modalCancelText}>Not Now</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Custom Alert Modal */}
+            <Modal
+                visible={customAlert !== null}
+                transparent
+                animationType="fade"
+                statusBarTranslucent
+                onRequestClose={() => setCustomAlert(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        {customAlert?.type === 'success' && (
+                            <LinearGradient
+                                colors={['#56C596', '#329D9C']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.modalIconCircle}
+                            >
+                                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                                        fill="#FFFFFF"
+                                    />
+                                </Svg>
+                            </LinearGradient>
+                        )}
+                        {customAlert?.type === 'info' && (
+                            <LinearGradient
+                                colors={['#FFB3C8', '#FF758F']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.modalIconCircle}
+                            >
+                                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+                                        fill="#FFFFFF"
+                                    />
+                                </Svg>
+                            </LinearGradient>
+                        )}
+                        {customAlert?.type === 'error' && (
+                            <LinearGradient
+                                colors={['#FF7B7B', '#FF4E50']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.modalIconCircle}
+                            >
+                                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
+                                        fill="#FFFFFF"
+                                    />
+                                </Svg>
+                            </LinearGradient>
+                        )}
+
+                        <Text style={styles.modalTitle}>{customAlert?.title}</Text>
+                        <Text style={styles.modalBody}>{customAlert?.message}</Text>
+
+                        <TouchableOpacity
+                            style={styles.modalEnableButton}
+                            onPress={() => setCustomAlert(null)}
+                            activeOpacity={0.85}
+                        >
+                            <LinearGradient
+                                colors={
+                                    customAlert?.type === 'success'
+                                        ? ['#56C596', '#329D9C']
+                                        : customAlert?.type === 'info'
+                                        ? ['#FFB3C8', '#FF758F']
+                                        : ['#FF7B7B', '#FF4E50']
+                                }
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.modalEnableGradient}
+                            >
+                                <Text style={styles.modalEnableText}>Got it</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -328,8 +648,14 @@ const styles = StyleSheet.create({
         paddingRight: 4,
         gap: 10,
     },
+    widgetGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+        marginBottom: 4,
+    },
     lockWidgetTile: {
-        width: 122,
+        width: '42%',
         padding: 8,
         borderRadius: 18,
         backgroundColor: 'rgba(255,255,255,0.82)',
@@ -342,7 +668,20 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     lockWidgetTileWide: {
-        width: 202,
+        width: '54%',
+        padding: 8,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.82)',
+        borderWidth: 1,
+        borderColor: 'rgba(192,132,252,0.16)',
+        shadowColor: '#C084FC',
+        shadowOpacity: 0.12,
+        shadowOffset: { width: 0, height: 6 },
+        shadowRadius: 14,
+        elevation: 3,
+    },
+    lockWidgetTileFull: {
+        width: '100%',
         padding: 8,
         borderRadius: 18,
         backgroundColor: 'rgba(255,255,255,0.82)',
@@ -355,14 +694,14 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     lockPhonePreview: {
-        height: 136,
+        height: 170,
         borderRadius: 16,
         overflow: 'hidden',
         alignItems: 'center',
         paddingTop: 12,
     },
     lockPhonePreviewWide: {
-        height: 136,
+        height: 170,
         borderRadius: 16,
         overflow: 'hidden',
         alignItems: 'center',
@@ -370,16 +709,29 @@ const styles = StyleSheet.create({
     },
     lockMockDate: {
         color: '#FFFFFF',
-        fontSize: 10,
+        fontSize: 13,
         fontWeight: '800',
     },
     lockMockTime: {
         marginTop: 1,
         color: 'rgba(255,255,255,0.92)',
-        fontSize: 24,
+        fontSize: 36,
         fontWeight: '900',
         letterSpacing: 0,
-        lineHeight: 29,
+        lineHeight: 41,
+    },
+    lockMockDateWide: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '800',
+    },
+    lockMockTimeWide: {
+        marginTop: 1,
+        color: 'rgba(255,255,255,0.92)',
+        fontSize: 48,
+        fontWeight: '900',
+        letterSpacing: 0,
+        lineHeight: 54,
     },
     widgetTileName: {
         marginTop: 8,
@@ -412,7 +764,7 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     accessoryRect: {
-        marginTop: 7,
+        marginTop: 1,
         width: 154,
         minHeight: 44,
         borderRadius: 13,
@@ -425,13 +777,10 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
     },
     distanceAccessoryRect: {
-        marginTop: 7,
+        marginTop: 1,
         width: 154,
         minHeight: 48,
         borderRadius: 13,
-        backgroundColor: 'rgba(46,30,60,0.34)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.24)',
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 8,
@@ -443,9 +792,19 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: 0,
     },
+    distanceTitleContainer: {
+        height: 16,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+    },
+    distanceTitleAbsolute: {
+        position: 'absolute',
+    },
     distanceAccessoryRow: {
         marginTop: 4,
-        width: 128,
+        width: 138,
         height: 34,
         alignItems: 'center',
         justifyContent: 'center',
@@ -482,7 +841,8 @@ const styles = StyleSheet.create({
     miniHeartWrap: {
         position: 'absolute',
         top: 7,
-        left: 53,
+        left: '50%',
+        marginLeft: -11,
         width: 22,
         height: 19,
     },
@@ -563,7 +923,7 @@ const styles = StyleSheet.create({
         marginLeft: -8,
     },
     daysTogetherCard: {
-        width: 250,
+        width: '57%',
         height: 128,
         borderRadius: 18,
         overflow: 'hidden',
@@ -573,7 +933,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
     },
     daysLeftPane: {
-        width: 104,
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -593,36 +953,116 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         letterSpacing: 0,
     },
-    anniversaryPhoto: {
-        flex: 1,
-        margin: 10,
-        borderRadius: 14,
-        backgroundColor: colors.primary,
-        overflow: 'hidden',
-        alignItems: 'flex-start',
-        justifyContent: 'flex-end',
-        padding: 10,
-    },
-    anniversaryText: {
-        color: '#FFFFFF',
-        fontSize: 15,
-        fontWeight: '900',
-        letterSpacing: 0,
-    },
+
     scribbleCard: {
-        width: 162,
-        height: 128,
+        width: '100%',
+        aspectRatio: 1,
         borderRadius: 18,
         backgroundColor: 'rgba(255,255,255,0.88)',
         overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    scribbleLine: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 45,
+    scribbleCardLottie: {
+        width: '88%',
+        height: '88%',
+    },
+    widgetPermissionHint: {
+        marginTop: 2,
+        color: '#8B5CF6',
+        fontSize: 9,
+        fontWeight: '700',
+        letterSpacing: 0.2,
+    },
+    widgetPermissionEnabled: {
+        color: '#10B981',
+    },
+    widgetDescription: {
+        marginTop: 2,
+        color: '#766F9B',
+        fontSize: 9,
+        fontWeight: '700',
+        letterSpacing: 0.2,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(30, 15, 40, 0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 30,
+    },
+    modalCard: {
+        width: '100%',
+        maxWidth: 320,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        alignItems: 'center',
+        paddingTop: 28,
+        paddingBottom: 20,
+        paddingHorizontal: 24,
+        shadowColor: '#8B5CF6',
+        shadowOpacity: 0.18,
+        shadowOffset: { width: 0, height: 12 },
+        shadowRadius: 28,
+        elevation: 12,
+    },
+    modalIconCircle: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    modalTitle: {
+        color: '#2E1E3C',
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: 0,
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    modalBody: {
+        color: '#5A4670',
+        fontSize: 13,
+        fontWeight: '500',
+        lineHeight: 19,
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    modalNote: {
+        color: '#9B8AAE',
+        fontSize: 11,
+        fontWeight: '600',
+        textAlign: 'center',
+        marginBottom: 22,
+    },
+    modalEnableButton: {
+        width: '100%',
+        height: 48,
+        borderRadius: 14,
+        overflow: 'hidden',
+        marginBottom: 10,
+    },
+    modalEnableGradient: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalEnableText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '800',
+        letterSpacing: 0.3,
+    },
+    modalCancelButton: {
+        paddingVertical: 10,
+        alignItems: 'center',
+    },
+    modalCancelText: {
+        color: '#9B8AAE',
+        fontSize: 14,
+        fontWeight: '700',
     },
 });
 

@@ -147,57 +147,159 @@ class ScribbleWidgetProvider : AppWidgetProvider() {
     private fun parseSvgPath(pathString: String, scale: Float): Path {
         val path = Path()
         val tokens = tokenizePath(pathString)
-        
+
         var i = 0
         var currentX = 0f
         var currentY = 0f
-        
+        var lastCommand = ' '
+
         while (i < tokens.size) {
             val token = tokens[i]
-            i++
-            
-            when (token) {
-                "M", "m" -> {
+            val isCommand = token.length == 1 && token[0].isLetter()
+
+            val command: Char
+            if (isCommand) {
+                command = token[0]
+                lastCommand = command
+                i++
+            } else {
+                // Implicit repeat of the last command
+                // After M, implicit commands become L (SVG spec)
+                command = when (lastCommand) {
+                    'M' -> 'L'
+                    'm' -> 'l'
+                    else -> lastCommand
+                }
+            }
+
+            when (command) {
+                'M' -> {
                     if (i + 1 < tokens.size) {
-                        val x = tokens[i].toFloatOrNull() ?: 0f
-                        val y = tokens[i + 1].toFloatOrNull() ?: 0f
-                        if (token == "m") {
-                            currentX += x * scale
-                            currentY += y * scale
-                        } else {
-                            currentX = x * scale
-                            currentY = y * scale
-                        }
+                        currentX = (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        currentY = (tokens[i + 1].toFloatOrNull() ?: 0f) * scale
                         path.moveTo(currentX, currentY)
                         i += 2
                     }
                 }
-                "L", "l" -> {
+                'm' -> {
                     if (i + 1 < tokens.size) {
-                        val x = tokens[i].toFloatOrNull() ?: 0f
-                        val y = tokens[i + 1].toFloatOrNull() ?: 0f
-                        if (token == "l") {
-                            currentX += x * scale
-                            currentY += y * scale
-                        } else {
-                            currentX = x * scale
-                            currentY = y * scale
-                        }
+                        currentX += (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        currentY += (tokens[i + 1].toFloatOrNull() ?: 0f) * scale
+                        path.moveTo(currentX, currentY)
+                        i += 2
+                    }
+                }
+                'L' -> {
+                    if (i + 1 < tokens.size) {
+                        currentX = (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        currentY = (tokens[i + 1].toFloatOrNull() ?: 0f) * scale
                         path.lineTo(currentX, currentY)
                         i += 2
                     }
                 }
-                "Z", "z" -> path.close()
+                'l' -> {
+                    if (i + 1 < tokens.size) {
+                        currentX += (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        currentY += (tokens[i + 1].toFloatOrNull() ?: 0f) * scale
+                        path.lineTo(currentX, currentY)
+                        i += 2
+                    }
+                }
+                'H' -> {
+                    if (i < tokens.size) {
+                        currentX = (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        path.lineTo(currentX, currentY)
+                        i += 1
+                    }
+                }
+                'h' -> {
+                    if (i < tokens.size) {
+                        currentX += (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        path.lineTo(currentX, currentY)
+                        i += 1
+                    }
+                }
+                'V' -> {
+                    if (i < tokens.size) {
+                        currentY = (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        path.lineTo(currentX, currentY)
+                        i += 1
+                    }
+                }
+                'v' -> {
+                    if (i < tokens.size) {
+                        currentY += (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        path.lineTo(currentX, currentY)
+                        i += 1
+                    }
+                }
+                'Q' -> {
+                    if (i + 3 < tokens.size) {
+                        val cx = (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        val cy = (tokens[i + 1].toFloatOrNull() ?: 0f) * scale
+                        val ex = (tokens[i + 2].toFloatOrNull() ?: 0f) * scale
+                        val ey = (tokens[i + 3].toFloatOrNull() ?: 0f) * scale
+                        path.quadTo(cx, cy, ex, ey)
+                        currentX = ex
+                        currentY = ey
+                        i += 4
+                    }
+                }
+                'q' -> {
+                    if (i + 3 < tokens.size) {
+                        val cx = currentX + (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        val cy = currentY + (tokens[i + 1].toFloatOrNull() ?: 0f) * scale
+                        val ex = currentX + (tokens[i + 2].toFloatOrNull() ?: 0f) * scale
+                        val ey = currentY + (tokens[i + 3].toFloatOrNull() ?: 0f) * scale
+                        path.quadTo(cx, cy, ex, ey)
+                        currentX = ex
+                        currentY = ey
+                        i += 4
+                    }
+                }
+                'C' -> {
+                    if (i + 5 < tokens.size) {
+                        val c1x = (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        val c1y = (tokens[i + 1].toFloatOrNull() ?: 0f) * scale
+                        val c2x = (tokens[i + 2].toFloatOrNull() ?: 0f) * scale
+                        val c2y = (tokens[i + 3].toFloatOrNull() ?: 0f) * scale
+                        val ex = (tokens[i + 4].toFloatOrNull() ?: 0f) * scale
+                        val ey = (tokens[i + 5].toFloatOrNull() ?: 0f) * scale
+                        path.cubicTo(c1x, c1y, c2x, c2y, ex, ey)
+                        currentX = ex
+                        currentY = ey
+                        i += 6
+                    }
+                }
+                'c' -> {
+                    if (i + 5 < tokens.size) {
+                        val c1x = currentX + (tokens[i].toFloatOrNull() ?: 0f) * scale
+                        val c1y = currentY + (tokens[i + 1].toFloatOrNull() ?: 0f) * scale
+                        val c2x = currentX + (tokens[i + 2].toFloatOrNull() ?: 0f) * scale
+                        val c2y = currentY + (tokens[i + 3].toFloatOrNull() ?: 0f) * scale
+                        val ex = currentX + (tokens[i + 4].toFloatOrNull() ?: 0f) * scale
+                        val ey = currentY + (tokens[i + 5].toFloatOrNull() ?: 0f) * scale
+                        path.cubicTo(c1x, c1y, c2x, c2y, ex, ey)
+                        currentX = ex
+                        currentY = ey
+                        i += 6
+                    }
+                }
+                'Z', 'z' -> path.close()
+                else -> {
+                    // Unknown command, skip the token
+                    i++
+                }
             }
         }
-        
+
         return path
     }
 
     private fun tokenizePath(pathString: String): List<String> {
         val tokens = mutableListOf<String>()
         var current = StringBuilder()
-        
+
         for (char in pathString) {
             when {
                 char.isLetter() -> {
@@ -221,11 +323,11 @@ class ScribbleWidgetProvider : AppWidgetProvider() {
                 else -> current.append(char)
             }
         }
-        
+
         if (current.isNotEmpty()) {
             tokens.add(current.toString())
         }
-        
+
         return tokens
     }
 }

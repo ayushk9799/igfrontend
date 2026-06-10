@@ -1,10 +1,15 @@
 package com.thousandways.love.widget
 
+import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Looper
+import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.*
+import com.google.android.gms.location.*
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -195,6 +200,117 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("ERROR", "Failed to clear distance widget data: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Request current device location using FusedLocationProviderClient.
+     * Mirrors iOS ScribbleWidgetBridge.requestCurrentLocation behavior.
+     * Returns a map with { latitude, longitude, accuracy, timestamp }.
+     */
+    @ReactMethod
+    fun requestCurrentLocation(promise: Promise) {
+        // Check if location permissions are granted
+        val hasFine = ContextCompat.checkSelfPermission(
+            reactContext,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val hasCoarse = ContextCompat.checkSelfPermission(
+            reactContext,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasFine && !hasCoarse) {
+            promise.reject(
+                "LOCATION_DENIED",
+                "Location permission is not granted. Please enable location access in Settings."
+            )
+            return
+        }
+
+        try {
+            val fusedClient = LocationServices.getFusedLocationProviderClient(reactContext)
+
+            // First try getLastLocation for a quick cached result
+            fusedClient.lastLocation
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        val result = Arguments.createMap().apply {
+                            putDouble("latitude", location.latitude)
+                            putDouble("longitude", location.longitude)
+                            putDouble("accuracy", location.accuracy.toDouble())
+                            putString("timestamp", java.text.SimpleDateFormat(
+                                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                                java.util.Locale.US
+                            ).apply {
+                                timeZone = java.util.TimeZone.getTimeZone("UTC")
+                            }.format(java.util.Date(location.time)))
+                        }
+                        promise.resolve(result)
+                    } else {
+                        // No cached location — request a fresh one
+                        requestFreshLocation(fusedClient, promise)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    // lastLocation failed — fall back to a fresh request
+                    requestFreshLocation(fusedClient, promise)
+                }
+        } catch (e: Exception) {
+            promise.reject("LOCATION_ERROR", "Failed to initialize location client: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Request a fresh location fix using a one-shot location request.
+     * Called when getLastLocation() returns null (common when GPS hasn't been used recently).
+     */
+    private fun requestFreshLocation(fusedClient: FusedLocationProviderClient, promise: Promise) {
+        try {
+            val locationRequest = LocationRequest.Builder(
+                Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                1000L // interval (irrelevant for single request, but required)
+            )
+                .setMaxUpdates(1)
+                .setDurationMillis(15000L) // 15 second timeout
+                .build()
+
+            val callback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    fusedClient.removeLocationUpdates(this)
+                    val location = result.lastLocation
+                    if (location != null) {
+                        val map = Arguments.createMap().apply {
+                            putDouble("latitude", location.latitude)
+                            putDouble("longitude", location.longitude)
+                            putDouble("accuracy", location.accuracy.toDouble())
+                            putString("timestamp", java.text.SimpleDateFormat(
+                                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                                java.util.Locale.US
+                            ).apply {
+                                timeZone = java.util.TimeZone.getTimeZone("UTC")
+                            }.format(java.util.Date(location.time)))
+                        }
+                        promise.resolve(map)
+                    } else {
+                        promise.reject(
+                            "LOCATION_UNAVAILABLE",
+                            "Current location is unavailable. Please try again."
+                        )
+                    }
+                }
+            }
+
+            fusedClient.requestLocationUpdates(
+                locationRequest,
+                callback,
+                Looper.getMainLooper()
+            )
+        } catch (e: SecurityException) {
+            promise.reject("LOCATION_DENIED", "Location permission was revoked: ${e.message}", e)
+        } catch (e: Exception) {
+            promise.reject("LOCATION_ERROR", "Failed to request location: ${e.message}", e)
         }
     }
 

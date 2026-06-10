@@ -44,15 +44,6 @@ export const syncDistanceWidgetLocation = async ({
     const userId = getUserId(activeUser);
     const identity = getDistanceWidgetIdentity(activeUser);
 
-    if (Platform.OS === 'android') {
-        await saveDistanceWidgetData({
-            distanceKm: null,
-            isTogether: false,
-            ...identity,
-        });
-        return { skipped: true, reason: 'android_location_not_available' };
-    }
-
     if (!userId) {
         return { skipped: true, reason: 'missing_user' };
     }
@@ -63,7 +54,7 @@ export const syncDistanceWidgetLocation = async ({
 
     const { ScribbleWidgetBridge } = NativeModules;
     if (!ScribbleWidgetBridge?.requestCurrentLocation) {
-        throw new Error('Distance widget location bridge is not available. Rebuild the iOS app.');
+        throw new Error('Distance widget location bridge is not available. Rebuild the app.');
     }
 
     const location = await ScribbleWidgetBridge.requestCurrentLocation();
