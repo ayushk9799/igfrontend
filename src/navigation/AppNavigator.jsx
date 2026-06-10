@@ -63,7 +63,7 @@ const getMoodUpdateMetadata = () => {
 };
 
 const saveTogetherWidgetStartDate = async (relationshipStartDate) => {
-    if (Platform.OS !== 'ios') return;
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
 
     const { ScribbleWidgetBridge } = NativeModules;
     if (!ScribbleWidgetBridge) {
@@ -143,7 +143,7 @@ export const AppNavigator = () => {
     }, [userData]);
 
     const syncDistanceWidgetSilently = useCallback(async ({ force = false } = {}) => {
-        if (Platform.OS !== 'ios') return;
+        if (!['ios', 'android'].includes(Platform.OS)) return;
 
         const storedUser = getUser();
         const activeUser = {
@@ -152,7 +152,8 @@ export const AppNavigator = () => {
         };
         const userId = activeUser?._id || activeUser?.id;
 
-        if (!userId || activeUser.locationSharingEnabled !== true) return;
+        if (!userId) return;
+        if (Platform.OS === 'ios' && activeUser.locationSharingEnabled !== true) return;
         if (distanceSyncInFlightRef.current) return;
 
         const now = Date.now();

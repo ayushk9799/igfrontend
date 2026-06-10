@@ -1,6 +1,14 @@
 <resources>
     <string name="app_name">Penguin</string>
     <string name="default_notification_channel_id">partner-updates</string>
+    <string name="widget_scribble_label">Scribble</string>
     <string name="widget_description">See doodles from your loved one</string>
     <string name="widget_scribble_description">Partner scribble drawing</string>
+    <string name="together_days_widget_label">Days Together</string>
+    <string name="together_countdown_widget_label">Time Together</string>
+    <string name="distance_widget_label">Our Distance</string>
+    <string name="relationship_widget_description">Relationship widget preview</string>
+    <string name="together_days_widget_description">Show your days together</string>
+    <string name="together_countdown_widget_description">Show your time together</string>
+    <string name="distance_widget_description">Show your distance from your partner</string>
 </resources>

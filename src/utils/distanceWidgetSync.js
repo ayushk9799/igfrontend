@@ -4,8 +4,20 @@ import { getUser, updateUser as updateStoredUser } from './authStorage';
 
 const getUserId = (user) => user?._id || user?.id || null;
 
+const getInitial = (...values) => {
+    const value = values.find((item) => typeof item === 'string' && item.trim().length > 0);
+    return value?.trim()?.charAt(0)?.toUpperCase() || '?';
+};
+
+const getDistanceWidgetIdentity = (user = {}) => ({
+    userInitial: getInitial(user.nickname, user.name, user.email),
+    partnerInitial: getInitial(user.partnerNickname, user.partnerUsername, user.partnerName),
+    userName: user.nickname || user.name || '',
+    partnerName: user.partnerNickname || user.partnerUsername || user.partnerName || '',
+});
+
 export const saveDistanceWidgetData = async (distanceData) => {
-    if (Platform.OS !== 'ios') {
+    if (!['ios', 'android'].includes(Platform.OS)) {
         return;
     }
 
@@ -24,12 +36,23 @@ export const syncDistanceWidgetLocation = async ({
     user,
     enableSharing = false,
 } = {}) => {
-    if (Platform.OS !== 'ios') {
-        return { skipped: true, reason: 'ios_only' };
+    if (!['ios', 'android'].includes(Platform.OS)) {
+        return { skipped: true, reason: 'unsupported_platform' };
     }
 
     const activeUser = user || getUser();
     const userId = getUserId(activeUser);
+    const identity = getDistanceWidgetIdentity(activeUser);
+
+    if (Platform.OS === 'android') {
+        await saveDistanceWidgetData({
+            distanceKm: null,
+            isTogether: false,
+            ...identity,
+        });
+        return { skipped: true, reason: 'android_location_not_available' };
+    }
+
     if (!userId) {
         return { skipped: true, reason: 'missing_user' };
     }
@@ -69,7 +92,11 @@ export const syncDistanceWidgetLocation = async ({
         throw new Error(distanceJson.error || 'Failed to fetch partner distance.');
     }
 
-    await saveDistanceWidgetData(distanceJson.data);
+    await saveDistanceWidgetData({
+        ...distanceJson.data,
+        userInitial: distanceJson.data?.userInitial || identity.userInitial,
+        partnerInitial: distanceJson.data?.partnerInitial || identity.partnerInitial,
+    });
 
     return {
         user: locationJson.user || null,

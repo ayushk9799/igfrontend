@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import com.facebook.react.bridge.*
 import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * ScribbleWidgetBridge - React Native native module for Android widget
@@ -46,8 +47,7 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
                 apply()
             }
             
-            // Trigger widget refresh
-            refreshWidgetInternal()
+            refreshScribbleWidgetInternal()
             
             promise.resolve(true)
         } catch (e: Exception) {
@@ -61,14 +61,14 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun refreshWidget(promise: Promise) {
         try {
-            refreshWidgetInternal()
+            refreshAllWidgetsInternal()
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("ERROR", "Failed to refresh widget: ${e.message}", e)
         }
     }
 
-    private fun refreshWidgetInternal() {
+    private fun refreshScribbleWidgetInternal() {
         val appWidgetManager = AppWidgetManager.getInstance(reactContext)
         val componentName = ComponentName(reactContext, ScribbleWidgetProvider::class.java)
         val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
@@ -79,6 +79,122 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
             }
             reactContext.sendBroadcast(intent)
+        }
+    }
+
+    private fun refreshProvider(providerClass: Class<*>) {
+        val appWidgetManager = AppWidgetManager.getInstance(reactContext)
+        val componentName = ComponentName(reactContext, providerClass)
+        val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+
+        if (appWidgetIds.isNotEmpty()) {
+            val intent = Intent(reactContext, providerClass).apply {
+                action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
+            }
+            reactContext.sendBroadcast(intent)
+        }
+    }
+
+    private fun refreshRelationshipWidgetsInternal() {
+        refreshProvider(TogetherDaysWidgetProvider::class.java)
+        refreshProvider(TogetherCountdownWidgetProvider::class.java)
+        refreshProvider(DistanceWidgetProvider::class.java)
+    }
+
+    private fun refreshAllWidgetsInternal() {
+        refreshScribbleWidgetInternal()
+        refreshRelationshipWidgetsInternal()
+    }
+
+    @ReactMethod
+    fun saveTogetherStartDate(startDate: String, promise: Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences(
+                ScribbleWidgetProvider.PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+
+            prefs.edit()
+                .putString(RelationshipWidgetRenderer.KEY_TOGETHER_START_DATE, startDate)
+                .apply()
+
+            refreshProvider(TogetherDaysWidgetProvider::class.java)
+            refreshProvider(TogetherCountdownWidgetProvider::class.java)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to save together date: ${e.message}", e)
+        }
+    }
+
+    @ReactMethod
+    fun clearTogetherStartDate(promise: Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences(
+                ScribbleWidgetProvider.PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+
+            prefs.edit()
+                .remove(RelationshipWidgetRenderer.KEY_TOGETHER_START_DATE)
+                .apply()
+
+            refreshProvider(TogetherDaysWidgetProvider::class.java)
+            refreshProvider(TogetherCountdownWidgetProvider::class.java)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to clear together date: ${e.message}", e)
+        }
+    }
+
+    @ReactMethod
+    fun saveDistanceWidgetData(distanceData: ReadableMap, promise: Promise) {
+        try {
+            val json = JSONObject()
+            val iterator = distanceData.keySetIterator()
+            while (iterator.hasNextKey()) {
+                val key = iterator.nextKey()
+                when (distanceData.getType(key)) {
+                    ReadableType.Null -> json.put(key, JSONObject.NULL)
+                    ReadableType.Boolean -> json.put(key, distanceData.getBoolean(key))
+                    ReadableType.Number -> json.put(key, distanceData.getDouble(key))
+                    ReadableType.String -> json.put(key, distanceData.getString(key))
+                    else -> Unit
+                }
+            }
+
+            val prefs = reactContext.getSharedPreferences(
+                ScribbleWidgetProvider.PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+
+            prefs.edit()
+                .putString(RelationshipWidgetRenderer.KEY_DISTANCE_DATA, json.toString())
+                .apply()
+
+            refreshProvider(DistanceWidgetProvider::class.java)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to save distance widget data: ${e.message}", e)
+        }
+    }
+
+    @ReactMethod
+    fun clearDistanceWidgetData(promise: Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences(
+                ScribbleWidgetProvider.PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+
+            prefs.edit()
+                .remove(RelationshipWidgetRenderer.KEY_DISTANCE_DATA)
+                .apply()
+
+            refreshProvider(DistanceWidgetProvider::class.java)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to clear distance widget data: ${e.message}", e)
         }
     }
 
