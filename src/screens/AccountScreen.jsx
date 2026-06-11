@@ -70,7 +70,14 @@ const ChevronRight = ({ color = '#FFB5D0' }) => (
 
 const BackArrowIcon = () => (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-        <Path d="M19 12H5M12 19l-7-7 7-7" stroke="#050E3E" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M15 18 9 12l6-6" stroke="#2E1E3C" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+);
+
+const CheckCircleIcon = () => (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+        <Path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M22 4L12 14.01l-3-3" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
 );
 
@@ -429,22 +436,48 @@ export const AccountScreen = ({
                                 )}
                             </View>
                         ) : (
-                            <LinearGradient
-                                colors={['#FF5E97', '#FFA1C9']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.upgradePremiumGradient}
+                            <TouchableOpacity
+                                activeOpacity={0.9}
+                                onPress={onNavigateToPremium}
+                                style={styles.upgradeBannerWrap}
                             >
-                                <TouchableOpacity
-                                    style={styles.upgradePremiumInner}
-                                    onPress={onNavigateToPremium}
-                                    activeOpacity={0.85}
-                                >
-                                    <CrownIcon size={20} color="#FFFFFF" />
-                                    <Text style={styles.upgradePremiumText}>Upgrade to Premium</Text>
-                                    <Text style={styles.upgradePremiumArrow}>→</Text>
-                                </TouchableOpacity>
-                            </LinearGradient>
+                                <Image
+                                    source={require('../../assets/images/premium-banner.png')}
+                                    style={styles.upgradeBannerBg}
+                                    resizeMode="cover"
+                                />
+                                <View style={styles.upgradeBannerContent}>
+                                    <Text
+                                        numberOfLines={1}
+                                        adjustsFontSizeToFit
+                                        style={styles.upgradeBannerTitle}
+                                    >
+                                        Go Premium.{' '}
+                                        <Text style={styles.upgradeBannerTitleItalic}>Unlock More Love.</Text>
+                                    </Text>
+                                    <View style={styles.upgradeBannerFeature}>
+                                        <CheckCircleIcon />
+                                        <Text style={styles.upgradeBannerFeatureText}>Unlimited Widgets</Text>
+                                    </View>
+                                    <View style={styles.upgradeBannerFeature}>
+                                        <CheckCircleIcon />
+                                        <Text style={styles.upgradeBannerFeatureText}>Advanced Relationship Insights</Text>
+                                    </View>
+                                    <View style={styles.upgradeBannerFeature}>
+                                        <CheckCircleIcon />
+                                        <Text style={styles.upgradeBannerFeatureText}>Custom Themes & More</Text>
+                                    </View>
+                                </View>
+                                <LinearGradient
+                                    colors={['transparent', 'rgba(255,94,151,0.45)']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 0, y: 1 }}
+                                    style={styles.upgradeBannerBottomGradient}
+                                />
+                                <View style={styles.upgradeBannerArrowCircle}>
+                                    <Text style={styles.upgradeBannerArrowText}>→</Text>
+                                </View>
+                            </TouchableOpacity>
                         )}
                     </View>
 
@@ -796,31 +829,76 @@ const styles = StyleSheet.create({
         marginTop: 10,
         fontStyle: 'italic',
     },
-    upgradePremiumGradient: {
+    upgradeBannerWrap: {
         borderRadius: 20,
+        overflow: 'hidden',
         shadowColor: '#FF5E97',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
         elevation: 5,
+        minHeight: 115,
     },
-    upgradePremiumInner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 20,
+    upgradeBannerBg: {
+        ...StyleSheet.absoluteFillObject,
+        width: '100%',
+        height: '100%',
+        transform: [{ scale: 1.2 }, { translateX: 8 }],
     },
-    upgradePremiumText: {
-        flex: 1,
-        marginLeft: 10,
-        fontSize: 15,
+    upgradeBannerContent: {
+        paddingTop: 12,
+        paddingBottom: 10,
+        paddingLeft: '32%',
+        paddingRight: 14,
+    },
+    upgradeBannerTitle: {
+        fontSize: 14,
         fontWeight: '800',
         color: '#FFFFFF',
+        marginBottom: 6,
+        textShadowColor: 'rgba(0,0,0,0.15)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
     },
-    upgradePremiumArrow: {
-        fontSize: 18,
-        color: '#FFFFFF',
+    upgradeBannerTitleItalic: {
+        fontStyle: 'italic',
+    },
+    upgradeBannerFeature: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 3,
+    },
+    upgradeBannerFeatureText: {
+        fontSize: 11,
         fontWeight: '700',
+        color: '#FFFFFF',
+        marginLeft: 5,
+        textShadowColor: 'rgba(0,0,0,0.1)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+    },
+    upgradeBannerArrowCircle: {
+        position: 'absolute',
+        bottom: 12,
+        right: 14,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    upgradeBannerArrowText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: navy,
+    },
+    upgradeBannerBottomGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '20%',
     },
     allowNotifGradient: {
         borderRadius: 20,
@@ -890,20 +968,22 @@ const styles = StyleSheet.create({
         height: 44,
     },
     backButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderWidth: 1,
+        borderColor: '#F7DDEA',
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#FFB5D0',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowOpacity: 0.12,
+        shadowRadius: 10,
         elevation: 3,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: '800',
         color: navy,
         marginLeft: 14,
