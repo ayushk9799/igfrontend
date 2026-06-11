@@ -68,9 +68,9 @@ const ChevronRight = ({ color = '#FFB5D0' }) => (
     </Svg>
 );
 
-const CloseIcon = () => (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-        <Path d="M18 6L6 18M6 6l12 12" stroke="#050E3E" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+const BackArrowIcon = () => (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+        <Path d="M19 12H5M12 19l-7-7 7-7" stroke="#050E3E" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
 );
 
@@ -84,6 +84,14 @@ const CameraIcon = () => (
     <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
         <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         <Path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="#FFFFFF" strokeWidth={2} />
+    </Svg>
+);
+
+const PeopleIcon = () => (
+    <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+        <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
 );
 
@@ -149,6 +157,7 @@ export const AccountScreen = ({
     onNavigateToPremium,
     onWidgetsPress,
     onBack,
+    onEditRelationshipDate,
 }) => {
     const insets = useSafeAreaInsets();
 
@@ -274,82 +283,119 @@ export const AccountScreen = ({
                 <Sparkle x={width * 0.9} y={height * 0.4} size={7} delay={1200} />
 
                 {onBack && (
-                    <TouchableOpacity
-                        style={[styles.closeButton, { top: insets.top + 10 }]}
-                        onPress={onBack}
-                        activeOpacity={0.7}
-                    >
-                        <CloseIcon />
-                    </TouchableOpacity>
+                    <View style={[styles.headerBar, { marginTop: insets.top + 10 }]}>
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={onBack}
+                            activeOpacity={0.7}
+                        >
+                            <BackArrowIcon />
+                        </TouchableOpacity>
+                        <Text style={styles.headerTitle}>Settings</Text>
+                    </View>
                 )}
 
                 <ScrollView
                     style={styles.scrollView}
                     contentContainerStyle={[
                         styles.scrollContent,
-                        { paddingTop: insets.top + (onBack ? 64 : 16), paddingBottom: 0 }
+                        { paddingTop: onBack ? 16 : (insets.top + 16), paddingBottom: 0 }
                     ]}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Profile Header */}
-                    <View style={styles.profileSection}>
-                        <TouchableOpacity
-                            style={styles.avatarContainer}
-                            onPress={handleAvatarPress}
-                            disabled={isUploading}
-                            activeOpacity={0.8}
-                        >
-                            <View style={styles.avatarRing}>
-                                {localAvatar ? (
-                                    <Image
-                                        source={{ uri: localAvatar }}
-                                        style={styles.avatarImage}
-                                    />
-                                ) : (
-                                    <LinearGradient
-                                        colors={['#FFD1E3', '#FFA1C9']}
-                                        style={styles.avatarPlaceholder}
-                                    >
-                                        <Text style={styles.avatarInitial}>
-                                            {(userData.nickname || userData.email || '?')[0].toUpperCase()}
-                                        </Text>
-                                    </LinearGradient>
-                                )}
-                            </View>
-                            {/* Camera edit badge */}
-                            <View style={styles.avatarEditBadge}>
-                                {isUploading ? (
-                                    <ActivityIndicator size="small" color="#FFFFFF" />
-                                ) : (
-                                    <CameraIcon />
-                                )}
-                            </View>
-                            {/* Upload progress overlay */}
-                            {isUploading && (
-                                <View style={styles.uploadProgressOverlay}>
-                                    <Text style={styles.uploadProgressText}>
-                                        {Math.round(uploadProgress)}%
-                                    </Text>
+                    {/* Profile Header - only show when paired */}
+                    {hasPartner && (
+                        <View style={styles.profileSection}>
+                            <TouchableOpacity
+                                style={styles.avatarContainer}
+                                onPress={handleAvatarPress}
+                                disabled={isUploading}
+                                activeOpacity={0.8}
+                            >
+                                <View style={styles.avatarRing}>
+                                    {localAvatar ? (
+                                        <Image
+                                            source={{ uri: localAvatar }}
+                                            style={styles.avatarImage}
+                                        />
+                                    ) : (
+                                        <LinearGradient
+                                            colors={['#FFD1E3', '#FFA1C9']}
+                                            style={styles.avatarPlaceholder}
+                                        >
+                                            <Text style={styles.avatarInitial}>
+                                                {(userData.nickname || userData.email || '?')[0].toUpperCase()}
+                                            </Text>
+                                        </LinearGradient>
+                                    )}
                                 </View>
+                                {/* Camera edit badge */}
+                                <View style={styles.avatarEditBadge}>
+                                    {isUploading ? (
+                                        <ActivityIndicator size="small" color="#FFFFFF" />
+                                    ) : (
+                                        <CameraIcon />
+                                    )}
+                                </View>
+                                {/* Upload progress overlay */}
+                                {isUploading && (
+                                    <View style={styles.uploadProgressOverlay}>
+                                        <Text style={styles.uploadProgressText}>
+                                            {Math.round(uploadProgress)}%
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                            {userData.nickname && (
+                                <Text style={styles.profileNickname}>{userData.nickname}</Text>
                             )}
-                        </TouchableOpacity>
-                        {userData.nickname && (
-                            <Text style={styles.profileNickname}>{userData.nickname}</Text>
-                        )}
-                        <Text style={styles.profileEmail}>{userData.email || ''}</Text>
+                            <Text style={styles.profileEmail}>{userData.email || ''}</Text>
 
-                        {/* Partner Info - Only show when paired */}
-                        {hasPartner && (
-                            <View style={styles.partnerBadge}>
+                            <TouchableOpacity
+                                style={styles.partnerBadge}
+                                onPress={onEditRelationshipDate}
+                                activeOpacity={0.7}
+                            >
                                 <Text style={styles.partnerBadgeText}>
                                     💕 With {partnerNickname || partnerName}
                                 </Text>
                                 {relationshipDuration && (
                                     <Text style={styles.partnerDurationText}>{relationshipDuration}</Text>
                                 )}
-                            </View>
-                        )}
-                    </View>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* Connect Partner Card - show when no partner */}
+                    {!hasPartner && (
+                        <View style={styles.connectPartnerCard}>
+                            <LinearGradient
+                                colors={['#FF5E97', '#FFA1C9']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.connectPartnerIconCircle}
+                            >
+                                <PeopleIcon />
+                            </LinearGradient>
+                            <Text style={styles.connectPartnerTitle}>Connect with your partner</Text>
+                            <Text style={styles.connectPartnerSubtitle}>Unlock couple settings and features</Text>
+                            <LinearGradient
+                                colors={['#FF5E97', '#FFA1C9']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.connectPartnerButtonGradient}
+                            >
+                                <TouchableOpacity
+                                    onPress={onFindPartner}
+                                    activeOpacity={0.85}
+                                    style={styles.connectPartnerButton}
+                                >
+                                    <Text style={styles.connectPartnerButtonIcon}>💖</Text>
+                                    <Text style={styles.connectPartnerButtonText}>Pair with Partner</Text>
+                                </TouchableOpacity>
+                            </LinearGradient>
+                        </View>
+                    )}
 
                     {/* Premium Section */}
                     <View style={styles.menuSection}>
@@ -599,6 +645,66 @@ const styles = StyleSheet.create({
     menuSection: {
         marginBottom: isCompactHeight ? 18 : 24,
     },
+    connectPartnerCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 22,
+        paddingVertical: 28,
+        paddingHorizontal: 24,
+        alignItems: 'center',
+        marginBottom: isCompactHeight ? 18 : 24,
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 16,
+        elevation: 5,
+    },
+    connectPartnerIconCircle: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    connectPartnerTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: navy,
+        textAlign: 'center',
+        marginBottom: 6,
+    },
+    connectPartnerSubtitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#7380A1',
+        textAlign: 'center',
+        marginBottom: 22,
+    },
+    connectPartnerButtonGradient: {
+        width: '100%',
+        borderRadius: 16,
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 4,
+    },
+    connectPartnerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+    },
+    connectPartnerButtonIcon: {
+        fontSize: 16,
+        marginRight: 8,
+    },
+    connectPartnerButtonText: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#FFFFFF',
+    },
     sectionTitle: {
         fontSize: 12,
         fontWeight: '700',
@@ -777,21 +883,30 @@ const styles = StyleSheet.create({
         bottom: -70,
         right: -30,
     },
-    closeButton: {
-        position: 'absolute',
-        left: 20,
+    headerBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        height: 44,
+    },
+    backButton: {
         width: 38,
         height: 38,
         borderRadius: 19,
         backgroundColor: 'rgba(255, 255, 255, 0.8)',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 10,
         shadowColor: '#FFB5D0',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,
         elevation: 3,
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: navy,
+        marginLeft: 14,
     },
 });
 

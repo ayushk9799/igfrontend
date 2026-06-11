@@ -340,7 +340,7 @@ export default function PremiumScreen({ onBack }) {
                 {/* Heading details */}
                 <View style={styles.headerTextContainer}>
                     <Text style={styles.headingTitle}>
-                        Subscribe <Text style={styles.premiumText}>Premium</Text>
+                        Go <Text style={styles.premiumText}>Premium</Text>
                     </Text>
                     <Text style={styles.headingSubtitle}>
                         Get unlimited access to all features

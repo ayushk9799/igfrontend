@@ -1562,8 +1562,15 @@ export const AppNavigator = () => {
             case 'relationshipStartDate':
                 return (
                     <RelationshipStartDateScreen
+                        initialDate={userData?.relationshipStartDate || userData?.connectionDate}
                         onComplete={handleRelationshipStartDateComplete}
-                        onBack={() => navigate('partnerCode')}
+                        onBack={() => {
+                            if (userData?.relationshipStartDate) {
+                                navigate('home');
+                            } else {
+                                navigate('partnerCode');
+                            }
+                        }}
                     />
                 );
 
@@ -1619,6 +1626,7 @@ export const AppNavigator = () => {
                         }}
                         onAvatarPress={() => navigate('avatarSelection')}
                         onFindPartner={() => navigate('partnerCode')}
+                        onEditRelationshipDate={() => navigate('relationshipStartDate')}
                         onJigsawCreate={() => navigate('jigsawCreate')}
                         onJigsawPlay={(puzzleData) => {
                             dispatch(setSelectedPuzzle(puzzleData));

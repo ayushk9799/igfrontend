@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
 
+import * as Haptics from 'expo-haptics';
+
 const { width, height } = Dimensions.get('window');
 
 const AnimatedOnboardingScreen = ({ onComplete }) => {
@@ -49,6 +51,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
     }, [fadeAnim, floatAnim]);
 
     const handleNext = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         onComplete?.();
     };
 

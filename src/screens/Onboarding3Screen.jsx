@@ -19,6 +19,7 @@ import Svg, {
     Text as SvgText,
 } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
 
@@ -48,6 +49,11 @@ const Onboarding3Screen = ({ onComplete }) => {
             }),
         ]).start();
     }, [fadeAnim, phoneAnim]);
+
+    const handleComplete = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        onComplete?.();
+    };
 
     return (
         <View style={styles.container}>
@@ -202,7 +208,7 @@ const Onboarding3Screen = ({ onComplete }) => {
                             <Text style={styles.noteHeart}>♡</Text>
                         </View>
 
-                        <TouchableOpacity activeOpacity={0.86} onPress={onComplete} style={styles.nextButtonShadow}>
+                        <TouchableOpacity activeOpacity={0.86} onPress={handleComplete} style={styles.nextButtonShadow}>
                             <LinearGradient
                                 colors={['#FF5F78', '#FF3F5C']}
                                 start={{ x: 0, y: 0 }}

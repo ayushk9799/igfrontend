@@ -13,6 +13,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
 
@@ -75,6 +76,11 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
             ),
         ]).start();
     }, [fadeAnim, featureAnims]);
+
+    const handleNext = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        onComplete?.();
+    };
 
     return (
         <View style={styles.container}>
@@ -182,7 +188,7 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                     </Animated.View>
 
                     <View style={styles.footer}>
-                        <TouchableOpacity activeOpacity={0.86} onPress={onComplete} style={styles.nextButtonShadow}>
+                        <TouchableOpacity activeOpacity={0.86} onPress={handleNext} style={styles.nextButtonShadow}>
                             <LinearGradient
                                 colors={['#FF6B82', '#F45170']}
                                 start={{ x: 0, y: 0 }}
