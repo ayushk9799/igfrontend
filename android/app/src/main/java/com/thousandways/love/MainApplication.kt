@@ -10,6 +10,7 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.runtime.hermes.HermesInstance
 import com.thousandways.love.widget.ScribbleWidgetPackage
+import com.tron.ReactNativeWheelPickerPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -18,6 +19,7 @@ class MainApplication : Application(), ReactApplication {
       override fun getPackages() = PackageList(this@MainApplication).packages.apply {
         // Packages that cannot be autolinked yet can be added manually here
         add(ScribbleWidgetPackage())
+        add(ReactNativeWheelPickerPackage())
       }
       override fun getJSMainModuleName() = "index"
       override fun getUseDeveloperSupport() = BuildConfig.DEBUG
@@ -32,6 +34,7 @@ class MainApplication : Application(), ReactApplication {
       packageList = PackageList(this).packages.apply {
         // Packages that cannot be autolinked yet can be added manually here
         add(ScribbleWidgetPackage())
+        add(ReactNativeWheelPickerPackage())
       },
       jsRuntimeFactory = HermesInstance(),
       jsBundleAssetPath = "index.android.bundle",

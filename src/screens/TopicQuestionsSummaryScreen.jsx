@@ -87,6 +87,8 @@ export default function TopicQuestionsSummaryScreen({
     isPremium = false,
     hasPartner = false,
     onLinkPartner = () => { },
+    onAnswerQuestion,
+    onOpenQuestionChat,
 }) {
     const insets = useSafeAreaInsets();
     const [report, setReport] = useState(null);
@@ -157,8 +159,10 @@ export default function TopicQuestionsSummaryScreen({
     const renderAnswerPreview = (ans, formatType, isCurrentUser) => {
         if (ans === null || ans === undefined) {
             return (
-                <View style={styles.pendingBubble}>
-                    <Text style={styles.pendingText}>Waiting...</Text>
+                <View style={[styles.pendingBubble, isCurrentUser && styles.userPendingBubble]}>
+                    <Text style={[styles.pendingText, isCurrentUser && styles.userPendingText]}>
+                        {isCurrentUser ? 'Tap to answer ✍️' : 'Waiting...'}
+                    </Text>
                 </View>
             );
         }
@@ -251,8 +255,32 @@ export default function TopicQuestionsSummaryScreen({
 
                 {items.map((item, idx) => {
                     const isMatch = item.match === true;
+                    const isUnanswered = item.userAnswer === null || item.userAnswer === undefined;
+                    const hasUserAnswer = item.userAnswer !== null && item.userAnswer !== undefined;
+                    const hasPartnerAnswer = item.partnerAnswer !== null && item.partnerAnswer !== undefined;
+                    const shouldOpenChat = hasUserAnswer || hasPartnerAnswer || item.chatId;
+                    console.log("hasuser", hasUserAnswer);
+                    console.log("haspartner", hasPartnerAnswer);
+                    console.log("chatId", item.chatId);
+                    console.log("shouldOpenChat", shouldOpenChat);
+                    const handlePress = () => {
+                        if (shouldOpenChat) {
+                            console.log("item", item)
+                            onOpenQuestionChat?.(item);
+                            return;
+                        }
+                        if (isUnanswered) {
+                            onAnswerQuestion?.(item);
+                        }
+                    };
+
                     return (
-                        <View key={item.questionId || idx} style={styles.questionCard}>
+                        <TouchableOpacity
+                            key={item.questionId || idx}
+                            style={[styles.questionCard, isUnanswered && !shouldOpenChat && styles.unansweredQuestionCard]}
+                            onPress={handlePress}
+                            activeOpacity={0.82}
+                        >
                             <View style={styles.questionHeader}>
                                 <View style={[styles.indexBadge, { backgroundColor: setColors.bg }]}>
                                     <Text style={[styles.indexText, { color: setColors.primary }]}>
@@ -291,7 +319,7 @@ export default function TopicQuestionsSummaryScreen({
                                     {renderAnswerPreview(item.partnerAnswer, format, false)}
                                 </View>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     );
                 })}
 
@@ -685,6 +713,20 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.medium,
         fontStyle: 'italic',
         color: '#FF758F',
+    },
+    userPendingBubble: {
+        backgroundColor: '#FFF0F3',
+        borderColor: '#FF758F',
+        borderStyle: 'solid',
+    },
+    userPendingText: {
+        color: '#FF4568',
+        fontWeight: '700',
+        fontStyle: 'normal',
+    },
+    unansweredQuestionCard: {
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 117, 143, 0.3)',
     },
     heartContainer: {
         paddingHorizontal: spacing.sm,

@@ -73,6 +73,12 @@ export default function DailyChallengeScreen({
     fetchToday();
   }, [userId]); // Re-fetch when userId becomes available
 
+  useEffect(() => {
+    if (!hasPartner && onLinkPartner) {
+      onLinkPartner();
+    }
+  }, [hasPartner, onLinkPartner]);
+
   const fetchToday = async () => {
     try {
       // Get user's local date in YYYY-MM-DD format (avoids timezone issues with server's "today")

@@ -39,6 +39,7 @@ import { getApp } from '@react-native-firebase/app';
 import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener, checkNotificationPermission } from '../utils/pushNotifications';
 import { clearPendingLocalNotificationRoute, getInitialLocalNotification, getPendingLocalNotificationRoute, onLocalNotificationPress, showLocalNotification } from '../utils/localNotifications';
 import { API_BASE } from '../constants/Api';
+import { QuestionChatsV2Api } from '../api/questionsV2Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
 import { getDeviceInfo } from '../utils/deviceInfo';
 import { syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
@@ -117,6 +118,7 @@ export const AppNavigator = () => {
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
+    const [selectedQuestionV2Chat, setSelectedQuestionV2Chat] = useState(null);
     const [homeInitialTab, setHomeInitialTab] = useState(null); // Track which tab to open in MainTabNavigator
     const [lastHomeTab, setLastHomeTab] = useState('home'); // Remember active tab before opening full-screen routes
 
@@ -609,6 +611,16 @@ export const AppNavigator = () => {
                     break;
                 }
 
+                case 'questionChatV2': {
+                    if (!data.chatId || !currentUserId) return;
+                    const json = await fetchJson(`${API_BASE}/api/v2/question-chats/${data.chatId}?userId=${currentUserId}`);
+                    if (json.success) {
+                        setSelectedQuestionV2Chat(json.data.chat || json.data);
+                        setCurrentScreen('questionChatV2');
+                    }
+                    break;
+                }
+
                 case 'puzzle': {
                     let puzzle = null;
 
@@ -811,6 +823,20 @@ export const AppNavigator = () => {
             });
         };
 
+        const handleQuestionChatV2Notification = (data = {}) => {
+            if (!data.chatId) return;
+            if (currentScreen === 'questionChatV2' && sameId(selectedQuestionV2Chat?._id, data.chatId)) return;
+
+            showRoutedLocalNotification({
+                title: data.questionText || 'Question chat',
+                body: `${data.senderName || partnerName}: ${data.preview || 'Answered a question'}`,
+                data: {
+                    type: 'questionChatV2',
+                    chatId: data.chatId,
+                },
+            });
+        };
+
         const handleScribbleReceived = (data = {}) => {
             showRoutedLocalNotification({
                 title: 'New Scribble',
@@ -897,6 +923,7 @@ export const AppNavigator = () => {
         };
 
         socket.on('chat:notification', handleChatNotification);
+        socket.on('questionChatV2:notification', handleQuestionChatV2Notification);
         socket.on('scribble:received', handleScribbleReceived);
         socket.on('mood:changed', handleMoodChanged);
         socket.on('tictactoe:invited', handleTicTacToeInvite);
@@ -910,6 +937,7 @@ export const AppNavigator = () => {
 
         return () => {
             socket.off('chat:notification', handleChatNotification);
+            socket.off('questionChatV2:notification', handleQuestionChatV2Notification);
             socket.off('scribble:received', handleScribbleReceived);
             socket.off('mood:changed', handleMoodChanged);
             socket.off('tictactoe:invited', handleTicTacToeInvite);
@@ -928,6 +956,7 @@ export const AppNavigator = () => {
         userData?.partnerUsername,
         currentScreen,
         selectedChat?._id,
+        selectedQuestionV2Chat?._id,
         selectedTicTacToe?._id,
         selectedTicTacToe?.gameId,
         selectedWordle?._id,
@@ -1114,6 +1143,55 @@ export const AppNavigator = () => {
     const navigateHomeTab = (tab = lastHomeTab || 'home') => {
         setHomeInitialTab(tab);
         navigate('home');
+    };
+
+    const openQuestionV2Chat = async (item = {}) => {
+        let chat = item.chatId ? {
+            _id: item.chatId,
+            topicId: item.topicId,
+            setId: item.setId,
+            questionId: item.questionId,
+            format: item.format,
+            prompt: item.prompt,
+        } : null;
+
+        if (!chat && userData?.id && item.topicId && item.setId && item.questionId) {
+            const response = await QuestionChatsV2Api.getChatByQuestion({
+                userId: userData.id,
+                topicId: item.topicId,
+                setId: item.setId,
+                questionId: item.questionId,
+            });
+
+            if (response.success) {
+                chat = response.data?.chat || null;
+            }
+
+            if (!chat) {
+                const chatsResponse = await QuestionChatsV2Api.getChats(userData.id);
+                if (chatsResponse.success) {
+                    chat = (chatsResponse.data?.chats || []).find((candidate) => (
+                        String(candidate.topicId) === String(item.topicId)
+                        && String(candidate.setId) === String(item.setId)
+                        && String(candidate.questionId) === String(item.questionId)
+                    )) || null;
+                }
+            }
+        }
+
+        if (!chat?._id) {
+            console.warn('[questionChatV2] Could not resolve chat for summary item', {
+                chatId: item.chatId,
+                topicId: item.topicId,
+                setId: item.setId,
+                questionId: item.questionId,
+            });
+            return;
+        }
+
+        setSelectedQuestionV2Chat(chat);
+        setHomeInitialTab(null);
+        setCurrentScreen('questionChatV2');
     };
 
     // Fetch pending TicTacToe games for the user
@@ -1470,13 +1548,18 @@ export const AppNavigator = () => {
 
             const homeSubScreens = [
                 'mood', 'scribble', 'questions', 'jigsawCreate',
-                'jigsawPuzzle', 'ticTacToe', 'wordle', 'chat',
+                'jigsawPuzzle', 'ticTacToe', 'wordle', 'chat', 'questionChatV2',
                 'premium', 'dailyChallenge', 'questionCategories',
             ];
 
             if (currentScreen === 'chat') {
                 setHomeInitialTab('chats');
                 navigate('home');
+                return true;
+            }
+
+            if (currentScreen === 'questionChatV2') {
+                navigate(selectedCategory?.id ? 'questions' : 'home');
                 return true;
             }
 
@@ -1611,6 +1694,10 @@ export const AppNavigator = () => {
                         initialTab={homeInitialTab}
                         onMoodSelect={handleMoodSelect}
                         onQuestionPress={(category) => {
+                            if (!userData?.partnerId) {
+                                navigate('partnerCode');
+                                return;
+                            }
                             if (category) {
                                 // Handle chat navigation from ChatListScreen
                                 if (category.type === 'chat' && category.chat) {
@@ -1744,6 +1831,12 @@ export const AppNavigator = () => {
                             hasPartner={!!userData.partnerId}
                             onLinkPartner={() => navigate('partnerCode')}
                             onNavigateToPremium={() => navigate('premium')}
+                            onOpenQuestionChat={(item) => {
+                                openQuestionV2Chat({
+                                    ...item,
+                                    topicId: item.topicId || selectedCategory.id,
+                                });
+                            }}
                             onBack={() => navigate('home')}
                         />
                     );
@@ -1836,6 +1929,25 @@ export const AppNavigator = () => {
                         onBack={() => {
                             setHomeInitialTab('chats');
                             navigate('home');
+                        }}
+                    />
+                );
+
+            case 'questionChatV2':
+                if (!selectedQuestionV2Chat?._id) {
+                    return null;
+                }
+
+                return (
+                    <ChatScreen
+                        chatId={selectedQuestionV2Chat?._id}
+                        chat={selectedQuestionV2Chat}
+                        chatMode="questionV2"
+                        userId={userData?.id}
+                        userName={userData?.name || 'You'}
+                        partnerName={userData?.partnerUsername || 'Partner'}
+                        onBack={() => {
+                            navigate(selectedCategory?.id ? 'questions' : 'home');
                         }}
                     />
                 );

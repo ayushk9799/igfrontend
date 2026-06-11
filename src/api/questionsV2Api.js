@@ -113,6 +113,16 @@ export const QuestionChatsV2Api = {
         }
     },
 
+    getChatByQuestion: async ({ userId, topicId, setId, questionId }) => {
+        try {
+            const query = buildQuery({ userId, topicId, setId, questionId });
+            const response = await fetch(`${QUESTION_CHATS_V2_BASE}/by-question${query}`);
+            return parseJson(response);
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    },
+
     sendMessage: async ({ chatId, senderId, content, messageType = 'text' }) => {
         try {
             const response = await fetch(`${QUESTION_CHATS_V2_BASE}/${chatId}/messages`, {

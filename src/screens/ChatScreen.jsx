@@ -189,6 +189,7 @@ export default function ChatScreen({
     userName,
     partnerName = 'Partner',
     onBack,
+    chatMode = 'legacy',
 }) {
     const insets = useSafeAreaInsets();
     const socket = useSocket();
@@ -202,6 +203,7 @@ export default function ChatScreen({
     const [partnerTyping, setPartnerTyping] = useState(false);
     const [showQuestionCard, setShowQuestionCard] = useState(true);
     const [questionExpanded, setQuestionExpanded] = useState(false);
+    const isQuestionV2Chat = chatMode === 'questionV2';
 
     // Get category config
     const categoryConfig = CATEGORY_CONFIG[chat?.questionSource] || CATEGORY_CONFIG.deep;
@@ -209,7 +211,10 @@ export default function ChatScreen({
     // Fetch chat and messages
     const fetchChat = useCallback(async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/chat/${chatId}?limit=50`);
+            const url = isQuestionV2Chat
+                ? `${API_BASE}/api/v2/question-chats/${chatId}?userId=${userId}&limit=50`
+                : `${API_BASE}/api/chat/${chatId}?limit=50`;
+            const response = await fetch(url);
             const json = await response.json();
 
             if (json.success) {
@@ -221,7 +226,7 @@ export default function ChatScreen({
         } finally {
             setLoading(false);
         }
-    }, [chatId]);
+    }, [chatId, isQuestionV2Chat, userId]);
 
     useEffect(() => {
         fetchChat();
@@ -230,6 +235,22 @@ export default function ChatScreen({
     // Socket event handlers
     useEffect(() => {
         if (!socket || !chatId) return;
+
+        if (isQuestionV2Chat) {
+            const handleQuestionV2Message = (data) => {
+                if (data.chatId !== chatId || !data.message) return;
+                setMessages(prev => {
+                    const exists = prev.some(m => m._id === data.message._id);
+                    return exists ? prev : [...prev, data.message];
+                });
+            };
+
+            socket.on('questionChatV2:message', handleQuestionV2Message);
+
+            return () => {
+                socket.off('questionChatV2:message', handleQuestionV2Message);
+            };
+        }
 
         // Join chat room
         socket.emit('chat:join', { chatId });
@@ -310,7 +331,7 @@ export default function ChatScreen({
             socket.off('chat:typing', handleTyping);
             socket.off('chat:readReceipt', handleReadReceipt);
         };
-    }, [socket, chatId, userId]);
+    }, [socket, chatId, userId, isQuestionV2Chat]);
 
     // Send message handler
     const handleSend = useCallback(async (content) => {
@@ -331,6 +352,27 @@ export default function ChatScreen({
         setMessages(prev => [...prev, tempMessage]);
 
         try {
+            if (isQuestionV2Chat) {
+                const response = await fetch(`${API_BASE}/api/v2/question-chats/${chatId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderId: userId,
+                        content: content.trim(),
+                    }),
+                });
+                const json = await response.json();
+
+                if (json.success) {
+                    setMessages(prev =>
+                        prev.map(m => m._id === tempMessage._id ? json.data.message : m)
+                    );
+                } else {
+                    setMessages(prev => prev.filter(m => m._id !== tempMessage._id));
+                }
+                return;
+            }
+
             if (socket?.connected) {
                 // Use socket for real-time
                 socket.emit('chat:message', { chatId, content: content.trim() });
@@ -357,14 +399,15 @@ export default function ChatScreen({
         } finally {
             setSending(false);
         }
-    }, [socket, chatId, userId, userName, sending]);
+    }, [socket, chatId, userId, userName, sending, isQuestionV2Chat]);
 
     // Handle typing indicator
     const handleTyping = useCallback((isTyping) => {
+        if (isQuestionV2Chat) return;
         if (socket?.connected) {
             socket.emit('chat:typing', { chatId, isTyping });
         }
-    }, [socket, chatId]);
+    }, [socket, chatId, isQuestionV2Chat]);
 
     // Build messages list - Reversed for Inverted FlatList
     const allMessages = React.useMemo(() => {
@@ -405,13 +448,15 @@ export default function ChatScreen({
                 senderName={isSent ? userName : partnerName}
                 senderAvatar={avatarSource}
                 isRead={item.isRead}
-                questionCategory={chat?.questionCategory}
+                questionCategory={isQuestionV2Chat ? chat?.format : chat?.questionCategory}
             />
         );
     };
 
     const renderQuestionCard = () => {
         if (!chat || !showQuestionCard) return null;
+
+        const questionText = isQuestionV2Chat ? chat.prompt : chat.questionText;
 
         return (
             <TouchableOpacity
@@ -427,7 +472,7 @@ export default function ChatScreen({
                         style={styles.questionText}
                         numberOfLines={questionExpanded ? undefined : 2}
                     >
-                        {chat.questionText}
+                        {questionText}
                     </Text>
                     <Text style={styles.tapHint}>
                         {questionExpanded ? 'Tap to collapse' : 'Tap to expand'}

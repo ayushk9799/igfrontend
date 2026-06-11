@@ -17,7 +17,8 @@ import { useSelector } from 'react-redux';
 
 import { AnimatedCardStack } from '../components/cards';
 import TopicQuestionsSummaryScreen from './TopicQuestionsSummaryScreen';
-import { QuestionsV2Api } from '../api/questionsV2Api';
+import ChatScreen from './ChatScreen';
+import { QuestionChatsV2Api, QuestionsV2Api } from '../api/questionsV2Api';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import { selectIsPremium, selectUser } from '../store/slices/userSlice';
@@ -116,6 +117,9 @@ export default function TopicQuestionsV2Screen({
     const [error, setError] = useState(null);
     const [page, setPage] = useState({ nextCursor: null, hasMore: false, totalQuestions: 0 });
     const [showSummary, setShowSummary] = useState(false);
+    const [singleQuestionToAnswer, setSingleQuestionToAnswer] = useState(null);
+    const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
+    const [questionChatToOpen, setQuestionChatToOpen] = useState(null);
 
     const fetchingQuestionsRef = useRef(false);
 
@@ -134,6 +138,12 @@ export default function TopicQuestionsV2Screen({
     useEffect(() => {
         fetchSets();
     }, [fetchSets]);
+
+    useEffect(() => {
+        if (!hasPartner && onLinkPartner) {
+            onLinkPartner();
+        }
+    }, [hasPartner, onLinkPartner]);
 
     const fetchQuestions = useCallback(async ({ set, cursor = 0, append = false }) => {
         if (!set || fetchingQuestionsRef.current) return;
@@ -185,6 +195,14 @@ export default function TopicQuestionsV2Screen({
     }, [fetchQuestions, isPremium, onNavigateToPremium]);
 
     const handleBack = useCallback(() => {
+        if (questionChatToOpen) {
+            setQuestionChatToOpen(null);
+            return;
+        }
+        if (singleQuestionToAnswer) {
+            setSingleQuestionToAnswer(null);
+            return;
+        }
         if (selectedSet) {
             setSelectedSet(null);
             setQuestions([]);
@@ -194,7 +212,58 @@ export default function TopicQuestionsV2Screen({
             return;
         }
         onBack();
-    }, [onBack, selectedSet]);
+    }, [onBack, questionChatToOpen, selectedSet, singleQuestionToAnswer]);
+
+    const openSummaryQuestionChat = useCallback(async (item = {}) => {
+        const chatId = item.chatId?._id || item.chatId;
+        let chat = chatId ? {
+            _id: String(chatId),
+            topicId: item.topicId || topic,
+            setId: item.setId || selectedSet?.setId,
+            questionId: item.questionId,
+            format: item.format || selectedSet?.format,
+            prompt: item.prompt,
+        } : null;
+
+        const topicId = item.topicId || topic;
+        const setId = item.setId || selectedSet?.setId;
+
+        if (!chat && effectiveUserId && topicId && setId && item.questionId) {
+            const response = await QuestionChatsV2Api.getChatByQuestion({
+                userId: effectiveUserId,
+                topicId,
+                setId,
+                questionId: item.questionId,
+            });
+
+            if (response.success) {
+                chat = response.data?.chat || null;
+            }
+
+            if (!chat) {
+                const chatsResponse = await QuestionChatsV2Api.getChats(effectiveUserId);
+                if (chatsResponse.success) {
+                    chat = (chatsResponse.data?.chats || []).find((candidate) => (
+                        String(candidate.topicId) === String(topicId)
+                        && String(candidate.setId) === String(setId)
+                        && String(candidate.questionId) === String(item.questionId)
+                    )) || null;
+                }
+            }
+        }
+
+        if (!chat?._id) {
+            console.warn('[TopicQuestionsV2] Could not open question chat', {
+                chatId,
+                topicId,
+                setId,
+                questionId: item.questionId,
+            });
+            return;
+        }
+
+        setQuestionChatToOpen(chat);
+    }, [effectiveUserId, selectedSet?.format, selectedSet?.setId, topic]);
 
     const handleIndexChange = useCallback((newIndex) => {
         setCurrentIndex(newIndex);
@@ -237,7 +306,29 @@ export default function TopicQuestionsV2Screen({
         });
     }, [effectiveUserId, questions, selectedSet, topic]);
 
+    const handleSingleAnswerSubmit = useCallback(async (answer, answerType = 'text') => {
+        if (!singleQuestionToAnswer || !selectedSet) return;
+
+        await QuestionsV2Api.submitAnswer({
+            userId: effectiveUserId,
+            topicId: topic,
+            setId: selectedSet.setId,
+            questionId: singleQuestionToAnswer.questionId,
+            answer,
+            answerType,
+            cursor: String((singleQuestionToAnswer.index || 0) + 1),
+        });
+
+        // Trigger refresh of TopicQuestionsSummaryScreen report
+        setSummaryRefreshKey(prev => prev + 1);
+        setSingleQuestionToAnswer(null);
+    }, [singleQuestionToAnswer, selectedSet, effectiveUserId, topic]);
+
     const handleComplete = useCallback(() => {
+        if (singleQuestionToAnswer) {
+            setSingleQuestionToAnswer(null);
+            return;
+        }
         if (!effectiveUserId || !selectedSet) return;
         QuestionsV2Api.saveProgress({
             userId: effectiveUserId,
@@ -247,7 +338,7 @@ export default function TopicQuestionsV2Screen({
             cursor: String(questions.length),
         });
         setShowSummary(true);
-    }, [effectiveUserId, questions.length, selectedSet, topic]);
+    }, [effectiveUserId, questions.length, selectedSet, topic, singleQuestionToAnswer]);
 
     const tasks = useMemo(() => questions.map((question) => ({
         _id: question.questionId,
@@ -261,6 +352,66 @@ export default function TopicQuestionsV2Screen({
         maxLabel: question.maxLabel,
         originalIndex: question.index,
     })), [questions, selectedSet?.format]);
+
+    const renderSingleQuestionHeader = () => (
+        <View style={styles.header}>
+            <View style={styles.headerSpacer} />
+            <View style={styles.headerTextBlock}>
+                <Text style={styles.headerTitle}>Answer Question</Text>
+            </View>
+            <TouchableOpacity onPress={() => setSingleQuestionToAnswer(null)} style={styles.headerBackBtn}>
+                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path d="M18 6L6 18M6 6l12 12" stroke={colors.text} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+            </TouchableOpacity>
+        </View>
+    );
+
+    const renderSingleQuestionPlayer = () => {
+        if (!singleQuestionToAnswer) return null;
+
+        const singleTask = {
+            _id: singleQuestionToAnswer.questionId,
+            questionId: singleQuestionToAnswer.questionId,
+            taskstatement: singleQuestionToAnswer.prompt,
+            category: selectedSet?.format || 'deep',
+            options: singleQuestionToAnswer.options || [],
+            minValue: singleQuestionToAnswer.minValue,
+            maxValue: singleQuestionToAnswer.maxValue,
+            minLabel: singleQuestionToAnswer.minLabel,
+            maxLabel: singleQuestionToAnswer.maxLabel,
+            originalIndex: singleQuestionToAnswer.index,
+        };
+
+        return (
+            <View style={styles.cardsContainer}>
+                <AnimatedCardStack
+                    tasks={[singleTask]}
+                    currentIndex={0}
+                    partnerName={partnerName}
+                    userName={userName}
+                    userAvatar={userData?.avatarThumbnail || userData?.avatar || userAvatar}
+                    partnerAvatar={userData?.partnerAvatarThumbnail || userData?.partnerAvatar || partnerAvatar}
+                    userId={effectiveUserId}
+                    partnerId={effectivePartnerId}
+                    hasPartner={hasPartner}
+                    onLinkPartner={onLinkPartner}
+                    onIndexChange={() => {}}
+                    onComplete={() => {
+                        setSingleQuestionToAnswer(null);
+                    }}
+                    onAnswerSubmit={(idx, answer, answerType) => {
+                        handleSingleAnswerSubmit(answer, answerType);
+                    }}
+                    userAnswers={[]}
+                    isPremium={isPremium}
+                    onNavigateToPremium={onNavigateToPremium}
+                    totalCardsOverride={1}
+                    cardHeight={CARD_HEIGHT}
+                />
+            </View>
+        );
+    };
 
     const renderHeader = () => (
         <View style={styles.header}>
@@ -421,10 +572,23 @@ export default function TopicQuestionsV2Screen({
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <GestureHandlerRootView style={styles.container}>
-                {selectedSet && showSummary ? null : renderHeader()}
-                {selectedSet ? (
+                {questionChatToOpen ? (
+                    <ChatScreen
+                        chatId={questionChatToOpen._id}
+                        chat={questionChatToOpen}
+                        chatMode="questionV2"
+                        userId={effectiveUserId}
+                        userName={userName}
+                        partnerName={partnerName}
+                        onBack={() => setQuestionChatToOpen(null)}
+                    />
+                ) : singleQuestionToAnswer ? renderSingleQuestionHeader() : (selectedSet && showSummary ? null : renderHeader())}
+                {questionChatToOpen ? null : singleQuestionToAnswer ? (
+                    renderSingleQuestionPlayer()
+                ) : selectedSet ? (
                     showSummary ? (
                         <TopicQuestionsSummaryScreen
+                            key={`summary-${summaryRefreshKey}`}
                             topic={topic}
                             topicTitle={topicTitle}
                             selectedSet={selectedSet}
@@ -435,6 +599,17 @@ export default function TopicQuestionsV2Screen({
                             isPremium={isPremium}
                             hasPartner={hasPartner}
                             onLinkPartner={onLinkPartner}
+                            onAnswerQuestion={(question) => {
+                                setSingleQuestionToAnswer(question);
+                            }}
+                            onOpenQuestionChat={(item) => {
+                                openSummaryQuestionChat({
+                                    ...item,
+                                    topicId: topic,
+                                    setId: selectedSet?.setId,
+                                    format: selectedSet?.format,
+                                });
+                            }}
                         />
                     ) : (
                         renderPlayer()

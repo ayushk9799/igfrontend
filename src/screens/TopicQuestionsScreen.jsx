@@ -102,6 +102,12 @@ export default function TopicQuestionsScreen({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    useEffect(() => {
+        if (!hasPartner && onLinkPartner) {
+            onLinkPartner();
+        }
+    }, [hasPartner, onLinkPartner]);
+
     const syncProgress = async () => {
         const maxSeen = maxSeenOrderRef.current;
         const lastSynced = lastSyncedOrderRef.current;

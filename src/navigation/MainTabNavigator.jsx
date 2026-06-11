@@ -248,6 +248,10 @@ export const MainTabNavigator = ({
                         onMoodPress={openMoodPicker}
                         onScribblePress={() => setCurrentTab('canvas')}
                         onQuestionPress={(category) => {
+                            if (!hasPartner) {
+                                onFindPartner?.();
+                                return;
+                            }
                             if (category) {
                                 // Check if it's a topic-based category (future, money, hotspicy, etc.)
                                 const topicConfig = TOPIC_CATEGORIES[category.id || category];
