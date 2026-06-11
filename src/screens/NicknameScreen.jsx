@@ -26,6 +26,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -263,6 +264,7 @@ const NicknameScreen = ({ onComplete }) => {
             return;
         }
 
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         setIsSubmitting(true);
         try {
             await onComplete?.(cleanedNickname);

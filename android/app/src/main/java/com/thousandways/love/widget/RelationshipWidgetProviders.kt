@@ -1,10 +1,15 @@
 package com.thousandways.love.widget
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.graphics.*
 import android.os.Bundle
+import android.os.SystemClock
 import android.widget.RemoteViews
 import com.thousandways.love.R
 import org.json.JSONObject
@@ -41,8 +46,28 @@ class TogetherDaysWidgetProvider : AppWidgetProvider() {
 }
 
 class TogetherCountdownWidgetProvider : AppWidgetProvider() {
+
+    companion object {
+        private const val ACTION_AUTO_UPDATE = "com.thousandways.love.ACTION_COUNTDOWN_UPDATE"
+        private const val UPDATE_INTERVAL_MS = 60_000L // 60 seconds
+    }
+
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { updateWidget(context, appWidgetManager, it) }
+        scheduleNextUpdate(context)
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == ACTION_AUTO_UPDATE) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val componentName = ComponentName(context, TogetherCountdownWidgetProvider::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            if (appWidgetIds.isNotEmpty()) {
+                appWidgetIds.forEach { updateWidget(context, appWidgetManager, it) }
+                scheduleNextUpdate(context)
+            }
+        }
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -52,6 +77,39 @@ class TogetherCountdownWidgetProvider : AppWidgetProvider() {
         newOptions: Bundle
     ) {
         updateWidget(context, appWidgetManager, appWidgetId)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        cancelUpdate(context)
+    }
+
+    private fun scheduleNextUpdate(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, TogetherCountdownWidgetProvider::class.java).apply {
+            action = ACTION_AUTO_UPDATE
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.set(
+            AlarmManager.ELAPSED_REALTIME,
+            SystemClock.elapsedRealtime() + UPDATE_INTERVAL_MS,
+            pendingIntent
+        )
+    }
+
+    private fun cancelUpdate(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, TogetherCountdownWidgetProvider::class.java).apply {
+            action = ACTION_AUTO_UPDATE
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
     }
 
     private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {

@@ -22,6 +22,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { spacing } from '../theme';
 import { API_BASE } from '../constants/Api';
 import { getDeviceInfo } from '../utils/deviceInfo';
+import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -148,11 +149,16 @@ const SocialButton = ({ icon, label, onPress, loading, disabled }) => {
         }).start();
     };
 
+    const handlePress = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        onPress?.();
+    };
+
     return (
         <Animated.View style={{ width: '100%', transform: [{ scale: scaleAnim }] }}>
             <TouchableOpacity
                 style={styles.socialButton}
-                onPress={onPress}
+                onPress={handlePress}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 activeOpacity={1}

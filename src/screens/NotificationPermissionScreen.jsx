@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import * as Haptics from 'expo-haptics';
 
 import { requestNotificationPermission, registerFCMToken } from '../utils/pushNotifications';
 
@@ -78,6 +79,7 @@ const NotificationPermissionScreen = ({ onComplete }) => {
     }, [fadeAnim, slideAnim]);
 
     const handleAllowNotifications = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         const granted = await requestNotificationPermission();
         if (granted) {
             await registerFCMToken();

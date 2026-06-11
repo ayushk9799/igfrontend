@@ -14,14 +14,18 @@ import {
     Clipboard,
     ActivityIndicator,
     StatusBar,
+    Keyboard,
+    Share,
+    Platform,
+    ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { API_BASE } from '../constants/Api';
 import { updateUser } from '../utils/authStorage';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -140,11 +144,13 @@ export const PartnerCodeScreen = ({
     const slideAnim = useRef(new Animated.Value(40)).current;
     const connectedScale = useRef(new Animated.Value(0)).current;
     const pairedScale = useRef(new Animated.Value(0)).current;
+    const shareCardAnim = useRef(new Animated.Value(1)).current;
     const insets = useSafeAreaInsets();
 
     // Check if user is already paired on mount or when partnerId changes
     useEffect(() => {
         if (partnerId) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
             setIsAlreadyPaired(true);
             Animated.spring(connectedScale, {
                 toValue: 1,
@@ -171,6 +177,34 @@ export const PartnerCodeScreen = ({
             ]).start();
         }
     }, [fadeAnim, slideAnim, isAlreadyPaired]);
+
+    const handleFocus = () => {
+        Animated.timing(shareCardAnim, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: false,
+        }).start();
+    };
+
+    const handleBlur = () => {
+        Animated.timing(shareCardAnim, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: false,
+        }).start();
+    };
+
+    const mascotScale = shareCardAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.75, 1],
+    });
+
+    const contentTranslateY = shareCardAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-40, 0],
+    });
+
+
 
     // If already paired (passive partner), show connected screen
     if (isAlreadyPaired) {
@@ -252,8 +286,20 @@ export const PartnerCodeScreen = ({
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handlePair = async () => {
-        if (enteredCode.length !== 6) {
+    const handleShareCode = async () => {
+        try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            await Share.share({
+                message: `Join me on Penguin : Connecting Couples\n\nMy invitation code is ${partnerCode}\n\nhttps://penguincouples.com/`,
+            });
+        } catch (error) {
+            console.error('Error sharing code:', error);
+        }
+    };
+
+    const handlePair = async (codeToUse) => {
+        const code = codeToUse || enteredCode;
+        if (code.length !== 6) {
             Alert.alert('Invalid Code', 'Partner code must be 6 characters');
             return;
         }
@@ -267,13 +313,14 @@ export const PartnerCodeScreen = ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId,
-                    partnerCode: enteredCode.toUpperCase(),
+                    partnerCode: code.toUpperCase(),
                 }),
             });
 
             const data = await response.json();
 
             if (data.success) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
                 setPairingStatus('Paired! 💕');
                 // Save partner info to storage
                 updateUser({
@@ -335,7 +382,7 @@ export const PartnerCodeScreen = ({
                     />
                 </View>
 
-                <KeyboardAwareScrollView
+                <ScrollView
                     style={[styles.scrollView, { backgroundColor: 'transparent' }]}
                     contentContainerStyle={[
                         styles.scrollContent,
@@ -346,8 +393,8 @@ export const PartnerCodeScreen = ({
                     ]}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
-                    bottomOffset={100}
                 >
+                    <Animated.View style={{ transform: [{ translateY: contentTranslateY }] }}>
                     {/* Hero Section */}
                     <Animated.View
                         style={[
@@ -358,20 +405,20 @@ export const PartnerCodeScreen = ({
                             },
                         ]}
                     >
-                        <View style={styles.mascotContainer}>
+                        <Animated.View style={[styles.mascotContainer, { transform: [{ scale: mascotScale }] }]}>
                             <View style={styles.mascotBackgroundCircle} />
                             <Image
                                 source={require('../../assets/images/connect-couple.png')}
                                 style={styles.mascotImage}
                                 resizeMode="contain"
                             />
-                        </View>
+                        </Animated.View>
 
                         <View style={styles.titleRow}>
                             <View style={styles.titleBurstLeft}>
                                 <TitleBurst />
                             </View>
-                            <Text style={styles.title}>Connect with Love</Text>
+                            <Text style={styles.title}>Connect with your Love</Text>
                             <View style={styles.titleHeartRight}>
                                 <TinyHeart color="#FF8FAB" />
                             </View>
@@ -389,13 +436,69 @@ export const PartnerCodeScreen = ({
                             },
                         ]}
                     >
+                        {/* Smoothly Collapsible Container for Share Code Card & Divider */}
+                        <Animated.View style={{
+                            opacity: shareCardAnim,
+                            maxHeight: shareCardAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 260],
+                            }),
+                            transform: [{ scale: shareCardAnim }],
+                            overflow: 'hidden',
+                        }}>
+                            {/* Share Code Card */}
+                            <View style={styles.shareCodeCard}>
+                                <View style={styles.codeRow}>
+                                    <TouchableOpacity
+                                        style={[styles.copyButton, copied && styles.copyButtonCopied]}
+                                        onPress={handleCopyCode}
+                                        activeOpacity={0.7}
+                                    >
+                                        {copied ? <CheckIcon /> : <CopyIcon />}
+                                    </TouchableOpacity>
+                                    <Text style={styles.codeText}>{partnerCode}</Text>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={styles.shareButton}
+                                    onPress={handleShareCode}
+                                    activeOpacity={0.85}
+                                >
+                                    <LinearGradient
+                                        colors={['#FF5E97', '#FFA1C9']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.shareButtonGradient}
+                                    >
+                                        <Text style={styles.shareButtonText}>Share Code with Partner</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* OR Divider */}
+                            <View style={styles.divider}>
+                                <View style={styles.dividerLine} />
+                                <Text style={styles.dividerText}>OR</Text>
+                                <View style={styles.dividerLine} />
+                            </View>
+                        </Animated.View>
+
                         {/* Enter Partner Code Card */}
                         <View style={styles.enterCodeCard}>
-                            <Text style={styles.cardLabel}>Enter Partner's Code</Text>
+                            <Text style={styles.cardLabel}>Enter your Partner Code</Text>
                             <TextInput
                                 style={[styles.codeInput, isPairing && styles.codeInputDisabled]}
                                 value={enteredCode}
-                                onChangeText={(text) => setEnteredCode(text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                                onChangeText={(text) => {
+                                    const formatted = text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+                                    setEnteredCode(formatted);
+                                    if (formatted.length === 6) {
+                                        Keyboard.dismiss();
+                                        handlePair(formatted);
+                                    }
+                                }}
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
                                 placeholder="ABC123"
                                 placeholderTextColor="#D1A3B8"
                                 maxLength={6}
@@ -411,49 +514,6 @@ export const PartnerCodeScreen = ({
                                     <Text style={styles.loadingText}>{pairingStatus}</Text>
                                 </View>
                             )}
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.connectButtonWrapper,
-                                    (enteredCode.length !== 6 || isPairing) && styles.connectButtonDisabled,
-                                ]}
-                                onPress={handlePair}
-                                disabled={enteredCode.length !== 6 || isPairing}
-                                activeOpacity={0.85}
-                            >
-                                <LinearGradient
-                                    colors={['#FF5E97', '#FFA1C9']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.connectButtonGradient}
-                                >
-                                    <Text style={styles.connectButtonText}>
-                                        {isPairing ? 'Connecting...' : 'Connect 💫'}
-                                    </Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* OR Divider */}
-                        <View style={styles.divider}>
-                            <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>OR</Text>
-                            <View style={styles.dividerLine} />
-                        </View>
-
-                        {/* Share Code Card */}
-                        <View style={styles.shareCodeCard}>
-                            <Text style={styles.cardLabel}>Share this Code</Text>
-                            <View style={styles.codeRow}>
-                                <Text style={styles.codeText}>{partnerCode}</Text>
-                                <TouchableOpacity
-                                    style={[styles.copyButton, copied && styles.copyButtonCopied]}
-                                    onPress={handleCopyCode}
-                                    activeOpacity={0.7}
-                                >
-                                    {copied ? <CheckIcon /> : <CopyIcon />}
-                                </TouchableOpacity>
-                            </View>
                         </View>
                     </Animated.View>
 
@@ -463,7 +523,8 @@ export const PartnerCodeScreen = ({
                             <Text style={styles.skipText}>I'll do this later →</Text>
                         </TouchableOpacity>
                     </Animated.View>
-                </KeyboardAwareScrollView>
+                    </Animated.View>
+                </ScrollView>
 
                 {/* Bottom Clouds */}
                 <View style={styles.cloudsContainer}>
@@ -582,13 +643,14 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         letterSpacing: 0.5,
         textTransform: 'uppercase',
+        textAlign: 'center',
     },
     codeRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-        position: 'relative',
+        gap: 12,
     },
     codeText: {
         fontSize: 22,
@@ -597,8 +659,6 @@ const styles = StyleSheet.create({
         letterSpacing: 6,
     },
     copyButton: {
-        position: 'absolute',
-        right: 0,
         width: 38,
         height: 38,
         backgroundColor: '#FFF0F5',
@@ -675,6 +735,28 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 16,
         elevation: 5,
+    },
+    shareButton: {
+        width: '75%',
+        height: isCompactHeight ? 38 : 42,
+        borderRadius: 21,
+        overflow: 'hidden',
+        marginTop: 16,
+        shadowColor: '#FF5E97',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    shareButtonGradient: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    shareButtonText: {
+        fontSize: isCompactHeight ? 12 : 13,
+        fontWeight: '800',
+        color: '#FFFFFF',
     },
     connectButtonDisabled: {
         opacity: 0.5,

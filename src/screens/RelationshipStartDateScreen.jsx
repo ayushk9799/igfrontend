@@ -3,6 +3,7 @@ import {
     ActivityIndicator,
     Dimensions,
     Image,
+    Platform,
     StatusBar,
     StyleSheet,
     Text,
@@ -10,6 +11,7 @@ import {
     View,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePicker } from 'react-native-wheel-pick';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -28,17 +30,22 @@ const toDateOnlyString = (date) => {
     return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
 };
 
-const HeartIcon = () => (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-        <Path
-            fill="#FF5E97"
-            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-        />
+const BackIcon = () => (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+        <Path d="M15 18 9 12l6-6" stroke="#050E3E" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
 );
 
-const RelationshipStartDateScreen = ({ onComplete }) => {
-    const [selectedDate, setSelectedDate] = useState(today);
+const RelationshipStartDateScreen = ({ onComplete, onBack, initialDate }) => {
+    const [selectedDate, setSelectedDate] = useState(() => {
+        if (initialDate) {
+            const parsed = new Date(initialDate);
+            if (!Number.isNaN(parsed.getTime())) {
+                return parsed;
+            }
+        }
+        return today;
+    });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const insets = useSafeAreaInsets();
 
@@ -59,7 +66,7 @@ const RelationshipStartDateScreen = ({ onComplete }) => {
         }
     };
 
-    const handleDateChange = (_, date) => {
+    const handleDateChange = (date) => {
         if (!date) return;
 
         setSelectedDate(date);
@@ -76,7 +83,16 @@ const RelationshipStartDateScreen = ({ onComplete }) => {
                 end={{ x: 0.75, y: 1 }}
                 style={styles.gradient}
             >
-                <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
+                <View style={[styles.header, { paddingTop: insets.top + 4, flexDirection: 'row', alignItems: 'center' }]}>
+                    {onBack && (
+                        <TouchableOpacity
+                            onPress={onBack}
+                            style={styles.backButton}
+                            activeOpacity={0.8}
+                        >
+                            <BackIcon />
+                        </TouchableOpacity>
+                    )}
                     <Image
                         source={require('../../assets/images/penguin-text-logo.png')}
                         style={styles.brandLogo}
@@ -102,22 +118,36 @@ const RelationshipStartDateScreen = ({ onComplete }) => {
                             </Text>
                         </View>
 
-                        <View style={styles.selectedDatePill}>
-                            <HeartIcon />
-                            <Text style={styles.selectedDateText}>{selectedDateLabel}</Text>
-                        </View>
-
                         <View style={styles.nativePickerWrap}>
-                            <DateTimePicker
-                                value={selectedDate}
-                                mode="date"
-                                display="spinner"
-                                maximumDate={today}
-                                minimumDate={new Date(1900, 0, 1)}
-                                onChange={handleDateChange}
-                                style={styles.nativePicker}
-                                textColor={navy}
-                            />
+                            {Platform.OS === 'ios' ? (
+                                <DateTimePicker
+                                    value={selectedDate}
+                                    mode="date"
+                                    display="spinner"
+                                    maximumDate={today}
+                                    minimumDate={new Date(1900, 0, 1)}
+                                    onChange={(event, date) => handleDateChange(date)}
+                                    style={styles.nativePicker}
+                                    textColor={navy}
+                                />
+                            ) : (
+                                <>
+                                    <DatePicker
+                                        date={selectedDate}
+                                        mode="date"
+                                        maximumDate={today}
+                                        minimumDate={new Date(1900, 0, 1)}
+                                        onDateChange={handleDateChange}
+                                        style={styles.nativePicker}
+                                        textColor={navy}
+                                        textSize={20}
+                                        order="D-M-Y"
+                                        isShowSelectBackground={false}
+                                        isShowSelectLine={false}
+                                    />
+                                    <View style={styles.customHighlighter} pointerEvents="none" />
+                                </>
+                            )}
                         </View>
 
                         <View style={styles.feedbackWrap}>
@@ -169,6 +199,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         zIndex: 10,
     },
+    backButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 3,
+    },
     brandLogo: {
         width: isCompactHeight ? 107 : 123,
         height: isCompactHeight ? 34 : 39,
@@ -180,41 +224,33 @@ const styles = StyleSheet.create({
     mascotWrap: {
         position: 'absolute',
         alignSelf: 'center',
-        top: isCompactHeight ? 66 : 82,
-        width: isCompactHeight ? 270 : 330,
-        height: isCompactHeight ? 310 : 380,
+        top: isCompactHeight ? -30 : -20,
+        width: isCompactHeight ? 230 : 280,
+        height: isCompactHeight ? 270 : 330,
         alignItems: 'center',
         justifyContent: 'center',
     },
     pinkCircle: {
         position: 'absolute',
-        width: isCompactHeight ? 208 : 260,
-        height: isCompactHeight ? 208 : 260,
-        borderRadius: isCompactHeight ? 104 : 130,
+        width: isCompactHeight ? 180 : 220,
+        height: isCompactHeight ? 180 : 220,
+        borderRadius: isCompactHeight ? 90 : 110,
         backgroundColor: '#FFE0EE',
         opacity: 0.62,
-        top: isCompactHeight ? 82 : 110,
+        top: isCompactHeight ? 66 : 90,
     },
     mascotImage: {
-        width: isCompactHeight ? 286 : 342,
-        height: isCompactHeight ? 358 : 430,
+        width: isCompactHeight ? 240 : 290,
+        height: isCompactHeight ? 300 : 365,
     },
     card: {
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: width * 0.6,
-        borderTopRightRadius: width * 0.6,
-        width: width * 1.2,
+        backgroundColor: 'transparent',
+        width: '100%',
         alignSelf: 'center',
-        paddingHorizontal: width * 0.15,
-        paddingTop: isCompactHeight ? 78 : 96,
+        paddingHorizontal: 24,
+        paddingTop: isCompactHeight ? 10 : 16,
         paddingBottom: isCompactHeight ? 38 : 52,
         minHeight: isCompactHeight ? 356 : 424,
-        overflow: 'hidden',
-        shadowColor: '#FFB5D0',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        elevation: 5,
     },
     titleContainer: {
         alignItems: 'center',
@@ -236,24 +272,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
         fontWeight: fontWeight('600'),
     },
-    selectedDatePill: {
-        minHeight: isCompactHeight ? 42 : 46,
-        borderRadius: 23,
-        alignSelf: 'center',
-        backgroundColor: '#FFF3F8',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        paddingHorizontal: 22,
-        marginBottom: isCompactHeight ? 2 : 4,
-    },
-    selectedDateText: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: isCompactHeight ? 18 : 20,
-        fontWeight: fontWeight('900'),
-        color: navy,
-    },
+
     nativePickerWrap: {
         width: width - 52,
         height: isCompactHeight ? 174 : 202,
@@ -265,6 +284,17 @@ const styles = StyleSheet.create({
     nativePicker: {
         width: width - 52,
         height: isCompactHeight ? 174 : 202,
+        backgroundColor: 'transparent',
+    },
+    customHighlighter: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        height: isCompactHeight ? 38 : 44,
+        borderRadius: 8,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 94, 151, 0.25)',
+        backgroundColor: 'rgba(255, 94, 151, 0.06)',
     },
     feedbackWrap: {
         minHeight: isCompactHeight ? 14 : 16,

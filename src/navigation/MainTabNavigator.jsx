@@ -53,6 +53,7 @@ export const MainTabNavigator = ({
     onLogout,
     onDeleteAccount,
     onTabChange,
+    onEditRelationshipDate,
     canAutoOpenMoodPrompt = true,
 }) => {
     const [currentTab, setCurrentTab] = useState(initialTab || 'home');
@@ -405,6 +406,10 @@ export const MainTabNavigator = ({
                     onFindPartner={onFindPartner}
                     onNavigateToPremium={() => setIsPremiumOpenInAccount(true)}
                     onWidgetsPress={() => setIsWidgetsLibraryVisible(true)}
+                    onEditRelationshipDate={() => {
+                        setIsAccountVisible(false);
+                        onEditRelationshipDate?.();
+                    }}
                     onBack={() => {
                         setIsAccountVisible(false);
                         setIsPremiumOpenInAccount(false);
