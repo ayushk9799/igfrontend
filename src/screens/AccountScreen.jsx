@@ -81,9 +81,9 @@ const CheckCircleIcon = () => (
     </Svg>
 );
 
-const BellIcon = () => (
+const BellIcon = ({ color = '#FFFFFF' }) => (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-        <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
 );
 
@@ -457,15 +457,15 @@ export const AccountScreen = ({
                                     </Text>
                                     <View style={styles.upgradeBannerFeature}>
                                         <CheckCircleIcon />
-                                        <Text style={styles.upgradeBannerFeatureText}>Unlimited Widgets</Text>
+                                        <Text style={styles.upgradeBannerFeatureText}>Unlimited games</Text>
                                     </View>
                                     <View style={styles.upgradeBannerFeature}>
                                         <CheckCircleIcon />
-                                        <Text style={styles.upgradeBannerFeatureText}>Advanced Relationship Insights</Text>
+                                        <Text style={styles.upgradeBannerFeatureText}>2000+ couple questions</Text>
                                     </View>
                                     <View style={styles.upgradeBannerFeature}>
                                         <CheckCircleIcon />
-                                        <Text style={styles.upgradeBannerFeatureText}>Custom Themes & More</Text>
+                                        <Text style={styles.upgradeBannerFeatureText}>Widgets</Text>
                                     </View>
                                 </View>
                                 <LinearGradient
@@ -485,22 +485,15 @@ export const AccountScreen = ({
                     {!notificationEnabled && (
                         <View style={styles.menuSection}>
                             <Text style={styles.sectionTitle}>Notifications</Text>
-                            <LinearGradient
-                                colors={['#FF5E97', '#FFA1C9']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.allowNotifGradient}
+                            <TouchableOpacity
+                                onPress={handleAllowNotifications}
+                                activeOpacity={0.85}
+                                style={styles.allowNotifButton}
                             >
-                                <TouchableOpacity
-                                    style={styles.allowNotifInner}
-                                    onPress={handleAllowNotifications}
-                                    activeOpacity={0.85}
-                                >
-                                    <BellIcon />
-                                    <Text style={styles.allowNotifText}>Allow Notifications</Text>
-                                    <Text style={styles.allowNotifArrow}>→</Text>
-                                </TouchableOpacity>
-                            </LinearGradient>
+                                <BellIcon color={navy} />
+                                <Text style={styles.allowNotifText}>Allow Notifications</Text>
+                                <Text style={styles.allowNotifArrow}>→</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
 
@@ -856,8 +849,8 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#FFFFFF',
         marginBottom: 6,
-        textShadowColor: 'rgba(0,0,0,0.15)',
-        textShadowOffset: { width: 0, height: 1 },
+        textShadowColor: 'rgba(0, 0, 0, 0.45)',
+        textShadowOffset: { width: 0, height: 1.5 },
         textShadowRadius: 4,
     },
     upgradeBannerTitleItalic: {
@@ -873,7 +866,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#FFFFFF',
         marginLeft: 5,
-        textShadowColor: 'rgba(0,0,0,0.1)',
+        textShadowColor: 'rgba(0, 0, 0, 0.4)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 3,
     },
@@ -900,30 +893,28 @@ const styles = StyleSheet.create({
         right: 0,
         height: '20%',
     },
-    allowNotifGradient: {
-        borderRadius: 20,
-        shadowColor: '#FF5E97',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 5,
-    },
-    allowNotifInner: {
+    allowNotifButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 20,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 14,
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 3,
     },
     allowNotifText: {
         flex: 1,
         marginLeft: 10,
         fontSize: 15,
-        fontWeight: '800',
-        color: '#FFFFFF',
+        fontWeight: '700',
+        color: navy,
     },
     allowNotifArrow: {
         fontSize: 18,
-        color: '#FFFFFF',
+        color: '#FFB5D0',
         fontWeight: '700',
     },
     cloudsContainer: {

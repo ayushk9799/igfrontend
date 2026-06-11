@@ -335,6 +335,7 @@ export const MainTabNavigator = ({
                         onRefreshPuzzle={onRefreshPuzzle}
                         duelBadgeCount={duelBadgeCount}
                         onNotificationPress={() => setIsNotificationVisible(true)}
+                        onWidgetsPress={() => setIsWidgetsLibraryVisible(true)}
                     />
                 );
             case 'canvas':
@@ -485,32 +486,33 @@ export const MainTabNavigator = ({
                         }}
                     />
 
-                    <Modal
-                        visible={isPremiumOpenInAccount}
-                        animationType="slide"
-                        transparent={false}
-                        statusBarTranslucent={true}
-                        onRequestClose={() => setIsPremiumOpenInAccount(false)}
-                    >
-                        <PremiumScreen
-                            onBack={() => setIsPremiumOpenInAccount(false)}
-                        />
-                    </Modal>
-
-                    <Modal
-                        visible={isWidgetsLibraryVisible}
-                        animationType="slide"
-                        transparent={false}
-                        statusBarTranslucent={true}
-                        onRequestClose={() => setIsWidgetsLibraryVisible(false)}
-                    >
-                        <WidgetsLibraryScreen
-                            userData={userData}
-                            onBack={() => setIsWidgetsLibraryVisible(false)}
-                        />
-                    </Modal>
                 </Animated.View>
             )}
+
+            <Modal
+                visible={isPremiumOpenInAccount}
+                animationType="slide"
+                transparent={false}
+                statusBarTranslucent={true}
+                onRequestClose={() => setIsPremiumOpenInAccount(false)}
+            >
+                <PremiumScreen
+                    onBack={() => setIsPremiumOpenInAccount(false)}
+                />
+            </Modal>
+
+            <Modal
+                visible={isWidgetsLibraryVisible}
+                animationType="slide"
+                transparent={false}
+                statusBarTranslucent={true}
+                onRequestClose={() => setIsWidgetsLibraryVisible(false)}
+            >
+                <WidgetsLibraryScreen
+                    userData={userData}
+                    onBack={() => setIsWidgetsLibraryVisible(false)}
+                />
+            </Modal>
 
             <Modal
                 visible={isNotificationVisible}
