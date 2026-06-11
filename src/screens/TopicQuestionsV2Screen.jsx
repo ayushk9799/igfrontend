@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Svg, { Path } from 'react-native-svg';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSelector } from 'react-redux';
 
 import { AnimatedCardStack } from '../components/cards';
+import TopicQuestionsSummaryScreen from './TopicQuestionsSummaryScreen';
 import { QuestionsV2Api } from '../api/questionsV2Api';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
@@ -60,6 +62,31 @@ const getSetEmoji = (format, title) => {
     return '✨'; // default
 };
 
+
+
+const getFormatTheme = (format) => {
+    switch (format) {
+        case 'deep':
+            return { bg: '#E6F7F0', text: '#0D9488' };
+        case 'neverhaveiever':
+            return { bg: '#F3E8FF', text: '#7C3AED' };
+        case 'likelyto':
+            return { bg: '#FCE7F3', text: '#DB2777' };
+        case 'wouldyourather':
+            return { bg: '#EFF6FF', text: '#2563EB' };
+        case 'thisorthat':
+            return { bg: '#FEF3C7', text: '#D97706' };
+        case 'slider':
+            return { bg: '#F1F5F9', text: '#475569' };
+        case 'voicerecord':
+            return { bg: '#EEF2F6', text: '#4F46E5' };
+        case 'takephoto':
+            return { bg: '#FFF1F2', text: '#E11D48' };
+        default:
+            return { bg: '#F3E8FF', text: '#7C3AED' };
+    }
+};
+
 export default function TopicQuestionsV2Screen({
     topic,
     topicTitle,
@@ -88,6 +115,7 @@ export default function TopicQuestionsV2Screen({
     const [questionsLoading, setQuestionsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [page, setPage] = useState({ nextCursor: null, hasMore: false, totalQuestions: 0 });
+    const [showSummary, setShowSummary] = useState(false);
 
     const fetchingQuestionsRef = useRef(false);
 
@@ -124,6 +152,11 @@ export default function TopicQuestionsV2Screen({
         if (response.success) {
             const nextQuestions = response.data?.questions || [];
             setPage(response.data?.page || { nextCursor: null, hasMore: false, totalQuestions: nextQuestions.length });
+            
+            if (response.data?.progress?.completedAt && !append) {
+                setShowSummary(true);
+            }
+
             setQuestions((prev) => {
                 if (!append) return nextQuestions;
                 const existingIds = new Set(prev.map((q) => q.questionId));
@@ -146,6 +179,7 @@ export default function TopicQuestionsV2Screen({
         setQuestions([]);
         setCurrentIndex(0);
         setUserAnswers([]);
+        setShowSummary(false);
         setPage({ nextCursor: null, hasMore: false, totalQuestions: set.totalQuestions || 0 });
         fetchQuestions({ set, cursor: 0, append: false });
     }, [fetchQuestions, isPremium, onNavigateToPremium]);
@@ -156,6 +190,7 @@ export default function TopicQuestionsV2Screen({
             setQuestions([]);
             setCurrentIndex(0);
             setUserAnswers([]);
+            setShowSummary(false);
             return;
         }
         onBack();
@@ -211,6 +246,7 @@ export default function TopicQuestionsV2Screen({
             action: 'completed',
             cursor: String(questions.length),
         });
+        setShowSummary(true);
     }, [effectiveUserId, questions.length, selectedSet, topic]);
 
     const tasks = useMemo(() => questions.map((question) => ({
@@ -264,27 +300,26 @@ export default function TopicQuestionsV2Screen({
                 {sets.map((set) => {
                     const locked = set.premium && !isPremium;
                     const emoji = getSetEmoji(set.format, set.title);
+                    const theme = getFormatTheme(set.format);
                     return (
                         <TouchableOpacity
                             key={set.setId}
-                            style={[
-                                styles.setCardTouchable,
-                                locked ? styles.setCardLocked : styles.setCardUnlocked
-                            ]}
+                            style={styles.setCardTouchable}
                             onPress={() => handleSelectSet(set)}
                             activeOpacity={0.85}
                         >
-                            {/* Emoji Badge */}
-                            <View style={styles.emojiBadgeContainer}>
+                            {/* Circular Badge Container */}
+                            <View style={[styles.emojiBadgeContainer, { backgroundColor: theme.bg }]}>
                                 <Text style={styles.emojiText}>{emoji}</Text>
                             </View>
 
                             {/* Info Column */}
                             <View style={styles.setCardInfo}>
                                 <Text style={styles.setTitle}>{set.title}</Text>
+                                
                                 <View style={styles.metaRow}>
-                                    <View style={styles.formatBadge}>
-                                        <Text style={styles.formatBadgeText}>
+                                    <View style={[styles.formatBadge, { backgroundColor: theme.bg }]}>
+                                        <Text style={[styles.formatBadgeText, { color: theme.text }]}>
                                             {formatLabel[set.format] || set.format}
                                         </Text>
                                     </View>
@@ -294,6 +329,8 @@ export default function TopicQuestionsV2Screen({
                                         </Text>
                                     ) : null}
                                 </View>
+
+                               
                             </View>
 
                             {/* Action Area */}
@@ -305,7 +342,7 @@ export default function TopicQuestionsV2Screen({
                                 ) : (
                                     <View style={styles.startButton}>
                                         <Text style={styles.startButtonText}>Start</Text>
-                                        <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
+                                        <Svg width={8} height={8} viewBox="0 0 24 24" fill="none">
                                             <Path d="M9 5l7 7-7 7" stroke="#FFFFFF" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" />
                                         </Svg>
                                     </View>
@@ -375,20 +412,44 @@ export default function TopicQuestionsV2Screen({
     };
 
     return (
-        <View style={styles.screen}>
+        <LinearGradient
+            colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+            locations={[0, 0.34, 0.72, 1]}
+            start={{ x: 0.25, y: 0 }}
+            end={{ x: 0.75, y: 1 }}
+            style={styles.screen}
+        >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <GestureHandlerRootView style={styles.container}>
-                {renderHeader()}
-                {selectedSet ? renderPlayer() : renderSets()}
+                {selectedSet && showSummary ? null : renderHeader()}
+                {selectedSet ? (
+                    showSummary ? (
+                        <TopicQuestionsSummaryScreen
+                            topic={topic}
+                            topicTitle={topicTitle}
+                            selectedSet={selectedSet}
+                            userId={effectiveUserId}
+                            partnerName={partnerName}
+                            onBack={handleBack}
+                            onNavigateToPremium={onNavigateToPremium}
+                            isPremium={isPremium}
+                            hasPartner={hasPartner}
+                            onLinkPartner={onLinkPartner}
+                        />
+                    ) : (
+                        renderPlayer()
+                    )
+                ) : (
+                    renderSets()
+                )}
             </GestureHandlerRootView>
-        </View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     screen: {
         flex: 1,
-        backgroundColor: '#FFF7FA',
     },
     container: {
         flex: 1,
@@ -473,37 +534,26 @@ const styles = StyleSheet.create({
         gap: spacing.md,
     },
     setCardTouchable: {
-        minHeight: 92,
-        borderRadius: 22,
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.md,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        shadowColor: '#2E1E3C',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-        elevation: 4,
-    },
-    setCardUnlocked: {
-        backgroundColor: '#1E1428',
-        borderColor: 'rgba(255, 255, 255, 0.08)',
-    },
-    setCardLocked: {
-        backgroundColor: '#2A1836',
-        borderColor: 'rgba(254, 240, 138, 0.15)',
+        borderColor: 'rgba(0, 0, 0, 0.05)',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 12,
+        elevation: 2,
     },
     emojiBadgeContainer: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.12)',
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: spacing.md,
+        marginRight: 14,
     },
     emojiText: {
         fontSize: 24,
@@ -513,20 +563,17 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     setTitle: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#0F172A',
         fontFamily: fontFamily.bold,
     },
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 6,
+        marginTop: 4,
     },
     formatBadge: {
-        backgroundColor: 'rgba(192, 132, 252, 0.15)',
-        borderWidth: 1,
-        borderColor: 'rgba(192, 132, 252, 0.25)',
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
@@ -534,54 +581,51 @@ const styles = StyleSheet.create({
     },
     formatBadgeText: {
         fontSize: 11,
-        color: '#E9D5FF',
-        fontWeight: '700',
+        fontWeight: '600',
         fontFamily: fontFamily.medium,
     },
     setQuestionsCount: {
-        fontSize: 12,
-        color: '#A396B2',
+        fontSize: 11,
+        color: '#64748B',
         fontFamily: fontFamily.medium,
+    },
+    setDescription: {
+        fontSize: 12,
+        color: '#64748B',
+        marginTop: 6,
+        fontFamily: fontFamily.regular,
     },
     actionContainer: {
         justifyContent: 'center',
         alignItems: 'center',
-        marginLeft: spacing.xs,
+        marginLeft: 8,
     },
     premiumBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 12,
-        backgroundColor: '#EAB308',
-        shadowColor: '#EAB308',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 2,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#F59E0B',
+        backgroundColor: 'transparent',
     },
     premiumText: {
-        color: '#2E1E3C',
+        color: '#D97706',
         fontSize: 11,
-        fontWeight: '800',
-        fontFamily: fontFamily.extraBold,
+        fontWeight: '700',
+        fontFamily: fontFamily.bold,
     },
     startButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 7,
-        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FF758F',
-        shadowColor: '#FF758F',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        elevation: 2,
+        backgroundColor: '#0F172A',
     },
     startButtonText: {
         color: '#FFFFFF',
         fontSize: 12,
-        fontWeight: '800',
+        fontWeight: '700',
         fontFamily: fontFamily.bold,
         marginRight: 4,
     },

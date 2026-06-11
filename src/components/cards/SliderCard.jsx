@@ -165,7 +165,7 @@ const SliderCard = React.memo(({
     }
 
     return (
-        <LinearGradient colors={['#20E3B2', '#065F46']} style={styles.cardInner}>
+        <LinearGradient colors={['#24CE6D', '#1FB75E']} style={styles.cardInner}>
             {/* Already Answered Overlay */}
             {isAnswered && (
                 <View style={cardStyles.answeredOverlay}>
@@ -188,7 +188,6 @@ const SliderCard = React.memo(({
                         </Svg>
                         <Text style={styles.categoryText}>Rate It</Text>
                     </View>
-                    <Text style={styles.counterText}>{displayIndex || index + 1}/{totalCards}</Text>
                 </View>
 
                 {/* Question */}
@@ -331,10 +330,10 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xs,
     },
     questionText: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800',
         color: '#FFFFFF',
-        lineHeight: 26,
+        lineHeight: 30,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },

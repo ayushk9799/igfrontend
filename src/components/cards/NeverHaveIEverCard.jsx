@@ -125,7 +125,6 @@ const NeverHaveIEverCard = React.memo(({
                         <Text style={styles.badgeEmoji}>🔥</Text>
                         <Text style={styles.categoryText}>{config.label}</Text>
                     </View>
-                    <Text style={styles.counterText}>{displayIndex || index + 1} / {totalCards}</Text>
                 </View>
 
                 {/* Question Area */}
@@ -213,10 +212,10 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     questionText: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800',
         color: '#FFFFFF',
-        lineHeight: 26,
+        lineHeight: 30,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },

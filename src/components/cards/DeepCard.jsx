@@ -13,6 +13,7 @@ import { fontFamily } from '../../constants/fonts';
  */
 const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
     const [answer, setAnswer] = useState(previousAnswer || '');
+    const [isFocused, setIsFocused] = useState(false);
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
     const imageOpacity = useRef(new Animated.Value(1)).current;
@@ -92,9 +93,16 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
         }
     };
 
+    const getCharCountColor = () => {
+        const len = answer.length;
+        if (len > 240) return '#FF8A80'; // Critical red/orange
+        if (len > 200) return '#FFE082'; // Warning yellow
+        return 'rgba(255, 255, 255, 0.65)'; // Normal
+    };
+
     return (
         <LinearGradient
-            colors={['#9F62EC', '#6D28D9']}
+            colors={['#C084FC', '#7C3AED']}
             style={styles.cardContainer}
         >
             <KeyboardAvoidingView
@@ -111,7 +119,6 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                             </Svg>
                             <Text style={styles.categoryText}>{config.label}</Text>
                         </View>
-                        <Text style={styles.counterText}>{displayIndex || index + 1} / {totalCards}</Text>
                     </View>
 
                     {/* Question Area */}
@@ -131,7 +138,10 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                     </Animated.View>
 
                     {/* Response Area - fills all remaining space */}
-                    <View style={styles.inputContainer}>
+                    <View style={[
+                        styles.inputContainer,
+                        isFocused && styles.inputContainerFocused
+                    ]}>
                         <TextInput
                             style={styles.textInput}
                             placeholder="Type your response..."
@@ -139,26 +149,44 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                             multiline
                             value={answer}
                             onChangeText={setAnswer}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
                             maxLength={250}
                             blurOnSubmit={false}
                             textAlignVertical="top"
+                            selectionColor="#FFFFFF"
                         />
                         <View style={styles.inputFooter}>
-                            <Text style={styles.charCount}>{answer.length}/250</Text>
+                            <Text style={[styles.charCount, { color: getCharCountColor() }]}>
+                                {answer.length}/250
+                            </Text>
                             {/* Submit Button */}
                             <TouchableOpacity
                                 style={[
                                     styles.submitButton,
-                                    !answer.trim() && styles.submitButtonDisabled
+                                    answer.trim() ? styles.submitButtonActive : styles.submitButtonDisabled
                                 ]}
                                 onPress={handleSubmit}
                                 activeOpacity={0.8}
                                 disabled={!answer.trim()}
                             >
-                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                                    <Path d="M5 12L10 17L20 7" stroke={answer.trim() ? "#8B5CF6" : "rgba(139, 92, 246, 0.45)"} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M5 12L10 17L20 7"
+                                        stroke={answer.trim() ? "#8B5CF6" : "rgba(255, 255, 255, 0.4)"}
+                                        strokeWidth="3.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
                                 </Svg>
-                                <Text style={[styles.submitButtonText, !answer.trim() && { color: 'rgba(139, 92, 246, 0.45)' }]}>Submit</Text>
+                                <Text
+                                    style={[
+                                        styles.submitButtonText,
+                                        answer.trim() ? { color: '#8B5CF6' } : styles.submitButtonTextDisabled
+                                    ]}
+                                >
+                                    Submit
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -196,12 +224,15 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.12)',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 7,
+        gap: 6,
         paddingVertical: 9,
         paddingHorizontal: 16,
         borderRadius: 20,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.22)',
+    },
+    badgeEmoji: {
+        fontSize: 15,
     },
     categoryText: {
         color: '#FFFFFF',
@@ -222,10 +253,10 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     questionText: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800',
         color: '#FFFFFF',
-        lineHeight: 26,
+        lineHeight: 30,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
@@ -236,19 +267,27 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         flex: 1,
-        width: '90%',
+        width: '100%',
         alignSelf: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        backgroundColor: 'rgba(255, 255, 255, 0.10)',
         borderRadius: 24,
         padding: spacing.md,
-        paddingBottom: spacing.md,
-        marginBottom: spacing.sm,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.22)',
+        paddingBottom: spacing.sm,
+        marginBottom: spacing.xs,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.18)',
         shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    inputContainerFocused: {
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
+        borderColor: 'rgba(255, 255, 255, 0.5)',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.16,
-        shadowRadius: 18,
+        shadowOpacity: 0.22,
+        shadowRadius: 20,
         elevation: 8,
     },
     textInput: {
@@ -267,7 +306,6 @@ const styles = StyleSheet.create({
         paddingTop: spacing.sm,
     },
     charCount: {
-        color: 'rgba(255, 255, 255, 0.7)',
         fontSize: 13,
         fontWeight: '700',
         fontFamily: fontFamily.bold,
@@ -275,25 +313,33 @@ const styles = StyleSheet.create({
     submitButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 11,
+        paddingVertical: 10,
         paddingHorizontal: 18,
         borderRadius: 22,
         gap: 6,
+    },
+    submitButtonDisabled: {
+        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.12)',
+    },
+    submitButtonActive: {
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#FFFFFF',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,
         elevation: 4,
     },
-    submitButtonDisabled: {
-        backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    },
     submitButtonText: {
-        color: '#8B5CF6',
         fontSize: 14,
         fontWeight: '800',
         fontFamily: fontFamily.bold,
+    },
+    submitButtonTextDisabled: {
+        color: 'rgba(255, 255, 255, 0.4)',
     },
 });
 

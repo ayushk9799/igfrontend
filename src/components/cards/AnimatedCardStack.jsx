@@ -5,7 +5,6 @@ import Animated, {
     useSharedValue,
     useAnimatedStyle,
     withSpring,
-    withTiming,
     runOnJS,
     interpolate,
     Extrapolate,
@@ -23,8 +22,8 @@ const SWIPE_VELOCITY_THRESHOLD = 500;
 
 // Spring config for natural feel
 const SPRING_CONFIG = {
-    damping: 20,
-    stiffness: 200,
+    damping: 15,
+    stiffness: 150,
     mass: 0.5,
 };
 
@@ -138,10 +137,12 @@ const AnimatedCardStack = ({
         if (!canGoNext) {
             isTransitioning.value = true;
             const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
+            const activeY = activeSlotIndex === 0 ? val0.y : val1.y;
             const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
 
-            activeRot.value = withTiming(-10, { duration: 200 });
-            activeX.value = withTiming(-width * 1.2, { duration: 200 }, (finished) => {
+            activeRot.value = withSpring(-15, SPRING_CONFIG);
+            activeY.value = withSpring(0, SPRING_CONFIG);
+            activeX.value = withSpring(-width * 1.3, SPRING_CONFIG, (finished) => {
                 if (finished && onComplete) {
                     runOnJS(onComplete)();
                 }
@@ -151,17 +152,19 @@ const AnimatedCardStack = ({
 
         isTransitioning.value = true;
         const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
+        const activeY = activeSlotIndex === 0 ? val0.y : val1.y;
         const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
 
         // Add rotation to match swipe feel
-        activeRot.value = withTiming(-10, { duration: 200 });
+        activeRot.value = withSpring(-15, SPRING_CONFIG);
+        activeY.value = withSpring(0, SPRING_CONFIG);
 
-        activeX.value = withTiming(-width * 1.2, { duration: 200 }, (finished) => {
+        activeX.value = withSpring(-width * 1.3, SPRING_CONFIG, (finished) => {
             if (finished) {
                 runOnJS(goToNextCard)();
             }
         });
-    }, [canGoNext, activeSlotIndex, goToNextCard, isTransitioning, onComplete, val0.x, val1.x, val0.rot, val1.rot]);
+    }, [canGoNext, activeSlotIndex, goToNextCard, isTransitioning, onComplete, val0.x, val1.x, val0.y, val1.y, val0.rot, val1.rot]);
 
     const panGesture = Gesture.Pan()
         .onStart(() => {
@@ -200,7 +203,7 @@ const AnimatedCardStack = ({
             if (shouldSwipeLeft) {
                 isTransitioning.value = true;
                 runOnJS(triggerHaptic)();
-                activeX.value = withTiming(-width * 1.2, { duration: 200 }, (finished) => {
+                activeX.value = withSpring(-width * 1.3, { ...SPRING_CONFIG, velocity: event.velocityX }, (finished) => {
                     if (finished) {
                         if (canGoNext) {
                             runOnJS(goToNextCard)();
@@ -209,12 +212,16 @@ const AnimatedCardStack = ({
                         }
                     }
                 });
+                activeY.value = withSpring(event.translationY + event.velocityY * 0.1, { ...SPRING_CONFIG, velocity: event.velocityY });
+                activeRot.value = withSpring(-15, { ...SPRING_CONFIG, velocity: event.velocityX * 0.05 });
             } else if (shouldSwipeRight) {
                 isTransitioning.value = true;
                 runOnJS(triggerHaptic)();
-                activeX.value = withTiming(width * 1.2, { duration: 200 }, (finished) => {
+                activeX.value = withSpring(width * 1.3, { ...SPRING_CONFIG, velocity: event.velocityX }, (finished) => {
                     if (finished) runOnJS(goToPrevCard)();
                 });
+                activeY.value = withSpring(event.translationY + event.velocityY * 0.1, { ...SPRING_CONFIG, velocity: event.velocityY });
+                activeRot.value = withSpring(15, { ...SPRING_CONFIG, velocity: event.velocityX * 0.05 });
             } else {
                 activeX.value = withSpring(0, SPRING_CONFIG);
                 activeY.value = withSpring(0, SPRING_CONFIG);

@@ -135,11 +135,11 @@ const lockedStyles = StyleSheet.create({
         paddingHorizontal: spacing.sm,
     },
     questionText: {
-        fontSize: 22,
+        fontSize: 26,
         fontWeight: '800',
         color: 'rgba(255, 255, 255, 0.5)',
         fontStyle: 'italic',
-        lineHeight: 30,
+        lineHeight: 34,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },

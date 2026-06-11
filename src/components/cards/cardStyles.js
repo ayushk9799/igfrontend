@@ -62,10 +62,10 @@ export const cardStyles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     questionText: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: '800',
         textAlign: 'center',
-        lineHeight: 32,
+        lineHeight: 36,
         color: '#FFFFFF',
         fontStyle: 'italic',
         fontFamily: fontFamily.extraBold,

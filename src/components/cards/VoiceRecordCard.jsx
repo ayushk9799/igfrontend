@@ -351,7 +351,6 @@ const VoiceRecordCard = React.memo(({
                         </Svg>
                         <Text style={voiceStyles.categoryText}>{config.label}</Text>
                     </View>
-                    <Text style={voiceStyles.counterText}>{displayIndex || index + 1} / {totalCards}</Text>
                 </View>
 
                 {/* Question */}
@@ -560,10 +559,10 @@ const voiceStyles = StyleSheet.create({
         marginBottom: spacing.xs,
     },
     questionText: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800',
         color: '#FFFFFF',
-        lineHeight: 26,
+        lineHeight: 30,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
