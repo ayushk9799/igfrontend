@@ -5,6 +5,7 @@ import Animated, {
     useSharedValue,
     useAnimatedStyle,
     withSpring,
+    withTiming,
     runOnJS,
     interpolate,
     Extrapolate,
@@ -25,6 +26,10 @@ const SPRING_CONFIG = {
     damping: 15,
     stiffness: 150,
     mass: 0.5,
+};
+
+const QUICK_TRANSITION_CONFIG = {
+    duration: 180,
 };
 
 /**
@@ -140,9 +145,9 @@ const AnimatedCardStack = ({
             const activeY = activeSlotIndex === 0 ? val0.y : val1.y;
             const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
 
-            activeRot.value = withSpring(-15, SPRING_CONFIG);
-            activeY.value = withSpring(0, SPRING_CONFIG);
-            activeX.value = withSpring(-width * 1.3, SPRING_CONFIG, (finished) => {
+            activeRot.value = withTiming(-12, QUICK_TRANSITION_CONFIG);
+            activeY.value = withTiming(0, QUICK_TRANSITION_CONFIG);
+            activeX.value = withTiming(-width * 1.3, QUICK_TRANSITION_CONFIG, (finished) => {
                 if (finished && onComplete) {
                     runOnJS(onComplete)();
                 }
@@ -156,10 +161,10 @@ const AnimatedCardStack = ({
         const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
 
         // Add rotation to match swipe feel
-        activeRot.value = withSpring(-15, SPRING_CONFIG);
-        activeY.value = withSpring(0, SPRING_CONFIG);
+        activeRot.value = withTiming(-12, QUICK_TRANSITION_CONFIG);
+        activeY.value = withTiming(0, QUICK_TRANSITION_CONFIG);
 
-        activeX.value = withSpring(-width * 1.3, SPRING_CONFIG, (finished) => {
+        activeX.value = withTiming(-width * 1.3, QUICK_TRANSITION_CONFIG, (finished) => {
             if (finished) {
                 runOnJS(goToNextCard)();
             }

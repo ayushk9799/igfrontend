@@ -75,64 +75,7 @@ const HomeText = ({ children, style, ...props }) => (
     </Text>
 );
 
-const CONNECTION_TOPICS = [
-    {
-        id: 'future',
-        title: 'Future',
-        subtitle: 'Dream, plan\nand imagine',
-        image: require('../../assets/home/future-crystal.png'),
-        gradient: ['#D9B6FF', '#C79BFF'],
-        textColor: '#7341C8',
-    },
-    {
-        id: 'money',
-        title: 'Money',
-        subtitle: 'Build security\ntogether',
-        image: require('../../assets/home/money-bag.png'),
-        gradient: ['#B6EBCF', '#D7F4DE'],
-        textColor: '#087D61',
-    },
-    {
-        id: 'hotspicy',
-        title: 'Hot & Spicy',
-        subtitle: 'Add spark and\nexcitement',
-        image: require('../../assets/home/hot-fire.png'),
-        gradient: ['#FFA8B7', '#FFC3CD'],
-        textColor: '#B63567',
-    },
-    {
-        id: 'political',
-        title: 'Political',
-        subtitle: 'Share views\nrespectfully',
-        image: require('../../assets/home/political-ballot.png'),
-        gradient: ['#90C8FF', '#AED6FF'],
-        textColor: '#1C6EBB',
-    },
-    {
-        id: 'fitness',
-        title: 'Lifestyle',
-        subtitle: 'Habits, health\nand routines',
-        image: require('../../assets/home/lifestyle-arm.png'),
-        gradient: ['#7ADCE1', '#B5EEF0'],
-        textColor: '#13788D',
-    },
-    {
-        id: 'travel',
-        title: 'Travel',
-        subtitle: 'Explore places\ntogether',
-        image: require('../../assets/home/travel-plane.png'),
-        gradient: ['#FFC35C', '#FFD780'],
-        textColor: '#A45B13',
-    },
-    {
-        id: 'family',
-        title: 'Family',
-        subtitle: 'Kids, parents\n& future',
-        image: require('../../assets/home/family.png'),
-        gradient: ['#FFB8D0', '#FFD6E4'],
-        textColor: '#B63567',
-    },
-];
+const CONNECTION_TOPICS = Object.values(TOPIC_CATEGORIES);
 
 const IconSvg = ({ type, color = '#7867F6', size = 26 }) => {
     const stroke = color;
@@ -321,7 +264,6 @@ const HomeScreen = ({
         outputRange: ['-5deg', '5deg'],
     });
 
-    const topicCardWidth = (width - 52) / 2;
     const fullWidthImageStyle = { width };
 
     return (
@@ -530,7 +472,7 @@ const HomeScreen = ({
                         {CONNECTION_TOPICS.map((topic) => (
                             <TouchableOpacity
                                 key={topic.id}
-                                style={{ width: topicCardWidth }}
+                                style={styles.topicPressable}
                                 onPress={() => onQuestionPress?.(TOPIC_CATEGORIES[topic.id])}
                                 activeOpacity={0.88}
                             >
@@ -540,7 +482,13 @@ const HomeScreen = ({
                                     end={{ x: 1, y: 1 }}
                                     style={styles.topicCard}
                                 >
-                                    <Image source={topic.image} style={styles.topicImage} />
+                                    {topic.image ? (
+                                        <Image source={topic.image} style={styles.topicImage} />
+                                    ) : (
+                                        <View style={styles.topicEmojiBadge}>
+                                            <HomeText style={styles.topicEmoji}>{topic.emoji}</HomeText>
+                                        </View>
+                                    )}
                                     <View style={styles.topicCopy}>
                                         <HomeText style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{topic.title}</HomeText>
                                         <HomeText style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{topic.subtitle}</HomeText>
@@ -990,13 +938,13 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     topicGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        rowGap: 12,
+        gap: 12,
+    },
+    topicPressable: {
+        width: '100%',
     },
     topicCard: {
-        height: 86,
+        height: 92,
         borderRadius: 16,
         paddingHorizontal: 0,
         paddingVertical: 0,
@@ -1008,15 +956,29 @@ const styles = StyleSheet.create({
         ...cardShadow,
     },
     topicImage: {
-        width: 56,
-        height: 62,
+        width: 72,
+        height: 72,
         resizeMode: 'contain',
-        marginLeft: -4,
-        marginRight: 7,
+        marginLeft: 8,
+        marginRight: 12,
+    },
+    topicEmojiBadge: {
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        marginLeft: 16,
+        marginRight: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.45)',
+    },
+    topicEmoji: {
+        fontSize: 28,
+        lineHeight: 34,
     },
     topicTitle: {
-        fontSize: 14,
-        lineHeight: 17,
+        fontSize: 16,
+        lineHeight: 20,
         fontWeight: fontWeight('900'),
         letterSpacing: 0,
         fontFamily: fontFamily.extraBold,
@@ -1025,11 +987,11 @@ const styles = StyleSheet.create({
         flexShrink: 1,
         flexGrow: 1,
         minWidth: 0,
-        paddingRight: 12,
+        paddingRight: 18,
     },
     topicSubtitle: {
-        fontSize: 11,
-        lineHeight: 15,
+        fontSize: 12,
+        lineHeight: 16,
         fontWeight: fontWeight('700'),
         marginTop: 4,
         opacity: 0.85,

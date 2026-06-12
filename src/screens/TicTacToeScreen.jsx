@@ -24,6 +24,7 @@ import Button from '../components/Button';
 import { useSocketContext } from '../context/SocketContext';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
+import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 
@@ -143,6 +144,13 @@ const TicTacToeScreen = ({ navigation, route }) => {
     const [statusMessage, setStatusMessage] = useState(null);
     const statusTimerRef = useRef(null);
     const audioPlayerRef = useRef(null);
+    const hasRequestedGameReviewRef = useRef(false);
+
+    const requestGameReviewOnce = useCallback(() => {
+        if (hasRequestedGameReviewRef.current) return;
+        hasRequestedGameReviewRef.current = true;
+        requestReviewForMoment(REVIEW_MOMENTS.GAME_COMPLETED);
+    }, []);
 
     // Initialize audio player on mount
     useEffect(() => {
@@ -217,6 +225,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
         const handleGameComplete = (data) => {
             setStatus(data.status);
             if (data.winnerId) setWinner(data.winnerId);
+            requestGameReviewOnce();
         };
 
         // Listen for new game (Play Again from partner)
@@ -231,6 +240,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
             // Partner is NOT the creator of this new game
             setIsCreator(data.creatorId === user?.id);
             setWinner(null);
+            hasRequestedGameReviewRef.current = false;
             setRevealGameOverText(false);
             // Join the new game room
             socket.emit('tictactoe:join', { gameId: data.gameId });
@@ -252,7 +262,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
             socket.off('tictactoe:newGame', handleNewGame);
             socket.emit('tictactoe:leave', { gameId });
         };
-    }, [socket, gameId]);
+    }, [socket, gameId, requestGameReviewOnce]);
 
     // Game start animation function
     const startGameAnimation = useCallback((message) => {
@@ -565,6 +575,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                     });
 
                     if (data.data.gameComplete) {
+                        requestGameReviewOnce();
                         socket.emit('tictactoe:complete', {
                             gameId,
                             status: data.data.status,

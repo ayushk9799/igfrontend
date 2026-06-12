@@ -23,6 +23,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { usePuzzle } from '../hooks/usePuzzle';
+import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -247,6 +248,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             );
 
             if (result.success) {
+                requestReviewForMoment(REVIEW_MOMENTS.PUZZLE_SENT);
                 Alert.alert('🧩 Puzzle Sent!', `${partnerName || 'Your partner'} will receive a notification to solve it!`, [
                     { text: 'Awesome!', onPress: () => navigation.goBack() }
                 ]);

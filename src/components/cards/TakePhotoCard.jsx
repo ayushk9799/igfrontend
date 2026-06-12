@@ -252,15 +252,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                         </View>
                     </>
                 ) : (
-                    <>
-                        <View style={photoStyles.illustrationFrame}>
-                            <Image
-                                source={require('../../../assets/daily-cards/takephoto.png')}
-                                style={photoStyles.photoArtwork}
-                                resizeMode="contain"
-                            />
-                        </View>
-                        <View style={photoStyles.bottomBar}>
+                    <View style={photoStyles.bottomBar}>
                         {/* Gallery Icon - Left */}
                         <TouchableOpacity onPress={handlePickFromGallery} style={photoStyles.iconButton}>
                             <Svg width={36} height={36} viewBox="0 0 24 24" fill="none">
@@ -275,9 +267,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                                 <Path d="M12 17a4 4 0 100-8 4 4 0 000 8z" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                             </Svg>
                         </TouchableOpacity>
-                        </View>
-
-                    </>
+                    </View>
                 )}
             </Animated.View>
 
@@ -392,19 +382,7 @@ const photoStyles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
-    illustrationFrame: {
-        alignSelf: 'center',
-        width: '65%',
-        aspectRatio: 1.08,
-        marginTop: spacing.xs,
-        marginBottom: spacing.sm,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    photoArtwork: {
-        width: '100%',
-        height: '100%',
-    },
+
     bottomBar: {
         width: '90%',
         alignSelf: 'center',

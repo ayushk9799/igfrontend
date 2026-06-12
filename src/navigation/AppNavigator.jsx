@@ -1,8 +1,10 @@
 // Updated Navigator with premium theme and auth persistence
 import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Alert, Platform, BackHandler, Modal, AppState, NativeModules } from 'react-native';
+import { View, StyleSheet, Alert, Platform, BackHandler, Modal, AppState, NativeModules, Linking } from 'react-native';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import BootSplash from 'react-native-bootsplash';
+import DeviceInfo from 'react-native-device-info';
+import { BlurView } from 'expo-blur';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
 import NicknameScreen from '../screens/NicknameScreen';
@@ -43,10 +45,27 @@ import { QuestionChatsV2Api } from '../api/questionsV2Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
 import { getDeviceInfo } from '../utils/deviceInfo';
 import { syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
+
+const UPDATE_CHECK_TIMEOUT_MS = 8000;
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = UPDATE_CHECK_TIMEOUT_MS) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        return await fetch(url, {
+            ...options,
+            signal: controller.signal,
+        });
+    } finally {
+        clearTimeout(timeoutId);
+    }
+};
 
 const getMoodUpdateMetadata = () => {
     let timezone = null;
@@ -121,6 +140,7 @@ export const AppNavigator = () => {
     const [selectedQuestionV2Chat, setSelectedQuestionV2Chat] = useState(null);
     const [homeInitialTab, setHomeInitialTab] = useState(null); // Track which tab to open in MainTabNavigator
     const [lastHomeTab, setLastHomeTab] = useState('home'); // Remember active tab before opening full-screen routes
+    const [versionGate, setVersionGate] = useState({ status: 'checking', policy: null });
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -131,6 +151,117 @@ export const AppNavigator = () => {
 
     // In-app update instance (debug flag mirrors __DEV__)
     const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
+    const forceUpdateAlertVisibleRef = React.useRef(false);
+
+    const checkVersionGate = useCallback(async () => {
+        if (!['ios', 'android'].includes(Platform.OS)) {
+            setVersionGate({ status: 'ok', policy: null });
+            return { status: 'ok', policy: null };
+        }
+
+        try {
+            const currentBuild = Number.parseInt(DeviceInfo.getBuildNumber(), 10) || 0;
+            const currentVersion = DeviceInfo.getVersion();
+            const query = [
+                ['platform', Platform.OS],
+                ['currentBuild', String(currentBuild)],
+                ['currentVersion', currentVersion],
+            ]
+                .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+                .join('&');
+            const response = await fetchWithTimeout(`${API_BASE}/api/app-config/version?${query}`);
+            const data = await response.json();
+
+            if (!response.ok || !data?.success) {
+                throw new Error(data?.error || 'Version config request failed');
+            }
+
+            const nextGate = data.updateRequired
+                ? { status: 'required', policy: data }
+                : { status: 'ok', policy: data };
+
+            setVersionGate(nextGate);
+            return nextGate;
+        } catch (error) {
+            console.warn('Failed to check app version policy', error?.message || error);
+            const nextGate = { status: 'ok', policy: null };
+            setVersionGate(nextGate);
+            return nextGate;
+        }
+    }, []);
+
+    const openUpdateStore = useCallback(async () => {
+        const policy = versionGate.policy;
+        const primaryUrl = policy?.storeUrl;
+        const fallbackUrl = policy?.webStoreUrl;
+
+        try {
+            if (Platform.OS === 'android') {
+                try {
+                    await inAppUpdates.startUpdate({ updateType: IAUUpdateKind.IMMEDIATE });
+                    return;
+                } catch (error) {
+                    console.warn('Immediate Android update failed, opening store instead', error?.message || error);
+                }
+            }
+
+            if (primaryUrl) {
+                await Linking.openURL(primaryUrl);
+                return;
+            }
+
+            if (fallbackUrl) {
+                await Linking.openURL(fallbackUrl);
+                return;
+            }
+
+            Alert.alert('Store link missing', 'Please set the store URL in the backend update config.');
+        } catch (error) {
+            if (fallbackUrl && fallbackUrl !== primaryUrl) {
+                try {
+                    await Linking.openURL(fallbackUrl);
+                    return;
+                } catch { }
+            }
+            Alert.alert('Could not open store', 'Please open the app store and update Penguin.');
+        }
+    }, [inAppUpdates, versionGate.policy]);
+
+    const retryVersionGate = useCallback(async () => {
+        await checkVersionGate();
+    }, [checkVersionGate]);
+
+    const showForceUpdateAlert = useCallback(() => {
+        if (forceUpdateAlertVisibleRef.current || versionGate.status !== 'required') return;
+
+        forceUpdateAlertVisibleRef.current = true;
+        Alert.alert(
+            versionGate.policy?.title || 'Penguin has a new update',
+            versionGate.policy?.message || 'Please update it to continue.',
+            [
+                {
+                    text: 'Update now',
+                    onPress: () => {
+                        forceUpdateAlertVisibleRef.current = false;
+                        openUpdateStore();
+                    },
+                },
+                {
+                    text: 'I updated, check again',
+                    onPress: () => {
+                        forceUpdateAlertVisibleRef.current = false;
+                        retryVersionGate();
+                    },
+                },
+            ],
+            {
+                cancelable: false,
+                onDismiss: () => {
+                    forceUpdateAlertVisibleRef.current = false;
+                },
+            },
+        );
+    }, [openUpdateStore, retryVersionGate, versionGate.policy, versionGate.status]);
 
     const pendingNotificationRef = React.useRef(null); // Store notification that launched the app from quit state
     const recentLocalNotificationKeysRef = React.useRef(new Map());
@@ -364,15 +495,38 @@ export const AppNavigator = () => {
     ]);
 
     useEffect(() => {
-        if (currentScreen === null || hasHiddenBootSplashRef.current) return;
+        if ((currentScreen === null && versionGate.status !== 'required') || hasHiddenBootSplashRef.current) return;
 
         hasHiddenBootSplashRef.current = true;
         BootSplash.hide({ fade: true }).catch(() => {});
-    }, [currentScreen]);
+    }, [currentScreen, versionGate.status]);
 
-    // ── In-app update check (runs once on launch, skipped in dev) ──
+    // ── Backend-driven app version gate ──
+    useEffect(() => {
+        checkVersionGate();
+    }, [checkVersionGate]);
+
+    useEffect(() => {
+        if (versionGate.status === 'required') {
+            showForceUpdateAlert();
+        }
+    }, [showForceUpdateAlert, versionGate.status]);
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextState) => {
+            if (nextState === 'active' && versionGate.status === 'required') {
+                forceUpdateAlertVisibleRef.current = false;
+                checkVersionGate();
+            }
+        });
+
+        return () => subscription?.remove();
+    }, [checkVersionGate, versionGate.status]);
+
+    // ── Optional store update prompt (runs once on launch, skipped in dev) ──
     useEffect(() => {
         if (__DEV__) return;
+        if (versionGate.status !== 'ok') return;
 
         let statusListener;
         const checkForUpdates = async () => {
@@ -415,7 +569,7 @@ export const AppNavigator = () => {
                 inAppUpdates.removeStatusUpdateListener(statusListener);
             }
         };
-    }, [inAppUpdates]);
+    }, [inAppUpdates, versionGate.status]);
 
     // Identify RevenueCat user after login (using email, same as gtdfront)
     // Then sync premium status from RevenueCat
@@ -532,6 +686,7 @@ export const AppNavigator = () => {
                         shouldAskRelationshipStartDate: statusData.shouldAskRelationshipStartDate || false,
                     }));
                     setOnboardedStorage(true);
+                    requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
 
                     // Auto-navigate to home after a short delay so PartnerCodeScreen can show the connected text
                     if (currentScreen === 'partnerCode') {
@@ -1388,6 +1543,7 @@ export const AppNavigator = () => {
         updateUserStorage(partnerData);
         dispatch(setPartner(partner));
         setOnboardedStorage(true);
+        requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
 
         // Check if notification permission is already granted
         const hasPermission = await checkNotificationPermission();
@@ -1453,6 +1609,8 @@ export const AppNavigator = () => {
                 ...metadata,
             });
         }
+
+        requestReviewForMoment(REVIEW_MOMENTS.MOOD_UPDATED);
 
         // Navigate back to home screen
         navigate('home');
@@ -1595,7 +1753,6 @@ export const AppNavigator = () => {
     }, []);
 
     const renderScreen = () => {
-
         // Loading state while checking auth
         if (currentScreen === null) {
             return (
@@ -1814,7 +1971,7 @@ export const AppNavigator = () => {
                     );
                 }
 
-                // For topic-based categories (future, money, hotspicy, etc.), use TopicQuestionsScreen
+                // For V2 topic-based categories, use TopicQuestionsV2Screen
                 const topicConfig = TOPIC_CATEGORIES[selectedCategory?.id];
                 if (topicConfig) {
                     return (
@@ -1962,7 +2119,15 @@ export const AppNavigator = () => {
     return (
         <View style={styles.container}>
             {renderScreen()}
-            {currentScreen !== null && !hasPlayedSplashAnimation && (
+            {versionGate.status === 'required' && (
+                <BlurView
+                    intensity={28}
+                    tint="light"
+                    style={styles.updateBlurOverlay}
+                    pointerEvents="auto"
+                />
+            )}
+            {currentScreen !== null && versionGate.status !== 'required' && !hasPlayedSplashAnimation && (
                 <AnimatedSplashScreen
                     style={styles.splashOverlay}
                     onFinish={handleSplashAnimationFinish}
@@ -1991,6 +2156,12 @@ const styles = StyleSheet.create({
     loadingContainer: {
         flex: 1,
         backgroundColor: '#F8DDF4',
+    },
+    updateBlurOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(147, 197, 253, 0.24)',
+        zIndex: 8,
+        elevation: 8,
     },
     splashOverlay: {
         ...StyleSheet.absoluteFillObject,

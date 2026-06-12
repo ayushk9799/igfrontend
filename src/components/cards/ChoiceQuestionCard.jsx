@@ -40,7 +40,7 @@ const ChoiceQuestionCard = React.memo(({
         }
     }, [task._id, isAnswered, previousAnswer]);
 
-    const handleSelect = (choice) => {
+    const handleSelect = async (choice) => {
         if (locked || isAnswered) return;
         if (isLocked) {
             onNavigateToPremium?.();
@@ -53,9 +53,22 @@ const ChoiceQuestionCard = React.memo(({
 
         setSelectedAnswer(choice);
         setLocked(true);
-        onAnswerSubmit?.(task.originalIndex ?? index, choice, 'choice');
-        if (autoAdvanceOnSubmit && onSubmit) {
-            onSubmit(choice);
+
+        try {
+            const submitted = await onAnswerSubmit?.(task.originalIndex ?? index, choice, 'choice');
+            if (submitted === false) {
+                setSelectedAnswer(null);
+                setLocked(false);
+                return;
+            }
+
+            if (autoAdvanceOnSubmit && onSubmit) {
+                onSubmit(choice);
+            }
+        } catch (err) {
+            console.error('handleSelect error:', err);
+            setSelectedAnswer(null);
+            setLocked(false);
         }
     };
 

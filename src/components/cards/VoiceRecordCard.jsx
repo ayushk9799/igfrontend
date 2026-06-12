@@ -370,14 +370,17 @@ const VoiceRecordCard = React.memo(({
                                 onPress={handleToggleRecording}
                                 activeOpacity={0.82}
                             >
-                                <Animated.Image
-                                    source={require('../../../assets/daily-cards/voice.png')}
+                                <Animated.View
                                     style={[
-                                        voiceStyles.voiceArtwork,
+                                        voiceStyles.voiceMicButton,
                                         isRecording && pulseAnimatedStyle
                                     ]}
-                                    resizeMode="contain"
-                                />
+                                >
+                                    <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
+                                        <Path d="M12 2a4 4 0 00-4 4v6a4 4 0 008 0V6a4 4 0 00-4-4z" fill="#FFFFFF" />
+                                        <Path d="M19 11a7 7 0 01-14 0M12 18v4M8 22h8" stroke="#FFFFFF" strokeWidth={2.4} strokeLinecap="round" />
+                                    </Svg>
+                                </Animated.View>
                             </TouchableOpacity>
 
                             <Text style={voiceStyles.instructionText}>
@@ -577,10 +580,22 @@ const voiceStyles = StyleSheet.create({
         paddingTop: spacing['2xl'],
         paddingBottom: spacing.xs,
     },
-    voiceArtwork: {
-        width: 170,
-        height: 115,
+    voiceMicButton: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: '#F64D7E',
+        justifyContent: 'center',
+        alignItems: 'center',
         alignSelf: 'center',
+        borderWidth: 3,
+        borderColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 6,
+        marginBottom: spacing.sm,
     },
     instructionText: {
         color: '#FF8FA3',

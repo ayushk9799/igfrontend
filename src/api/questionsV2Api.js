@@ -36,9 +36,10 @@ export const QuestionsV2Api = {
         }
     },
 
-    getSets: async (topicId) => {
+    getSets: async (topicId, userId) => {
         try {
-            const response = await fetch(`${QUESTIONS_V2_BASE}/topic/${topicId}/sets`);
+            const query = buildQuery({ userId });
+            const response = await fetch(`${QUESTIONS_V2_BASE}/topic/${topicId}/sets${query}`);
             return parseJson(response);
         } catch (error) {
             return { success: false, error: error.message };

@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
 
 export const getDeviceInfo = () => {
     let timezone = null;
@@ -12,5 +13,7 @@ export const getDeviceInfo = () => {
     return {
         platform: Platform.OS,
         timezone,
+        appVersion: DeviceInfo.getVersion(),
+        appBuildNumber: Number.parseInt(DeviceInfo.getBuildNumber(), 10) || 0,
     };
 };

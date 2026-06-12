@@ -31,14 +31,18 @@ const categoryConfig = {
     knowledge: { color: '#5BB5A6', emoji: '🧠', gradient: ['#5BB5A630', '#5BB5A610'] },
     agreement: { color: '#BF5AF2', emoji: '🎯', gradient: ['#BF5AF230', '#BF5AF210'] },
     neverhaveiever: { color: '#F4A261', emoji: '🤫', gradient: ['#F4A26130', '#F4A26110'] },
-    // New topic-based categories
-    future: { color: '#7C3AED', emoji: '🔮', gradient: ['#7C3AED30', '#7C3AED10'] },
-    money: { color: '#F59E0B', emoji: '💰', gradient: ['#F59E0B30', '#F59E0B10'] },
-    hotspicy: { color: '#EF4444', emoji: '🔥', gradient: ['#EF444430', '#EF444410'] },
-    political: { color: '#3B82F6', emoji: '🗳️', gradient: ['#3B82F630', '#3B82F610'] },
-    fitness: { color: '#10B981', emoji: '💪', gradient: ['#10B98130', '#10B98110'] },
-    travel: { color: '#0EA5E9', emoji: '✈️', gradient: ['#0EA5E930', '#0EA5E910'] },
+    // V2 topic-based categories
+    relationship: { color: '#E11D48', emoji: '💞', gradient: ['#E11D4830', '#E11D4810'] },
+    sexlove: { color: '#DB2777', emoji: '❤️', gradient: ['#DB277730', '#DB277710'] },
+    coupletherapy: { color: '#0D9488', emoji: '🫶', gradient: ['#0D948830', '#0D948810'] },
+    longdistance: { color: '#2563EB', emoji: '🌙', gradient: ['#2563EB30', '#2563EB10'] },
+    naughty: { color: '#F43F5E', emoji: '🔥', gradient: ['#F43F5E30', '#F43F5E10'] },
+    gossip: { color: '#9333EA', emoji: '☕', gradient: ['#9333EA30', '#9333EA10'] },
+    money: { color: '#10B981', emoji: '💰', gradient: ['#10B98130', '#10B98110'] },
+    gettoknow: { color: '#7C3AED', emoji: '✨', gradient: ['#7C3AED30', '#7C3AED10'] },
+    travel: { color: '#F59E0B', emoji: '✈️', gradient: ['#F59E0B30', '#F59E0B10'] },
     family: { color: '#EC4899', emoji: '👨‍👩‍👧‍👦', gradient: ['#EC489930', '#EC489910'] },
+    future: { color: '#A855F7', emoji: '🔮', gradient: ['#A855F730', '#A855F710'] },
 };
 
 // Typewriter Text Component

@@ -75,3 +75,7 @@ gitscriptall.sh
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Local V2 Questions Summary
+questions_v2_summary.md
+

@@ -16,54 +16,11 @@ import LinearGradient from 'react-native-linear-gradient';
 import { colors, spacing, borderRadius } from '../theme';
 import GradientBackground from '../components/GradientBackground';
 import { API_BASE } from '../constants/Api';
+import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { storage } from '../utils/authStorage';
 
-// Topic config matching HomeScreen's CONNECTION_TOPICS exactly
-const TOPIC_CONFIG = {
-    future: {
-        title: 'Future',
-        image: require('../../assets/home/future-crystal.png'),
-        gradient: ['#D9B6FF', '#C79BFF'],
-        textColor: '#7341C8',
-    },
-    money: {
-        title: 'Money',
-        image: require('../../assets/home/money-bag.png'),
-        gradient: ['#B6EBCF', '#D7F4DE'],
-        textColor: '#087D61',
-    },
-    hotspicy: {
-        title: 'Hot & Spicy',
-        image: require('../../assets/home/hot-fire.png'),
-        gradient: ['#FFA8B7', '#FFC3CD'],
-        textColor: '#B63567',
-    },
-    political: {
-        title: 'Political',
-        image: require('../../assets/home/political-ballot.png'),
-        gradient: ['#90C8FF', '#AED6FF'],
-        textColor: '#1C6EBB',
-    },
-    fitness: {
-        title: 'Lifestyle',
-        image: require('../../assets/home/lifestyle-arm.png'),
-        gradient: ['#7ADCE1', '#B5EEF0'],
-        textColor: '#13788D',
-    },
-    travel: {
-        title: 'Travel',
-        image: require('../../assets/home/travel-plane.png'),
-        gradient: ['#FFC35C', '#FFD780'],
-        textColor: '#A45B13',
-    },
-    family: {
-        title: 'Family',
-        image: require('../../assets/home/family.png'),
-        gradient: ['#FFB8D0', '#FFD6E4'],
-        textColor: '#B63567',
-    },
-};
+const TOPIC_CONFIG = TOPIC_CATEGORIES;
 
 // Fallback config for categories without images
 const FALLBACK_CONFIG = {
@@ -217,7 +174,13 @@ export default function ChatListScreen({
     };
 
     const getTopicConfig = (source) => {
-        if (TOPIC_CONFIG[source]) return { ...TOPIC_CONFIG[source], hasImage: true };
+        if (TOPIC_CONFIG[source]) {
+            return {
+                ...TOPIC_CONFIG[source],
+                textColor: TOPIC_CONFIG[source].textColor || TOPIC_CONFIG[source].color || DEFAULT_TEXT_COLOR,
+                hasImage: Boolean(TOPIC_CONFIG[source].image),
+            };
+        }
         if (FALLBACK_CONFIG[source]) return { ...FALLBACK_CONFIG[source], hasImage: false };
         return {
             title: source?.charAt(0).toUpperCase() + source?.slice(1) || 'Chat',

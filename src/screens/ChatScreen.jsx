@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
@@ -20,163 +20,6 @@ import { ChatBubble, ChatInput } from '../components/chat';
 import { useSocket } from '../hooks/useSocket';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/userSlice';
-
-// Category config with colors and icons
-const CATEGORY_CONFIG = {
-    future: {
-        label: 'Future',
-        color: '#5E60CE',
-        lightColor: '#E8E8FF',
-        gradient: ['#7B7FD5', '#5E60CE'],
-    },
-    money: {
-        label: 'Money',
-        color: '#D4AF37',
-        lightColor: '#FFF8E1',
-        gradient: ['#F5D742', '#D4AF37'],
-    },
-    hotspicy: {
-        label: 'Hot & Spicy',
-        color: '#DC3545',
-        lightColor: '#FFEBEE',
-        gradient: ['#FF6B6B', '#DC3545'],
-    },
-    political: {
-        label: 'Opinions',
-        color: '#2D8C7F',
-        lightColor: '#E0F2F1',
-        gradient: ['#4ECDC4', '#2D8C7F'],
-    },
-    fitness: {
-        label: 'Fitness',
-        color: '#4CAF50',
-        lightColor: '#E8F5E9',
-        gradient: ['#81C784', '#4CAF50'],
-    },
-    travel: {
-        label: 'Travel',
-        color: '#2196F3',
-        lightColor: '#E3F2FD',
-        gradient: ['#64B5F6', '#2196F3'],
-    },
-    family: {
-        label: 'Family',
-        color: '#E91E63',
-        lightColor: '#FCE4EC',
-        gradient: ['#F48FB1', '#E91E63'],
-    },
-    dailychallenge: {
-        label: 'Daily',
-        color: '#FF9800',
-        lightColor: '#FFF3E0',
-        gradient: ['#FFB74D', '#FF9800'],
-    },
-    likelyto: {
-        label: 'Likely To',
-        color: '#9C27B0',
-        lightColor: '#F3E5F5',
-        gradient: ['#BA68C8', '#9C27B0'],
-    },
-    neverhaveiever: {
-        label: 'Never Have I Ever',
-        color: '#607D8B',
-        lightColor: '#ECEFF1',
-        gradient: ['#90A4AE', '#607D8B'],
-    },
-    deep: {
-        label: 'Deep',
-        color: '#3F51B5',
-        lightColor: '#E8EAF6',
-        gradient: ['#7986CB', '#3F51B5'],
-    },
-};
-
-// Category icon components
-const CategoryIcon = ({ category, size = 28, color = '#FFFFFF' }) => {
-    switch (category) {
-        case 'future':
-            return (
-                <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                    <Circle cx="12" cy="12" r="6" fill={color} opacity={0.9} />
-                    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={2} opacity={0.5} />
-                    <Path d="M12 6v1M12 17v1M6 12h1M17 12h1" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
-                    <Circle cx="10" cy="10" r="1.5" fill={color} opacity={0.6} />
-                </Svg>
-            );
-        case 'money':
-            return (
-                <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                    <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth={2} />
-                    <Path d="M12 6v12M9 9c0-1.1.9-2 2-2h2c1.1 0 2 .9 2 2s-.9 2-2 2h-2c-1.1 0-2 .9-2 2s.9 2 2 2h2c1.1 0 2-.9 2-2" stroke={color} strokeWidth={2} strokeLinecap="round" />
-                </Svg>
-            );
-        case 'hotspicy':
-            return (
-                <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                    <Path
-                        d="M12 2c.3 3.5-1.5 5.5-3 7.5-1.5 2-2 4-2 5.5 0 3.5 2.5 6 6 6s6-2.5 6-6c0-4-3.5-7-4-10.5-.5 2.5-1 3.5-3 2.5z"
-                        fill={color}
-                    />
-                    <Path
-                        d="M12 22c-2 0-3.5-1.5-3.5-3.5 0-2 1.5-3 2.5-4 .5.5 1 1 1 2 .5-1.5 1-2.5 1-4 1 1.5 2.5 3 2.5 5.5 0 2-1.5 4-3.5 4z"
-                        fill={color}
-                        opacity={0.6}
-                    />
-                </Svg>
-            );
-        case 'political':
-            return (
-                <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                    <Path d="M19 5l-7 4V5l-7 4v6l7 4v-4l7 4V5z" fill={color} />
-                    <Rect x="3" y="9" width="3" height="6" rx="1" fill={color} opacity={0.8} />
-                </Svg>
-            );
-        case 'fitness':
-            return (
-                <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                    <Path d="M6 12h12" stroke={color} strokeWidth={3} strokeLinecap="round" />
-                    <Rect x="2" y="8" width="4" height="8" rx="1" fill={color} />
-                    <Rect x="18" y="8" width="4" height="8" rx="1" fill={color} />
-                    <Rect x="4" y="6" width="2" height="12" rx="1" fill={color} opacity={0.7} />
-                    <Rect x="18" y="6" width="2" height="12" rx="1" fill={color} opacity={0.7} />
-                </Svg>
-            );
-        case 'travel':
-            return (
-                <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                    <Path
-                        d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"
-                        fill={color}
-                    />
-                </Svg>
-            );
-        case 'family':
-            return (
-                <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                    <Path
-                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                        fill={color}
-                    />
-                    <Circle cx="12" cy="10" r="2" fill={color} opacity={0.5} />
-                </Svg>
-            );
-        case 'dailychallenge':
-            return (
-                <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                    <Path d="M12 2L9 9l-7 1 5 5-1 7 6-3 6 3-1-7 5-5-7-1-3-7z" fill={color} />
-                </Svg>
-            );
-        default:
-            return (
-                <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-                    <Path
-                        d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
-                        fill={color}
-                    />
-                </Svg>
-            );
-    }
-};
 
 /**
  * ChatScreen - Individual chat conversation screen
@@ -204,9 +47,6 @@ export default function ChatScreen({
     const [showQuestionCard, setShowQuestionCard] = useState(true);
     const [questionExpanded, setQuestionExpanded] = useState(false);
     const isQuestionV2Chat = chatMode === 'questionV2';
-
-    // Get category config
-    const categoryConfig = CATEGORY_CONFIG[chat?.questionSource] || CATEGORY_CONFIG.deep;
 
     // Fetch chat and messages
     const fetchChat = useCallback(async () => {

@@ -250,8 +250,6 @@ export default function TopicQuestionsSummaryScreen({
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                
 
-                {/* Question Breakdown */}
-                <Text style={styles.sectionTitle}>Question Breakdown</Text>
 
                 {items.map((item, idx) => {
                     const isMatch = item.match === true;

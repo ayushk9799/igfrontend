@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
 import { categoryConfig } from './categoryConfig';
@@ -134,12 +134,7 @@ const NeverHaveIEverCard = React.memo(({
                     </Text>
                 </View>
 
-                {/* Hero Image */}
-                <Image
-                    source={require('../../../assets/daily-cards/never.png')}
-                    style={styles.heroImage}
-                    resizeMode="contain"
-                />
+
 
                 {/* Choice Buttons */}
                 <View style={styles.choicesRow}>
@@ -219,13 +214,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
-    heroImage: {
-        alignSelf: 'center',
-        width: '65%',
-        height: 110,
-        marginTop: spacing.xs,
-        marginBottom: spacing.md,
-    },
+
     choicesRow: {
         width: '90%',
         alignSelf: 'center',

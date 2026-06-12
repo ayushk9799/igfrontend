@@ -253,7 +253,7 @@ export const MainTabNavigator = ({
                                 return;
                             }
                             if (category) {
-                                // Check if it's a topic-based category (future, money, hotspicy, etc.)
+                                // Check if it's a V2 topic-based category
                                 const topicConfig = TOPIC_CATEGORIES[category.id || category];
                                 if (topicConfig) {
                                     // Handle topic categories within MainTabNavigator

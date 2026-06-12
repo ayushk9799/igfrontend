@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Image, View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import Animated, {
@@ -195,11 +195,7 @@ const SliderCard = React.memo(({
                     <Text style={styles.questionText}>"{task.taskstatement}"</Text>
                 </View>
 
-                <Image
-                    source={require('../../../assets/daily-cards/rate.png')}
-                    style={styles.starImage}
-                    resizeMode="contain"
-                />
+
 
                 {/* Value Display */}
                 <View style={styles.valueDisplay}>
@@ -337,13 +333,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
-    starImage: {
-        alignSelf: 'center',
-        width: 100,
-        height: 80,
-        marginTop: spacing.xs,
-        marginBottom: 0,
-    },
+
     valueDisplay: {
         flexDirection: 'row',
         alignItems: 'baseline',

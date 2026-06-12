@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Image, View, Text, TouchableOpacity, TextInput, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
@@ -16,9 +16,6 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
     const [isFocused, setIsFocused] = useState(false);
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
-    const imageOpacity = useRef(new Animated.Value(1)).current;
-    const imageHeight = useRef(new Animated.Value(100)).current;
-    const scrollViewRef = useRef(null);
 
     // Reset answer only when task ID actually changes (not during swipe gestures)
     useEffect(() => {
@@ -27,48 +24,6 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
             setAnswer(isAnswered ? previousAnswer || '' : '');
         }
     }, [task._id, isAnswered, previousAnswer]);
-
-    // Keyboard listeners to collapse image when keyboard opens
-    useEffect(() => {
-        const showSub = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-            () => {
-                Animated.parallel([
-                    Animated.timing(imageOpacity, {
-                        toValue: 0,
-                        duration: 200,
-                        useNativeDriver: false,
-                    }),
-                    Animated.timing(imageHeight, {
-                        toValue: 0,
-                        duration: 200,
-                        useNativeDriver: false,
-                    }),
-                ]).start();
-            }
-        );
-        const hideSub = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-            () => {
-                Animated.parallel([
-                    Animated.timing(imageOpacity, {
-                        toValue: 1,
-                        duration: 250,
-                        useNativeDriver: false,
-                    }),
-                    Animated.timing(imageHeight, {
-                        toValue: 100,
-                        duration: 250,
-                        useNativeDriver: false,
-                    }),
-                ]).start();
-            }
-        );
-        return () => {
-            showSub.remove();
-            hideSub.remove();
-        };
-    }, [imageHeight, imageOpacity]);
 
     const handleSubmit = () => {
         // Block if locked (premium restriction)
@@ -110,7 +65,8 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 140 : 0}
             >
-                <View style={styles.cardContent}>
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+                    <View style={styles.cardContent}>
                     {/* Top Header */}
                     <View style={styles.topRow}>
                         <View style={styles.categoryBadge}>
@@ -128,14 +84,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                         </Text>
                     </View>
 
-                    {/* Image collapses when keyboard is open */}
-                    <Animated.View style={{ height: imageHeight, opacity: imageOpacity, overflow: 'hidden' }}>
-                        <Image
-                            source={require('../../../assets/daily-cards/deeptalk.png')}
-                            style={styles.heroImage}
-                            resizeMode="contain"
-                        />
-                    </Animated.View>
+
 
                     {/* Response Area - fills all remaining space */}
                     <View style={[
@@ -191,7 +140,8 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                         </View>
                     </View>
 
-                </View>
+                    </View>
+                </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
         </LinearGradient>
     );
@@ -260,11 +210,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
     },
-    heroImage: {
-        alignSelf: 'center',
-        width: '88%',
-        height: '100%',
-    },
+
     inputContainer: {
         flex: 1,
         width: '100%',

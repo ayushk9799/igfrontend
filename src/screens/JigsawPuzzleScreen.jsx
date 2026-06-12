@@ -24,6 +24,7 @@ import { fontFamily } from '../constants/fonts';
 import GradientBackground from '../components/GradientBackground';
 import { usePuzzle } from '../hooks/usePuzzle';
 import * as Haptics from 'expo-haptics';
+import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
 const MAX_GRID_SIZE = 9;
 const SHOW_DEV_NUMBERS = false; // Set to false to hide numbers in production
@@ -325,6 +326,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     const [piecesReady, setPiecesReady] = useState(false); // Delay piece rendering
     const [devShowCorrect, setDevShowCorrect] = useState(false);
     const [devJiggle, setDevJiggle] = useState(false);
+    const hasRequestedGameReviewRef = useRef(false);
     // Natural pixel dimensions of the puzzle image (loaded asynchronously)
     const [imageNaturalSize, setImageNaturalSize] = useState({ width: 1, height: 1 });
 
@@ -642,6 +644,12 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         return currentPieces.every((piece, index) => piece === index);
     }, []);
 
+    const requestGameReviewOnce = useCallback(() => {
+        if (hasRequestedGameReviewRef.current) return;
+        hasRequestedGameReviewRef.current = true;
+        requestReviewForMoment(REVIEW_MOMENTS.GAME_COMPLETED);
+    }, []);
+
     // Play celebration animation
     const playCelebration = useCallback(() => {
         Animated.parallel([
@@ -771,6 +779,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
                 if (checkSolved(currentPieces)) {
                     setIsSolved(true);
+                    requestGameReviewOnce();
                     playCelebration();
                     try {
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -850,6 +859,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         // Check if solved
         if (checkSolved(currentPieces)) {
             setIsSolved(true);
+            requestGameReviewOnce();
             playCelebration();
             try {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -860,7 +870,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             } catch (e) {}
         }
         return true;
-    }, [puzzleId, movePiece, checkSolved, playCelebration, playJigsawSound, gridDim]);
+    }, [puzzleId, movePiece, checkSolved, requestGameReviewOnce, playCelebration, playJigsawSound, gridDim]);
 
     // Memoized pan responders
     const panResponders = useRef(

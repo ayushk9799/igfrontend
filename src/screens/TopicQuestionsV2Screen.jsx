@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     Dimensions,
+    Image,
     Platform,
     ScrollView,
     StatusBar,
@@ -22,10 +23,26 @@ import { QuestionChatsV2Api, QuestionsV2Api } from '../api/questionsV2Api';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import { selectIsPremium, selectUser } from '../store/slices/userSlice';
+import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
 const PAGE_SIZE = 10;
 const { height } = Dimensions.get('window');
 const CARD_HEIGHT = height * 0.7;
+
+const SET_ICON_ASSETS = {
+    coupletherapy: require('../../assets/home/couple-therapy.png'),
+    longdistance: require('../../assets/home/long-distance.png'),
+    naughty: require('../../assets/home/naughty.png'),
+    gossip: require('../../assets/home/gossip.png'),
+    money: require('../../assets/home/money-bag.png'),
+    gettoknow: require('../../assets/home/get-to-know.png'),
+    travel: require('../../assets/home/travel-plane.png'),
+    family: require('../../assets/home/family.png'),
+    future: require('../../assets/home/future-crystal.png'),
+    hotspicy: require('../../assets/home/hot-fire.png'),
+    lifestyle: require('../../assets/home/lifestyle-arm.png'),
+    relationship: require('../../assets/home/together-heart-plant.png'),
+};
 
 const formatLabel = {
     deep: 'Deep',
@@ -63,29 +80,80 @@ const getSetEmoji = (format, title) => {
     return '✨'; // default
 };
 
+const isRemoteImageUri = (value) => typeof value === 'string' && /^https?:\/\//i.test(value);
+
+const getSetIconImageSource = (set) => {
+    if (!set) return null;
+
+    if (set.iconType === 'asset') {
+        return SET_ICON_ASSETS[set.iconKey] || SET_ICON_ASSETS[set.icon] || null;
+    }
+
+    if (set.iconType === 'image') {
+        const uri = set.iconUrl || set.icon;
+        return isRemoteImageUri(uri) ? { uri } : null;
+    }
+
+    if (set.iconKey && SET_ICON_ASSETS[set.iconKey]) {
+        return SET_ICON_ASSETS[set.iconKey];
+    }
+
+    const uri = set.iconUrl || set.icon;
+    return isRemoteImageUri(uri) ? { uri } : null;
+};
+
 
 
 const getFormatTheme = (format) => {
     switch (format) {
         case 'deep':
-            return { bg: '#E6F7F0', text: '#0D9488' };
+            return { bg: '#0F766E', text: '#FFFFFF' };
         case 'neverhaveiever':
-            return { bg: '#F3E8FF', text: '#7C3AED' };
+            return { bg: '#7C3AED', text: '#FFFFFF' };
         case 'likelyto':
-            return { bg: '#FCE7F3', text: '#DB2777' };
+            return { bg: '#BE185D', text: '#FFFFFF' };
         case 'wouldyourather':
-            return { bg: '#EFF6FF', text: '#2563EB' };
+            return { bg: '#1D4ED8', text: '#FFFFFF' };
         case 'thisorthat':
-            return { bg: '#FEF3C7', text: '#D97706' };
+            return { bg: '#B45309', text: '#FFFFFF' };
         case 'slider':
-            return { bg: '#F1F5F9', text: '#475569' };
+            return { bg: '#475569', text: '#FFFFFF' };
         case 'voicerecord':
-            return { bg: '#EEF2F6', text: '#4F46E5' };
+            return { bg: '#4F46E5', text: '#FFFFFF' };
         case 'takephoto':
-            return { bg: '#FFF1F2', text: '#E11D48' };
+            return { bg: '#BE123C', text: '#FFFFFF' };
         default:
-            return { bg: '#F3E8FF', text: '#7C3AED' };
+            return { bg: '#7C3AED', text: '#FFFFFF' };
     }
+};
+
+const getAvatarSource = (avatar) => {
+    if (!avatar) return null;
+    return typeof avatar === 'string' ? { uri: avatar } : avatar;
+};
+
+const getAvatarInitial = (name) => (name || '?').trim().charAt(0).toUpperCase() || '?';
+
+const isProgressComplete = (progress) => Boolean(progress?.completedAt || progress?.percentComplete >= 100);
+
+const SetStatusAvatar = ({ avatar, name, complete, variant = 'user' }) => {
+    const avatarSource = getAvatarSource(avatar);
+
+    return (
+        <View style={[
+            styles.statusAvatar,
+            variant === 'partner' && styles.partnerStatusAvatar,
+            variant === 'userOverlap' && styles.userStatusAvatarOverlap,
+            complete && styles.statusAvatarComplete,
+            !complete && styles.statusAvatarPending,
+        ]}>
+            {avatarSource ? (
+                <Image source={avatarSource} style={styles.statusAvatarImage} resizeMode="cover" />
+            ) : (
+                <Text style={styles.statusAvatarInitial}>{getAvatarInitial(name)}</Text>
+            )}
+        </View>
+    );
 };
 
 export default function TopicQuestionsV2Screen({
@@ -106,6 +174,8 @@ export default function TopicQuestionsV2Screen({
     const isPremium = useSelector(selectIsPremium);
     const effectiveUserId = userId || userData?.id || userData?._id;
     const effectivePartnerId = partnerId || userData?.partnerId;
+    const effectiveUserAvatar = userData?.avatarThumbnail || userData?.avatar || userAvatar;
+    const effectivePartnerAvatar = userData?.partnerAvatarThumbnail || userData?.partnerAvatar || partnerAvatar;
 
     const [sets, setSets] = useState([]);
     const [selectedSet, setSelectedSet] = useState(null);
@@ -126,14 +196,14 @@ export default function TopicQuestionsV2Screen({
     const fetchSets = useCallback(async () => {
         setSetsLoading(true);
         setError(null);
-        const response = await QuestionsV2Api.getSets(topic);
+        const response = await QuestionsV2Api.getSets(topic, effectiveUserId);
         if (response.success) {
             setSets(response.data?.sets || []);
         } else {
             setError(response.message || response.error || 'Failed to load question sets');
         }
         setSetsLoading(false);
-    }, [topic]);
+    }, [effectiveUserId, topic]);
 
     useEffect(() => {
         fetchSets();
@@ -285,9 +355,9 @@ export default function TopicQuestionsV2Screen({
         }
     }, [effectiveUserId, fetchQuestions, page.hasMore, page.nextCursor, questions, selectedSet, topic]);
 
-    const handleAnswerSubmit = useCallback(async (taskIndex, answer, answerType = 'text') => {
+    const handleAnswerSubmit = useCallback((taskIndex, answer, answerType = 'text') => {
         const question = questions[taskIndex];
-        if (!question || !selectedSet) return;
+        if (!question || !selectedSet) return false;
 
         setUserAnswers((prev) => {
             const next = [...prev];
@@ -295,7 +365,7 @@ export default function TopicQuestionsV2Screen({
             return next;
         });
 
-        await QuestionsV2Api.submitAnswer({
+        QuestionsV2Api.submitAnswer({
             userId: effectiveUserId,
             topicId: topic,
             setId: selectedSet.setId,
@@ -303,7 +373,21 @@ export default function TopicQuestionsV2Screen({
             answer,
             answerType,
             cursor: String(taskIndex + 1),
+        }).then((response) => {
+            if (response.success === false) {
+                console.warn('[TopicQuestionsV2] Failed to submit answer', {
+                    questionId: question.questionId,
+                    message: response.message || response.error,
+                });
+            }
+        }).catch((err) => {
+            console.warn('[TopicQuestionsV2] Failed to submit answer', {
+                questionId: question.questionId,
+                message: err.message,
+            });
         });
+
+        return true;
     }, [effectiveUserId, questions, selectedSet, topic]);
 
     const handleSingleAnswerSubmit = useCallback(async (answer, answerType = 'text') => {
@@ -338,9 +422,10 @@ export default function TopicQuestionsV2Screen({
             cursor: String(questions.length),
         });
         setShowSummary(true);
+        requestReviewForMoment(REVIEW_MOMENTS.V2_SET_SUMMARY_SHOWN);
     }, [effectiveUserId, questions.length, selectedSet, topic, singleQuestionToAnswer]);
 
-    const tasks = useMemo(() => questions.map((question) => ({
+    const tasks = useMemo(() => questions.map((question, questionIndex) => ({
         _id: question.questionId,
         questionId: question.questionId,
         taskstatement: question.prompt,
@@ -350,7 +435,8 @@ export default function TopicQuestionsV2Screen({
         maxValue: question.maxValue,
         minLabel: question.minLabel,
         maxLabel: question.maxLabel,
-        originalIndex: question.index,
+        originalIndex: questionIndex,
+        backendIndex: question.index,
     })), [questions, selectedSet?.format]);
 
     const renderSingleQuestionHeader = () => (
@@ -380,7 +466,8 @@ export default function TopicQuestionsV2Screen({
             maxValue: singleQuestionToAnswer.maxValue,
             minLabel: singleQuestionToAnswer.minLabel,
             maxLabel: singleQuestionToAnswer.maxLabel,
-            originalIndex: singleQuestionToAnswer.index,
+            originalIndex: 0,
+            backendIndex: singleQuestionToAnswer.index,
         };
 
         return (
@@ -390,8 +477,8 @@ export default function TopicQuestionsV2Screen({
                     currentIndex={0}
                     partnerName={partnerName}
                     userName={userName}
-                    userAvatar={userData?.avatarThumbnail || userData?.avatar || userAvatar}
-                    partnerAvatar={userData?.partnerAvatarThumbnail || userData?.partnerAvatar || partnerAvatar}
+                    userAvatar={effectiveUserAvatar}
+                    partnerAvatar={effectivePartnerAvatar}
                     userId={effectiveUserId}
                     partnerId={effectivePartnerId}
                     hasPartner={hasPartner}
@@ -449,9 +536,11 @@ export default function TopicQuestionsV2Screen({
         return (
             <ScrollView contentContainerStyle={styles.setsContent} showsVerticalScrollIndicator={false}>
                 {sets.map((set) => {
-                    const locked = set.premium && !isPremium;
-                    const emoji = getSetEmoji(set.format, set.title);
+                    const iconImageSource = getSetIconImageSource(set);
+                    const emoji = set.icon || getSetEmoji(set.format, set.title);
                     const theme = getFormatTheme(set.format);
+                    const userComplete = isProgressComplete(set.progress);
+                    const partnerComplete = isProgressComplete(set.partnerProgress);
                     return (
                         <TouchableOpacity
                             key={set.setId}
@@ -459,42 +548,65 @@ export default function TopicQuestionsV2Screen({
                             onPress={() => handleSelectSet(set)}
                             activeOpacity={0.85}
                         >
-                            {/* Circular Badge Container */}
-                            <View style={[styles.emojiBadgeContainer, { backgroundColor: theme.bg }]}>
-                                <Text style={styles.emojiText}>{emoji}</Text>
+                            <View style={styles.emojiBadgeContainer}>
+                                {iconImageSource ? (
+                                    <Image source={iconImageSource} style={styles.setIconImage} resizeMode="contain" />
+                                ) : (
+                                    <Text style={styles.emojiText}>{emoji}</Text>
+                                )}
                             </View>
 
                             {/* Info Column */}
                             <View style={styles.setCardInfo}>
-                                <Text style={styles.setTitle}>{set.title}</Text>
-                                
                                 <View style={styles.metaRow}>
                                     <View style={[styles.formatBadge, { backgroundColor: theme.bg }]}>
                                         <Text style={[styles.formatBadgeText, { color: theme.text }]}>
                                             {formatLabel[set.format] || set.format}
                                         </Text>
                                     </View>
-                                    {set.totalQuestions ? (
-                                        <Text style={styles.setQuestionsCount}>
-                                            • {set.totalQuestions} cards
-                                        </Text>
-                                    ) : null}
                                 </View>
-
-                               
+                                <Text style={styles.setTitle}>{set.title}</Text>
                             </View>
 
-                            {/* Action Area */}
-                            <View style={styles.actionContainer}>
-                                {locked ? (
-                                    <View style={styles.premiumBadge}>
-                                        <Text style={styles.premiumText}>✨ Premium</Text>
+                            {/* Status avatars on the right */}
+                            <View style={styles.setCardRightColumn}>
+                                <View style={styles.statusAvatarRow}>
+                                    {set.partnerProgress ? (
+                                        <SetStatusAvatar
+                                            avatar={effectivePartnerAvatar}
+                                            name={partnerName}
+                                            complete={partnerComplete}
+                                            variant="partner"
+                                        />
+                                    ) : null}
+                                    <SetStatusAvatar
+                                        avatar={effectiveUserAvatar}
+                                        name={userName}
+                                        complete={userComplete}
+                                        variant={set.partnerProgress ? 'userOverlap' : 'user'}
+                                    />
+                                </View>
+                                {set.premium && !isPremium ? (
+                                    <View style={[styles.premiumBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                                        <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2z"
+                                                fill="#D97706"
+                                            />
+                                            <Path
+                                                d="M7 11V7a5 5 0 0110 0v4"
+                                                stroke="#D97706"
+                                                strokeWidth={2.5}
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </Svg>
+                                        <Text style={styles.premiumText}>Locked</Text>
                                     </View>
                                 ) : (
                                     <View style={styles.startButton}>
-                                        <Text style={styles.startButtonText}>Start</Text>
-                                        <Svg width={8} height={8} viewBox="0 0 24 24" fill="none">
-                                            <Path d="M9 5l7 7-7 7" stroke="#FFFFFF" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" />
+                                        <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
+                                            <Path d="M9 5l7 7-7 7" stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
                                         </Svg>
                                     </View>
                                 )}
@@ -543,8 +655,8 @@ export default function TopicQuestionsV2Screen({
                     currentIndex={currentIndex}
                     partnerName={partnerName}
                     userName={userName}
-                    userAvatar={userData?.avatarThumbnail || userData?.avatar || userAvatar}
-                    partnerAvatar={userData?.partnerAvatarThumbnail || userData?.partnerAvatar || partnerAvatar}
+                    userAvatar={effectiveUserAvatar}
+                    partnerAvatar={effectivePartnerAvatar}
                     userId={effectiveUserId}
                     partnerId={effectivePartnerId}
                     hasPartner={hasPartner}
@@ -711,7 +823,8 @@ const styles = StyleSheet.create({
     setCardTouchable: {
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
@@ -723,21 +836,26 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     emojiBadgeContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 46,
+        minHeight: 56,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 14,
     },
     emojiText: {
-        fontSize: 24,
+        fontSize: 34,
+        lineHeight: 42,
+    },
+    setIconImage: {
+        width: 44,
+        height: 44,
     },
     setCardInfo: {
         flex: 1,
         justifyContent: 'center',
     },
     setTitle: {
+        marginTop: 6,
         fontSize: 16,
         fontWeight: '700',
         color: '#0F172A',
@@ -747,22 +865,67 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 4,
+        gap: 8,
     },
     formatBadge: {
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
-        marginRight: 6,
     },
     formatBadgeText: {
         fontSize: 11,
         fontWeight: '600',
         fontFamily: fontFamily.medium,
     },
-    setQuestionsCount: {
+    statusAvatarRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        minWidth: 54,
+    },
+    setCardRightColumn: {
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        marginLeft: 12,
+        gap: 6,
+    },
+    statusAvatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#F5A3CB',
+        backgroundColor: '#FFE7F2',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    partnerStatusAvatar: {
+        backgroundColor: '#F4E8FF',
+        borderColor: '#D8B4FE',
+    },
+    userStatusAvatarOverlap: {
+        marginLeft: -8,
+        zIndex: 2,
+    },
+    statusAvatarComplete: {
+        opacity: 1,
+        borderColor: '#F04F9D',
+    },
+    statusAvatarPending: {
+        opacity: 0.38,
+        borderColor: 'transparent',
+    },
+    statusAvatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 14,
+    },
+    statusAvatarInitial: {
+        color: '#B31975',
         fontSize: 11,
-        color: '#64748B',
-        fontFamily: fontFamily.medium,
+        fontWeight: '900',
+        fontFamily: fontFamily.extraBold,
     },
     setDescription: {
         fontSize: 12,
@@ -770,13 +933,8 @@ const styles = StyleSheet.create({
         marginTop: 6,
         fontFamily: fontFamily.regular,
     },
-    actionContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 8,
-    },
     premiumBadge: {
-        paddingHorizontal: 14,
+        paddingHorizontal: 10,
         paddingVertical: 8,
         borderRadius: 20,
         borderWidth: 1,
@@ -790,7 +948,7 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     startButton: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 13,
         paddingVertical: 8,
         borderRadius: 20,
         flexDirection: 'row',

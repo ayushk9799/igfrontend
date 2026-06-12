@@ -26,6 +26,7 @@ import { API_BASE } from '../constants/Api';
 import { submitAnswer, getUserAnswers } from '../utils/answerApi';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/userSlice';
+import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
 const { width, height } = Dimensions.get('window');
 const CARD_HEIGHT = height * 0.7;
@@ -145,7 +146,11 @@ export default function DailyChallengeScreen({
   const hasMovedPastVisibleCards = tasks.length > 0 && unansweredTasks.length > 0 && currentIndex >= unansweredTasks.length;
   const shouldShowDoneScreen = isComplete || hasAnsweredAllTasks || hasReachedEndOfStack || hasMovedPastVisibleCards;
 
-
+  useEffect(() => {
+    if (shouldShowDoneScreen) {
+      requestReviewForMoment(REVIEW_MOMENTS.DAILY_CHALLENGE_COMPLETED);
+    }
+  }, [shouldShowDoneScreen]);
 
   // Callback for AnimatedCardStack to update the index
   const handleIndexChange = useCallback((newIndex) => {

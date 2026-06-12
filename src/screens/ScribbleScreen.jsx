@@ -22,6 +22,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Button from '../components/Button';
 import { colors, spacing, borderRadius, shadows, timing } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
+import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
 const { width, height } = Dimensions.get('window');
 const CANVAS_SIZE = width - 40;
@@ -860,6 +861,7 @@ export const ScribbleScreen = ({
 
             setCurrentPath('');
             setSentScribble(null);
+            requestReviewForMoment(REVIEW_MOMENTS.SCRIBBLE_SENT);
 
             // Call parent's onSend if provided
             onSend(pathsToSend);

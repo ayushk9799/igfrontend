@@ -27,6 +27,7 @@ import GradientBackground from '../components/GradientBackground';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
+import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
 
 
@@ -222,6 +223,13 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     // Error Toast Animations
     const errorScaleAnim = useRef(new Animated.Value(0)).current;
     const errorShakeAnim = useRef(new Animated.Value(0)).current;
+    const hasRequestedGameReviewRef = useRef(false);
+
+    const requestGameReviewOnce = useCallback(() => {
+        if (hasRequestedGameReviewRef.current) return;
+        hasRequestedGameReviewRef.current = true;
+        requestReviewForMoment(REVIEW_MOMENTS.GAME_COMPLETED);
+    }, []);
 
     useEffect(() => {
         if (errorMessage) {
@@ -345,6 +353,9 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             if (isCurrentGameEvent(data)) {
                 if (data.status) {
                     setStatus(data.status);
+                    if (['won', 'lost'].includes(data.status)) {
+                        requestGameReviewOnce();
+                    }
                 }
                 // Refresh game state to get the latest guesses/secret word.
                 fetchGame(gameId);
@@ -375,6 +386,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             setSuccessMessage('');
             setErrorMessage('');
             setLastSubmittedRowIndex(-1);
+            hasRequestedGameReviewRef.current = false;
             // Fetch the new active game
             fetchActiveGame();
         };
@@ -414,6 +426,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             if (['won', 'lost'].includes(data.status)) {
                 setRevealedWord(data.secretWord || '');
                 setMode('complete');
+                requestGameReviewOnce();
             } else {
                 setMode('guess');
             }
@@ -599,6 +612,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                 if (data.data.gameComplete) {
                     setRevealedWord(data.data.secretWord);
                     setMode('complete');
+                    requestGameReviewOnce();
 
                     // Emit completion event
                     if (socket) {
@@ -638,6 +652,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         setErrorMessage('');
         setLastSubmittedRowIndex(-1);
         setIsCreator(true);
+        hasRequestedGameReviewRef.current = false;
         setMode('create');
     };
 

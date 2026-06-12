@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
 import { categoryConfig } from './categoryConfig';
@@ -9,7 +9,7 @@ import { fontFamily } from '../../constants/fonts';
 
 /**
  * LikelyToCard - "Who is more likely to..." card with selectable choice buttons
- * Redesigned with light pinkish theme, hero image, and clean choice buttons
+ * Redesigned with light pinkish theme, and clean choice buttons
  */
 const LikelyToCard = React.memo(({
     task,
@@ -45,7 +45,7 @@ const LikelyToCard = React.memo(({
         }
     }, [task._id, isAnswered, previousAnswer]);
 
-    const handleSelect = (who) => {
+    const handleSelect = async (who) => {
         if (locked || isAnswered) return;
 
         // Block if locked (premium restriction)
@@ -64,13 +64,21 @@ const LikelyToCard = React.memo(({
         setLocked(true);
 
         try {
-            onAnswerSubmit?.(task.originalIndex ?? index, who);
+            const submitted = await onAnswerSubmit?.(task.originalIndex ?? index, who);
+            if (submitted === false) {
+                setSelectedAnswer(null);
+                setLocked(false);
+                return;
+            }
+
             // Only auto-advance if the parent screen doesn't filter answered tasks
             if (autoAdvanceOnSubmit && onSubmit) {
                 onSubmit(who);
             }
         } catch (err) {
             console.error('handleSelect error:', err);
+            setSelectedAnswer(null);
+            setLocked(false);
         }
     };
 
@@ -94,13 +102,6 @@ const LikelyToCard = React.memo(({
                         {task.taskstatement}
                     </Text>
                 </View>
-
-                {/* Hero Image */}
-                <Image
-                    source={require('../../../assets/daily-cards/likelyto.png')}
-                    style={styles.heroImage}
-                    resizeMode="contain"
-                />
 
                 {/* Choice Buttons */}
                 <View style={styles.choicesRow}>
@@ -205,13 +206,6 @@ const styles = StyleSheet.create({
         lineHeight: 30,
         textAlign: 'center',
         fontFamily: fontFamily.extraBold,
-    },
-    heroImage: {
-        alignSelf: 'center',
-        width: '80%',
-        height: 110,
-        marginTop: spacing.xs,
-        marginBottom: spacing.md,
     },
     choicesRow: {
         width: '90%',
