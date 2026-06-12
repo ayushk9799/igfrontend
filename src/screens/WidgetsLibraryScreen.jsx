@@ -19,6 +19,8 @@ import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
 import { syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 
+const DUMMY_TIME_TOGETHER_SECONDS = (1954 * 86400) + (11 * 3600) + (44 * 60) + 12;
+
 const BackIcon = () => (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
         <Path d="M15 18 9 12l6-6" stroke="#2E1E3C" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
@@ -44,25 +46,15 @@ const Avatar = ({ label, variant = 'pink', style }) => (
     </View>
 );
 
-const TimeTogetherWidget = ({ relationshipStartDate }) => {
-    const [elapsed, setElapsed] = useState(0);
+const TimeTogetherWidget = () => {
+    const [elapsed, setElapsed] = useState(DUMMY_TIME_TOGETHER_SECONDS);
 
     useEffect(() => {
-        const start = relationshipStartDate ? new Date(relationshipStartDate) : null;
-        if (!start || Number.isNaN(start.getTime())) {
-            setElapsed(0);
-            return;
-        }
-
-        const updateElapsed = () => {
-            const diff = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
-            setElapsed(diff);
-        };
-
-        updateElapsed();
-        const interval = setInterval(updateElapsed, 1000);
+        const interval = setInterval(() => {
+            setElapsed(previous => previous + 1);
+        }, 1000);
         return () => clearInterval(interval);
-    }, [relationshipStartDate]);
+    }, []);
 
     const values = useMemo(() => {
         return {
@@ -111,13 +103,13 @@ const LockDaysCard = ({ days }) => (
     </View>
 );
 
-const LockCountdownCard = ({ relationshipStartDate }) => (
+const LockCountdownCard = () => (
     <View style={styles.lockWidgetTileWide}>
         <LinearGradient colors={['#B9A7FF', '#FF9EBD', '#8ED8FF']} style={styles.lockPhonePreviewWide}>
             <Text style={styles.lockMockDateWide}>Tue 9 Jun</Text>
             <Text style={styles.lockMockTimeWide}>11:44</Text>
             <View style={styles.accessoryRect}>
-                <TimeTogetherWidget relationshipStartDate={relationshipStartDate} />
+                <TimeTogetherWidget />
             </View>
         </LinearGradient>
         <Text style={styles.widgetTileName}>Time Together</Text>
@@ -423,7 +415,7 @@ export const WidgetsLibraryScreen = ({
                     <Text style={styles.sectionTitle}>{primaryWidgetSectionTitle}</Text>
                     <View style={styles.widgetGrid}>
                         <LockDaysCard days={daysTogether} />
-                        <LockCountdownCard relationshipStartDate={relationshipStartDate} />
+                        <LockCountdownCard />
                         <LockDistanceCard
                             onPress={handleEnableDistance}
                             isEnabled={userData?.locationSharingEnabled === true}

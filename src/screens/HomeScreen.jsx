@@ -19,6 +19,7 @@ import { getPenguinMoodImage } from '../constants/PenguinMoods';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import HomeWidgetShowcase from '../components/HomeWidgetShowcase';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const SCRIBBLE_PREVIEW_PADDING = 26;
@@ -135,6 +136,7 @@ const HomeScreen = ({
     onRefreshPuzzle,
     duelBadgeCount = 0,
     onNotificationPress,
+    onWidgetsPress,
 }) => {
     const { width } = useWindowDimensions();
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
@@ -355,9 +357,8 @@ const HomeScreen = ({
                                 <View style={styles.featureCardHeader}>
                                     <View style={styles.cardTitleRow}>
                                         <HomeText style={[styles.smallCardTitle, styles.scribbleCardTitle]}>Scribble board</HomeText>
-                                        <HeartDoodle style={styles.cardTitleHeart} color="#FF8BB8" size={24} />
+                                        <HeartDoodle style={styles.cardTitleHeart} color="#FF8BB8" size={18} />
                                     </View>
-                                    <HomeText style={styles.smallCardSub}>send cute doodles</HomeText>
                                 </View>
 
                                 <View style={styles.scribblePaper}>
@@ -412,7 +413,6 @@ const HomeScreen = ({
                                             <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
                                             <HeartDoodle style={styles.cardTitleHeart} color="#FF8AA4" size={24} />
                                         </View>
-                                        <HomeText style={[styles.smallCardSub, styles.ritualCardSub]}>You're all caught up{'\n'}come back tomorrow</HomeText>
                                     </View>
                                     <View style={[styles.ritualPaper, styles.completedRitualPaper]}>
                                         <View style={styles.paperTape} />
@@ -434,11 +434,8 @@ const HomeScreen = ({
                                     <View style={styles.featureCardHeader}>
                                         <View style={styles.cardTitleRow}>
                                             <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
-                                            <HeartDoodle style={styles.cardTitleHeart} color="#FF8AA4" size={24} />
+                                            <HeartDoodle style={styles.cardTitleHeart} color="#FF8AA4" size={18} />
                                         </View>
-                                        <HomeText style={[styles.smallCardSub, styles.ritualCardSub]}>
-                                            Answer today's questions...
-                                        </HomeText>
                                     </View>
                                     <View style={styles.ritualPaper}>
                                         <View style={styles.paperTape} />
@@ -451,7 +448,7 @@ const HomeScreen = ({
                                         ) : (
                                             <View style={styles.challengePromptContainer}>
                                                 <HomeText style={styles.ritualQuestion} numberOfLines={3}>
-                                                    Tap to answer today's questions and build your bond!
+                                                    Tap to answer today's questions 
                                                 </HomeText>
                                             </View>
                                         )}
@@ -464,9 +461,13 @@ const HomeScreen = ({
                         )}
                     </View>
 
+                    <View style={styles.widgetsSectionHeader}>
+                        <HomeText style={styles.sectionTitle}>Widgets</HomeText>
+                    </View>
+                    <HomeWidgetShowcase onPress={onWidgetsPress} />
+
                     <View style={styles.sectionHeader}>
                         <HomeText style={styles.sectionTitle}>Deepen your connection</HomeText>
-                        <HomeText style={styles.sectionSub}>Explore topics that bring you closer</HomeText>
                     </View>
                     <View style={styles.topicGrid}>
                         {CONNECTION_TOPICS.map((topic) => (
@@ -655,7 +656,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     featureMiniCard: {
-        height: 232,
+        height: 190,
         borderRadius: 18,
         overflow: 'hidden',
         padding: 0,
@@ -667,15 +668,14 @@ const styles = StyleSheet.create({
         shadowColor: '#B899F0',
     },
     featureCardHeader: {
-        minHeight: 78,
         zIndex: 2,
-        paddingTop: 14,
+        paddingTop: 10,
         paddingHorizontal: 16,
     },
     smallCardTitle: {
         color: '#171B44',
-        fontSize: 15,
-        lineHeight: 18,
+        fontSize: 13,
+        lineHeight: 16,
         fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
@@ -712,8 +712,8 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 15,
         right: 15,
-        bottom: 18,
-        height: 140,
+        bottom: 16,
+        height: 136,
         overflow: 'hidden',
         borderRadius: 11,
         backgroundColor: '#FFFDF9',
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     cardArrowButton: {
         position: 'absolute',
         left: 14,
-        bottom: 14,
+        bottom: 16,
         width: 32,
         height: 32,
         borderRadius: 16,
@@ -838,8 +838,8 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 16,
         right: 16,
-        bottom: 20,
-        height: 140,
+        bottom: 16,
+        height: 136,
         borderRadius: 11,
         backgroundColor: '#FFFDF9',
         borderWidth: 1,
@@ -921,12 +921,16 @@ const styles = StyleSheet.create({
         transform: [{ rotate: '5deg' }],
     },
     sectionHeader: {
-        marginTop: 24,
-        marginBottom: 14,
+        marginTop: 12,
+        marginBottom: 6,
+    },
+    widgetsSectionHeader: {
+        marginTop: 12,
+        marginBottom: 6,
     },
     sectionTitle: {
         color: '#171B44',
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },

@@ -29,7 +29,7 @@ const CloseIcon = () => (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
         <Path
             d="M18 6L6 18M6 6l12 12"
-            stroke="#050E3E"
+            stroke="#2E1E3C"
             strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -42,7 +42,7 @@ const CloseIcon = () => (
 // Check / Minus Icons
 const PinkCheck = () => (
     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-        <Circle cx="12" cy="12" r="10" fill="#FF4B80" />
+        <Circle cx="12" cy="12" r="10" fill={colors.primary} />
         <Path d="M8 12.5l2.5 2.5 5-5" stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
 );
@@ -58,10 +58,77 @@ const RadioCircleOutline = () => (
 
 const RadioCircleChecked = () => (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-        <Circle cx="12" cy="12" r="12" fill="#FF4B80" />
+        <Circle cx="12" cy="12" r="12" fill={colors.primary} />
         <Path d="M8 12.5l2.5 2.5 5-5" stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
 );
+
+// SVG Heart Icon
+const HeartIcon = ({ size = 20, color = colors.primary }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+        <Path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </Svg>
+);
+
+// Animated Floating Heart
+const FloatingHeart = ({ delay = 0, startX = 0, size = 16, color = colors.primary, zIndex = 1 }) => {
+    const animation = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const startAnimation = () => {
+            animation.setValue(0);
+            Animated.timing(animation, {
+                toValue: 1,
+                duration: 4000,
+                delay: delay,
+                useNativeDriver: true,
+            }).start(() => {
+                startAnimation();
+            });
+        };
+
+        startAnimation();
+    }, [animation, delay]);
+
+    // Rising Y animation
+    const translateY = animation.interpolate({
+        inputRange: [0, 1],
+        outputRange: [50, -110],
+    });
+
+    // Swaying X animation
+    const translateX = animation.interpolate({
+        inputRange: [0, 0.25, 0.5, 0.75, 1],
+        outputRange: [startX, startX + 12, startX - 12, startX + 8, startX],
+    });
+
+    // Growing/shrinking scale
+    const scale = animation.interpolate({
+        inputRange: [0, 0.2, 0.8, 1],
+        outputRange: [0.3, 1, 1, 0.3],
+    });
+
+    // Fading opacity
+    const opacity = animation.interpolate({
+        inputRange: [0, 0.2, 0.8, 1],
+        outputRange: [0, 0.8, 0.8, 0],
+    });
+
+    return (
+        <Animated.View
+            style={[
+                styles.floatingHeart,
+                {
+                    transform: [{ translateY }, { translateX }, { scale }],
+                    opacity,
+                    zIndex,
+                },
+            ]}
+        >
+            <HeartIcon size={size} color={color} />
+        </Animated.View>
+    );
+};
 
 export default function PremiumScreen({ onBack }) {
     const dispatch = useDispatch();
@@ -75,10 +142,10 @@ export default function PremiumScreen({ onBack }) {
 
     const features = useMemo(
         () => [
-            { label: 'Unlimited Questions' },
-            { label: 'Daily Challenges' },
-            { label: 'All Games' },
-            { label: 'Premium Topics' },
+            { label: 'Premium for you and your partner' },
+            { label: '2000+ couple questions' },
+            { label: 'Unlimited games' },
+            { label: 'Widgets' },
         ],
         [],
     );
@@ -285,19 +352,19 @@ export default function PremiumScreen({ onBack }) {
         }
     };
 
-    const getMonthlyStrikethroughPrice = () => {
-        if (!monthlyPackage?.product?.price || !monthlyPackage?.product?.currencyCode) return null;
-        const monthlyPrice = monthlyPackage.product.price;
-        const originalPrice = monthlyPrice * 1.5;
-        return formatCurrencyPrice(originalPrice, monthlyPackage.product.currencyCode, true);
-    };
+    const monthlyPrice = monthlyPackage?.product?.price || 299;
+    const monthlyCurrency = monthlyPackage?.product?.currencyCode || 'INR';
+    const monthlyPerUser = monthlyPrice / 2;
+    const formattedMonthlyPrice = monthlyPackage?.product?.priceString || `${monthlyCurrency} 299.00`;
+    const formattedMonthlyPerUser = formatCurrencyPrice(monthlyPerUser, monthlyCurrency);
 
-    const getAnnualStrikethroughPrice = () => {
-        if (!annualPackage?.product?.price || !annualPackage?.product?.currencyCode) return null;
-        const annualPrice = annualPackage.product.price;
-        const originalPrice = annualPrice * 1.5;
-        return formatCurrencyPrice(originalPrice, annualPackage.product.currencyCode, true);
-    };
+    const annualPrice = annualPackage?.product?.price || 999;
+    const annualCurrency = annualPackage?.product?.currencyCode || 'INR';
+    const annualPerUser = annualPrice / 24;
+    const formattedAnnualPrice = annualPackage?.product?.priceString || `${annualCurrency} 999.00`;
+    const formattedAnnualPerUser = formatCurrencyPrice(annualPerUser, annualCurrency);
+
+    const savingsPercent = monthlyPackage && annualPackage ? Math.round(((monthlyPackage.product.price * 12) - annualPackage.product.price) / (monthlyPackage.product.price * 12) * 100) : 73;
 
     return (
         <View style={styles.root}>
@@ -310,7 +377,7 @@ export default function PremiumScreen({ onBack }) {
                 style={StyleSheet.absoluteFill}
             />
 
-            {/* Frosted circular back button */}
+            {/* Back button (Left) */}
             <TouchableOpacity
                 onPress={onBack}
                 style={[styles.backButton, { top: insets.top > 0 ? insets.top + 6 : 16 }]}
@@ -319,35 +386,54 @@ export default function PremiumScreen({ onBack }) {
                 <CloseIcon />
             </TouchableOpacity>
 
+            {/* Restore button (Right) */}
+            <TouchableOpacity
+                onPress={handleRestore}
+                disabled={loading}
+                style={[styles.restoreButton, { top: insets.top > 0 ? insets.top + 6 : 16 }]}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.restoreButtonText}>
+                    {loading ? 'Restoring...' : 'Restore'}
+                </Text>
+            </TouchableOpacity>
+
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={[
                     styles.scrollContent,
                     {
-                        paddingTop: insets.top > 0 ? insets.top + 20 : 34,
-                        paddingBottom: insets.bottom > 0 ? insets.bottom + 20 : 30,
+                        paddingTop: insets.top > 0 ? insets.top + 8 : 16,
+                        paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 16,
                     },
                 ]}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Center Mascot Image */}
-                <Image
-                    source={require('../../assets/images/premium-muscot.png')}
-                    style={styles.mascotImage}
-                    resizeMode="contain"
-                />
+                {/* Mascot Image & Floating Hearts */}
+                <View style={styles.mascotContainer}>
+                    <FloatingHeart delay={0} startX={-45} size={14} color={colors.primary} zIndex={1} />
+                    <FloatingHeart delay={1000} startX={50} size={18} color={colors.primaryLight} zIndex={3} />
+                    <FloatingHeart delay={2000} startX={-15} size={16} color={colors.heart} zIndex={1} />
+                    <FloatingHeart delay={3000} startX={35} size={14} color={colors.primary} zIndex={3} />
+                    <FloatingHeart delay={1500} startX={-65} size={20} color={colors.primaryLight} zIndex={1} />
+                    <FloatingHeart delay={2500} startX={70} size={15} color={colors.heart} zIndex={3} />
 
-                {/* Heading details */}
+                    <Image
+                        source={require('../../assets/images/premium-muscot.png')}
+                        style={styles.mascotImage}
+                        resizeMode="contain"
+                    />
+                </View>
+
+                {/* Heading */}
                 <View style={styles.headerTextContainer}>
                     <Text style={styles.headingTitle}>
                         Go <Text style={styles.premiumText}>Premium</Text>
                     </Text>
-                    <Text style={styles.headingSubtitle}>
-                        Get unlimited access to all features
-                    </Text>
+                    <Text style={styles.headingSubtitle}>One subscription covers both of you</Text>
                 </View>
 
-                {/* Premium Active Status (Redundant unless purchased) */}
+                {/* Premium Active Status */}
                 {isPremium && (
                     <View style={styles.premiumStatusContainer}>
                         <View style={styles.premiumStatusCard}>
@@ -375,18 +461,16 @@ export default function PremiumScreen({ onBack }) {
                     </View>
                 )}
 
-                {/* Premium Benefits Grid */}
+                {/* Premium Benefits List */}
                 <View style={styles.benefitsContainer}>
-                    <View style={styles.benefitsGrid}>
-                        {features.map((f) => {
-                            return (
-                                <View key={f.label} style={styles.benefitsItem}>
-                                    <PinkCheck />
-                                    <Text style={styles.benefitsText}>{f.label}</Text>
-                                </View>
-                            );
-                        })}
-                    </View>
+                    {features.map((f) => {
+                        return (
+                            <View key={f.label} style={styles.benefitsItem}>
+                                <PinkCheck />
+                                <Text style={styles.benefitsText}>{f.label}</Text>
+                            </View>
+                        );
+                    })}
                 </View>
 
                 {/* Plan Selection Cards */}
@@ -401,25 +485,17 @@ export default function PremiumScreen({ onBack }) {
                                 !monthlyPackage && styles.planCardDisabled,
                             ]}
                         >
-                            <View style={styles.planRadioCol}>
-                                {selectedPlan === 'monthly' ? (
-                                    <RadioCircleChecked />
-                                ) : (
-                                    <RadioCircleOutline />
-                                )}
-                            </View>
                             <View style={styles.planDetailsCol}>
-                                <Text style={styles.planTitleText}>Monthly Plan</Text>
-                                <Text style={styles.planSubtitleText}>Short term plan</Text>
-                                <Text style={styles.planMetaText}>Auto-renewal subscription</Text>
-                            </View>
-                            <View style={styles.planPricingCol}>
+                                <Text style={styles.planTitleText}>Monthly</Text>
                                 <Text style={styles.planPriceText}>
-                                    {monthlyPackage?.product?.priceString || '$5.00'}
+                                    {formattedMonthlyPrice} / month <Text style={styles.planSubText}>for 2 users</Text>
                                 </Text>
-                                <Text style={styles.planStrikethroughText}>
-                                    {getMonthlyStrikethroughPrice() || 'US$7.99'}
+                                <Text style={styles.planPerUserText}>
+                                    {formattedMonthlyPerUser} / user / month
                                 </Text>
+                            </View>
+                            <View style={styles.planRadioCol}>
+                                {selectedPlan === 'monthly' && <RadioCircleChecked />}
                             </View>
                         </Pressable>
 
@@ -430,35 +506,23 @@ export default function PremiumScreen({ onBack }) {
                                 styles.planCard,
                                 selectedPlan === 'annual' && styles.planCardSelected,
                                 !annualPackage && styles.planCardDisabled,
-                                { marginBottom: 0 },
                             ]}
                         >
-                            <View style={styles.bestValueBadge}>
-                                <Text style={styles.bestValueText}>BEST VALUE</Text>
+                            <View style={styles.planDetailsCol}>
+                                <Text style={styles.planTitleText}>Yearly</Text>
+                                <Text style={styles.planPriceText}>
+                                    {formattedAnnualPrice} / year <Text style={styles.planSubText}>for 2 users</Text>
+                                </Text>
+                                <Text style={styles.planPerUserText}>
+                                    {formattedAnnualPerUser} / user / month
+                                </Text>
+                            </View>
+                            <View style={styles.planRadioCol}>
+                                {selectedPlan === 'annual' && <RadioCircleChecked />}
                             </View>
 
-                            <View style={styles.planRadioCol}>
-                                {selectedPlan === 'annual' ? (
-                                    <RadioCircleChecked />
-                                ) : (
-                                    <RadioCircleOutline />
-                                )}
-                            </View>
-                            <View style={styles.planDetailsCol}>
-                                <Text style={styles.planTitleText}>Yearly Plan</Text>
-                                <Text style={styles.planSubtitleText}>Value for money</Text>
-                                <Text style={styles.planMetaText}>Auto-renewal subscription</Text>
-                                <Text style={styles.planSavingsText}>
-                                    {annualPackage?.product?.pricePerMonthString ? `Only ${annualPackage.product.pricePerMonthString}/month` : 'Only $2.08/month'}
-                                </Text>
-                            </View>
-                            <View style={styles.planPricingCol}>
-                                <Text style={styles.planPriceText}>
-                                    {annualPackage?.product?.priceString || '$25.00'}
-                                </Text>
-                                <Text style={styles.planStrikethroughText}>
-                                    {getAnnualStrikethroughPrice() || 'US$37.99'}
-                                </Text>
+                            <View style={styles.saveBadge}>
+                                <Text style={styles.saveBadgeText}>SAVE {savingsPercent}%</Text>
                             </View>
                         </Pressable>
 
@@ -482,74 +546,34 @@ export default function PremiumScreen({ onBack }) {
                         disabled={!selectedPackage || loading}
                     >
                         <LinearGradient
-                            colors={['#FF758F', '#FF7EB3']}
+                            colors={['#FF5E97', '#FFA1C9']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={styles.subscribeButton}
                         >
                             <Text style={styles.subscribeButtonText}>
-                                {loading ? 'Processing...' : 'Subscribe Now'}
+                                {loading ? 'Processing...' : 'Continue'}
                             </Text>
-                            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                                <Path
-                                    d="M5 12h14M12 5l7 7-7 7"
-                                    stroke="#FFFFFF"
-                                    strokeWidth={2.5}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </Svg>
                         </LinearGradient>
                     </TouchableOpacity>
                 )}
 
-                {/* Couples Banner */}
-                {!isPremium && (
-                    <View style={styles.couplesBannerContainer}>
-                        <View style={styles.couplesBanner}>
-                            <Text style={styles.couplesText}>
-                                💕 One subscription covers{' '}
-                                <Text style={styles.couplesTextBold}>both you & your partner</Text>
-                                {' '}—{' '}
-                                <Text style={styles.couplesTextBold}>only one of you needs to pay!</Text>
-                            </Text>
-                        </View>
-                    </View>
-                )}
-
-                {/* Cancel & Restore Footer Links */}
-                <View style={styles.cancelRestoreRow}>
-                    <Text style={styles.cancelText}>Cancel anytime</Text>
-                    <Text style={styles.cancelDot}>·</Text>
-                    <TouchableOpacity
-                        onPress={handleRestore}
-                        disabled={loading}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={styles.cancelText}>
-                            {loading ? 'Restoring...' : 'Restore Purchase'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Terms of Use */}
+                {/* Terms & Privacy links */}
                 <View style={styles.termsContainer}>
                     <Text style={styles.termsText}>
-                        By continuing, you agree to our{' '}
                         <Text
                             style={styles.termsLink}
-                            onPress={() => Linking.openURL('https://yourapp.com/terms')}
+                            onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/terms-of-service.html')}
                         >
-                            terms of use
-                        </Text>{' '}
-                        &{' '}
-                        <Text
-                            style={styles.termsLink}
-                            onPress={() => Linking.openURL('https://yourapp.com/privacy')}
-                        >
-                            privacy policy
+                            Terms of Use
                         </Text>
-                        .
+                        {' • '}
+                        <Text
+                            style={styles.termsLink}
+                            onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/privacy-policy.html')}
+                        >
+                            Privacy Policy
+                        </Text>
                     </Text>
                 </View>
             </ScrollView>
@@ -558,7 +582,7 @@ export default function PremiumScreen({ onBack }) {
             {purchasing && (
                 <View style={styles.processingOverlay}>
                     <View style={styles.processingCard}>
-                        <ActivityIndicator size="large" color="#FF4B80" />
+                        <ActivityIndicator size="large" color={colors.primary} />
                         <Text style={styles.processingText}>Processing purchase…</Text>
                         <Text style={styles.processingSubtext}>Please wait while we activate your premium.</Text>
                     </View>
@@ -576,7 +600,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
     },
     backButton: {
         position: 'absolute',
@@ -584,255 +608,212 @@ const styles = StyleSheet.create({
         width: 42,
         height: 42,
         borderRadius: 21,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderWidth: 1,
+        borderColor: '#F7DDEA',
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#FFB5D0',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
-        shadowRadius: 8,
+        shadowRadius: 10,
         elevation: 3,
         zIndex: 10,
     },
-    mascotImage: {
-        width: 260,
-        height: 236,
+    restoreButton: {
+        position: 'absolute',
+        right: 16,
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+        zIndex: 10,
+    },
+    restoreButtonText: {
+        color: colors.primary,
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    mascotContainer: {
         alignSelf: 'center',
-        marginTop: -30,
+        position: 'relative',
+        width: 300,
+        height: 230,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    mascotImage: {
+        width: 270,
+        height: 222,
+        zIndex: 2,
+    },
+    floatingHeart: {
+        position: 'absolute',
+        bottom: 30,
+        alignSelf: 'center',
     },
     headerTextContainer: {
         alignItems: 'center',
-        marginTop: 12,
-        marginBottom: 20,
+        marginTop: 2,
+        marginBottom: 16,
     },
     headingTitle: {
         fontSize: 28,
-        fontWeight: '800',
-        color: '#050E3E',
-        letterSpacing: -0.4,
+        fontFamily: fontFamily.extraBold,
+        fontWeight: fontWeight('800'),
+        color: colors.text,
+        textAlign: 'center',
     },
     premiumText: {
-        color: '#FF4B80',
+        color: colors.primary,
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
     },
     headingSubtitle: {
-        color: '#687498',
+        color: colors.primary,
         fontSize: 14,
-        fontWeight: '500',
-        marginTop: 5,
+        fontWeight: '700',
+        marginTop: 4,
+        textAlign: 'center',
     },
-    // Benefits Grid
     benefitsContainer: {
-        marginBottom: 20,
+        marginBottom: 18,
         paddingHorizontal: 8,
-    },
-    benefitsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        rowGap: 14,
+        alignSelf: 'stretch',
     },
     benefitsItem: {
-        width: '47%',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        marginBottom: 8,
+        gap: 10,
     },
     benefitsText: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#050E3E',
+        fontSize: 14,
+        fontWeight: '600',
+        color: colors.text,
         flexShrink: 1,
     },
-    dashText: {
-        color: '#C5C9D6',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    // Plan Cards
     planCardsContainer: {
-        marginBottom: 12,
+        marginBottom: 16,
+        alignSelf: 'stretch',
     },
     planCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        backgroundColor: colors.card,
+        borderRadius: 16,
         borderWidth: 2,
-        borderColor: 'transparent',
-        padding: 16,
-        marginBottom: 12,
+        borderColor: colors.border,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginBottom: 10,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         shadowColor: '#FFB5D0',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 1,
     },
     planCardSelected: {
-        borderColor: '#FF4B80',
+        borderColor: colors.primary,
+        backgroundColor: colors.card,
     },
     planCardDisabled: {
         opacity: 0.5,
     },
-    bestValueBadge: {
-        position: 'absolute',
-        top: -11,
-        right: 20,
-        backgroundColor: '#FF4B80',
-        borderRadius: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        zIndex: 2,
-    },
-    bestValueText: {
-        color: '#FFFFFF',
-        fontSize: 10,
-        fontWeight: '900',
-        letterSpacing: 0.2,
-    },
-    planRadioCol: {
-        marginRight: 12,
-    },
     planDetailsCol: {
-        flex: 1.1,
+        flex: 1,
     },
     planTitleText: {
         fontSize: 15,
         fontWeight: '800',
-        color: '#050E3E',
-    },
-    planSubtitleText: {
-        fontSize: 12,
-        fontWeight: '500',
-        color: '#7380A1',
-        marginTop: 2,
-    },
-    planMetaText: {
-        fontSize: 11,
-        fontWeight: '500',
-        color: '#7380A1',
-        marginTop: 1,
-    },
-    planSavingsText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#10B981',
-        marginTop: 4,
-    },
-    planPricingCol: {
-        alignItems: 'flex-end',
+        color: colors.primary,
+        marginBottom: 2,
     },
     planPriceText: {
-        fontSize: 17,
-        fontWeight: '800',
-        color: '#050E3E',
+        fontSize: 14.5,
+        fontWeight: '700',
+        color: colors.text,
     },
-    planStrikethroughText: {
-        fontSize: 11,
-        color: '#A0A6B5',
-        textDecorationLine: 'line-through',
-        marginTop: 2,
+    planSubText: {
+        fontSize: 12.5,
+        fontWeight: '500',
+        color: colors.textSecondary,
+    },
+    planPerUserText: {
+        fontSize: 12.5,
+        fontWeight: '600',
+        color: colors.textSecondary,
+        marginTop: 1,
+    },
+    planRadioCol: {
+        marginLeft: 12,
+        justifyContent: 'center',
+    },
+    saveBadge: {
+        position: 'absolute',
+        bottom: -8,
+        right: 16,
+        backgroundColor: colors.primary,
+        borderRadius: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        zIndex: 10,
+    },
+    saveBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 9.5,
+        fontWeight: '900',
+        letterSpacing: 0.2,
     },
     noPackagesContainer: {
-        paddingVertical: 24,
+        paddingVertical: 16,
         alignItems: 'center',
     },
     noPackagesText: {
-        color: '#7380A1',
+        color: colors.textSecondary,
     },
-    // Couples Banner
-    couplesBannerContainer: {
-        marginBottom: 8,
-        paddingHorizontal: 4,
-    },
-    couplesBanner: {
-        backgroundColor: 'rgba(255, 235, 240, 0.5)',
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 117, 151, 0.12)',
-        padding: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    couplesText: {
-        color: '#FF6F8F',
-        fontSize: 13,
-        fontWeight: '500',
-        lineHeight: 22,
-        textAlign: 'center',
-    },
-    couplesTextBold: {
-        fontSize: 15.5,
-        fontWeight: '800',
-        color: '#E8446D',
-    },
-    // CTA Action Button
     subscribeButtonWrapper: {
-        marginHorizontal: 4,
-        marginBottom: 16,
-        shadowColor: '#FF6F8F',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.35,
-        shadowRadius: 16,
-        elevation: 4,
+        marginBottom: 12,
+        shadowColor: '#FF5E97',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 3,
     },
     subscribeButtonDisabled: {
         opacity: 0.6,
     },
     subscribeButton: {
-        height: 54,
-        borderRadius: 18,
-        flexDirection: 'row',
+        height: 50,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
     },
     subscribeButtonText: {
         color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '900',
+        fontSize: 15,
+        fontWeight: '800',
     },
-    // Footer Links
-    cancelRestoreRow: {
-        marginTop: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cancelText: {
-        color: '#7380A1',
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    cancelDot: {
-        color: '#7380A1',
-        fontSize: 13,
-        fontWeight: '700',
-        marginHorizontal: 8,
-    },
-    // Terms of Use
     termsContainer: {
-        marginTop: 12,
-        marginBottom: 20,
+        marginTop: 4,
+        marginBottom: 10,
+        alignItems: 'center',
     },
     termsText: {
-        textAlign: 'center',
-        color: '#A0A6B5',
-        fontSize: 11,
-        lineHeight: 15,
+        color: colors.textSecondary,
+        fontSize: 12,
+        fontWeight: '500',
     },
     termsLink: {
-        color: '#FF4B80',
-        fontWeight: '800',
-        textDecorationLine: 'underline',
+        color: colors.textSecondary,
     },
     // Premium Active Status
     premiumStatusContainer: {
         marginBottom: 16,
+        alignSelf: 'stretch',
     },
     premiumStatusCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.card,
         borderRadius: 20,
         borderWidth: 1.5,
         borderColor: '#FFB500',
@@ -852,19 +833,19 @@ const styles = StyleSheet.create({
     premiumStatusTitle: {
         fontSize: 16,
         fontWeight: '900',
-        color: '#050E3E',
+        color: colors.text,
     },
     premiumStatusDetails: {
         flexDirection: 'row',
         justifyContent: 'space-between',
     },
     premiumStatusLabel: {
-        color: '#7380A1',
+        color: colors.textSecondary,
         fontSize: 11,
         fontWeight: '700',
     },
     premiumStatusValue: {
-        color: '#050E3E',
+        color: colors.text,
         fontSize: 13,
         fontWeight: '800',
         marginTop: 2,
@@ -878,7 +859,7 @@ const styles = StyleSheet.create({
         zIndex: 100,
     },
     processingCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.card,
         borderRadius: 24,
         paddingVertical: 28,
         paddingHorizontal: 36,
@@ -890,13 +871,13 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     processingText: {
-        color: '#050E3E',
+        color: colors.text,
         fontSize: 16,
         fontWeight: '900',
         marginTop: 16,
     },
     processingSubtext: {
-        color: '#7380A1',
+        color: colors.textSecondary,
         fontSize: 13,
         marginTop: 6,
         textAlign: 'center',

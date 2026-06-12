@@ -1,7 +1,7 @@
 // Main Tab Navigator - Home with Bottom Tabs
 // Now uses Redux for global state instead of prop drilling
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, BackHandler, Modal } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, PanResponder } from 'react-native';
 import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
@@ -25,6 +25,7 @@ import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { API_BASE } from '../constants/Api';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const isMoodPastRefreshWindow = (mood, now) => {
     if (!mood?.updatedAt) {
@@ -70,6 +71,66 @@ export const MainTabNavigator = ({
     const [moodPreview, setMoodPreview] = useState(null);
     const [isScribbleLiveFullscreen, setIsScribbleLiveFullscreen] = useState(false);
     const lastAutoOpenedMoodRef = React.useRef(null);
+
+    const [isAccountMounted, setIsAccountMounted] = useState(false);
+    const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+
+    useEffect(() => {
+        if (isAccountVisible) {
+            setIsAccountMounted(true);
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 220,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            Animated.timing(slideAnim, {
+                toValue: SCREEN_WIDTH,
+                duration: 200,
+                useNativeDriver: true,
+            }).start(() => {
+                setIsAccountMounted(false);
+            });
+        }
+    }, [isAccountVisible, slideAnim]);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: (evt, gestureState) => {
+                return isAccountVisible && gestureState.x0 < 60;
+            },
+            onMoveShouldSetPanResponder: (evt, gestureState) => {
+                return isAccountVisible && gestureState.x0 < 60 && gestureState.dx > 10;
+            },
+            onPanResponderGrant: () => {},
+            onPanResponderMove: (evt, gestureState) => {
+                if (gestureState.dx > 0) {
+                    slideAnim.setValue(gestureState.dx);
+                }
+            },
+            onPanResponderRelease: (evt, gestureState) => {
+                if (gestureState.dx > SCREEN_WIDTH / 3 || gestureState.vx > 0.4) {
+                    Animated.timing(slideAnim, {
+                        toValue: SCREEN_WIDTH,
+                        duration: 180,
+                        useNativeDriver: true,
+                    }).start(() => {
+                        setIsAccountVisible(false);
+                        setIsPremiumOpenInAccount(false);
+                        setIsWidgetsLibraryVisible(false);
+                        setIsAccountMounted(false);
+                    });
+                } else {
+                    Animated.spring(slideAnim, {
+                        toValue: 0,
+                        tension: 80,
+                        friction: 10,
+                        useNativeDriver: true,
+                    }).start();
+                }
+            },
+        })
+    ).current;
 
     useEffect(() => {
         if (initialTab) {
@@ -224,6 +285,12 @@ export const MainTabNavigator = ({
     // Handle Android back button/gesture - navigate to home tab from sub-tabs
     useEffect(() => {
         const backAction = () => {
+            if (isAccountVisible) {
+                setIsAccountVisible(false);
+                setIsPremiumOpenInAccount(false);
+                setIsWidgetsLibraryVisible(false);
+                return true;
+            }
             if (currentTab !== 'home') {
                 setCurrentTab('home');
                 return true; // Prevent default (app exit)
@@ -233,7 +300,7 @@ export const MainTabNavigator = ({
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    }, [currentTab]);
+    }, [currentTab, isAccountVisible]);
 
     const renderScreen = () => {
         switch (currentTab) {
@@ -272,6 +339,7 @@ export const MainTabNavigator = ({
                         onRefreshPuzzle={onRefreshPuzzle}
                         duelBadgeCount={duelBadgeCount}
                         onNotificationPress={() => setIsNotificationVisible(true)}
+                        onWidgetsPress={() => setIsWidgetsLibraryVisible(true)}
                     />
                 );
             case 'canvas':
@@ -373,78 +441,81 @@ export const MainTabNavigator = ({
                 />
             )}
 
+            {isAccountMounted && (
+                <Animated.View
+                    style={[
+                        StyleSheet.absoluteFillObject,
+                        {
+                            transform: [{ translateX: slideAnim }],
+                            zIndex: 9999,
+                            backgroundColor: colors.background || '#FFFFFF',
+                        },
+                    ]}
+                    {...panResponder.panHandlers}
+                >
+                    <AccountScreen
+                        userData={userData}
+                        partnerName={partnerName}
+                        hasPartner={hasPartner}
+                        isPremium={isPremium}
+                        premiumPlan={effectivePremiumPlan}
+                        premiumExpiresAt={effectivePremiumExpiresAt}
+                        premiumSource={effectivePremiumSource}
+                        daysTogether={daysTogether}
+                        onLogout={() => {
+                            setIsAccountVisible(false);
+                            setIsPremiumOpenInAccount(false);
+                            setIsWidgetsLibraryVisible(false);
+                            onLogout();
+                        }}
+                        onDeleteAccount={() => {
+                            setIsAccountVisible(false);
+                            setIsPremiumOpenInAccount(false);
+                            setIsWidgetsLibraryVisible(false);
+                            onDeleteAccount();
+                        }}
+                        onEditProfile={onEditProfile}
+                        onAvatarPress={onAvatarPress}
+                        onFindPartner={onFindPartner}
+                        onNavigateToPremium={() => setIsPremiumOpenInAccount(true)}
+                        onWidgetsPress={() => setIsWidgetsLibraryVisible(true)}
+                        onEditRelationshipDate={() => {
+                            setIsAccountVisible(false);
+                            onEditRelationshipDate?.();
+                        }}
+                        onBack={() => {
+                            setIsAccountVisible(false);
+                            setIsPremiumOpenInAccount(false);
+                            setIsWidgetsLibraryVisible(false);
+                        }}
+                    />
+
+                </Animated.View>
+            )}
+
             <Modal
-                visible={isAccountVisible}
+                visible={isPremiumOpenInAccount}
                 animationType="slide"
                 transparent={false}
                 statusBarTranslucent={true}
-                onRequestClose={() => {
-                    setIsAccountVisible(false);
-                    setIsPremiumOpenInAccount(false);
-                    setIsWidgetsLibraryVisible(false);
-                }}
+                onRequestClose={() => setIsPremiumOpenInAccount(false)}
             >
-                <AccountScreen
-                    userData={userData}
-                    partnerName={partnerName}
-                    hasPartner={hasPartner}
-                    isPremium={isPremium}
-                    premiumPlan={effectivePremiumPlan}
-                    premiumExpiresAt={effectivePremiumExpiresAt}
-                    premiumSource={effectivePremiumSource}
-                    daysTogether={daysTogether}
-                    onLogout={() => {
-                        setIsAccountVisible(false);
-                        setIsPremiumOpenInAccount(false);
-                        setIsWidgetsLibraryVisible(false);
-                        onLogout();
-                    }}
-                    onDeleteAccount={() => {
-                        setIsAccountVisible(false);
-                        setIsPremiumOpenInAccount(false);
-                        setIsWidgetsLibraryVisible(false);
-                        onDeleteAccount();
-                    }}
-                    onEditProfile={onEditProfile}
-                    onAvatarPress={onAvatarPress}
-                    onFindPartner={onFindPartner}
-                    onNavigateToPremium={() => setIsPremiumOpenInAccount(true)}
-                    onWidgetsPress={() => setIsWidgetsLibraryVisible(true)}
-                    onEditRelationshipDate={() => {
-                        setIsAccountVisible(false);
-                        onEditRelationshipDate?.();
-                    }}
-                    onBack={() => {
-                        setIsAccountVisible(false);
-                        setIsPremiumOpenInAccount(false);
-                        setIsWidgetsLibraryVisible(false);
-                    }}
+                <PremiumScreen
+                    onBack={() => setIsPremiumOpenInAccount(false)}
                 />
+            </Modal>
 
-                <Modal
-                    visible={isPremiumOpenInAccount}
-                    animationType="slide"
-                    transparent={false}
-                    statusBarTranslucent={true}
-                    onRequestClose={() => setIsPremiumOpenInAccount(false)}
-                >
-                    <PremiumScreen
-                        onBack={() => setIsPremiumOpenInAccount(false)}
-                    />
-                </Modal>
-
-                <Modal
-                    visible={isWidgetsLibraryVisible}
-                    animationType="slide"
-                    transparent={false}
-                    statusBarTranslucent={true}
-                    onRequestClose={() => setIsWidgetsLibraryVisible(false)}
-                >
-                    <WidgetsLibraryScreen
-                        userData={userData}
-                        onBack={() => setIsWidgetsLibraryVisible(false)}
-                    />
-                </Modal>
+            <Modal
+                visible={isWidgetsLibraryVisible}
+                animationType="slide"
+                transparent={false}
+                statusBarTranslucent={true}
+                onRequestClose={() => setIsWidgetsLibraryVisible(false)}
+            >
+                <WidgetsLibraryScreen
+                    userData={userData}
+                    onBack={() => setIsWidgetsLibraryVisible(false)}
+                />
             </Modal>
 
             <Modal
