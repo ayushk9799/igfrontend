@@ -19,6 +19,8 @@
     "@react-native/new-app-screen": "0.82.1",
     "@reduxjs/toolkit": "^2.11.2",
     "expo": "~54.0.31",
+    "expo-blur": "~15.0.8",
+    "expo-glass-effect": "~0.1.10",
     "expo-haptics": "~15.0.8",
     "expo-image-crop-tool": "^0.4.0",
     "expo-image-manipulator": "~14.0.8",

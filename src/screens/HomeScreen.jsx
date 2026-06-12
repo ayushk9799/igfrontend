@@ -506,7 +506,7 @@ const HomeScreen = ({
                                         ) : (
                                             <View style={styles.challengePromptContainer}>
                                                 <HomeText style={styles.ritualQuestion} numberOfLines={3}>
-                                                    Tap to answer today's questions and build your bond!
+                                                    Tap to answer today's questions 
                                                 </HomeText>
                                             </View>
                                         )}

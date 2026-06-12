@@ -9,6 +9,7 @@ import {
     Dimensions,
     Platform,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius } from '../theme';
 import { emojis } from '../constants/Moods';
@@ -145,6 +146,13 @@ export const MoodScreen = ({
                 onPress={onBack}
             />
             <View style={styles.sheetContainer}>
+                {Platform.OS === 'ios' ? (
+                    <BlurView intensity={42} tint="light" style={StyleSheet.absoluteFillObject} />
+                ) : (
+                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255, 255, 255, 0.94)' }]} />
+                )}
+                <View style={styles.liquidTint} />
+                <View style={styles.liquidHighlight} />
                 <View style={styles.dragIndicator} />
                 <FlatList
                     data={emojis}
@@ -212,9 +220,14 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
     },
     sheetContainer: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Platform.select({
+            ios: 'rgba(255, 255, 255, 0.18)',
+            android: 'rgba(255, 255, 255, 0.74)',
+            default: 'rgba(255, 255, 255, 0.74)',
+        }),
         borderTopLeftRadius: 26,
         borderTopRightRadius: 26,
+        overflow: 'hidden',
         maxHeight: '58%',
         minHeight: '46%',
         paddingTop: 8,
@@ -229,6 +242,18 @@ const styles = StyleSheet.create({
                 elevation: 24,
             },
         }),
+    },
+    liquidTint: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255, 255, 255, 0.34)',
+    },
+    liquidHighlight: {
+        position: 'absolute',
+        top: 0,
+        left: 20,
+        right: 20,
+        height: 1.5,
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
     },
     dragIndicator: {
         width: 44,
@@ -264,11 +289,11 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#FAE8FF',
+        borderColor: 'rgba(250, 232, 255, 0.7)',
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
@@ -303,9 +328,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 14,
-        backgroundColor: '#FFF0F5',
+        backgroundColor: 'rgba(255, 240, 245, 0.8)',
         borderWidth: 1,
-        borderColor: '#FAD6E3',
+        borderColor: 'rgba(250, 214, 227, 0.7)',
     },
     updatedBadgeText: {
         fontSize: 11,
@@ -323,9 +348,9 @@ const styles = StyleSheet.create({
         borderRadius: borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'rgba(255, 255, 255, 0.72)',
         borderWidth: 1,
-        borderColor: '#FAE8FF',
+        borderColor: 'rgba(250, 232, 255, 0.6)',
         paddingVertical: 4,
         paddingHorizontal: 4,
         ...Platform.select({
@@ -363,9 +388,9 @@ const styles = StyleSheet.create({
         right: 0,
         paddingHorizontal: spacing.md,
         paddingTop: spacing.md,
-        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+        backgroundColor: 'rgba(255, 255, 255, 0.65)',
         borderTopWidth: 1,
-        borderTopColor: '#FAE8FF',
+        borderTopColor: 'rgba(250, 232, 255, 0.8)',
     },
     shareButton: {
         backgroundColor: colors.primary,
