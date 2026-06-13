@@ -24,13 +24,13 @@ const DISTANCE_STEPS = [
 
 const cardShadow = Platform.select({
     ios: {
-        shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 18,
+        shadowColor: '#D95C86',
+        shadowOffset: { width: 0, height: 18 },
+        shadowOpacity: 0.28,
+        shadowRadius: 24,
     },
     android: {
-        elevation: 5,
+        elevation: 14,
     },
 });
 
@@ -38,18 +38,6 @@ const ShowcaseText = ({ children, style, ...props }) => (
     <Text {...props} style={[styles.showcaseText, style]} maxFontSizeMultiplier={1.2}>
         {children}
     </Text>
-);
-
-const HeartDoodle = ({ color = '#FFFFFF', size = 20, style }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
-        <Path
-            d="M12 20.2C8.2 16.7 4.5 13.6 4.5 9.7C4.5 7.6 6 6 8 6C9.3 6 10.6 6.8 11.3 8C12 6.8 13.3 6 14.7 6C16.8 6 18.4 7.6 18.4 9.7C18.4 13.6 15.8 15.4 12 20.2Z"
-            stroke={color}
-            strokeWidth={1.7}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-    </Svg>
 );
 
 const HeartIcon = ({ color = '#FF758F', size = 16, style }) => (
@@ -170,9 +158,8 @@ const DistanceShowcaseCard = () => {
                     <Animated.View style={[styles.distanceShowcaseLeft, { transform: [{ translateX: leftTranslate }] }]}>
                         <WidgetInitial label="R" />
                     </Animated.View>
-                    <Animated.View style={[styles.distanceHeartCluster, { transform: [{ scale: heartScale }] }]}>
-                        <HeartDoodle color="#FF758F" size={20} />
-                        <HeartDoodle color="rgba(255,117,143,0.6)" size={15} style={styles.distanceHeartSmall} />
+                    <Animated.View style={[styles.distanceHeartCluster, { transform: [{ translateY: -2 }, { scale: heartScale }] }]}>
+                        <HeartIcon color="#e85ab6ff" size={24} />
                     </Animated.View>
                     <Animated.View style={[styles.distanceShowcaseRight, { transform: [{ translateX: rightTranslate }] }]}>
                         <WidgetInitial label="?" />
@@ -248,14 +235,20 @@ const HomeWidgetShowcase = ({ onPress }) => (
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.widgetShowcaseScroll}
         >
-            <TouchableOpacity activeOpacity={0.92} onPress={onPress}>
-                <DistanceShowcaseCard />
+            <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.widgetShowcasePressable}>
+                <View style={[styles.widgetShowcaseCardShell, styles.distanceShowcaseShadow]}>
+                    <DistanceShowcaseCard />
+                </View>
             </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.92} onPress={onPress}>
-                <TimeTogetherShowcaseCard />
+            <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.widgetShowcasePressable}>
+                <View style={[styles.widgetShowcaseCardShell, styles.timeShowcaseShadow]}>
+                    <TimeTogetherShowcaseCard />
+                </View>
             </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.92} onPress={onPress}>
-                <DaysTogetherShowcaseCard />
+            <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.widgetShowcasePressable}>
+                <View style={[styles.widgetShowcaseCardShell, styles.daysShowcaseShadow]}>
+                    <DaysTogetherShowcaseCard />
+                </View>
             </TouchableOpacity>
         </ScrollView>
     </View>
@@ -271,7 +264,17 @@ const styles = StyleSheet.create({
     },
     widgetShowcaseScroll: {
         paddingHorizontal: 20,
+        paddingTop: 5,
+        paddingBottom: 18,
         gap: 10,
+    },
+    widgetShowcasePressable: {
+        borderRadius: 18,
+    },
+    widgetShowcaseCardShell: {
+        borderRadius: 18,
+        backgroundColor: '#FFF0F3',
+        ...cardShadow,
     },
     widgetShowcaseCard: {
         width: 184,
@@ -281,22 +284,27 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(255,117,143,0.16)',
-        ...cardShadow,
+        borderColor: '#FFFFFF',
     },
     distanceShowcaseCard: {
         width: 236,
         backgroundColor: '#FFF0F3',
-        shadowColor: '#FFB5D0',
     },
     timeShowcaseCard: {
         backgroundColor: '#FFF0F3',
-        shadowColor: '#FFB5D0',
     },
     daysShowcaseCard: {
         width: 130,
         backgroundColor: '#FFF0F3',
-        shadowColor: '#FFB5D0',
+    },
+    distanceShowcaseShadow: {
+        shadowColor: '#FF9FBE',
+    },
+    timeShowcaseShadow: {
+        shadowColor: '#FF9FBE',
+    },
+    daysShowcaseShadow: {
+        shadowColor: '#FF9FBE',
     },
     widgetShowcaseTitle: {
         color: '#FF758F',
@@ -353,9 +361,10 @@ const styles = StyleSheet.create({
     },
     distanceShowcaseDash: {
         position: 'absolute',
-        top: 19,
-        borderTopWidth: 2,
-        borderColor: 'rgba(255,117,143,0.4)',
+        top: 18,
+        borderTopWidth: 4,
+        borderColor: '#FF5A9A',
+        borderRadius: 4,
     },
     distanceShowcaseLeft: {
         position: 'absolute',
@@ -368,15 +377,11 @@ const styles = StyleSheet.create({
         top: 3,
     },
     distanceHeartCluster: {
-        width: 31,
+        width: 28,
         height: 28,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    distanceHeartSmall: {
-        position: 'absolute',
-        right: 2,
-        top: 2,
+        zIndex: 2,
     },
     timeShowcaseGrid: {
         flex: 1,
