@@ -566,6 +566,7 @@ struct DistanceEntry: TimelineEntry {
     let date: Date
     let distanceKm: Double?
     let isTogether: Bool
+    let locked: Bool
     let userInitial: String
     let partnerInitial: String
     let updatedAt: String?
@@ -575,7 +576,7 @@ struct DistanceProvider: TimelineProvider {
     private let appGroupIdentifier = "group.com.thousandways.love"
 
     func placeholder(in context: Context) -> DistanceEntry {
-        DistanceEntry(date: Date(), distanceKm: 381, isTogether: false, userInitial: "T", partnerInitial: "K", updatedAt: nil)
+        DistanceEntry(date: Date(), distanceKm: 381, isTogether: false, locked: false, userInitial: "T", partnerInitial: "K", updatedAt: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (DistanceEntry) -> Void) {
@@ -590,13 +591,13 @@ struct DistanceProvider: TimelineProvider {
 
     private func loadDistanceEntry() -> DistanceEntry {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, userInitial: "?", partnerInitial: "?", updatedAt: nil)
+            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, locked: false, userInitial: "?", partnerInitial: "?", updatedAt: nil)
         }
 
         let jsonURL = containerURL.appendingPathComponent("distance.json")
         guard let data = try? Data(contentsOf: jsonURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, userInitial: "?", partnerInitial: "?", updatedAt: nil)
+            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, locked: false, userInitial: "?", partnerInitial: "?", updatedAt: nil)
         }
 
         let rawDistance = json["distanceKm"]
@@ -613,6 +614,7 @@ struct DistanceProvider: TimelineProvider {
             date: Date(),
             distanceKm: distanceKm,
             isTogether: json["isTogether"] as? Bool ?? false,
+            locked: json["locked"] as? Bool ?? false,
             userInitial: json["userInitial"] as? String ?? "?",
             partnerInitial: json["partnerInitial"] as? String ?? "?",
             updatedAt: json["updatedAt"] as? String
@@ -669,46 +671,68 @@ struct DistanceWidgetView: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text(titleText)
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+        if entry.locked {
+            VStack(spacing: 3) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
 
-            ZStack {
-                GeometryReader { proxy in
-                    let centers = circleCenters(for: proxy.size.width)
-                    let y = proxy.size.height / 2
-                    let lineStart = centers.left + circleSize / 2
-                    let lineEnd = centers.right - circleSize / 2
+                Text("Premium widget")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
 
-                    if !entry.isTogether {
-                        Path { path in
-                            path.move(to: CGPoint(x: lineStart, y: y))
-                            path.addLine(to: CGPoint(x: max(lineStart, lineEnd), y: y))
+                Text("Open app to unlock")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+        } else {
+            VStack(spacing: 4) {
+                Text(titleText)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                ZStack {
+                    GeometryReader { proxy in
+                        let centers = circleCenters(for: proxy.size.width)
+                        let y = proxy.size.height / 2
+                        let lineStart = centers.left + circleSize / 2
+                        let lineEnd = centers.right - circleSize / 2
+
+                        if !entry.isTogether {
+                            Path { path in
+                                path.move(to: CGPoint(x: lineStart, y: y))
+                                path.addLine(to: CGPoint(x: max(lineStart, lineEnd), y: y))
+                            }
+                            .stroke(
+                                .white.opacity(0.9),
+                                style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [1, 4])
+                            )
                         }
-                        .stroke(
-                            .white.opacity(0.9),
-                            style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [1, 4])
-                        )
+
+                        DistanceDoubleHeart()
+                            .position(x: proxy.size.width / 2, y: y)
+
+                        DistanceInitialCircle(initial: entry.userInitial)
+                            .position(x: centers.left, y: y)
+
+                        DistanceInitialCircle(initial: entry.partnerInitial)
+                            .position(x: centers.right, y: y)
                     }
-
-                    DistanceDoubleHeart()
-                        .position(x: proxy.size.width / 2, y: y)
-
-                    DistanceInitialCircle(initial: entry.userInitial)
-                        .position(x: centers.left, y: y)
-
-                    DistanceInitialCircle(initial: entry.partnerInitial)
-                        .position(x: centers.right, y: y)
+                    .frame(height: circleSize)
                 }
                 .frame(height: circleSize)
             }
-            .frame(height: circleSize)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
     }
 }
 

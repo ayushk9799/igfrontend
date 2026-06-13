@@ -257,13 +257,9 @@ export default function TopicQuestionsSummaryScreen({
                     const hasUserAnswer = item.userAnswer !== null && item.userAnswer !== undefined;
                     const hasPartnerAnswer = item.partnerAnswer !== null && item.partnerAnswer !== undefined;
                     const shouldOpenChat = hasUserAnswer || hasPartnerAnswer || item.chatId;
-                    console.log("hasuser", hasUserAnswer);
-                    console.log("haspartner", hasPartnerAnswer);
-                    console.log("chatId", item.chatId);
-                    console.log("shouldOpenChat", shouldOpenChat);
+                   
                     const handlePress = () => {
                         if (shouldOpenChat) {
-                            console.log("item", item)
                             onOpenQuestionChat?.(item);
                             return;
                         }

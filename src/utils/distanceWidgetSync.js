@@ -16,6 +16,23 @@ const getDistanceWidgetIdentity = (user = {}) => ({
     partnerName: user.partnerNickname || user.partnerUsername || user.partnerName || '',
 });
 
+const isDateActive = (dateStr) => !!(dateStr && new Date(dateStr) > new Date());
+
+const hasDistanceWidgetPremium = (user = {}) => (
+    user?.isPremium === true
+    || isDateActive(user?.premiumExpiresAt)
+    || isDateActive(user?.partnerPremiumExpiresAt)
+);
+
+const readJsonResponse = async (response, fallbackMessage) => {
+    const text = await response.text();
+    try {
+        return text ? JSON.parse(text) : {};
+    } catch {
+        throw new Error(`${fallbackMessage} (${response.status})`);
+    }
+};
+
 export const saveDistanceWidgetData = async (distanceData) => {
     if (!['ios', 'android'].includes(Platform.OS)) {
         return;
@@ -29,6 +46,19 @@ export const saveDistanceWidgetData = async (distanceData) => {
     await ScribbleWidgetBridge.saveDistanceWidgetData({
         ...distanceData,
         updatedAt: new Date().toISOString(),
+    });
+};
+
+export const saveLockedDistanceWidgetData = async (user = {}) => {
+    const identity = getDistanceWidgetIdentity(user);
+
+    await saveDistanceWidgetData({
+        locked: true,
+        isPremium: false,
+        userInitial: identity.userInitial,
+        partnerInitial: identity.partnerInitial,
+        userName: identity.userName,
+        partnerName: identity.partnerName,
     });
 };
 
@@ -46,6 +76,11 @@ export const syncDistanceWidgetLocation = async ({
 
     if (!userId) {
         return { skipped: true, reason: 'missing_user' };
+    }
+
+    if (!hasDistanceWidgetPremium(activeUser)) {
+        await saveLockedDistanceWidgetData(activeUser);
+        return { skipped: true, reason: 'premium_required' };
     }
 
     if (!enableSharing && activeUser?.locationSharingEnabled !== true) {
@@ -68,29 +103,36 @@ export const syncDistanceWidgetLocation = async ({
             sharingEnabled: true,
         }),
     });
-    const locationJson = await locationResponse.json();
+    const locationJson = await readJsonResponse(locationResponse, 'Failed to update location.');
     if (!locationResponse.ok || !locationJson.success) {
         throw new Error(locationJson.error || 'Failed to update location.');
     }
 
-    if (locationJson.user) {
-        updateStoredUser(locationJson.user);
+    const locationUpdates = locationJson.user ? {
+        locationSharingEnabled: locationJson.user.locationSharingEnabled,
+        locationUpdatedAt: locationJson.user.locationUpdatedAt,
+    } : null;
+
+    if (locationUpdates) {
+        updateStoredUser(locationUpdates);
     }
 
     const distanceResponse = await fetch(`${API_BASE}/api/user/distance/${userId}`);
-    const distanceJson = await distanceResponse.json();
+    const distanceJson = await readJsonResponse(distanceResponse, 'Failed to fetch partner distance.');
     if (!distanceResponse.ok || !distanceJson.success) {
         throw new Error(distanceJson.error || 'Failed to fetch partner distance.');
     }
 
     await saveDistanceWidgetData({
         ...distanceJson.data,
+        locked: false,
+        isPremium: true,
         userInitial: distanceJson.data?.userInitial || identity.userInitial,
         partnerInitial: distanceJson.data?.partnerInitial || identity.partnerInitial,
     });
 
     return {
-        user: locationJson.user || null,
+        user: locationUpdates,
         distance: distanceJson.data,
     };
 };

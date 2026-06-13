@@ -44,7 +44,7 @@ import { API_BASE } from '../constants/Api';
 import { QuestionChatsV2Api } from '../api/questionsV2Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
 import { getDeviceInfo } from '../utils/deviceInfo';
-import { syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import { saveLockedDistanceWidgetData, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
@@ -445,6 +445,10 @@ export const AppNavigator = () => {
                 premiumSource,
             }));
 
+            if (!effectivePremium) {
+                saveLockedDistanceWidgetData(storedUser || {}).catch(() => {});
+            }
+
         } catch (e) {
         }
     }, [initPurchases, dispatch]);
@@ -456,7 +460,6 @@ export const AppNavigator = () => {
     useEffect(() => {
         if (!userData?.isAuthenticated) return;
 
-        console.log('Time Together widget date:', togetherWidgetStartDate);
         saveTogetherWidgetStartDate(togetherWidgetStartDate).catch((error) => {
             console.warn('Failed to update Time Together widget:', error?.message || error);
         });

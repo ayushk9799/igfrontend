@@ -272,7 +272,7 @@ const AnimatedDistanceAccessory = () => {
     );
 };
 
-const LockDistanceCard = ({ onPress, isEnabled }) => (
+const LockDistanceCard = ({ onPress, isEnabled, isPremium }) => (
     <TouchableOpacity style={styles.lockWidgetTileFull} onPress={onPress} activeOpacity={0.85}>
         <LinearGradient colors={['#D4B3FF', '#9CCBFF', '#FFB3C8']} style={styles.lockPhonePreviewWide}>
             <Text style={styles.lockMockDateWide}>Tue 9 Jun</Text>
@@ -280,8 +280,8 @@ const LockDistanceCard = ({ onPress, isEnabled }) => (
             <AnimatedDistanceAccessory />
         </LinearGradient>
         <Text style={styles.widgetTileName}>Our Distance</Text>
-        <Text style={[styles.widgetPermissionHint, isEnabled && styles.widgetPermissionEnabled]}>
-            {isEnabled ? 'Location sharing active ✓' : 'Requires location permission'}
+        <Text style={[styles.widgetPermissionHint, isEnabled && isPremium && styles.widgetPermissionEnabled]}>
+            {!isPremium ? 'Premium widget' : (isEnabled ? 'Location sharing active ✓' : 'Requires location permission')}
         </Text>
     </TouchableOpacity>
 );
@@ -322,7 +322,9 @@ const ScribbleCard = () => (
 
 export const WidgetsLibraryScreen = ({
     userData = {},
+    isPremium = false,
     onBack,
+    onNavigateToPremium,
 }) => {
     const insets = useSafeAreaInsets();
     const relationshipStartDate = userData.relationshipStartDate ||
@@ -381,12 +383,25 @@ export const WidgetsLibraryScreen = ({
     }, [userData, locationSyncing]);
 
     const handleEnableDistance = useCallback(() => {
+        if (!isPremium) {
+            if (onNavigateToPremium) {
+                onNavigateToPremium();
+            } else {
+                setCustomAlert({
+                    title: 'Premium Widget',
+                    message: 'Our Distance is available for premium couples.',
+                    type: 'info',
+                });
+            }
+            return;
+        }
+
         if (userData?.locationSharingEnabled === true) {
             handleConfirmLocation();
         } else {
             setDistanceModalVisible(true);
         }
-    }, [userData?.locationSharingEnabled, handleConfirmLocation]);
+    }, [isPremium, onNavigateToPremium, userData?.locationSharingEnabled, handleConfirmLocation]);
 
     return (
         <View style={styles.root}>
@@ -419,6 +434,7 @@ export const WidgetsLibraryScreen = ({
                         <LockDistanceCard
                             onPress={handleEnableDistance}
                             isEnabled={userData?.locationSharingEnabled === true}
+                            isPremium={isPremium}
                         />
                     </View>
 

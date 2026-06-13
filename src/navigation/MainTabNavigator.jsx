@@ -63,7 +63,6 @@ export const MainTabNavigator = ({
     const [todayChallenge, setTodayChallenge] = useState(null);
     const [isAccountVisible, setIsAccountVisible] = useState(false);
     const [isPremiumOpenInAccount, setIsPremiumOpenInAccount] = useState(false);
-    const [isWidgetsLibraryVisible, setIsWidgetsLibraryVisible] = useState(false);
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
     const [isMoodVisible, setIsMoodVisible] = useState(false);
     const [isMoodRefreshPrompt, setIsMoodRefreshPrompt] = useState(false);
@@ -117,7 +116,6 @@ export const MainTabNavigator = ({
                     }).start(() => {
                         setIsAccountVisible(false);
                         setIsPremiumOpenInAccount(false);
-                        setIsWidgetsLibraryVisible(false);
                         setIsAccountMounted(false);
                     });
                 } else {
@@ -164,6 +162,7 @@ export const MainTabNavigator = ({
     const effectivePremiumPlan = effectivePremiumSource === 'partner'
         ? userData?.partnerPremiumPlan
         : userData?.premiumPlan;
+    const hasPremiumAccess = isPremium || userData?.isPremium === true;
     const games = useSelector(selectGames);
     const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle } = games;
 
@@ -288,7 +287,6 @@ export const MainTabNavigator = ({
             if (isAccountVisible) {
                 setIsAccountVisible(false);
                 setIsPremiumOpenInAccount(false);
-                setIsWidgetsLibraryVisible(false);
                 return true;
             }
             if (currentTab !== 'home') {
@@ -339,7 +337,16 @@ export const MainTabNavigator = ({
                         onRefreshPuzzle={onRefreshPuzzle}
                         duelBadgeCount={duelBadgeCount}
                         onNotificationPress={() => setIsNotificationVisible(true)}
-                        onWidgetsPress={() => setIsWidgetsLibraryVisible(true)}
+                        onWidgetsPress={() => setCurrentTab('widgetsLibrary')}
+                    />
+                );
+            case 'widgetsLibrary':
+                return (
+                    <WidgetsLibraryScreen
+                        userData={userData}
+                        isPremium={hasPremiumAccess}
+                        onNavigateToPremium={onPremiumPress}
+                        onBack={() => setCurrentTab('home')}
                     />
                 );
             case 'canvas':
@@ -433,7 +440,7 @@ export const MainTabNavigator = ({
     return (
         <View style={styles.container}>
             {renderScreen()}
-            {!isScribbleLiveFullscreen && currentTab !== 'topicQuestions' && (
+            {!isScribbleLiveFullscreen && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge'].includes(currentTab) && (
                 <BottomTabBar
                     currentTab={currentTab}
                     onTabChange={setCurrentTab}
@@ -465,20 +472,22 @@ export const MainTabNavigator = ({
                         onLogout={() => {
                             setIsAccountVisible(false);
                             setIsPremiumOpenInAccount(false);
-                            setIsWidgetsLibraryVisible(false);
                             onLogout();
                         }}
                         onDeleteAccount={() => {
                             setIsAccountVisible(false);
                             setIsPremiumOpenInAccount(false);
-                            setIsWidgetsLibraryVisible(false);
                             onDeleteAccount();
                         }}
                         onEditProfile={onEditProfile}
                         onAvatarPress={onAvatarPress}
                         onFindPartner={onFindPartner}
                         onNavigateToPremium={() => setIsPremiumOpenInAccount(true)}
-                        onWidgetsPress={() => setIsWidgetsLibraryVisible(true)}
+                        onWidgetsPress={() => {
+                            setIsAccountVisible(false);
+                            setIsPremiumOpenInAccount(false);
+                            setCurrentTab('widgetsLibrary');
+                        }}
                         onEditRelationshipDate={() => {
                             setIsAccountVisible(false);
                             onEditRelationshipDate?.();
@@ -486,7 +495,6 @@ export const MainTabNavigator = ({
                         onBack={() => {
                             setIsAccountVisible(false);
                             setIsPremiumOpenInAccount(false);
-                            setIsWidgetsLibraryVisible(false);
                         }}
                     />
 
@@ -502,19 +510,6 @@ export const MainTabNavigator = ({
             >
                 <PremiumScreen
                     onBack={() => setIsPremiumOpenInAccount(false)}
-                />
-            </Modal>
-
-            <Modal
-                visible={isWidgetsLibraryVisible}
-                animationType="slide"
-                transparent={false}
-                statusBarTranslucent={true}
-                onRequestClose={() => setIsWidgetsLibraryVisible(false)}
-            >
-                <WidgetsLibraryScreen
-                    userData={userData}
-                    onBack={() => setIsWidgetsLibraryVisible(false)}
                 />
             </Modal>
 

@@ -84,8 +84,8 @@ export default function DailyChallengeScreen({
     try {
       // Get user's local date in YYYY-MM-DD format (avoids timezone issues with server's "today")
       const now = new Date();
-      //const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-       const userLocalDate='2026-05-20'
+      const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+       //const userLocalDate='2026-05-20'
       const res = await fetch(`${API_BASE}/api/daily-challenge/date/${userLocalDate}`);
       const json = await res.json();
       setChallenge(json.data);
@@ -316,7 +316,7 @@ export default function DailyChallengeScreen({
 
             {/* Cards Stack - Using AnimatedCardStack for smooth transitions */}
             {/* Only show unanswered tasks - already answered ones are filtered out */}
-            <View style={[styles.cardsContainer, { paddingBottom: insets.bottom + 80 }]}>
+            <View style={styles.cardsContainer}>
               <AnimatedCardStack
                 tasks={unansweredTasks}
                 currentIndex={currentIndex}
@@ -335,6 +335,7 @@ export default function DailyChallengeScreen({
                 userAnswers={userAnswers}
                 autoAdvanceOnSubmit={false}
                 totalCardsOverride={tasks.length}
+                cardHeight={CARD_HEIGHT}
               />
             </View>
           </View>
@@ -395,7 +396,13 @@ const styles = StyleSheet.create({
   },
   viewAnswersBtnText: { fontFamily: fontFamily.bold, fontSize: 12, fontWeight: '600', color: colors.text },
 
-  cardsContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: spacing.sm, paddingHorizontal: spacing.md },
+  cardsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 24,
+  },
 
   // Progress Dots
   progressDotsContainer: {

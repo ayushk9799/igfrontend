@@ -53,11 +53,17 @@ const ChatBubble = ({
         });
     };
 
-    // Get the message content
-    let messageContent = message?.content || message?.text || '';
+    const answerPayload = message?.answerPayload || null;
+    const answerType = message?.answerType || answerPayload?.answerType || null;
+
+    // Get the message content. V2 answer chats store the real media URI in answerPayload.answer
+    // while content is only the text preview ("Photo", "Voice message", etc.).
+    let messageContent = answerType && answerPayload?.answer !== undefined && answerPayload?.answer !== null
+        ? answerPayload.answer
+        : (message?.content || message?.text || '');
 
     // For likelyto answers, transform "you"/"partner" to "Me" or "You" for display
-    if (message?.messageType === 'answer' && questionCategory === 'likelyto' && messageContent) {
+    if (message?.messageType === 'answer' && answerType === 'text' && questionCategory === 'likelyto' && messageContent) {
         if (messageContent === 'you') {
             messageContent = 'Me';
         } else if (messageContent === 'partner') {
@@ -66,7 +72,7 @@ const ChatBubble = ({
     }
 
     // Don't render if there's no content (but allow photo and voice which use content as URI)
-    if (!messageContent && !['photo', 'voice'].includes(message?.answerType)) {
+    if (!messageContent && !['photo', 'voice'].includes(answerType)) {
         return null;
     }
 
@@ -91,17 +97,17 @@ const ChatBubble = ({
                 {/* Content overlay */}
                 <View style={[
                     styles.bubbleContent,
-                    message.answerType === 'photo' && styles.bubbleContentPhoto
+                    answerType === 'photo' && styles.bubbleContentPhoto
                 ]}>
                     {message.messageType === 'answer' && (
                         <Text style={[
                             styles.answerLabel,
-                            message.answerType === 'photo' && styles.answerLabelPhoto
+                            answerType === 'photo' && styles.answerLabelPhoto
                         ]}>
                             {isSent ? 'YOUR ANSWER' : `${senderName.toUpperCase()}'S ANSWER`}
                         </Text>
                     )}
-                    {message.answerType === 'voice' ? (
+                    {answerType === 'voice' ? (
                         <>
                             <VoiceBubble audioUri={messageContent} isSent={isSent} />
                             <View style={styles.metaRow}>
@@ -109,7 +115,7 @@ const ChatBubble = ({
                                 {isSent && isRead && <DoubleCheck color="#007AFF" size={12} />}
                             </View>
                         </>
-                    ) : message.answerType === 'photo' ? (
+                    ) : answerType === 'photo' ? (
                         <>
                             <Image
                                 source={{ uri: messageContent }}
@@ -227,4 +233,3 @@ const styles = StyleSheet.create({
 });
 
 export default ChatBubble;
-

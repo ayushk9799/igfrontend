@@ -250,6 +250,7 @@ object RelationshipWidgetRenderer {
         val data = distanceJson?.let {
             runCatching { JSONObject(it) }.getOrNull()
         }
+        val isLocked = data?.optBoolean("locked", false) == true
         val isTogether = data?.optBoolean("isTogether", false) == true
         val rawDistance = data?.optDouble("distanceKm", Double.NaN)
         val distanceKm = rawDistance?.takeUnless { it.isNaN() }
@@ -264,6 +265,13 @@ object RelationshipWidgetRenderer {
 
         val rect = accessoryRect(width, height)
         drawGlassRoundRect(canvas, rect, rect.height() * 0.28f)
+
+        if (isLocked) {
+            drawText(canvas, "Premium widget", rect.centerX(), rect.top + rect.height() * 0.42f, rect.height() * 0.2f, Color.WHITE, Paint.Align.CENTER, true)
+            drawText(canvas, "Open app to unlock", rect.centerX(), rect.top + rect.height() * 0.66f, rect.height() * 0.14f, Color.argb(220, 255, 255, 255), Paint.Align.CENTER, false)
+            return bitmap
+        }
+
         drawText(canvas, title, rect.centerX(), rect.top + rect.height() * 0.34f, rect.height() * 0.2f, Color.WHITE, Paint.Align.CENTER, true)
 
         val rowLeft = rect.left + rect.width() * 0.12f

@@ -218,14 +218,7 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
         right: Platform.OS === 'android' ? 18 : 24,
     };
 
-    useEffect(() => {
-        if (__DEV__) {
-            console.log(
-                `BottomTabBar glass layer: ${shouldUseLiquidGlass ? 'ExpoGlassEffect' : 'BlurView fallback'}`,
-                { isLiquidGlassAvailable }
-            );
-        }
-    }, [isLiquidGlassAvailable, shouldUseLiquidGlass]);
+   
 
     const tabs = [
         { key: 'home', label: 'Home', iconKey: 'home' },
