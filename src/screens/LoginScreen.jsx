@@ -437,7 +437,7 @@ export const LoginScreen = ({
 
                             <View style={styles.termsContainer}>
                                 <Text style={styles.termsText}>
-                                    By signing up for Penguin, you agree to our
+                                    By signing up for Penguin Couple, you agree to our
                                 </Text>
                                 <View style={styles.termsLinks}>
                                     <TouchableOpacity onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/terms-of-service.html')}>

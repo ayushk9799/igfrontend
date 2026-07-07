@@ -16,6 +16,8 @@ struct ScribbleEntry: TimelineEntry {
     let paths: [[String: Any]]
     let senderName: String
     let hasScribble: Bool
+    let canvasWidth: CGFloat
+    let canvasHeight: CGFloat
 }
 
 // MARK: - Timeline Provider
@@ -24,7 +26,7 @@ struct ScribbleProvider: TimelineProvider {
     private let appGroupIdentifier = "group.com.thousandways.love"
     
     func placeholder(in context: Context) -> ScribbleEntry {
-        ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false)
+        ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false, canvasWidth: 350, canvasHeight: 350)
     }
     
     func getSnapshot(in context: Context, completion: @escaping (ScribbleEntry) -> Void) {
@@ -46,7 +48,7 @@ struct ScribbleProvider: TimelineProvider {
         
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
             print("❌ [Widget] Failed to get App Group container!")
-            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false)
+            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false, canvasWidth: 350, canvasHeight: 350)
         }
         
         print("📁 [Widget] Container URL: \(containerURL.path)")
@@ -59,18 +61,20 @@ struct ScribbleProvider: TimelineProvider {
         
         guard let data = try? Data(contentsOf: jsonURL) else {
             print("❌ [Widget] Failed to read data from file!")
-            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false)
+            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false, canvasWidth: 350, canvasHeight: 350)
         }
         
         print("📊 [Widget] Read \(data.count) bytes from file")
         
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             print("❌ [Widget] Failed to parse JSON!")
-            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false)
+            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false, canvasWidth: 350, canvasHeight: 350)
         }
         
         let paths = json["paths"] as? [[String: Any]] ?? []
         let senderName = json["senderName"] as? String ?? "Your Love"
+        let canvasWidth = Self.parseDimension(json["canvasWidth"], fallback: 350)
+        let canvasHeight = Self.parseDimension(json["canvasHeight"], fallback: canvasWidth)
         let version = json["version"] as? Int ?? 0
         
         print("✅ [Widget] Loaded \(paths.count) paths, sender: \(senderName), version: \(version)")
@@ -79,8 +83,23 @@ struct ScribbleProvider: TimelineProvider {
             date: Date(),
             paths: paths,
             senderName: senderName,
-            hasScribble: !paths.isEmpty
+            hasScribble: !paths.isEmpty,
+            canvasWidth: canvasWidth,
+            canvasHeight: canvasHeight
         )
+    }
+    
+    private static func parseDimension(_ value: Any?, fallback: CGFloat) -> CGFloat {
+        if let number = value as? NSNumber, number.doubleValue > 0 {
+            return CGFloat(number.doubleValue)
+        }
+        if let value = value as? Double, value > 0 {
+            return CGFloat(value)
+        }
+        if let string = value as? String, let number = Double(string), number > 0 {
+            return CGFloat(number)
+        }
+        return fallback
     }
 }
 
@@ -118,7 +137,7 @@ struct PlaceholderHeart {
 // MARK: - SVG Path Parser
 struct SVGPathParser {
     
-    static func parse(_ pathString: String, scale: CGFloat = 1.0) -> Path {
+    static func parse(_ pathString: String, scale: CGFloat = 1.0, offsetX: CGFloat = 0, offsetY: CGFloat = 0) -> Path {
         var path = Path()
         let commands = tokenize(pathString)
         
@@ -134,7 +153,9 @@ struct SVGPathParser {
                 if i + 1 < commands.count,
                    let x = Double(commands[i]),
                    let y = Double(commands[i + 1]) {
-                    let point = CGPoint(x: x * scale, y: y * scale)
+                    let point = cmd == "m"
+                        ? CGPoint(x: x * scale, y: y * scale)
+                        : CGPoint(x: x * scale + offsetX, y: y * scale + offsetY)
                     if cmd == "m" {
                         currentPoint = CGPoint(x: currentPoint.x + point.x, y: currentPoint.y + point.y)
                     } else {
@@ -148,7 +169,9 @@ struct SVGPathParser {
                 if i + 1 < commands.count,
                    let x = Double(commands[i]),
                    let y = Double(commands[i + 1]) {
-                    let point = CGPoint(x: x * scale, y: y * scale)
+                    let point = cmd == "l"
+                        ? CGPoint(x: x * scale, y: y * scale)
+                        : CGPoint(x: x * scale + offsetX, y: y * scale + offsetY)
                     if cmd == "l" {
                         currentPoint = CGPoint(x: currentPoint.x + point.x, y: currentPoint.y + point.y)
                     } else {
@@ -164,12 +187,12 @@ struct SVGPathParser {
                    let y1 = Double(commands[i + 1]),
                    let x2 = Double(commands[i + 2]),
                    let y2 = Double(commands[i + 3]) {
-                    var control = CGPoint(x: x1 * scale, y: y1 * scale)
-                    var end = CGPoint(x: x2 * scale, y: y2 * scale)
+                    var control = CGPoint(x: x1 * scale + offsetX, y: y1 * scale + offsetY)
+                    var end = CGPoint(x: x2 * scale + offsetX, y: y2 * scale + offsetY)
                     
                     if cmd == "q" {
-                        control = CGPoint(x: currentPoint.x + control.x, y: currentPoint.y + control.y)
-                        end = CGPoint(x: currentPoint.x + end.x, y: currentPoint.y + end.y)
+                        control = CGPoint(x: currentPoint.x + x1 * scale, y: currentPoint.y + y1 * scale)
+                        end = CGPoint(x: currentPoint.x + x2 * scale, y: currentPoint.y + y2 * scale)
                     }
                     
                     path.addQuadCurve(to: end, control: control)
@@ -185,14 +208,14 @@ struct SVGPathParser {
                    let y2 = Double(commands[i + 3]),
                    let x3 = Double(commands[i + 4]),
                    let y3 = Double(commands[i + 5]) {
-                    var control1 = CGPoint(x: x1 * scale, y: y1 * scale)
-                    var control2 = CGPoint(x: x2 * scale, y: y2 * scale)
-                    var end = CGPoint(x: x3 * scale, y: y3 * scale)
+                    var control1 = CGPoint(x: x1 * scale + offsetX, y: y1 * scale + offsetY)
+                    var control2 = CGPoint(x: x2 * scale + offsetX, y: y2 * scale + offsetY)
+                    var end = CGPoint(x: x3 * scale + offsetX, y: y3 * scale + offsetY)
                     
                     if cmd == "c" {
-                        control1 = CGPoint(x: currentPoint.x + control1.x, y: currentPoint.y + control1.y)
-                        control2 = CGPoint(x: currentPoint.x + control2.x, y: currentPoint.y + control2.y)
-                        end = CGPoint(x: currentPoint.x + end.x, y: currentPoint.y + end.y)
+                        control1 = CGPoint(x: currentPoint.x + x1 * scale, y: currentPoint.y + y1 * scale)
+                        control2 = CGPoint(x: currentPoint.x + x2 * scale, y: currentPoint.y + y2 * scale)
+                        end = CGPoint(x: currentPoint.x + x3 * scale, y: currentPoint.y + y3 * scale)
                     }
                     
                     path.addCurve(to: end, control1: control1, control2: control2)
@@ -246,11 +269,14 @@ struct SVGPathParser {
 // MARK: - Scribble Path View
 struct ScribblePathView: View {
     let paths: [[String: Any]]
-    let canvasSize: CGFloat
+    let canvasWidth: CGFloat
+    let canvasHeight: CGFloat
     
     var body: some View {
         Canvas { context, size in
-            let scale = size.width / canvasSize
+            let scale = min(size.width / canvasWidth, size.height / canvasHeight)
+            let offsetX = (size.width - canvasWidth * scale) / 2
+            let offsetY = (size.height - canvasHeight * scale) / 2
             
             for pathData in paths {
                 guard let d = pathData["d"] as? String else { continue }
@@ -258,7 +284,7 @@ struct ScribblePathView: View {
                 let colorHex = pathData["color"] as? String ?? "#FFFFFF"
                 let strokeWidth = pathData["strokeWidth"] as? Double ?? 3.0
                 
-                let path = SVGPathParser.parse(d, scale: scale)
+                let path = SVGPathParser.parse(d, scale: scale, offsetX: offsetX, offsetY: offsetY)
                 
                 context.stroke(
                     path,
@@ -298,8 +324,6 @@ struct ScribbleWidgetEntryView: View {
     var entry: ScribbleEntry
     @Environment(\.widgetFamily) var family
     
-    private let sourceCanvasSize: CGFloat = 350
-    
     // Very light off-white background for colored paths visibility
     private let backgroundColor = Color(hex: "FAFAFA")
     
@@ -310,12 +334,12 @@ struct ScribbleWidgetEntryView: View {
                 backgroundColor
                 
                 if entry.hasScribble {
-                    // Real scribble - fills entire widget
-                    ScribblePathView(paths: entry.paths, canvasSize: sourceCanvasSize)
+                // Real scribble - fills entire widget
+                    ScribblePathView(paths: entry.paths, canvasWidth: entry.canvasWidth, canvasHeight: entry.canvasHeight)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
                     // Placeholder heart doodle
-                    ScribblePathView(paths: PlaceholderHeart.paths, canvasSize: sourceCanvasSize)
+                    ScribblePathView(paths: PlaceholderHeart.paths, canvasWidth: 350, canvasHeight: 350)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .opacity(0.6)
                 }
@@ -338,9 +362,9 @@ struct ScribbleWidget: Widget {
                     .padding(-16)
             }
         }
-        .configurationDisplayName("Penguin")
-        .description("See doodles from your loved one")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .configurationDisplayName("Canvas")
+        .description("See drawing from your loved one")
+        .supportedFamilies([.systemSmall, .systemLarge])
         .contentMarginsDisabled()
     }
 }
@@ -813,7 +837,7 @@ struct PenguinWidgets: WidgetBundle {
 // MARK: - Preview
 struct ScribbleWidget_Previews: PreviewProvider {
     static var previews: some View {
-        ScribbleWidgetEntryView(entry: ScribbleEntry(date: Date(), paths: [], senderName: "Emma", hasScribble: false))
+        ScribbleWidgetEntryView(entry: ScribbleEntry(date: Date(), paths: [], senderName: "Emma", hasScribble: false, canvasWidth: 350, canvasHeight: 350))
             .previewContext(WidgetPreviewContext(family: .systemSmall))
     }
 }

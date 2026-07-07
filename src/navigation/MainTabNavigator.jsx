@@ -69,7 +69,9 @@ export const MainTabNavigator = ({
     const [moodRefreshNow, setMoodRefreshNow] = useState(Date.now());
     const [moodPreview, setMoodPreview] = useState(null);
     const [isScribbleLiveFullscreen, setIsScribbleLiveFullscreen] = useState(false);
+    const [tabBarRenderKey, setTabBarRenderKey] = useState(0);
     const lastAutoOpenedMoodRef = React.useRef(null);
+    const currentTabRef = useRef(currentTab);
 
     const [isAccountMounted, setIsAccountMounted] = useState(false);
     const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
@@ -138,6 +140,7 @@ export const MainTabNavigator = ({
 
     useEffect(() => {
         onTabChange?.(currentTab);
+        currentTabRef.current = currentTab;
     }, [currentTab, onTabChange]);
 
     useEffect(() => {
@@ -145,6 +148,17 @@ export const MainTabNavigator = ({
             setIsScribbleLiveFullscreen(false);
         }
     }, [currentTab]);
+
+    const changeTab = useCallback((nextTab) => {
+        const previousTab = currentTabRef.current;
+
+        if (previousTab !== nextTab && (previousTab === 'canvas' || nextTab === 'canvas')) {
+            setTabBarRenderKey(key => key + 1);
+        }
+
+        currentTabRef.current = nextTab;
+        setCurrentTab(nextTab);
+    }, []);
 
     // Redux state
     const userData = useSelector(selectUser);
@@ -290,7 +304,7 @@ export const MainTabNavigator = ({
                 return true;
             }
             if (currentTab !== 'home') {
-                setCurrentTab('home');
+                changeTab('home');
                 return true; // Prevent default (app exit)
             }
             return false; // Let AppNavigator or OS handle it
@@ -298,7 +312,7 @@ export const MainTabNavigator = ({
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    }, [currentTab, isAccountVisible]);
+    }, [changeTab, currentTab, isAccountVisible]);
 
     const renderScreen = () => {
         switch (currentTab) {
@@ -311,7 +325,7 @@ export const MainTabNavigator = ({
                         partnerScribble={partnerScribble}
                         todayChallenge={todayChallenge}
                         onMoodPress={openMoodPicker}
-                        onScribblePress={() => setCurrentTab('canvas')}
+                        onScribblePress={() => changeTab('canvas')}
                         onQuestionPress={(category) => {
                             if (!hasPartner) {
                                 onFindPartner?.();
@@ -346,19 +360,21 @@ export const MainTabNavigator = ({
                         userData={userData}
                         isPremium={hasPremiumAccess}
                         onNavigateToPremium={onPremiumPress}
-                        onBack={() => setCurrentTab('home')}
+                        onBack={() => changeTab('home')}
                     />
                 );
             case 'canvas':
                 return (
                     <ScribbleScreen
-                        onBack={() => setCurrentTab('home')}
+                        onBack={() => changeTab('home')}
                         hasPartner={hasPartner}
                         onLinkPartner={onFindPartner}
                         onLiveModeChange={setIsScribbleLiveFullscreen}
-                        userName={userData?.name || 'You'}
+                        userName={userData?.nickname || userData?.name || 'You'}
                         partnerName={partnerName || 'Your Love'}
                         initialPaths={partnerScribble?.paths}
+                        initialCanvasWidth={partnerScribble?.canvasWidth}
+                        initialCanvasHeight={partnerScribble?.canvasHeight}
                     />
                 );
             case 'dailyChallenge':
@@ -442,8 +458,9 @@ export const MainTabNavigator = ({
             {renderScreen()}
             {!isScribbleLiveFullscreen && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge'].includes(currentTab) && (
                 <BottomTabBar
+                    key={tabBarRenderKey}
                     currentTab={currentTab}
-                    onTabChange={setCurrentTab}
+                    onTabChange={changeTab}
                     chatBadge={chatBadge}
                 />
             )}

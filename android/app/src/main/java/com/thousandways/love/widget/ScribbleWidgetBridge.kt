@@ -45,10 +45,14 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
             }
             
             val senderName = metadata.getString("senderName") ?: "Your Love"
+            val canvasWidth = if (metadata.hasKey("canvasWidth")) metadata.getDouble("canvasWidth") else 350.0
+            val canvasHeight = if (metadata.hasKey("canvasHeight")) metadata.getDouble("canvasHeight") else canvasWidth
             
             prefs.edit().apply {
                 putString(ScribbleWidgetProvider.KEY_SCRIBBLE_PATHS, jsonArray.toString())
                 putString(ScribbleWidgetProvider.KEY_SENDER_NAME, senderName)
+                putFloat(ScribbleWidgetProvider.KEY_CANVAS_WIDTH, canvasWidth.toFloat())
+                putFloat(ScribbleWidgetProvider.KEY_CANVAS_HEIGHT, canvasHeight.toFloat())
                 apply()
             }
             

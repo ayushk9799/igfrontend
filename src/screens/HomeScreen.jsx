@@ -371,7 +371,7 @@ const HomeScreen = ({
                                             preserveAspectRatio="xMidYMid meet"
                                             style={styles.partnerScribblePreview}
                                         >
-                                            {partnerScribble.paths.slice(0, 40).map((path, index) => (
+                                            {partnerScribble.paths.slice(0, 200).map((path, index) => (
                                                 <Path
                                                     key={`${path.d}-${index}`}
                                                     d={path.d}

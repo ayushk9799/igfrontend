@@ -290,7 +290,7 @@ export const PartnerCodeScreen = ({
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             await Share.share({
-                message: `Join me on Penguin : Connecting Couples\n\nMy invitation code is ${partnerCode}\n\nhttps://penguincouples.com/`,
+                message: `Join me on Penguin Couple\n\nMy invitation code is ${partnerCode}\n\nhttps://penguincouples.com/`,
             });
         } catch (error) {
             console.error('Error sharing code:', error);

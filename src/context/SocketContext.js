@@ -24,7 +24,29 @@ const { ScribbleWidgetBridge } = NativeModules;
  * Save scribble paths to widget storage for display
  * Works on both iOS (App Group) and Android (SharedPreferences)
  */
-const savePathsToWidget = async (paths, fromUserName, timestamp) => {
+const getScribbleDimensions = (data = {}) => {
+    const canvasWidth = Number(data.canvasWidth);
+    const canvasHeight = Number(data.canvasHeight);
+    return {
+        canvasWidth: Number.isFinite(canvasWidth) && canvasWidth > 0 ? canvasWidth : 350,
+        canvasHeight: Number.isFinite(canvasHeight) && canvasHeight > 0 ? canvasHeight : (
+            Number.isFinite(canvasWidth) && canvasWidth > 0 ? canvasWidth : 350
+        ),
+    };
+};
+
+const createPartnerScribble = (data = {}, paths = data.paths || []) => {
+    const dimensions = getScribbleDimensions(data);
+    return {
+        paths,
+        canvasWidth: dimensions.canvasWidth,
+        canvasHeight: dimensions.canvasHeight,
+        fromUserName: data.fromUserName,
+        timestamp: data.timestamp,
+    };
+};
+
+const savePathsToWidget = async (paths, fromUserName, timestamp, dimensions = {}) => {
     if (!ScribbleWidgetBridge) {
         return;
     }
@@ -32,6 +54,7 @@ const savePathsToWidget = async (paths, fromUserName, timestamp) => {
         await ScribbleWidgetBridge.saveScribblePaths(paths, {
             senderName: fromUserName || 'Your Love',
             timestamp: timestamp || new Date().toISOString(),
+            ...getScribbleDimensions(dimensions),
         });
 
         // Debug: Check what's in the App Group after saving
@@ -185,68 +208,60 @@ export const SocketProvider = ({ children }) => {
 
         // Scribble events - partner's scribble
         socketInstance.on('scribble:received', (data) => {
-            setPartnerScribble({
-                paths: data.paths,
-                fromUserName: data.fromUserName,
-                timestamp: data.timestamp,
-            });
+            const scribble = createPartnerScribble(data);
+            setPartnerScribble(scribble);
             // Save paths to App Group for widget
-            savePathsToWidget(data.paths, data.fromUserName, data.timestamp);
+            savePathsToWidget(data.paths, data.fromUserName, data.timestamp, scribble);
         });
 
         socketInstance.on('scribble:liveStrokeReceived', (data) => {
             if (!data.stroke?.d) return;
             setPartnerScribble(prev => {
                 const nextPaths = [...(prev?.paths || []), data.stroke];
-                savePathsToWidget(nextPaths, data.fromUserName, data.timestamp);
-                return {
-                    paths: nextPaths,
-                    fromUserName: data.fromUserName,
-                    timestamp: data.timestamp,
-                };
+                const scribble = createPartnerScribble({
+                    ...prev,
+                    ...data,
+                    canvasWidth: data.canvasWidth || prev?.canvasWidth,
+                    canvasHeight: data.canvasHeight || prev?.canvasHeight,
+                }, nextPaths);
+                savePathsToWidget(nextPaths, data.fromUserName, data.timestamp, scribble);
+                return scribble;
             });
         });
 
         socketInstance.on('scribble:liveCleared', (data) => {
-            setPartnerScribble({
-                paths: [],
-                fromUserName: data.fromUserName,
-                timestamp: data.timestamp,
-            });
-            savePathsToWidget([], data.fromUserName, data.timestamp);
+            const scribble = createPartnerScribble(data, []);
+            setPartnerScribble(scribble);
+            savePathsToWidget([], data.fromUserName, data.timestamp, scribble);
         });
 
         socketInstance.on('scribble:liveUndone', (data) => {
             if (!data.strokeId) return;
             setPartnerScribble(prev => {
                 const nextPaths = (prev?.paths || []).filter(path => path.id !== data.strokeId);
-                savePathsToWidget(nextPaths, data.fromUserName, data.timestamp);
-                return {
-                    paths: nextPaths,
-                    fromUserName: data.fromUserName,
-                    timestamp: data.timestamp,
-                };
+                const scribble = createPartnerScribble({
+                    ...prev,
+                    ...data,
+                    canvasWidth: data.canvasWidth || prev?.canvasWidth,
+                    canvasHeight: data.canvasHeight || prev?.canvasHeight,
+                }, nextPaths);
+                savePathsToWidget(nextPaths, data.fromUserName, data.timestamp, scribble);
+                return scribble;
             });
         });
 
         socketInstance.on('scribble:sent', (data) => {
             if (!Array.isArray(data.paths)) return;
-            setPartnerScribble({
-                paths: data.paths,
-                fromUserName: data.fromUserName,
-                timestamp: data.timestamp,
-            });
-            savePathsToWidget(data.paths, data.fromUserName, data.timestamp);
+            const scribble = createPartnerScribble(data);
+            setPartnerScribble(scribble);
+            savePathsToWidget(data.paths, data.fromUserName, data.timestamp, scribble);
         });
 
         socketInstance.on('scribble:liveSaved', (data) => {
             if (!Array.isArray(data.paths)) return;
-            setPartnerScribble({
-                paths: data.paths,
-                fromUserName: data.fromUserName,
-                timestamp: data.timestamp,
-            });
-            savePathsToWidget(data.paths, data.fromUserName, data.timestamp);
+            const scribble = createPartnerScribble(data);
+            setPartnerScribble(scribble);
+            savePathsToWidget(data.paths, data.fromUserName, data.timestamp, scribble);
         });
 
         socketInstance.on('scribble:error', (data) => {
@@ -256,20 +271,14 @@ export const SocketProvider = ({ children }) => {
         // Scribble loaded from DB (partner's scribble sent when user was offline)
         socketInstance.on('scribble:partnerScribble', (data) => {
             if (data.hasScribble && data.paths && data.paths.length > 0) {
-                setPartnerScribble({
-                    paths: data.paths,
-                    fromUserName: data.fromUserName,
-                    timestamp: data.timestamp,
-                });
+                const scribble = createPartnerScribble(data);
+                setPartnerScribble(scribble);
                 // Save paths to App Group for widget
-                savePathsToWidget(data.paths, data.fromUserName, data.timestamp);
+                savePathsToWidget(data.paths, data.fromUserName, data.timestamp, scribble);
             } else if (Array.isArray(data.paths) && data.paths.length === 0) {
-                setPartnerScribble({
-                    paths: [],
-                    fromUserName: data.fromUserName,
-                    timestamp: data.timestamp,
-                });
-                savePathsToWidget([], data.fromUserName, data.timestamp);
+                const scribble = createPartnerScribble(data, []);
+                setPartnerScribble(scribble);
+                savePathsToWidget([], data.fromUserName, data.timestamp, scribble);
             }
         });
 

@@ -20,7 +20,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Penguin</string>
+	<string>Penguin Couple</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -51,7 +51,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to your photo library to select photos for daily challenges.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Penguin uses your location to show your distance from your partner in the Distance widget.</string>
+	<string>Penguin Couple uses your location to show your distance from your partner in the Distance widget.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to your microphone to record voice messages for your partner.</string>
 	<key>RCTNewArchEnabled</key>

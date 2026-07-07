@@ -32,6 +32,8 @@ class NotificationService: UNNotificationServiceExtension {
         let type = userInfo["type"] as? String
         let pathsString = userInfo["paths"] as? String
         let senderName = userInfo["senderName"] as? String
+        let canvasWidth = parseDimension(userInfo["canvasWidth"], fallback: 350)
+        let canvasHeight = parseDimension(userInfo["canvasHeight"], fallback: canvasWidth)
         let timestamp = userInfo["timestamp"] as? String ?? ISO8601DateFormatter().string(from: Date())
         
         if type == "scribble", let pathsString = pathsString, let senderName = senderName {
@@ -40,7 +42,13 @@ class NotificationService: UNNotificationServiceExtension {
                let paths = try? JSONSerialization.jsonObject(with: pathsData) as? [[String: Any]] {
                 
                 // Save to App Group with a unique version to bust cache
-                let saved = saveScribbleToAppGroup(paths: paths, senderName: senderName, timestamp: timestamp)
+                let saved = saveScribbleToAppGroup(
+                    paths: paths,
+                    senderName: senderName,
+                    timestamp: timestamp,
+                    canvasWidth: canvasWidth,
+                    canvasHeight: canvasHeight
+                )
                 
                 if saved {
                     // Trigger widget refresh using SPECIFIC kind
@@ -63,7 +71,23 @@ class NotificationService: UNNotificationServiceExtension {
         }
     }
     
-    private func saveScribbleToAppGroup(paths: [[String: Any]], senderName: String, timestamp: String) -> Bool {
+    private func parseDimension(_ value: Any?, fallback: Double) -> Double {
+        if let number = value as? NSNumber, number.doubleValue > 0 {
+            return number.doubleValue
+        }
+        if let string = value as? String, let number = Double(string), number > 0 {
+            return number
+        }
+        return fallback
+    }
+    
+    private func saveScribbleToAppGroup(
+        paths: [[String: Any]],
+        senderName: String,
+        timestamp: String,
+        canvasWidth: Double,
+        canvasHeight: Double
+    ) -> Bool {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
             return false
         }
@@ -76,6 +100,8 @@ class NotificationService: UNNotificationServiceExtension {
                 "paths": paths,
                 "senderName": senderName,
                 "timestamp": timestamp,
+                "canvasWidth": canvasWidth,
+                "canvasHeight": canvasHeight,
                 "savedAt": ISO8601DateFormatter().string(from: Date()),
                 "version": version  // Unique version to bust cache
             ]
