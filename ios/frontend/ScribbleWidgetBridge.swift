@@ -42,6 +42,8 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
                 "paths": pathsArray,
                 "senderName": metadata["senderName"] ?? "Your Love",
                 "timestamp": metadata["timestamp"] ?? ISO8601DateFormatter().string(from: Date()),
+                "canvasWidth": metadata["canvasWidth"] ?? 350,
+                "canvasHeight": metadata["canvasHeight"] ?? metadata["canvasWidth"] ?? 350,
                 "savedAt": ISO8601DateFormatter().string(from: Date()),
                 "version": version  // Cache-busting version
             ]

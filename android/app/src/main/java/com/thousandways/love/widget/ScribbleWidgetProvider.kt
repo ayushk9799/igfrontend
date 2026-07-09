@@ -20,6 +20,8 @@ class ScribbleWidgetProvider : AppWidgetProvider() {
         const val PREFS_NAME = "ScribbleWidgetPrefs"
         const val KEY_SCRIBBLE_PATHS = "scribble_paths"
         const val KEY_SENDER_NAME = "sender_name"
+        const val KEY_CANVAS_WIDTH = "scribble_canvas_width"
+        const val KEY_CANVAS_HEIGHT = "scribble_canvas_height"
         private const val CANVAS_SIZE = 350f
         
         // Placeholder heart paths (matching iOS)
@@ -77,13 +79,15 @@ class ScribbleWidgetProvider : AppWidgetProvider() {
         // Load scribble data
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val pathsJson = prefs.getString(KEY_SCRIBBLE_PATHS, null)
+        val sourceWidth = prefs.getFloat(KEY_CANVAS_WIDTH, CANVAS_SIZE).takeIf { it > 0f } ?: CANVAS_SIZE
+        val sourceHeight = prefs.getFloat(KEY_CANVAS_HEIGHT, sourceWidth).takeIf { it > 0f } ?: sourceWidth
         
         // Render bitmap
         val bitmap = if (pathsJson.isNullOrEmpty()) {
-            renderPaths(PLACEHOLDER_HEART_PATHS, widthPx, heightPx, 0.6f)
+            renderPaths(PLACEHOLDER_HEART_PATHS, widthPx, heightPx, CANVAS_SIZE, CANVAS_SIZE, 0.6f)
         } else {
             val paths = parsePathsFromJson(pathsJson)
-            renderPaths(paths, widthPx, heightPx, 1f)
+            renderPaths(paths, widthPx, heightPx, sourceWidth, sourceHeight, 1f)
         }
         
         views.setImageViewBitmap(R.id.widget_scribble_image, bitmap)
@@ -122,6 +126,8 @@ class ScribbleWidgetProvider : AppWidgetProvider() {
         pathDataList: List<PathData>,
         width: Int,
         height: Int,
+        sourceWidth: Float,
+        sourceHeight: Float,
         alpha: Float
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -131,11 +137,13 @@ class ScribbleWidgetProvider : AppWidgetProvider() {
         canvas.drawColor(Color.parseColor("#FAFAFA"))
         
         // Calculate scale to fit the content while maintaining aspect ratio
-        val scale = minOf(width.toFloat(), height.toFloat()) / CANVAS_SIZE
+        val safeSourceWidth = if (sourceWidth > 0f) sourceWidth else CANVAS_SIZE
+        val safeSourceHeight = if (sourceHeight > 0f) sourceHeight else safeSourceWidth
+        val scale = minOf(width.toFloat() / safeSourceWidth, height.toFloat() / safeSourceHeight)
         
         // Calculate offset to center the drawing
-        val offsetX = (width - (CANVAS_SIZE * scale)) / 2f
-        val offsetY = (height - (CANVAS_SIZE * scale)) / 2f
+        val offsetX = (width - (safeSourceWidth * scale)) / 2f
+        val offsetY = (height - (safeSourceHeight * scale)) / 2f
         
         // Apply translation to center the paths
         canvas.save()

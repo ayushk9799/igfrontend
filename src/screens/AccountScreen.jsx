@@ -533,7 +533,7 @@ export const AccountScreen = ({
                         />
                     </View>
 
-                    <Text style={styles.versionText}>penguin</Text>
+                    <Text style={styles.versionText}>penguin couple</Text>
 
                     {/* Bottom Clouds */}
                     <View style={styles.cloudsContainer}>

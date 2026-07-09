@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Penguin</string>
+    <string name="app_name">Penguin Couple</string>
     <string name="default_notification_channel_id">partner-updates</string>
     <string name="widget_scribble_label">Scribble</string>
     <string name="widget_description">See doodles from your loved one</string>

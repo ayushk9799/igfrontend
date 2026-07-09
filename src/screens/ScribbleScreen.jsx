@@ -14,7 +14,10 @@ import {
     ScrollView,
     Image,
     StatusBar,
+    Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import penguinLogo from '../../assets/splashscreen.png';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
@@ -23,9 +26,11 @@ import Button from '../components/Button';
 import { colors, spacing, borderRadius, shadows, timing } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
+import { storage } from '../utils/authStorage';
 
 const { width, height } = Dimensions.get('window');
 const CANVAS_SIZE = width - 40;
+const LEGACY_SCRIBBLE_CANVAS_SIZE = 350;
 const LIVE_CANVAS_WIDTH = width;
 const LIVE_CANVAS_HEIGHT = height;
 
@@ -57,7 +62,53 @@ const LIVE_GRADIENTS = [
     { colors: ['#E0E7FF', '#818CF8', '#312E81', '#020617'], locations: [0, 0.35, 0.66, 1] },
 ];
 
+const LIVE_BACKGROUND_IMAGE_KEY = 'scribble_live_background_image_uri';
+const LIVE_BACKGROUND_IMAGE_DIR_NAME = 'scribble-live-backgrounds/';
+
 const noop = () => { };
+
+const getLiveBackgroundImageDirectory = () => (
+    FileSystem.documentDirectory
+        ? `${FileSystem.documentDirectory}${LIVE_BACKGROUND_IMAGE_DIR_NAME}`
+        : null
+);
+
+const getImageFileExtension = (asset = {}) => {
+    const fileNameExtension = asset.fileName?.match(/\.([a-zA-Z0-9]+)$/)?.[1];
+    if (fileNameExtension) return fileNameExtension.toLowerCase();
+
+    const uriExtension = asset.uri?.split('?')[0]?.match(/\.([a-zA-Z0-9]+)$/)?.[1];
+    if (uriExtension) return uriExtension.toLowerCase();
+
+    if (asset.mimeType === 'image/png') return 'png';
+    if (asset.mimeType === 'image/webp') return 'webp';
+    return 'jpg';
+};
+
+const deleteSavedLiveBackgroundImage = async (uri) => {
+    const backgroundDir = getLiveBackgroundImageDirectory();
+    if (!uri || !backgroundDir || !uri.startsWith(backgroundDir)) return;
+
+    try {
+        await FileSystem.deleteAsync(uri, { idempotent: true });
+    } catch (error) {
+        console.warn('Failed to delete old live background image:', error);
+    }
+};
+
+const copyLiveBackgroundImageToAppStorage = async (asset, previousUri) => {
+    const backgroundDir = getLiveBackgroundImageDirectory();
+    if (!asset?.uri || !backgroundDir) return asset?.uri || null;
+
+    await FileSystem.makeDirectoryAsync(backgroundDir, { intermediates: true });
+
+    const extension = getImageFileExtension(asset);
+    const copiedUri = `${backgroundDir}live-background-${Date.now()}.${extension}`;
+    await FileSystem.copyAsync({ from: asset.uri, to: copiedUri });
+    await deleteSavedLiveBackgroundImage(previousUri);
+
+    return copiedUri;
+};
 
 const normalizePath = (path, prefix, index = 0) => {
     if (!path?.d) return null;
@@ -72,6 +123,123 @@ const normalizePaths = (paths, prefix) => (
         ? paths.map((path, index) => normalizePath(path, prefix, index)).filter(Boolean)
         : []
 );
+
+const getValidCanvasDimension = (value, fallback = CANVAS_SIZE) => {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : fallback;
+};
+
+const getScribbleDimensions = (data = {}, fallbackSize = CANVAS_SIZE) => {
+    const fallbackWidth = getValidCanvasDimension(fallbackSize, LEGACY_SCRIBBLE_CANVAS_SIZE);
+    const widthValue = getValidCanvasDimension(data.canvasWidth, fallbackWidth);
+    const heightValue = getValidCanvasDimension(data.canvasHeight, widthValue);
+    return {
+        canvasWidth: widthValue,
+        canvasHeight: heightValue,
+    };
+};
+
+const transformSvgPath = (pathString, scaleX, scaleY) => {
+    if (!pathString || (scaleX === 1 && scaleY === 1)) return pathString;
+
+    const tokens = pathString.match(/[a-zA-Z]|-?\d*\.?\d+/g);
+    if (!tokens) return pathString;
+
+    const output = [];
+    let command = '';
+    let index = 0;
+
+    const formatNumber = (value) => {
+        const fixed = Number(value).toFixed(1);
+        return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
+    };
+
+    const readNumber = () => Number(tokens[index++]);
+    const appendPoint = (x, y) => {
+        output.push(`${formatNumber(x)},${formatNumber(y)}`);
+    };
+
+    while (index < tokens.length) {
+        const token = tokens[index++];
+        if (/^[a-zA-Z]$/.test(token)) {
+            command = token;
+            output.push(command);
+        } else {
+            index -= 1;
+        }
+
+        const isRelative = command === command.toLowerCase();
+        const xScale = isRelative ? scaleX : scaleX;
+        const yScale = isRelative ? scaleY : scaleY;
+
+        switch (command) {
+            case 'M':
+            case 'm':
+            case 'L':
+            case 'l': {
+                if (index + 1 >= tokens.length) return output.join(' ');
+                appendPoint(readNumber() * xScale, readNumber() * yScale);
+                break;
+            }
+            case 'Q':
+            case 'q': {
+                if (index + 3 >= tokens.length) return output.join(' ');
+                appendPoint(readNumber() * xScale, readNumber() * yScale);
+                appendPoint(readNumber() * xScale, readNumber() * yScale);
+                break;
+            }
+            case 'C':
+            case 'c': {
+                if (index + 5 >= tokens.length) return output.join(' ');
+                appendPoint(readNumber() * xScale, readNumber() * yScale);
+                appendPoint(readNumber() * xScale, readNumber() * yScale);
+                appendPoint(readNumber() * xScale, readNumber() * yScale);
+                break;
+            }
+            case 'Z':
+            case 'z':
+                break;
+            default:
+                index += 1;
+                break;
+        }
+    }
+
+    return output.join(' ');
+};
+
+const transformPathsToCanvas = (paths, fromWidth, fromHeight, toWidth, toHeight) => {
+    if (!Array.isArray(paths) || paths.length === 0) return paths;
+    if (!fromWidth || !fromHeight || !toWidth || !toHeight) return paths;
+    if (fromWidth === toWidth && fromHeight === toHeight) return paths;
+
+    const scaleX = toWidth / fromWidth;
+    const scaleY = toHeight / fromHeight;
+    const strokeScale = Math.min(scaleX, scaleY);
+
+    return paths.map(path => ({
+        ...path,
+        d: transformSvgPath(path.d, scaleX, scaleY),
+        strokeWidth: typeof path.strokeWidth === 'number'
+            ? path.strokeWidth * strokeScale
+            : path.strokeWidth,
+    }));
+};
+
+const mapDisplayPointToSource = (locationX, locationY, displayWidth, displayHeight, sourceWidth, sourceHeight) => {
+    const scale = Math.min(displayWidth / sourceWidth, displayHeight / sourceHeight);
+    const renderedWidth = sourceWidth * scale;
+    const renderedHeight = sourceHeight * scale;
+    const offsetX = (displayWidth - renderedWidth) / 2;
+    const offsetY = (displayHeight - renderedHeight) / 2;
+    const sourceX = (locationX - offsetX) / scale;
+    const sourceY = (locationY - offsetY) / scale;
+
+    return {
+        x: Math.max(0, Math.min(sourceX, sourceWidth)),
+        y: Math.max(0, Math.min(sourceY, sourceHeight)),
+    };
+};
 
 const getPathsSignature = (paths = []) => (
     paths.map(path => `${path.id || ''}:${path.d || ''}:${path.color || ''}:${path.strokeWidth || ''}`).join('|')
@@ -127,21 +295,21 @@ const pointsToSvgPath = (points) => {
     if (points.length === 1) {
         return `M${p0.x.toFixed(1)},${p0.y.toFixed(1)} L${p0.x.toFixed(1)},${p0.y.toFixed(1)}`;
     }
-    
+
     let d = `M${p0.x.toFixed(1)},${p0.y.toFixed(1)}`;
-    
+
     if (points.length === 2) {
         const p1 = points[1];
         d += ` L${p1.x.toFixed(1)},${p1.y.toFixed(1)}`;
         return d;
     }
-    
+
     // For 3 or more points, use quadratic Bezier curve to midpoints
     const p1 = points[1];
     const midX = (p0.x + p1.x) / 2;
     const midY = (p0.y + p1.y) / 2;
     d += ` L${midX.toFixed(1)},${midY.toFixed(1)}`;
-    
+
     for (let i = 1; i < points.length - 1; i++) {
         const cp = points[i];
         const next = points[i + 1];
@@ -149,7 +317,7 @@ const pointsToSvgPath = (points) => {
         const my = (cp.y + next.y) / 2;
         d += ` Q${cp.x.toFixed(1)},${cp.y.toFixed(1)} ${mx.toFixed(1)},${my.toFixed(1)}`;
     }
-    
+
     const last = points[points.length - 1];
     d += ` L${last.x.toFixed(1)},${last.y.toFixed(1)}`;
     return d;
@@ -301,7 +469,7 @@ const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
                         end={{ x: 1, y: 0 }}
                         style={styles.spectrumBar}
                     />
-                    <Animated.View 
+                    <Animated.View
                         style={[styles.spectrumThumb, { left: 0, transform: [{ translateX: hueThumbX }] }]}
                         pointerEvents="none"
                     >
@@ -356,7 +524,7 @@ const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
                             end={{ x: 1, y: 0 }}
                             style={styles.spectrumBar}
                         />
-                        <Animated.View 
+                        <Animated.View
                             style={[styles.spectrumThumb, { left: 0, transform: [{ translateX: shadeThumbX }] }]}
                             pointerEvents="none"
                         >
@@ -369,10 +537,10 @@ const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
     );
 };
 
-const BrushSlider = ({ min = 2, max = 30, value, onChange, selectedColor }) => {
+const BrushSlider = ({ min = 1, max = 30, value, onChange, selectedColor }) => {
     const [sliderWidth, setSliderWidth] = useState(0);
     const [localValue, setLocalValue] = useState(value);
-    
+
     const sliderWidthRef = useRef(0);
     const valueRef = useRef(value);
     const onChangeRef = useRef(onChange);
@@ -418,10 +586,10 @@ const BrushSlider = ({ min = 2, max = 30, value, onChange, selectedColor }) => {
                 const deltaVal = deltaPct * (maximum - minimum);
                 const newValue = Math.round(startValue.current + deltaVal);
                 const clamped = Math.max(minimum, Math.min(newValue, maximum));
-                
+
                 // Update mutable ref immediately so it's always accurate
                 valueRef.current = clamped;
-                
+
                 // Update local state ONLY for 60fps rendering of the slider itself
                 setLocalValue(clamped);
             },
@@ -435,26 +603,26 @@ const BrushSlider = ({ min = 2, max = 30, value, onChange, selectedColor }) => {
     ).current;
 
     return (
-        <View 
+        <View
             style={styles.sliderWrapper}
             onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
             {...panResponder.panHandlers}
         >
             <Text style={styles.sliderValueText}>{localValue}px</Text>
-            
+
             <View style={styles.sliderTrackContainer}>
                 <View style={styles.sliderTrackBg}>
-                    <View 
+                    <View
                         style={[
-                            styles.sliderTrackActive, 
-                            { 
+                            styles.sliderTrackActive,
+                            {
                                 width: `${percentage}%`,
                                 backgroundColor: selectedColor,
                             }
-                        ]} 
+                        ]}
                     />
                 </View>
-                <View 
+                <View
                     style={[
                         styles.sliderThumb,
                         {
@@ -463,7 +631,7 @@ const BrushSlider = ({ min = 2, max = 30, value, onChange, selectedColor }) => {
                         }
                     ]}
                 >
-                    <View 
+                    <View
                         style={[
                             styles.sliderThumbInner,
                             {
@@ -473,9 +641,9 @@ const BrushSlider = ({ min = 2, max = 30, value, onChange, selectedColor }) => {
                     />
                 </View>
             </View>
-            
+
             <View style={styles.sliderPreviewContainer}>
-                <View 
+                <View
                     style={[
                         styles.sliderPreviewDot,
                         {
@@ -501,8 +669,16 @@ export const ScribbleScreen = ({
     partnerName = 'Your Love',
     initialPaths = [],
     initialLiveMode = false,
+    initialCanvasWidth,
+    initialCanvasHeight,
 }) => {
     const [paths, setPaths] = useState(() => normalizePaths(initialPaths, 'initial'));
+    const initialDimensions = getScribbleDimensions({
+        canvasWidth: initialCanvasWidth,
+        canvasHeight: initialCanvasHeight,
+    });
+    const [sourceCanvasWidth, setSourceCanvasWidth] = useState(initialDimensions.canvasWidth);
+    const [sourceCanvasHeight, setSourceCanvasHeight] = useState(initialDimensions.canvasHeight);
     const [currentPath, setCurrentPath] = useState('');
     const [selectedColor, setSelectedColor] = useState('#FF0000');
     const [selectedSize, setSelectedSize] = useState(6);
@@ -519,13 +695,22 @@ export const ScribbleScreen = ({
     const [showLiveBrushPicker, setShowLiveBrushPicker] = useState(false);
     const [showLiveGradientPicker, setShowLiveGradientPicker] = useState(false);
     const [liveGradientIndex, setLiveGradientIndex] = useState(0);
+    const [liveBackgroundImageUri, setLiveBackgroundImageUri] = useState(
+        () => storage.getString(LIVE_BACKGROUND_IMAGE_KEY) || null
+    );
+    const [liveBackgroundImageVersion, setLiveBackgroundImageVersion] = useState(0);
     const insets = useSafeAreaInsets();
     const { socket, isConnected, partnerOnline } = useSocketContext();
     const canvasOpacity = useRef(new Animated.Value(0)).current;
     const modalOpacity = useRef(new Animated.Value(0)).current;
     const modalScale = useRef(new Animated.Value(0.85)).current;
+    const liveCanvasWidth = width - 16;
+    const liveCanvasHeight = Math.min(height * 0.52, liveCanvasWidth * 1.28);
     const canvasWidth = CANVAS_SIZE;
     const canvasHeight = CANVAS_SIZE;
+    const activeDisplayCanvasWidth = liveMode ? liveCanvasWidth : canvasWidth;
+    const activeDisplayCanvasHeight = liveMode ? liveCanvasHeight : canvasHeight;
+    const sourceViewBox = `0 0 ${sourceCanvasWidth} ${sourceCanvasHeight}`;
 
     // Animate modal entrance
     useEffect(() => {
@@ -563,13 +748,13 @@ export const ScribbleScreen = ({
         ios: [
             { step: 1, icon: '👆', text: 'Long press on your home screen' },
             { step: 2, icon: '➕', text: 'Tap the + button (top-left corner)' },
-            { step: 3, icon: '🔍', text: 'Search for "Penguin" or scroll to find it' },
+            { step: 3, icon: '🔍', text: 'Search for "Penguin Couple" or scroll to find it' },
             { step: 4, icon: '✨', text: 'Choose widget size and tap "Add Widget"' },
         ],
         android: [
             { step: 1, icon: '👆', text: 'Long press on your home screen' },
             { step: 2, icon: '📱', text: 'Tap "Widgets" from the menu' },
-            { step: 3, icon: '🔍', text: 'Find "Penguin" in the widget list' },
+            { step: 3, icon: '🔍', text: 'Find "Penguin Couple" in the widget list' },
             { step: 4, icon: '✨', text: 'Drag the widget to your home screen' },
         ],
     });
@@ -586,7 +771,14 @@ export const ScribbleScreen = ({
     const isConnectedRef = useRef(isConnected);
     const socketRef = useRef(socket);
     const pathsRef = useRef(paths);
+    const sourceCanvasWidthRef = useRef(sourceCanvasWidth);
+    const sourceCanvasHeightRef = useRef(sourceCanvasHeight);
+    const displayCanvasWidthRef = useRef(CANVAS_SIZE);
+    const displayCanvasHeightRef = useRef(CANVAS_SIZE);
     const initialPathsSignatureRef = useRef(getPathsSignature(paths));
+
+    displayCanvasWidthRef.current = activeDisplayCanvasWidth;
+    displayCanvasHeightRef.current = activeDisplayCanvasHeight;
 
     // Keep refs in sync with state
     React.useEffect(() => {
@@ -644,22 +836,41 @@ export const ScribbleScreen = ({
     }, [paths]);
 
     React.useEffect(() => {
+        sourceCanvasWidthRef.current = sourceCanvasWidth;
+    }, [sourceCanvasWidth]);
+
+    React.useEffect(() => {
+        sourceCanvasHeightRef.current = sourceCanvasHeight;
+    }, [sourceCanvasHeight]);
+
+    React.useEffect(() => {
         isConnectedRef.current = isConnected;
     }, [isConnected]);
 
     React.useEffect(() => {
         const nextPaths = normalizePaths(initialPaths, 'shared');
         const nextSignature = getPathsSignature(nextPaths);
+        const nextDimensions = getScribbleDimensions({
+            canvasWidth: initialCanvasWidth,
+            canvasHeight: initialCanvasHeight,
+        });
 
-        if (nextSignature !== initialPathsSignatureRef.current) {
+        const dimensionsChanged = nextDimensions.canvasWidth !== sourceCanvasWidthRef.current
+            || nextDimensions.canvasHeight !== sourceCanvasHeightRef.current;
+
+        if (nextSignature !== initialPathsSignatureRef.current || dimensionsChanged) {
             initialPathsSignatureRef.current = nextSignature;
             pathsRef.current = nextPaths;
             setPaths(nextPaths);
+            sourceCanvasWidthRef.current = nextDimensions.canvasWidth;
+            sourceCanvasHeightRef.current = nextDimensions.canvasHeight;
+            setSourceCanvasWidth(nextDimensions.canvasWidth);
+            setSourceCanvasHeight(nextDimensions.canvasHeight);
             setCurrentPath('');
             currentPointsRef.current = [];
             setSentScribble(null);
         }
-    }, [initialPaths]);
+    }, [initialPaths, initialCanvasWidth, initialCanvasHeight]);
 
     React.useEffect(() => {
         const available = Boolean(partnerOnline && isConnected);
@@ -754,6 +965,72 @@ export const ScribbleScreen = ({
         socketRef.current?.connected
     );
 
+    const resizeBoardToCanvas = (nextWidth, nextHeight) => {
+        const previousWidth = sourceCanvasWidthRef.current;
+        const previousHeight = sourceCanvasHeightRef.current;
+        if (previousWidth === nextWidth && previousHeight === nextHeight) return;
+
+        const resizedPaths = transformPathsToCanvas(
+            pathsRef.current,
+            previousWidth,
+            previousHeight,
+            nextWidth,
+            nextHeight
+        );
+
+        pathsRef.current = resizedPaths;
+        setPaths(resizedPaths);
+        sourceCanvasWidthRef.current = nextWidth;
+        sourceCanvasHeightRef.current = nextHeight;
+        setSourceCanvasWidth(nextWidth);
+        setSourceCanvasHeight(nextHeight);
+        setCurrentPath('');
+        currentPathRef.current = '';
+        currentPointsRef.current = [];
+    };
+
+    const createScribblePayload = (pathsToSend) => ({
+        paths: pathsToSend,
+        canvasWidth: sourceCanvasWidthRef.current,
+        canvasHeight: sourceCanvasHeightRef.current,
+    });
+
+    const finishCurrentStroke = () => {
+        if (currentPathRef.current) {
+            const pathId = `live-${Date.now()}-${pathIdCounter.current++}`;
+            const newPath = {
+                id: pathId,
+                d: currentPathRef.current,
+                color: selectedColorRef.current,
+                strokeWidth: selectedSizeRef.current
+            };
+            const nextPaths = [...pathsRef.current, newPath];
+            pathsRef.current = nextPaths;
+            setPaths(nextPaths);
+            if (canSendLiveStroke()) {
+                setLiveSaving(true);
+                socketRef.current.emit('scribble:liveStrokeEnd', {
+                    stroke: {
+                        id: newPath.id,
+                        d: newPath.d,
+                        color: newPath.color,
+                        strokeWidth: newPath.strokeWidth,
+                    },
+                    ...createScribblePayload(nextPaths),
+                });
+            }
+            currentPathRef.current = '';
+            currentPointsRef.current = [];
+            setCurrentPath('');
+        }
+    };
+
+    const cancelCurrentStroke = () => {
+        currentPathRef.current = '';
+        currentPointsRef.current = [];
+        setCurrentPath('');
+    };
+
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
@@ -763,61 +1040,50 @@ export const ScribbleScreen = ({
                 setShowLiveBrushPicker(false);
                 setShowLiveGradientPicker(false);
                 const { locationX, locationY } = evt.nativeEvent;
-                currentPointsRef.current = [{ x: locationX, y: locationY }];
+                const point = mapDisplayPointToSource(
+                    locationX,
+                    locationY,
+                    displayCanvasWidthRef.current,
+                    displayCanvasHeightRef.current,
+                    sourceCanvasWidthRef.current,
+                    sourceCanvasHeightRef.current
+                );
+                currentPointsRef.current = [point];
                 const newPath = pointsToSvgPath(currentPointsRef.current);
                 currentPathRef.current = newPath;
                 setCurrentPath(newPath);
 
                 // Show ink splash effect
-                setInkSplash({ x: locationX, y: locationY });
+                setInkSplash(point);
                 setTimeout(() => setInkSplash(null), 300);
             },
             onPanResponderMove: (evt) => {
                 const { locationX, locationY } = evt.nativeEvent;
+                const point = mapDisplayPointToSource(
+                    locationX,
+                    locationY,
+                    displayCanvasWidthRef.current,
+                    displayCanvasHeightRef.current,
+                    sourceCanvasWidthRef.current,
+                    sourceCanvasHeightRef.current
+                );
                 const points = currentPointsRef.current;
                 const lastPoint = points[points.length - 1];
                 if (lastPoint) {
-                    const dx = locationX - lastPoint.x;
-                    const dy = locationY - lastPoint.y;
+                    const dx = point.x - lastPoint.x;
+                    const dy = point.y - lastPoint.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     // Filter out tiny micro-movements to reduce rendering load and jitter
                     if (dist < 3) return;
                 }
 
-                points.push({ x: locationX, y: locationY });
+                points.push(point);
                 const updatedPath = pointsToSvgPath(points);
                 currentPathRef.current = updatedPath;
                 setCurrentPath(updatedPath);
             },
-            onPanResponderRelease: () => {
-                if (currentPathRef.current) {
-                    const pathId = `live-${Date.now()}-${pathIdCounter.current++}`;
-                    const newPath = {
-                        id: pathId,
-                        d: currentPathRef.current,
-                        color: selectedColorRef.current,
-                        strokeWidth: selectedSizeRef.current
-                    };
-                    const nextPaths = [...pathsRef.current, newPath];
-                    pathsRef.current = nextPaths;
-                    setPaths(nextPaths);
-                    if (canSendLiveStroke()) {
-                        setLiveSaving(true);
-                        socketRef.current.emit('scribble:liveStrokeEnd', {
-                            stroke: {
-                                id: newPath.id,
-                                d: newPath.d,
-                                color: newPath.color,
-                                strokeWidth: newPath.strokeWidth,
-                            },
-                            paths: nextPaths,
-                        });
-                    }
-                    currentPathRef.current = '';
-                    currentPointsRef.current = [];
-                    setCurrentPath('');
-                }
-            },
+            onPanResponderRelease: finishCurrentStroke,
+            onPanResponderTerminate: cancelCurrentStroke,
         })
     ).current;
 
@@ -828,7 +1094,10 @@ export const ScribbleScreen = ({
         currentPointsRef.current = [];
         setSentScribble(null);
         if (canSendLiveStroke()) {
-            socketRef.current.emit('scribble:liveClear');
+            socketRef.current.emit('scribble:liveClear', {
+                canvasWidth: sourceCanvasWidthRef.current,
+                canvasHeight: sourceCanvasHeightRef.current,
+            });
         }
     };
 
@@ -841,13 +1110,16 @@ export const ScribbleScreen = ({
         if (removedPath?.id && canSendLiveStroke()) {
             socketRef.current.emit('scribble:liveUndo', {
                 strokeId: removedPath.id,
-                paths: nextPaths,
+                ...createScribblePayload(nextPaths),
             });
         }
     };
 
     const handleLiveToggle = () => {
         const nextLiveMode = !liveMode;
+        if (nextLiveMode) {
+            resizeBoardToCanvas(liveCanvasWidth, liveCanvasHeight);
+        }
         liveModeRef.current = nextLiveMode;
         setLiveMode(nextLiveMode);
         setConnectionError(false);
@@ -863,7 +1135,7 @@ export const ScribbleScreen = ({
 
     const handleSend = () => {
         if (paths.length === 0) return;
-     
+
 
         // Send via socket
         if (socket && isConnected) {
@@ -873,33 +1145,93 @@ export const ScribbleScreen = ({
                 strokeWidth: p.strokeWidth,
             }));
 
-            socket.emit('scribble:send', { paths: pathsToSend });
+            socket.emit('scribble:send', createScribblePayload(pathsToSend));
 
             setCurrentPath('');
             setSentScribble(null);
             requestReviewForMoment(REVIEW_MOMENTS.SCRIBBLE_SENT);
 
             // Call parent's onSend if provided
-            onSend(pathsToSend);
+            onSend(pathsToSend, {
+                canvasWidth: sourceCanvasWidthRef.current,
+                canvasHeight: sourceCanvasHeightRef.current,
+            });
         } else {
             setConnectionError(true);
             setTimeout(() => setConnectionError(false), 3000);
         }
     };
 
+    const handleSelectLiveGradient = async (index) => {
+        const previousUri = liveBackgroundImageUri;
+        storage.delete(LIVE_BACKGROUND_IMAGE_KEY);
+        setLiveBackgroundImageUri(null);
+        setLiveBackgroundImageVersion(value => value + 1);
+        setLiveGradientIndex(index);
+        setShowLiveGradientPicker(false);
+        await deleteSavedLiveBackgroundImage(previousUri);
+    };
+
+    const handlePickLiveBackgroundImage = async () => {
+        try {
+            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+            if (!permission.granted) {
+                Alert.alert('Permission required', 'Please allow photo library access to choose a live background.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                quality: 0.9,
+            });
+
+            if (result.canceled) return;
+
+            const asset = result.assets?.[0];
+            if (!asset?.uri) return;
+
+            const copiedUri = await copyLiveBackgroundImageToAppStorage(asset, liveBackgroundImageUri);
+            if (!copiedUri) return;
+
+            storage.set(LIVE_BACKGROUND_IMAGE_KEY, copiedUri);
+            setLiveBackgroundImageUri(copiedUri);
+            setLiveBackgroundImageVersion(value => value + 1);
+            setShowLiveGradientPicker(false);
+        } catch (error) {
+            console.error('Failed to pick live background image:', error);
+            Alert.alert('Could not set background', 'Please try choosing another image.');
+        }
+    };
+
     const hasPendingScribbleChanges = paths.length > 0
         && getPathsSignature(paths) !== initialPathsSignatureRef.current;
+    const hasOpenLivePanel = showLivePicker || showLiveBrushPicker || showLiveGradientPicker;
 
     if (liveMode) {
         return (
-            <LinearGradient
-                colors={LIVE_GRADIENTS[liveGradientIndex].colors}
-                locations={LIVE_GRADIENTS[liveGradientIndex].locations}
-                start={{ x: 0.18, y: 0 }}
-                end={{ x: 0.82, y: 1 }}
-                style={styles.liveFullscreen}
-            >
+            <View style={styles.liveFullscreen}>
                 <StatusBar hidden />
+                <LinearGradient
+                    colors={LIVE_GRADIENTS[liveGradientIndex].colors}
+                    locations={LIVE_GRADIENTS[liveGradientIndex].locations}
+                    start={{ x: 0.18, y: 0 }}
+                    end={{ x: 0.82, y: 1 }}
+                    style={styles.liveBackgroundGradient}
+                    pointerEvents="none"
+                />
+                {liveBackgroundImageUri && (
+                    <>
+                        <Image
+                            key={`${liveBackgroundImageUri}-${liveBackgroundImageVersion}`}
+                            source={{ uri: liveBackgroundImageUri }}
+                            style={styles.liveBackgroundImage}
+                            resizeMode="cover"
+                            pointerEvents="none"
+                        />
+                        <View style={styles.liveBackgroundImageOverlay} pointerEvents="none" />
+                    </>
+                )}
                 <Svg
                     width={LIVE_CANVAS_WIDTH}
                     height={LIVE_CANVAS_HEIGHT}
@@ -927,15 +1259,17 @@ export const ScribbleScreen = ({
                         </React.Fragment>
                     ))}
                 </Svg>
-                <TouchableOpacity
-                    style={styles.liveDismissLayer}
-                    onPress={() => {
-                        setShowLivePicker(false);
-                        setShowLiveBrushPicker(false);
-                        setShowLiveGradientPicker(false);
-                    }}
-                    activeOpacity={1}
-                />
+                {hasOpenLivePanel && (
+                    <TouchableOpacity
+                        style={styles.liveDismissLayer}
+                        onPress={() => {
+                            setShowLivePicker(false);
+                            setShowLiveBrushPicker(false);
+                            setShowLiveGradientPicker(false);
+                        }}
+                        activeOpacity={1}
+                    />
+                )}
                 <TouchableOpacity
                     style={[styles.liveBackButton, { top: insets.top + 12 }]}
                     onPress={handleLiveBack}
@@ -951,7 +1285,7 @@ export const ScribbleScreen = ({
                         />
                     </Svg>
                 </TouchableOpacity>
-                <View style={[styles.liveLockHeader, { paddingTop: insets.top + 72 }]}>
+                <View style={[styles.liveLockHeader, { paddingTop: insets.top + 54 }]}>
                     <Text style={styles.liveLockDate}>{formatLiveDate(liveClock)}</Text>
                     <Text style={styles.liveLockTime}>{formatLiveTime(liveClock)}</Text>
                     <View style={styles.liveNamesBadge}>
@@ -961,13 +1295,18 @@ export const ScribbleScreen = ({
                     </View>
                 </View>
                 <View style={styles.livePaperStage}>
-                    <View style={[styles.livePaperFrame, { width: CANVAS_SIZE + 3, height: CANVAS_SIZE + 3 }]}>
+                    <View style={[styles.livePaperFrame, { width: activeDisplayCanvasWidth + 3, height: activeDisplayCanvasHeight + 3 }]}>
                         <View style={styles.livePaperClip}>
                             <View
-                                style={[styles.canvas, styles.liveTransparentCanvas, { width: canvasWidth, height: canvasHeight }]}
+                                style={[styles.canvas, styles.liveTransparentCanvas, { width: activeDisplayCanvasWidth, height: activeDisplayCanvasHeight }]}
                                 {...panResponder.panHandlers}
                             >
-                                <Svg width={canvasWidth} height={canvasHeight}>
+                                <Svg
+                                    width={activeDisplayCanvasWidth}
+                                    height={activeDisplayCanvasHeight}
+                                    viewBox={sourceViewBox}
+                                    preserveAspectRatio="xMidYMid meet"
+                                >
                                     {paths.map((path, index) => (
                                         <Path
                                             key={path.id || `live-path-${index}`}
@@ -1027,7 +1366,7 @@ export const ScribbleScreen = ({
                 {showLiveBrushPicker && (
                     <View style={[styles.liveBrushPanel, { bottom: insets.bottom + 92 }]}>
                         <BrushSlider
-                            min={2}
+                            min={1}
                             max={30}
                             value={selectedSize}
                             onChange={setSelectedSize}
@@ -1037,28 +1376,69 @@ export const ScribbleScreen = ({
                 )}
                 {showLiveGradientPicker && (
                     <View style={[styles.liveGradientPanel, { bottom: insets.bottom + 92 }]}>
-                        {LIVE_GRADIENTS.map((gradient, index) => (
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.liveGradientScrollContent}
+                        >
                             <TouchableOpacity
-                                key={gradient.colors.join('-')}
                                 style={[
-                                    styles.liveGradientOption,
-                                    liveGradientIndex === index && styles.liveGradientOptionActive,
+                                    styles.liveImageBackgroundOption,
+                                    liveBackgroundImageUri && styles.liveGradientOptionActive,
                                 ]}
-                                onPress={() => {
-                                    setLiveGradientIndex(index);
-                                    setShowLiveGradientPicker(false);
-                                }}
+                                onPress={handlePickLiveBackgroundImage}
                                 activeOpacity={0.86}
                             >
-                                <LinearGradient
-                                    colors={gradient.colors}
-                                    locations={gradient.locations}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={styles.liveGradientSwatch}
-                                />
+                                {liveBackgroundImageUri ? (
+                                    <Image
+                                        source={{ uri: liveBackgroundImageUri }}
+                                        style={styles.liveImageBackgroundThumb}
+                                        resizeMode="cover"
+                                    />
+                                ) : (
+                                    <View style={styles.liveImageBackgroundPlaceholder}>
+                                        <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M4 16l4.6-4.6a2 2 0 012.8 0L16 16m-2-2 1.6-1.6a2 2 0 012.8 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                stroke={colors.text}
+                                                strokeWidth={2}
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </Svg>
+                                        <View style={styles.liveImageBackgroundAddBadge}>
+                                            <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+                                                <Path
+                                                    d="M12 7v10M7 12h10"
+                                                    stroke="#FFFFFF"
+                                                    strokeWidth={2.4}
+                                                    strokeLinecap="round"
+                                                />
+                                            </Svg>
+                                        </View>
+                                    </View>
+                                )}
                             </TouchableOpacity>
-                        ))}
+                            {LIVE_GRADIENTS.map((gradient, index) => (
+                                <TouchableOpacity
+                                    key={gradient.colors.join('-')}
+                                    style={[
+                                        styles.liveGradientOption,
+                                        !liveBackgroundImageUri && liveGradientIndex === index && styles.liveGradientOptionActive,
+                                    ]}
+                                    onPress={() => handleSelectLiveGradient(index)}
+                                    activeOpacity={0.86}
+                                >
+                                    <LinearGradient
+                                        colors={gradient.colors}
+                                        locations={gradient.locations}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.liveGradientSwatch}
+                                    />
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
                     </View>
                 )}
                 <View style={[styles.liveFloatingToolbar, { bottom: insets.bottom + 18 }]}>
@@ -1157,13 +1537,21 @@ export const ScribbleScreen = ({
                         }}
                         activeOpacity={0.86}
                     >
-                        <LinearGradient
-                            colors={LIVE_GRADIENTS[liveGradientIndex].colors}
-                            locations={LIVE_GRADIENTS[liveGradientIndex].locations}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.liveGradientButtonPreview}
-                        />
+                        {liveBackgroundImageUri ? (
+                            <Image
+                                source={{ uri: liveBackgroundImageUri }}
+                                style={styles.liveGradientButtonPreview}
+                                resizeMode="cover"
+                            />
+                        ) : (
+                            <LinearGradient
+                                colors={LIVE_GRADIENTS[liveGradientIndex].colors}
+                                locations={LIVE_GRADIENTS[liveGradientIndex].locations}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.liveGradientButtonPreview}
+                            />
+                        )}
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.liveToolButton} onPress={handleClear}>
                         <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
@@ -1177,13 +1565,13 @@ export const ScribbleScreen = ({
                         </Svg>
                     </TouchableOpacity>
                 </View>
-            </LinearGradient>
+            </View>
         );
     }
 
     return (
         <LinearGradient
-            colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+            colors={['#EFA8D0', '#FFE8F1', '#FFDDE8', '#E8A7DF']}
             locations={[0, 0.34, 0.72, 1]}
             start={{ x: 0.25, y: 0 }}
             end={{ x: 0.75, y: 1 }}
@@ -1239,141 +1627,151 @@ export const ScribbleScreen = ({
                             end={liveMode ? { x: 0.85, y: 1 } : { x: 1, y: 1 }}
                             style={styles.canvasGradient}
                         >
-                        <View
-                            style={[
-                                styles.canvas,
-                                liveMode && styles.liveCanvas,
-                                { width: canvasWidth, height: canvasHeight },
-                            ]}
-                            {...panResponder.panHandlers}
-                        >
-                            <Svg width={canvasWidth} height={canvasHeight}>
-                                {liveMode && LIVE_STARS.map((star, index) => (
-                                    <React.Fragment key={`star-${index}`}>
-                                        <SvgCircle
-                                            cx={star.x * canvasWidth}
-                                            cy={star.y * canvasHeight}
-                                            r={star.r}
-                                            fill="#FFFFFF"
-                                            opacity={star.o}
-                                        />
-                                        {index % 3 === 0 && (
-                                            <Path
-                                                d={`M${(star.x * canvasWidth - 5).toFixed(1)},${(star.y * canvasHeight).toFixed(1)} L${(star.x * canvasWidth + 5).toFixed(1)},${(star.y * canvasHeight).toFixed(1)} M${(star.x * canvasWidth).toFixed(1)},${(star.y * canvasHeight - 5).toFixed(1)} L${(star.x * canvasWidth).toFixed(1)},${(star.y * canvasHeight + 5).toFixed(1)}`}
-                                                stroke="#FFFFFF"
-                                                strokeWidth={1}
-                                                strokeLinecap="round"
-                                                opacity={star.o * 0.55}
-                                            />
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                                {/* Draw completed paths */}
-                                {paths.map((path, index) => (
-                                    <Path
-                                        key={path.id || `path-${index}`}
-                                        d={path.d}
-                                        stroke={path.color}
-                                        strokeWidth={path.strokeWidth}
-                                        fill="none"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                ))}
-                                {/* Current drawing path */}
-                                {currentPath && (
-                                    <Path
-                                        d={currentPath}
-                                        stroke={selectedColor}
-                                        strokeWidth={selectedSize}
-                                        fill="none"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                )}
-                                {/* Ink splash effect */}
-                                {inkSplash && (
-                                    <>
-                                        <SvgCircle
-                                            key="splash-outer"
-                                            cx={inkSplash.x}
-                                            cy={inkSplash.y}
-                                            r={selectedSize + 8}
-                                            fill={selectedColor}
-                                            opacity={0.3}
-                                        />
-                                        <SvgCircle
-                                            key="splash-inner"
-                                            cx={inkSplash.x}
-                                            cy={inkSplash.y}
-                                            r={selectedSize + 4}
-                                            fill={selectedColor}
-                                            opacity={0.5}
-                                        />
-                                    </>
-                                )}
-                            </Svg>
-
-                            {/* Empty State */}
-                            {paths.length === 0 && !currentPath && !sentScribble && (
-                                <View style={styles.emptyState}>
-                                    <Text style={styles.emptyEmoji}>💕</Text>
-                                    <Text style={[styles.emptyText, liveMode && styles.liveEmptyText]}>Draw with your finger</Text>
-                                    <Text style={[styles.emptyHint, liveMode && styles.liveEmptyHint]}>Express your love through art</Text>
-                                </View>
-                            )}
-
-                            {/* Sent State - Shows inside canvas */}
-                            {sentScribble && paths.length === 0 && (
-                                <TouchableOpacity
-                                    style={styles.sentState}
-                                    onPress={() => setSentScribble(null)}
-                                    activeOpacity={0.9}
+                            <View
+                                style={[
+                                    styles.canvas,
+                                    liveMode && styles.liveCanvas,
+                                    { width: canvasWidth, height: canvasHeight },
+                                ]}
+                                {...panResponder.panHandlers}
+                            >
+                                <Svg
+                                    width={canvasWidth}
+                                    height={canvasHeight}
+                                    viewBox={sourceViewBox}
+                                    preserveAspectRatio="xMidYMid meet"
                                 >
-                                    {/* Success Badge */}
-                                    <View style={styles.sentSuccessBadge}>
-                                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                                            <Path
-                                                d="M20 6L9 17l-5-5"
-                                                stroke="#FFFFFF"
-                                                strokeWidth={3}
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
+                                    {liveMode && LIVE_STARS.map((star, index) => (
+                                        <React.Fragment key={`star-${index}`}>
+                                            <SvgCircle
+                                                cx={star.x * canvasWidth}
+                                                cy={star.y * canvasHeight}
+                                                r={star.r}
+                                                fill="#FFFFFF"
+                                                opacity={star.o}
                                             />
-                                        </Svg>
-                                    </View>
-
-                                    {/* Sent Text */}
-                                    <Text style={styles.sentTitle}>Sent with love! 💕</Text>
-
-                                    {/* Preview of sent scribble */}
-                                    <View style={styles.sentPreviewInCanvas}>
-                                        <Svg width={140} height={140} viewBox={`0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}`}>
-                                            {sentScribble.paths.map((path, index) => (
+                                            {index % 3 === 0 && (
                                                 <Path
-                                                    key={path.id || `sent-path-${index}`}
-                                                    d={path.d}
-                                                    stroke={path.color}
-                                                    strokeWidth={path.strokeWidth}
-                                                    fill="none"
+                                                    d={`M${(star.x * canvasWidth - 5).toFixed(1)},${(star.y * canvasHeight).toFixed(1)} L${(star.x * canvasWidth + 5).toFixed(1)},${(star.y * canvasHeight).toFixed(1)} M${(star.x * canvasWidth).toFixed(1)},${(star.y * canvasHeight - 5).toFixed(1)} L${(star.x * canvasWidth).toFixed(1)},${(star.y * canvasHeight + 5).toFixed(1)}`}
+                                                    stroke="#FFFFFF"
+                                                    strokeWidth={1}
+                                                    strokeLinecap="round"
+                                                    opacity={star.o * 0.55}
+                                                />
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                    {/* Draw completed paths */}
+                                    {paths.map((path, index) => (
+                                        <Path
+                                            key={path.id || `path-${index}`}
+                                            d={path.d}
+                                            stroke={path.color}
+                                            strokeWidth={path.strokeWidth}
+                                            fill="none"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    ))}
+                                    {/* Current drawing path */}
+                                    {currentPath && (
+                                        <Path
+                                            d={currentPath}
+                                            stroke={selectedColor}
+                                            strokeWidth={selectedSize}
+                                            fill="none"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    )}
+                                    {/* Ink splash effect */}
+                                    {inkSplash && (
+                                        <>
+                                            <SvgCircle
+                                                key="splash-outer"
+                                                cx={inkSplash.x}
+                                                cy={inkSplash.y}
+                                                r={selectedSize + 8}
+                                                fill={selectedColor}
+                                                opacity={0.3}
+                                            />
+                                            <SvgCircle
+                                                key="splash-inner"
+                                                cx={inkSplash.x}
+                                                cy={inkSplash.y}
+                                                r={selectedSize + 4}
+                                                fill={selectedColor}
+                                                opacity={0.5}
+                                            />
+                                        </>
+                                    )}
+                                </Svg>
+
+                                {/* Empty State */}
+                                {paths.length === 0 && !currentPath && !sentScribble && (
+                                    <View style={styles.emptyState}>
+                                        <Text style={styles.emptyEmoji}>💕</Text>
+                                        <Text style={[styles.emptyText, liveMode && styles.liveEmptyText]}>Draw with your finger</Text>
+                                        <Text style={[styles.emptyHint, liveMode && styles.liveEmptyHint]}>Express your love through art</Text>
+                                    </View>
+                                )}
+
+                                {/* Sent State - Shows inside canvas */}
+                                {sentScribble && paths.length === 0 && (
+                                    <TouchableOpacity
+                                        style={styles.sentState}
+                                        onPress={() => setSentScribble(null)}
+                                        activeOpacity={0.9}
+                                    >
+                                        {/* Success Badge */}
+                                        <View style={styles.sentSuccessBadge}>
+                                            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                                <Path
+                                                    d="M20 6L9 17l-5-5"
+                                                    stroke="#FFFFFF"
+                                                    strokeWidth={3}
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"
                                                 />
-                                            ))}
-                                        </Svg>
-                                    </View>
+                                            </Svg>
+                                        </View>
 
-                                    {/* Hint */}
-                                    <Text style={styles.sentHint}>Tap anywhere to draw another</Text>
-                                </TouchableOpacity>
-                            )}
+                                        {/* Sent Text */}
+                                        <Text style={styles.sentTitle}>Sent with love! 💕</Text>
 
-                            {/* Paper texture overlay */}
-                            <View style={styles.paperTexture} />
-                        </View>
-                    </LinearGradient>
-                </View>
-            </Animated.View>
+                                        {/* Preview of sent scribble */}
+                                        <View style={styles.sentPreviewInCanvas}>
+                                            <Svg
+                                                width={140}
+                                                height={140}
+                                                viewBox={sourceViewBox}
+                                                preserveAspectRatio="xMidYMid meet"
+                                            >
+                                                {sentScribble.paths.map((path, index) => (
+                                                    <Path
+                                                        key={path.id || `sent-path-${index}`}
+                                                        d={path.d}
+                                                        stroke={path.color}
+                                                        strokeWidth={path.strokeWidth}
+                                                        fill="none"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                ))}
+                                            </Svg>
+                                        </View>
+
+                                        {/* Hint */}
+                                        <Text style={styles.sentHint}>Tap anywhere to draw another</Text>
+                                    </TouchableOpacity>
+                                )}
+
+                                {/* Paper texture overlay */}
+                                <View style={styles.paperTexture} />
+                            </View>
+                        </LinearGradient>
+                    </View>
+                </Animated.View>
 
                 <View style={styles.canvasActions}>
                     <TouchableOpacity style={styles.canvasActionButton} onPress={handleUndo}>
@@ -1414,8 +1812,8 @@ export const ScribbleScreen = ({
                         {/* Brush Size */}
                         <View style={styles.toolSection}>
                             <Text style={styles.toolLabel}>Brush Size</Text>
-                            <BrushSlider 
-                                min={2}
+                            <BrushSlider
+                                min={1}
                                 max={30}
                                 value={selectedSize}
                                 onChange={setSelectedSize}
@@ -1648,12 +2046,12 @@ export const ScribbleScreen = ({
                                         </View>
                                         <View style={styles.timelineStepContent}>
                                             <Text style={styles.timelineStepTitle}>
-                                                {Platform.OS === 'ios' ? 'Search App' : 'Find Penguin'}
+                                                {Platform.OS === 'ios' ? 'Search App' : 'Find Penguin Couple'}
                                             </Text>
                                             <Text style={styles.timelineStepDesc}>
                                                 {Platform.OS === 'ios'
                                                     ? 'Use the search bar in the widget gallery to find our app.'
-                                                    : 'Scroll through the widget list or search to find the Penguin widget.'
+                                                    : 'Scroll through the widget list or search to find the Penguin Couple widget.'
                                                 }
                                             </Text>
                                             {/* Illustration 3 */}
@@ -1665,7 +2063,7 @@ export const ScribbleScreen = ({
                                                                 <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
                                                                     <Path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="#999" strokeWidth={2} />
                                                                 </Svg>
-                                                                <Text style={{ fontSize: 8, color: colors.text, marginLeft: 4 }}>Penguin</Text>
+                                                                <Text style={{ fontSize: 8, color: colors.text, marginLeft: 4 }}>Penguin Couple</Text>
                                                                 <View style={styles.mockupCursor} />
                                                             </View>
                                                             <View style={styles.mockupAppResult}>
@@ -1673,7 +2071,7 @@ export const ScribbleScreen = ({
                                                                     <Image source={penguinLogo} style={{ width: 24, height: 24 }} resizeMode="contain" />
                                                                 </View>
                                                                 <View style={styles.mockupAppTexts}>
-                                                                    <Text style={{ fontSize: 9, fontWeight: '800', color: colors.text }}>Penguin</Text>
+                                                                    <Text style={{ fontSize: 9, fontWeight: '800', color: colors.text }}>Penguin Couple</Text>
                                                                     <Text style={{ fontSize: 7, color: colors.textSecondary }}>Scribble Widget</Text>
                                                                 </View>
                                                             </View>
@@ -1691,7 +2089,7 @@ export const ScribbleScreen = ({
                                                                     <View style={[styles.androidWidgetIcon, { backgroundColor: '#FFFFFF' }]}>
                                                                         <Image source={penguinLogo} style={{ width: 20, height: 20 }} resizeMode="contain" />
                                                                     </View>
-                                                                    <Text style={[styles.androidWidgetName, { color: '#3b82f6', fontWeight: 'bold' }]}>Penguin</Text>
+                                                                    <Text style={[styles.androidWidgetName, { color: '#3b82f6', fontWeight: 'bold' }]}>Penguin Couple</Text>
                                                                 </View>
                                                                 <View style={styles.androidWidgetItem}>
                                                                     <View style={[styles.androidWidgetIcon, { backgroundColor: '#ddd' }]} />
@@ -1719,7 +2117,7 @@ export const ScribbleScreen = ({
                                             <Text style={styles.timelineStepDesc}>
                                                 {Platform.OS === 'ios'
                                                     ? <>Swipe to pick your preferred size, then tap <Text style={{ fontWeight: 'bold', color: colors.text }}>"Add Widget"</Text> at the bottom.</>
-                                                    : <>Tap the Penguin widget, then press <Text style={{ fontWeight: 'bold', color: colors.text }}>"Add"</Text> to place it on your home screen.</>
+                                                    : <>Tap the Penguin Couple widget, then press <Text style={{ fontWeight: 'bold', color: colors.text }}>"Add"</Text> to place it on your home screen.</>
                                                 }
                                             </Text>
                                             {/* Illustration 4 */}
@@ -1746,7 +2144,7 @@ export const ScribbleScreen = ({
                                                             <View style={styles.mockupWidgetPreview}>
                                                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                                                                     <Image source={penguinLogo} style={{ width: 16, height: 16, marginRight: 4 }} resizeMode="contain" />
-                                                                    <Text style={{ fontSize: 6, fontWeight: 'bold', color: '#666' }}>Penguin</Text>
+                                                                    <Text style={{ fontSize: 6, fontWeight: 'bold', color: '#666' }}>Penguin Couple</Text>
                                                                 </View>
                                                                 <View style={styles.mockupWidgetContent} />
                                                             </View>
@@ -1860,11 +2258,28 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#61B8EE',
     },
+    liveBackgroundGradient: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 0,
+    },
+    liveBackgroundImage: {
+        ...StyleSheet.absoluteFillObject,
+        width: '100%',
+        height: '100%',
+        zIndex: 1,
+    },
+    liveBackgroundImageOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.24)',
+        zIndex: 2,
+    },
     liveStarsLayer: {
         ...StyleSheet.absoluteFillObject,
+        zIndex: 3,
     },
     liveDismissLayer: {
         ...StyleSheet.absoluteFillObject,
+        zIndex: 4,
     },
     liveBackButton: {
         position: 'absolute',
@@ -1877,22 +2292,25 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255,255,255,0.22)',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 4,
+        zIndex: 20,
+        elevation: 20,
     },
     liveLockHeader: {
+        position: 'relative',
         alignItems: 'center',
         paddingHorizontal: 20,
+        zIndex: 5,
     },
     liveLockDate: {
         color: '#FFFFFF',
-        fontSize: 28,
-        lineHeight: 34,
+        fontSize: 20,
+        lineHeight: 25,
         fontWeight: '800',
     },
     liveLockTime: {
         color: '#FFFFFF',
-        fontSize: 122,
-        lineHeight: 132,
+        fontSize: 78,
+        lineHeight: 86,
         fontWeight: '800',
     },
     liveNamesBadge: {
@@ -1905,7 +2323,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: -6,
+        marginTop: -2,
     },
     liveNamesText: {
         color: '#FFFFFF',
@@ -1913,11 +2331,13 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     livePaperStage: {
+        position: 'relative',
         flex: 1,
         justifyContent: 'flex-start',
         alignItems: 'center',
-        paddingTop: 32,
+        paddingTop: 18,
         paddingBottom: 94,
+        zIndex: 5,
     },
     livePaperFrame: {
         borderRadius: 24,
@@ -1957,6 +2377,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.18,
         shadowRadius: 22,
         elevation: 8,
+        zIndex: 15,
     },
     liveToolButton: {
         width: 44,
@@ -2032,6 +2453,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowRadius: 24,
         elevation: 10,
+        zIndex: 18,
     },
     liveGradientButton: {
         width: 48,
@@ -2066,15 +2488,17 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255,255,255,0.38)',
         paddingHorizontal: 12,
         paddingVertical: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 14 },
         shadowOpacity: 0.12,
         shadowRadius: 24,
         elevation: 10,
+        zIndex: 18,
+    },
+    liveGradientScrollContent: {
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 2,
     },
     liveGradientOption: {
         width: 48,
@@ -2093,6 +2517,49 @@ const styles = StyleSheet.create({
         borderRadius: 13,
         overflow: 'hidden',
     },
+    liveImageBackgroundOption: {
+        width: 48,
+        height: 42,
+        borderRadius: 16,
+        padding: 3,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    liveImageBackgroundThumb: {
+        flex: 1,
+        borderRadius: 13,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.36)',
+    },
+    liveImageBackgroundPlaceholder: {
+        flex: 1,
+        borderRadius: 13,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: 'rgba(15,23,42,0.14)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    liveImageBackgroundAddBadge: {
+        position: 'absolute',
+        right: -3,
+        bottom: -3,
+        width: 17,
+        height: 17,
+        borderRadius: 8.5,
+        backgroundColor: colors.primary,
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     livePickerPanel: {
         position: 'absolute',
         left: 16,
@@ -2109,6 +2576,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowRadius: 24,
         elevation: 10,
+        zIndex: 18,
     },
     livePickerSection: {
         marginBottom: 4,

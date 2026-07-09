@@ -208,7 +208,6 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
     const {
         GlassView,
         isApiAvailable: shouldUseLiquidGlass,
-        isLiquidGlassAvailable,
     } = getGlassAvailability();
     const floatingOffsetStyle = {
         bottom: Platform.OS === 'android'
@@ -286,6 +285,7 @@ const styles = StyleSheet.create({
     container: {
         position: 'absolute',
         borderRadius: 36,
+        zIndex: 100,
         ...Platform.select({
             ios: {
                 shadowColor: '#000000',

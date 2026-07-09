@@ -37,6 +37,8 @@ target 'frontend' do
   pod 'FirebaseCoreInternal', :modular_headers => true
   pod 'GoogleUtilities', :modular_headers => true
   pod 'FirebaseCore', :modular_headers => true
+  pod 'AppCheckCore', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
 
   post_install do |installer|
     installer.pods_project.targets.each do |target|

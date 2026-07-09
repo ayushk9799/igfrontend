@@ -224,7 +224,7 @@ export const AppNavigator = () => {
                     return;
                 } catch { }
             }
-            Alert.alert('Could not open store', 'Please open the app store and update Penguin.');
+            Alert.alert('Could not open store', 'Please open the app store and update Penguin Couple.');
         }
     }, [inAppUpdates, versionGate.policy]);
 
@@ -237,7 +237,7 @@ export const AppNavigator = () => {
 
         forceUpdateAlertVisibleRef.current = true;
         Alert.alert(
-            versionGate.policy?.title || 'Penguin has a new update',
+            versionGate.policy?.title || 'Penguin Couple has a new update',
             versionGate.policy?.message || 'Please update it to continue.',
             [
                 {
@@ -1943,9 +1943,11 @@ export const AppNavigator = () => {
                         onBack={() => navigate('home')}
                         hasPartner={!!userData?.partnerId}
                         onLinkPartner={() => navigate('partnerCode')}
-                        userName={userData?.name || 'You'}
+                        userName={userData?.nickname || userData?.name || 'You'}
                         partnerName={userData?.partnerUsername || 'Your Love'}
                         initialPaths={partnerScribble?.paths}
+                        initialCanvasWidth={partnerScribble?.canvasWidth}
+                        initialCanvasHeight={partnerScribble?.canvasHeight}
                     />
                 );
 
