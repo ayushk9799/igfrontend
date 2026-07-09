@@ -302,7 +302,7 @@ export const MainTabNavigator = ({
                 return true;
             }
             if (currentTab !== 'home') {
-                changeTab('home');
+                handleBottomTabChange('home');
                 return true; // Prevent default (app exit)
             }
             return false; // Let AppNavigator or OS handle it
@@ -310,7 +310,7 @@ export const MainTabNavigator = ({
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    }, [changeTab, currentTab, isAccountVisible]);
+    }, [handleBottomTabChange, currentTab, isAccountVisible]);
 
     const renderScreen = () => {
         switch (currentTab) {
@@ -375,7 +375,7 @@ export const MainTabNavigator = ({
                         userData={userData}
                         isPremium={hasPremiumAccess}
                         onNavigateToPremium={onPremiumPress}
-                        onBack={() => changeTab('home')}
+                        onBack={() => handleBottomTabChange('home')}
                     />
                 );
             case 'canvas':

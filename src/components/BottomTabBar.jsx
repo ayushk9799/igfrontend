@@ -6,13 +6,13 @@ import {
     Text,
     StyleSheet,
     Animated,
-    Image,
     Platform,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { House, Brush, CalendarDays, Gamepad2, MessageCircle } from 'lucide-react-native';
 
 const getLiquidGlassModule = () => {
     if (Platform.OS !== 'ios') return null;
@@ -47,46 +47,20 @@ const getGlassAvailability = () => {
     };
 };
 
-// Tab icon images - filled and unfilled variants
-const tabIcons = {
-    home: {
-        default: require('../../assets/bottomtab/house.png'),
-        filled: require('../../assets/bottomtab/house_filled.png'),
-    },
-    canvas: {
-        default: require('../../assets/bottomtab/canvas.png'),
-        filled: require('../../assets/bottomtab/canvas_filled.png'),
-    },
-    today: {
-        default: require('../../assets/bottomtab/today.png'),
-        filled: require('../../assets/bottomtab/today_filled.png'),
-    },
-    games: {
-        default: require('../../assets/bottomtab/game.png'),
-        filled: require('../../assets/bottomtab/game_filled.png'),
-    },
-    chats: {
-        default: require('../../assets/bottomtab/chat.png'),
-        filled: require('../../assets/bottomtab/chat_filled.png'),
-    },
+// Lucide icon mapping for each tab
+const iconMap = {
+    home: House,
+    canvas: Brush,
+    today: CalendarDays,
+    games: Gamepad2,
+    chats: MessageCircle,
 };
 
-// Image-based tab icon component
-const TabIcon = ({ iconKey, color, size = 24, filled = false }) => (
-    <Image
-        source={filled ? tabIcons[iconKey].filled : tabIcons[iconKey].default}
-        style={[
-            styles.tabIcon,
-            {
-                width: size,
-                height: size,
-                tintColor: color,
-            },
-            !filled && styles.tabIconInactive,
-        ]}
-        resizeMode="contain"
-    />
-);
+// Vector icon tab component
+const TabIcon = ({ iconKey, color, size = 24, filled = false }) => {
+    const IconComponent = iconMap[iconKey];
+    return <IconComponent color={color} size={size} strokeWidth={filled ? 2.5 : 1.75} />;
+};
 
 
 
@@ -337,12 +311,7 @@ const styles = StyleSheet.create({
         minWidth: 54,
         minHeight: 48,
     },
-    tabIcon: {
-        opacity: 1,
-    },
-    tabIconInactive: {
-        opacity: 0.78,
-    },
+
     activeLiquid: {
         position: 'absolute',
         top: 3,

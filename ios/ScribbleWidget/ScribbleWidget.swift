@@ -473,14 +473,21 @@ struct TimeColumn: View {
         String(format: "%0\(minDigits)d", value)
     }
 
+    private var valueFontSize: CGFloat {
+        let count = displayValue.count
+        if count >= 5 { return 20 }
+        if count == 4 { return 23 }
+        return 26
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Text(displayValue)
-                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .font(.system(size: valueFontSize, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.white)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.7)
 
             Text(label)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -498,6 +505,26 @@ struct TogetherDaysView: View {
         return max(0, Int(entry.date.timeIntervalSince(startDate)) / 86400)
     }
 
+    private var digitCount: Int {
+        String(days).count
+    }
+
+    private var numberFontSize: CGFloat {
+        if digitCount >= 5 { return 21 }
+        if digitCount == 4 { return 24 }
+        return 28
+    }
+
+    private var iconFontSize: CGFloat {
+        if digitCount >= 5 { return 0 }
+        if digitCount == 4 { return 11 }
+        return 15
+    }
+
+    private var labelFontSize: CGFloat {
+        digitCount >= 5 ? 9 : 11
+    }
+
     var body: some View {
         ZStack {
             Circle()
@@ -513,23 +540,27 @@ struct TogetherDaysView: View {
                     .foregroundStyle(.white)
             } else {
                 VStack(spacing: 0) {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white)
+                    if digitCount < 5 {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: iconFontSize, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
 
                     Text("\(days)")
-                        .font(.system(size: 29, weight: .bold, design: .rounded))
+                        .font(.system(size: numberFontSize, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                        .minimumScaleFactor(0.68)
+                        .allowsTightening(true)
+                        .frame(maxWidth: .infinity)
 
                     Text("days")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(.system(size: labelFontSize, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.84))
                         .lineLimit(1)
                 }
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 3)
             }
         }
     }

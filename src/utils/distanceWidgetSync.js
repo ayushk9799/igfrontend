@@ -49,11 +49,20 @@ const normalizeLocationPermissionError = (error) => {
         );
     }
 
+    if (code === 'LOCATION_ALWAYS_REQUIRED') {
+        return createLocationPermissionError(
+            'LOCATION_ALWAYS_REQUIRED',
+            'Background updates need location permission set to Always in Settings.'
+        );
+    }
+
     return error;
 };
 
 export const isLocationSettingsError = (error) => (
-    error?.code === 'LOCATION_BLOCKED' || error?.code === 'LOCATION_DISABLED'
+    error?.code === 'LOCATION_BLOCKED'
+    || error?.code === 'LOCATION_DISABLED'
+    || error?.code === 'LOCATION_ALWAYS_REQUIRED'
 );
 
 const ensureAndroidLocationPermission = async () => {
@@ -186,13 +195,13 @@ export const startDistanceBackgroundUpdates = async (user = getUser()) => {
 
     const { ScribbleWidgetBridge } = NativeModules;
     if (!ScribbleWidgetBridge?.startDistanceBackgroundUpdates) {
-        return;
+        return false;
     }
 
     try {
-        await ScribbleWidgetBridge.startDistanceBackgroundUpdates();
-    } catch {
-        // Background refresh is best-effort; foreground sync remains the fallback.
+        return await ScribbleWidgetBridge.startDistanceBackgroundUpdates();
+    } catch (error) {
+        throw normalizeLocationPermissionError(error);
     }
 };
 
@@ -278,12 +287,20 @@ export const syncDistanceWidgetLocation = async ({
 
     const snapshot = await refreshDistanceWidgetSnapshot(updatedUser);
     reportWidgetIntent('distance', updatedUser).catch(() => {});
+    let backgroundUpdatesStarted = false;
+    let backgroundUpdatesError = null;
     if (enableBackgroundUpdates) {
-        startDistanceBackgroundUpdates(updatedUser).catch(() => {});
+        try {
+            backgroundUpdatesStarted = await startDistanceBackgroundUpdates(updatedUser);
+        } catch (error) {
+            backgroundUpdatesError = normalizeLocationPermissionError(error);
+        }
     }
 
     return {
         user: locationUpdates,
         distance: snapshot.distance,
+        backgroundUpdatesStarted,
+        backgroundUpdatesError,
     };
 };

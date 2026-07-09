@@ -39,7 +39,7 @@ import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, se
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
 import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener, checkNotificationPermission } from '../utils/pushNotifications';
-import { clearPendingLocalNotificationRoute, getInitialLocalNotification, getPendingLocalNotificationRoute, onLocalNotificationPress, showLocalNotification } from '../utils/localNotifications';
+import { cancelPartnerInviteReminders, clearPendingLocalNotificationRoute, getInitialLocalNotification, getPendingLocalNotificationRoute, onLocalNotificationPress, schedulePartnerInviteReminders, showLocalNotification } from '../utils/localNotifications';
 import { API_BASE } from '../constants/Api';
 import { QuestionChatsV2Api } from '../api/questionsV2Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
@@ -707,6 +707,7 @@ export const AppNavigator = () => {
                         relationshipStartDate: statusData.relationshipStartDate,
                         shouldAskRelationshipStartDate: statusData.shouldAskRelationshipStartDate || false,
                     }));
+                    cancelPartnerInviteReminders().catch(() => {});
                     setOnboardedStorage(true);
                     requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
 
@@ -874,6 +875,10 @@ export const AppNavigator = () => {
                     openHomeTab('home');
                     break;
 
+                case 'partner_invite_reminder':
+                    setCurrentScreen('partnerCode');
+                    break;
+
                 default:
                     break;
             }
@@ -973,6 +978,29 @@ export const AppNavigator = () => {
         return () => subscription?.remove();
     }, []);
 
+    useEffect(() => {
+        const syncPartnerInviteReminders = async () => {
+            if (!userData?.id) return;
+
+            if (userData.partnerId) {
+                await cancelPartnerInviteReminders();
+                return;
+            }
+
+            const hasPermission = await checkNotificationPermission();
+            if (!hasPermission) return;
+
+            await schedulePartnerInviteReminders({
+                userId: userData.id,
+                partnerCode: userData.partnerCode || getPartnerCode(),
+            });
+        };
+
+        syncPartnerInviteReminders().catch((err) => {
+            console.warn('Failed to sync partner invite reminders:', err?.message || err);
+        });
+    }, [currentScreen, userData?.id, userData?.partnerId, userData?.partnerCode]);
+
     // Show local notifications for realtime socket events while both users are online.
     useEffect(() => {
         const userId = userData?.id || userData?._id;
@@ -1030,6 +1058,8 @@ export const AppNavigator = () => {
         };
 
         const handleMoodChanged = (data = {}) => {
+            if (data.userId && String(data.userId) === String(userId)) return;
+
             const moodLabel = data.mood?.label
                 ? String(data.mood.label).trim().toLowerCase()
                 : 'in a new mood';
@@ -1196,6 +1226,7 @@ export const AppNavigator = () => {
                             const premiumSource = userPremium ? (storedUser.premiumSource || 'self') : (partnerPremium ? 'partner' : null);
                             updateUserStorage({ ...partnerData, isPremium: effectivePremium, premiumSource });
                             dispatch(updateUser({ ...partnerData, isPremium: effectivePremium, premiumSource, isOnboarded: true }));
+                            cancelPartnerInviteReminders().catch(() => {});
 
                             if (!storedUser.partnerId) {
                                 // We were just paired by someone else!
@@ -1571,6 +1602,7 @@ export const AppNavigator = () => {
         };
         updateUserStorage(partnerData);
         dispatch(setPartner(partner));
+        cancelPartnerInviteReminders().catch(() => {});
         setOnboardedStorage(true);
         requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
 
@@ -1664,6 +1696,7 @@ export const AppNavigator = () => {
 
     // Handle logout - clear auth and go to login
     const handleLogout = () => {
+        cancelPartnerInviteReminders().catch(() => {});
         startTransition(() => {
             disconnect(); // Explicitly disconnect socket
             clearAuth();
@@ -1690,6 +1723,7 @@ export const AppNavigator = () => {
             const data = await response.json();
 
             if (data.success) {
+                cancelPartnerInviteReminders().catch(() => {});
                 // Clear all local storage and navigate to login
                 startTransition(() => {
                     disconnect(); // Explicitly disconnect socket
@@ -1709,6 +1743,7 @@ export const AppNavigator = () => {
 
     // Handle authentication errors globally (401/403 responses)
     const handleAuthError = useCallback((error) => {
+        cancelPartnerInviteReminders().catch(() => {});
         // Directly navigate to login without showing alert
         startTransition(() => {
             disconnect(); // Explicitly disconnect socket
@@ -2196,8 +2231,8 @@ const styles = StyleSheet.create({
     },
     splashOverlay: {
         ...StyleSheet.absoluteFillObject,
-        zIndex: 10,
-        elevation: 10,
+        zIndex: 1000,
+        elevation: 1000,
     },
 });
 

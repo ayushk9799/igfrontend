@@ -1022,6 +1022,7 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight('800'),
         fontFamily: fontFamily.bold,
         textAlign: 'center',
+        transform: [{ translateY: -16 }],
     },
     paperTape: {
         position: 'absolute',

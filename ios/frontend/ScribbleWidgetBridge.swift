@@ -13,8 +13,21 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     private var backgroundLocationManager: CLLocationManager?
     private var locationResolver: RCTPromiseResolveBlock?
     private var locationRejecter: RCTPromiseRejectBlock?
+    private var backgroundStartResolver: RCTPromiseResolveBlock?
+    private var backgroundStartRejecter: RCTPromiseRejectBlock?
     private let trackingUserIdKey = "distance_widget_tracking_user_id"
     private let trackingApiBaseKey = "distance_widget_tracking_api_base"
+    private let trackingEnabledKey = "distance_widget_background_tracking_enabled"
+
+    override init() {
+        super.init()
+
+        DispatchQueue.main.async {
+            if UserDefaults(suiteName: self.appGroupIdentifier)?.bool(forKey: self.trackingEnabledKey) == true {
+                self.configureBackgroundLocationManager(startImmediately: true)
+            }
+        }
+    }
     
     /// Get the shared container URL for App Group
     private func getSharedContainerURL() -> URL? {
@@ -215,10 +228,31 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         if manager === backgroundLocationManager {
             switch manager.authorizationStatus {
-            case .authorizedAlways, .authorizedWhenInUse:
+            case .authorizedAlways:
+                UserDefaults(suiteName: appGroupIdentifier)?.set(true, forKey: trackingEnabledKey)
                 manager.startMonitoringSignificantLocationChanges()
-            default:
+                backgroundStartResolver?(true)
+                clearBackgroundStartPromise()
+            case .authorizedWhenInUse:
+                backgroundStartRejecter?(
+                    "LOCATION_ALWAYS_REQUIRED",
+                    "Always location permission is required for background distance updates.",
+                    nil
+                )
+                clearBackgroundStartPromise()
+            case .denied, .restricted:
+                UserDefaults(suiteName: appGroupIdentifier)?.set(false, forKey: trackingEnabledKey)
+                backgroundStartRejecter?("LOCATION_DENIED", "Location permission is not granted.", nil)
+                clearBackgroundStartPromise()
+            case .notDetermined:
                 break
+            @unknown default:
+                backgroundStartRejecter?(
+                    "LOCATION_UNKNOWN",
+                    "Unable to determine location permission status.",
+                    nil
+                )
+                clearBackgroundStartPromise()
             }
             return
         }
@@ -234,6 +268,46 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
         @unknown default:
             locationRejecter?("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
             clearLocationPromise()
+        }
+    }
+
+    private func configureBackgroundLocationManager(startImmediately: Bool = false) {
+        let manager = backgroundLocationManager ?? CLLocationManager()
+        backgroundLocationManager = manager
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        manager.pausesLocationUpdatesAutomatically = true
+        manager.allowsBackgroundLocationUpdates = true
+
+        if startImmediately, manager.authorizationStatus == .authorizedAlways {
+            manager.startMonitoringSignificantLocationChanges()
+        }
+    }
+
+    private func clearBackgroundStartPromise() {
+        backgroundStartResolver = nil
+        backgroundStartRejecter = nil
+    }
+
+    private func rejectBackgroundStartIfPendingAfterDelay() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 12) {
+            guard self.backgroundStartResolver != nil || self.backgroundStartRejecter != nil else {
+                return
+            }
+
+            if self.backgroundLocationManager?.authorizationStatus == .authorizedAlways {
+                UserDefaults(suiteName: self.appGroupIdentifier)?.set(true, forKey: self.trackingEnabledKey)
+                self.backgroundLocationManager?.startMonitoringSignificantLocationChanges()
+                self.backgroundStartResolver?(true)
+            } else {
+                self.backgroundStartRejecter?(
+                    "LOCATION_ALWAYS_REQUIRED",
+                    "Always location permission is required for background distance updates.",
+                    nil
+                )
+            }
+
+            self.clearBackgroundStartPromise()
         }
     }
 
@@ -342,36 +416,45 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     func startDistanceBackgroundUpdates(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async {
             guard CLLocationManager.locationServicesEnabled() else {
+                rejecter("LOCATION_DISABLED", "Location services are disabled.", nil)
+                return
+            }
+
+            self.configureBackgroundLocationManager()
+            guard let manager = self.backgroundLocationManager else {
                 resolver(false)
                 return
             }
 
-            let manager = self.backgroundLocationManager ?? CLLocationManager()
-            self.backgroundLocationManager = manager
-            manager.delegate = self
-            manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-            manager.pausesLocationUpdatesAutomatically = true
-            manager.allowsBackgroundLocationUpdates = true
-
             switch manager.authorizationStatus {
             case .notDetermined:
+                self.backgroundStartResolver = resolver
+                self.backgroundStartRejecter = rejecter
                 manager.requestAlwaysAuthorization()
+                self.rejectBackgroundStartIfPendingAfterDelay()
             case .authorizedWhenInUse:
+                self.backgroundStartResolver = resolver
+                self.backgroundStartRejecter = rejecter
                 manager.requestAlwaysAuthorization()
-                manager.startMonitoringSignificantLocationChanges()
+                self.rejectBackgroundStartIfPendingAfterDelay()
             case .authorizedAlways:
+                UserDefaults(suiteName: self.appGroupIdentifier)?.set(true, forKey: self.trackingEnabledKey)
                 manager.startMonitoringSignificantLocationChanges()
-            default:
-                break
+                resolver(true)
+            case .denied, .restricted:
+                UserDefaults(suiteName: self.appGroupIdentifier)?.set(false, forKey: self.trackingEnabledKey)
+                rejecter("LOCATION_DENIED", "Location permission is not granted.", nil)
+            @unknown default:
+                rejecter("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
             }
-
-            resolver(true)
         }
     }
 
     /// Stop background Distance widget refresh.
     @objc
     func stopDistanceBackgroundUpdates(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        UserDefaults(suiteName: appGroupIdentifier)?.set(false, forKey: trackingEnabledKey)
+        clearBackgroundStartPromise()
         backgroundLocationManager?.stopMonitoringSignificantLocationChanges()
         backgroundLocationManager?.delegate = nil
         backgroundLocationManager = nil

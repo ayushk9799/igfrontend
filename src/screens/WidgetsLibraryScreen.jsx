@@ -366,6 +366,23 @@ export const WidgetsLibraryScreen = ({
                 dispatch(updateUser(result.user));
             }
             setDistanceModalVisible(false);
+            if (result?.backgroundUpdatesError && Platform.OS === 'ios') {
+                Alert.alert(
+                    'Allow Always Location',
+                    result.backgroundUpdatesError.message || 'Background distance updates need Location set to Always.',
+                    [
+                        { text: 'Later', style: 'cancel' },
+                        {
+                            text: 'Open Settings',
+                            onPress: () => {
+                                retryLocationSyncOnActiveRef.current = true;
+                                Linking.openSettings();
+                            },
+                        },
+                    ]
+                );
+                return;
+            }
             if (result?.skipped) {
                 setCustomAlert({
                     title: 'Location Saved',

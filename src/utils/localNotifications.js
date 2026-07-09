@@ -1,8 +1,42 @@
-import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
+import notifee, { AndroidImportance, EventType, TriggerType } from '@notifee/react-native';
 import { storage } from './authStorage';
 
 const CHANNEL_ID = 'partner-updates';
 const PENDING_LOCAL_NOTIFICATION_KEY = 'pending_local_notification_route';
+const PARTNER_INVITE_REMINDER_KEY = 'partner_invite_reminder_schedule';
+const PARTNER_INVITE_REMINDER_IDS = [
+    'partner_invite_reminder_day_1',
+    'partner_invite_reminder_day_3',
+    'partner_invite_reminder_day_7',
+    'partner_invite_reminder_day_14',
+];
+const PARTNER_INVITE_REMINDERS = [
+    {
+        id: PARTNER_INVITE_REMINDER_IDS[0],
+        delayMs: 12 * 60 * 60 * 1000,
+        title: 'Connect now!',
+        body: 'Penguin Couple is no fun without a partner.',
+    },
+    {
+        id: PARTNER_INVITE_REMINDER_IDS[1],
+        delayMs: 36 * 60 * 60 * 1000,
+        title: 'Connect now!',
+        body: 'Penguin Couple is no fun without a partner.',
+    },
+    {
+        id: PARTNER_INVITE_REMINDER_IDS[2],
+        daysFromNow: 3,
+        title: 'Connect now!',
+        body: 'Penguin Couple is no fun without a partner.',
+    },
+    {
+        id: PARTNER_INVITE_REMINDER_IDS[3],
+        daysFromNow: 7,
+        title: 'Connect now!',
+        body: 'Penguin Couple is no fun without a partner.',
+    },
+];
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 let channelReady = false;
 
@@ -52,6 +86,74 @@ export const showLocalNotification = async ({ title, body, data }) => {
     });
 };
 
+export const cancelPartnerInviteReminders = async () => {
+    storage.delete(PARTNER_INVITE_REMINDER_KEY);
+    await notifee.cancelTriggerNotifications(PARTNER_INVITE_REMINDER_IDS);
+};
+
+export const schedulePartnerInviteReminders = async ({ userId, partnerCode }) => {
+    if (!userId) return false;
+
+    const existingSchedule = (() => {
+        try {
+            const value = storage.getString(PARTNER_INVITE_REMINDER_KEY);
+            return value ? JSON.parse(value) : null;
+        } catch {
+            return null;
+        }
+    })();
+    const scheduledIds = await notifee.getTriggerNotificationIds();
+    const hasAllReminders = PARTNER_INVITE_REMINDER_IDS.every((id) => scheduledIds.includes(id));
+
+    if (existingSchedule?.userId === userId && hasAllReminders) {
+        return true;
+    }
+
+    await cancelPartnerInviteReminders();
+    await ensureLocalNotificationSetup();
+
+    const now = Date.now();
+    const data = {
+        type: 'partner_invite_reminder',
+        screen: 'partnerCode',
+        partnerCode,
+    };
+
+    await Promise.all(PARTNER_INVITE_REMINDERS.map((reminder) => (
+        notifee.createTriggerNotification(
+            {
+                id: reminder.id,
+                title: reminder.title,
+                body: reminder.body,
+                data: stringifyData(data),
+                android: {
+                    channelId: CHANNEL_ID,
+                    pressAction: {
+                        id: 'default',
+                    },
+                    importance: AndroidImportance.HIGH,
+                },
+                ios: {
+                    sound: 'default',
+                },
+            },
+            {
+                type: TriggerType.TIMESTAMP,
+                timestamp: now + (reminder.delayMs || reminder.daysFromNow * DAY_MS),
+            }
+        )
+    )));
+
+    storage.set(PARTNER_INVITE_REMINDER_KEY, JSON.stringify({
+        userId,
+        partnerCode: partnerCode || null,
+        scheduledAt: new Date(now).toISOString(),
+        reminderIds: PARTNER_INVITE_REMINDER_IDS,
+    }));
+
+    return true;
+};
+
 export const onLocalNotificationPress = (handler) => notifee.onForegroundEvent(({ type, detail }) => {
     if (type === EventType.PRESS && detail.notification?.data) {
         handler({ data: detail.notification.data });
@@ -91,6 +193,8 @@ export const setLocalNotificationBackgroundHandler = () => {
 export default {
     ensureLocalNotificationSetup,
     showLocalNotification,
+    schedulePartnerInviteReminders,
+    cancelPartnerInviteReminders,
     onLocalNotificationPress,
     getInitialLocalNotification,
     getPendingLocalNotificationRoute,

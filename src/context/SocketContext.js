@@ -168,6 +168,9 @@ export const SocketProvider = ({ children }) => {
 
         // Mood events - partner's mood
         socketInstance.on('mood:changed', (data) => {
+            if (data?.userId && String(data.userId) === String(userId)) {
+                return;
+            }
             setPartnerMood(data.mood);
         });
 
