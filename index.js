@@ -9,8 +9,14 @@ import './src/constants/applyGlobalFonts';
 import App from './App';
 import { name as appName } from './app.json';
 import { setLocalNotificationBackgroundHandler } from './src/utils/localNotifications';
+import { refreshDistanceWidgetSnapshot } from './src/utils/distanceWidgetSync';
 
-setBackgroundMessageHandler(getMessaging(getApp()), async () => {
+setBackgroundMessageHandler(getMessaging(getApp()), async (remoteMessage) => {
+    if (remoteMessage?.data?.type === 'distance_widget_refresh') {
+        await refreshDistanceWidgetSnapshot();
+        return;
+    }
+
     // FCM displays visible notifications from the native payload. Routing is
     // handled when the user opens the notification in AppNavigator.
 });

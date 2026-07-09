@@ -1,6 +1,7 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { API_BASE } from '../constants/Api';
 import { getUser, updateUser as updateStoredUser } from './authStorage';
+import { reportWidgetIntent, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 
 const getUserId = (user) => user?._id || user?.id || null;
 
@@ -23,6 +24,79 @@ const hasDistanceWidgetPremium = (user = {}) => (
     || isDateActive(user?.premiumExpiresAt)
     || isDateActive(user?.partnerPremiumExpiresAt)
 );
+
+const createLocationPermissionError = (code, message) => {
+    const error = new Error(message);
+    error.code = code;
+    error.isLocationPermissionError = true;
+    return error;
+};
+
+const normalizeLocationPermissionError = (error) => {
+    const code = error?.code || error?.nativeStackIOS?.[0]?.code;
+
+    if (code === 'LOCATION_DISABLED') {
+        return createLocationPermissionError(
+            'LOCATION_DISABLED',
+            'Location services are turned off. Please enable Location Services in Settings.'
+        );
+    }
+
+    if (code === 'LOCATION_BLOCKED' || code === 'LOCATION_DENIED') {
+        return createLocationPermissionError(
+            'LOCATION_BLOCKED',
+            'Location permission is blocked. Please enable location access in Settings.'
+        );
+    }
+
+    return error;
+};
+
+export const isLocationSettingsError = (error) => (
+    error?.code === 'LOCATION_BLOCKED' || error?.code === 'LOCATION_DISABLED'
+);
+
+const ensureAndroidLocationPermission = async () => {
+    const finePermission = PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION;
+    const coarsePermission = PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION;
+
+    const hasFine = await PermissionsAndroid.check(finePermission);
+    const hasCoarse = await PermissionsAndroid.check(coarsePermission);
+    if (hasFine || hasCoarse) {
+        return true;
+    }
+
+    const result = await PermissionsAndroid.request(finePermission, {
+        title: 'Location Permission',
+        message: 'Location access is needed to show the distance between you and your partner.',
+        buttonPositive: 'Allow',
+        buttonNegative: 'Not Now',
+    });
+
+    if (result === PermissionsAndroid.RESULTS.GRANTED) {
+        return true;
+    }
+
+    if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+        throw createLocationPermissionError(
+            'LOCATION_BLOCKED',
+            'Location permission is blocked. Please enable location access in Settings.'
+        );
+    }
+
+    throw createLocationPermissionError(
+        'LOCATION_DENIED',
+        'Location permission was denied. Please allow it to enable the Distance widget.'
+    );
+};
+
+const ensureLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+        return ensureAndroidLocationPermission();
+    }
+
+    return true;
+};
 
 const readJsonResponse = async (response, fallbackMessage) => {
     const text = await response.text();
@@ -62,10 +136,7 @@ export const saveLockedDistanceWidgetData = async (user = {}) => {
     });
 };
 
-export const syncDistanceWidgetLocation = async ({
-    user,
-    enableSharing = false,
-} = {}) => {
+export const refreshDistanceWidgetSnapshot = async (user = getUser()) => {
     if (!['ios', 'android'].includes(Platform.OS)) {
         return { skipped: true, reason: 'unsupported_platform' };
     }
@@ -73,6 +144,82 @@ export const syncDistanceWidgetLocation = async ({
     const activeUser = user || getUser();
     const userId = getUserId(activeUser);
     const identity = getDistanceWidgetIdentity(activeUser);
+
+    if (!userId) {
+        return { skipped: true, reason: 'missing_user' };
+    }
+
+    if (!hasDistanceWidgetPremium(activeUser)) {
+        await saveLockedDistanceWidgetData(activeUser);
+        return { skipped: true, reason: 'premium_required' };
+    }
+
+    const distanceResponse = await fetch(`${API_BASE}/api/user/distance/${userId}`);
+    const distanceJson = await readJsonResponse(distanceResponse, 'Failed to fetch partner distance.');
+    if (!distanceResponse.ok || !distanceJson.success) {
+        throw new Error(distanceJson.error || 'Failed to fetch partner distance.');
+    }
+
+    await saveDistanceWidgetData({
+        ...distanceJson.data,
+        locked: false,
+        isPremium: true,
+        userInitial: distanceJson.data?.userInitial || identity.userInitial,
+        partnerInitial: distanceJson.data?.partnerInitial || identity.partnerInitial,
+    });
+    syncNativeWidgetStatus(activeUser).catch(() => {});
+
+    return {
+        distance: distanceJson.data,
+    };
+};
+
+export const startDistanceBackgroundUpdates = async (user = getUser()) => {
+    if (!['ios', 'android'].includes(Platform.OS)) {
+        return;
+    }
+
+    const activeUser = user || getUser();
+    if (activeUser?.locationSharingEnabled !== true) {
+        return;
+    }
+
+    const { ScribbleWidgetBridge } = NativeModules;
+    if (!ScribbleWidgetBridge?.startDistanceBackgroundUpdates) {
+        return;
+    }
+
+    try {
+        await ScribbleWidgetBridge.startDistanceBackgroundUpdates();
+    } catch {
+        // Background refresh is best-effort; foreground sync remains the fallback.
+    }
+};
+
+export const stopDistanceBackgroundUpdates = async () => {
+    const { ScribbleWidgetBridge } = NativeModules;
+    if (!ScribbleWidgetBridge?.stopDistanceBackgroundUpdates) {
+        return;
+    }
+
+    try {
+        await ScribbleWidgetBridge.stopDistanceBackgroundUpdates();
+    } catch {
+        // No-op.
+    }
+};
+
+export const syncDistanceWidgetLocation = async ({
+    user,
+    enableSharing = false,
+    enableBackgroundUpdates = false,
+} = {}) => {
+    if (!['ios', 'android'].includes(Platform.OS)) {
+        return { skipped: true, reason: 'unsupported_platform' };
+    }
+
+    const activeUser = user || getUser();
+    const userId = getUserId(activeUser);
 
     if (!userId) {
         return { skipped: true, reason: 'missing_user' };
@@ -92,7 +239,14 @@ export const syncDistanceWidgetLocation = async ({
         throw new Error('Distance widget location bridge is not available. Rebuild the app.');
     }
 
-    const location = await ScribbleWidgetBridge.requestCurrentLocation();
+    await ensureLocationPermission();
+
+    let location;
+    try {
+        location = await ScribbleWidgetBridge.requestCurrentLocation();
+    } catch (error) {
+        throw normalizeLocationPermissionError(error);
+    }
     const locationResponse = await fetch(`${API_BASE}/api/user/location`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -117,22 +271,19 @@ export const syncDistanceWidgetLocation = async ({
         updateStoredUser(locationUpdates);
     }
 
-    const distanceResponse = await fetch(`${API_BASE}/api/user/distance/${userId}`);
-    const distanceJson = await readJsonResponse(distanceResponse, 'Failed to fetch partner distance.');
-    if (!distanceResponse.ok || !distanceJson.success) {
-        throw new Error(distanceJson.error || 'Failed to fetch partner distance.');
-    }
+    const updatedUser = {
+        ...activeUser,
+        ...(locationUpdates || {}),
+    };
 
-    await saveDistanceWidgetData({
-        ...distanceJson.data,
-        locked: false,
-        isPremium: true,
-        userInitial: distanceJson.data?.userInitial || identity.userInitial,
-        partnerInitial: distanceJson.data?.partnerInitial || identity.partnerInitial,
-    });
+    const snapshot = await refreshDistanceWidgetSnapshot(updatedUser);
+    reportWidgetIntent('distance', updatedUser).catch(() => {});
+    if (enableBackgroundUpdates) {
+        startDistanceBackgroundUpdates(updatedUser).catch(() => {});
+    }
 
     return {
         user: locationUpdates,
-        distance: distanceJson.data,
+        distance: snapshot.distance,
     };
 };

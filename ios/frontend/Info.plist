@@ -52,6 +52,10 @@
 	<string>This app needs access to your photo library to select photos for daily challenges.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Penguin uses your location to show your distance from your partner in the Distance widget.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Penguin uses background location only to keep your Distance widget updated when you meaningfully move.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Penguin uses background location only to keep your Distance widget updated when you meaningfully move.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to your microphone to record voice messages for your partner.</string>
 	<key>RCTNewArchEnabled</key>
@@ -59,6 +63,11 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>Nunito.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>remote-notification</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>BootSplash</string>

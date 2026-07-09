@@ -1,8 +1,10 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Animated,
+    AppState,
+    Linking,
     Modal,
     Platform,
     ScrollView,
@@ -14,10 +16,13 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDispatch } from 'react-redux';
 import Svg, { Path } from 'react-native-svg';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
-import { syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import { isLocationSettingsError, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import { reportWidgetIntent, syncNativeWidgetStatus } from '../api/widgetStatusApi';
+import { updateUser } from '../store/slices/userSlice';
 
 const DUMMY_TIME_TOGETHER_SECONDS = (1954 * 86400) + (11 * 3600) + (44 * 60) + 12;
 
@@ -327,6 +332,8 @@ export const WidgetsLibraryScreen = ({
     onNavigateToPremium,
 }) => {
     const insets = useSafeAreaInsets();
+    const dispatch = useDispatch();
+    const retryLocationSyncOnActiveRef = useRef(false);
     const relationshipStartDate = userData.relationshipStartDate ||
         userData.pendingRelationshipStartDate ||
         userData.connectionDate;
@@ -353,7 +360,11 @@ export const WidgetsLibraryScreen = ({
             const result = await syncDistanceWidgetLocation({
                 user: userData,
                 enableSharing: true,
+                enableBackgroundUpdates: true,
             });
+            if (result?.user) {
+                dispatch(updateUser(result.user));
+            }
             setDistanceModalVisible(false);
             if (result?.skipped) {
                 setCustomAlert({
@@ -372,6 +383,23 @@ export const WidgetsLibraryScreen = ({
             }
         } catch (error) {
             setDistanceModalVisible(false);
+            if (isLocationSettingsError(error)) {
+                Alert.alert(
+                    'Location Permission Needed',
+                    error?.message || 'Please enable location access in Settings.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Open Settings',
+                            onPress: () => {
+                                retryLocationSyncOnActiveRef.current = true;
+                                Linking.openSettings();
+                            },
+                        },
+                    ]
+                );
+                return;
+            }
             setCustomAlert({
                 title: 'Could Not Enable',
                 message: error?.message || 'Failed to enable location sharing. Please try again.',
@@ -380,7 +408,20 @@ export const WidgetsLibraryScreen = ({
         } finally {
             setLocationSyncing(false);
         }
-    }, [userData, locationSyncing]);
+    }, [dispatch, userData, locationSyncing]);
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextState) => {
+            if (nextState !== 'active' || !retryLocationSyncOnActiveRef.current) {
+                return;
+            }
+
+            retryLocationSyncOnActiveRef.current = false;
+            handleConfirmLocation();
+        });
+
+        return () => subscription.remove();
+    }, [handleConfirmLocation]);
 
     const handleEnableDistance = useCallback(() => {
         if (!isPremium) {
@@ -396,12 +437,15 @@ export const WidgetsLibraryScreen = ({
             return;
         }
 
+        reportWidgetIntent('distance', userData).catch(() => {});
+        syncNativeWidgetStatus(userData).catch(() => {});
+
         if (userData?.locationSharingEnabled === true) {
             handleConfirmLocation();
         } else {
             setDistanceModalVisible(true);
         }
-    }, [isPremium, onNavigateToPremium, userData?.locationSharingEnabled, handleConfirmLocation]);
+    }, [isPremium, onNavigateToPremium, userData, handleConfirmLocation]);
 
     return (
         <View style={styles.root}>

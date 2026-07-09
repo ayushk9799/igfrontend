@@ -203,6 +203,63 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
         }
     }
 
+    @ReactMethod
+    fun setWidgetTrackingContext(userId: String, apiBase: String, promise: Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences(
+                ScribbleWidgetProvider.PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+
+            prefs.edit()
+                .putString(WidgetStatusReporter.KEY_TRACKING_USER_ID, userId)
+                .putString(WidgetStatusReporter.KEY_TRACKING_API_BASE, apiBase)
+                .apply()
+
+            WidgetStatusReporter.report(reactContext, "native")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to set widget tracking context: ${e.message}", e)
+        }
+    }
+
+    @ReactMethod
+    fun getWidgetConfigurations(promise: Promise) {
+        try {
+            val result = Arguments.createMap()
+            WidgetStatusReporter.collect(reactContext).forEach { (type, count) ->
+                val status = Arguments.createMap().apply {
+                    putBoolean("installed", count > 0)
+                    putInt("activeCount", count)
+                }
+                result.putMap(type, status)
+            }
+            promise.resolve(result)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to read widget configurations: ${e.message}", e)
+        }
+    }
+
+    @ReactMethod
+    fun startDistanceBackgroundUpdates(promise: Promise) {
+        try {
+            DistanceWidgetSyncWorker.schedule(reactContext)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to start distance background updates: ${e.message}", e)
+        }
+    }
+
+    @ReactMethod
+    fun stopDistanceBackgroundUpdates(promise: Promise) {
+        try {
+            DistanceWidgetSyncWorker.cancel(reactContext)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to stop distance background updates: ${e.message}", e)
+        }
+    }
+
     /**
      * Request current device location using FusedLocationProviderClient.
      * Mirrors iOS ScribbleWidgetBridge.requestCurrentLocation behavior.

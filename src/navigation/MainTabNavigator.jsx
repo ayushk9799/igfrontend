@@ -69,6 +69,7 @@ export const MainTabNavigator = ({
     const [moodRefreshNow, setMoodRefreshNow] = useState(Date.now());
     const [moodPreview, setMoodPreview] = useState(null);
     const [isScribbleLiveFullscreen, setIsScribbleLiveFullscreen] = useState(false);
+    const [openScribbleLiveMode, setOpenScribbleLiveMode] = useState(false);
     const lastAutoOpenedMoodRef = React.useRef(null);
 
     const [isAccountMounted, setIsAccountMounted] = useState(false);
@@ -143,8 +144,16 @@ export const MainTabNavigator = ({
     useEffect(() => {
         if (currentTab !== 'canvas') {
             setIsScribbleLiveFullscreen(false);
+            setOpenScribbleLiveMode(false);
         }
     }, [currentTab]);
+
+    const handleBottomTabChange = useCallback((tab) => {
+        if (tab === 'canvas') {
+            setOpenScribbleLiveMode(false);
+        }
+        setCurrentTab(tab);
+    }, []);
 
     // Redux state
     const userData = useSelector(selectUser);
@@ -310,8 +319,25 @@ export const MainTabNavigator = ({
                         partnerMood={partnerMood}
                         partnerScribble={partnerScribble}
                         todayChallenge={todayChallenge}
+                        relationshipStartDate={
+                            userData?.relationshipStartDate
+                            || userData?.pendingRelationshipStartDate
+                            || userData?.connectionDate
+                        }
+                        daysTogether={daysTogether}
                         onMoodPress={openMoodPicker}
-                        onScribblePress={() => setCurrentTab('canvas')}
+                        onScribblePress={() => {
+                            setOpenScribbleLiveMode(false);
+                            setCurrentTab('canvas');
+                        }}
+                        onScribbleLivePress={() => {
+                            if (!hasPartner) {
+                                onFindPartner();
+                                return;
+                            }
+                            setOpenScribbleLiveMode(true);
+                            setCurrentTab('canvas');
+                        }}
                         onQuestionPress={(category) => {
                             if (!hasPartner) {
                                 onFindPartner?.();
@@ -352,13 +378,17 @@ export const MainTabNavigator = ({
             case 'canvas':
                 return (
                     <ScribbleScreen
-                        onBack={() => setCurrentTab('home')}
+                        onBack={() => {
+                            setOpenScribbleLiveMode(false);
+                            setCurrentTab('home');
+                        }}
                         hasPartner={hasPartner}
                         onLinkPartner={onFindPartner}
                         onLiveModeChange={setIsScribbleLiveFullscreen}
                         userName={userData?.name || 'You'}
                         partnerName={partnerName || 'Your Love'}
                         initialPaths={partnerScribble?.paths}
+                        initialLiveMode={openScribbleLiveMode}
                     />
                 );
             case 'dailyChallenge':
@@ -443,7 +473,7 @@ export const MainTabNavigator = ({
             {!isScribbleLiveFullscreen && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge'].includes(currentTab) && (
                 <BottomTabBar
                     currentTab={currentTab}
-                    onTabChange={setCurrentTab}
+                    onTabChange={handleBottomTabChange}
                     chatBadge={chatBadge}
                 />
             )}

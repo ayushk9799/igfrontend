@@ -24,6 +24,22 @@ import kotlin.math.pow
 class TogetherDaysWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { updateWidget(context, appWidgetManager, it) }
+        WidgetStatusReporter.report(context)
+    }
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        WidgetStatusReporter.report(context)
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        super.onDeleted(context, appWidgetIds)
+        WidgetStatusReporter.report(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetStatusReporter.report(context)
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -55,6 +71,7 @@ class TogetherCountdownWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { updateWidget(context, appWidgetManager, it) }
         scheduleNextUpdate(context)
+        WidgetStatusReporter.report(context)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -82,6 +99,17 @@ class TogetherCountdownWidgetProvider : AppWidgetProvider() {
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         cancelUpdate(context)
+        WidgetStatusReporter.report(context)
+    }
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        WidgetStatusReporter.report(context)
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        super.onDeleted(context, appWidgetIds)
+        WidgetStatusReporter.report(context)
     }
 
     private fun scheduleNextUpdate(context: Context) {
@@ -125,6 +153,22 @@ class TogetherCountdownWidgetProvider : AppWidgetProvider() {
 class DistanceWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         appWidgetIds.forEach { updateWidget(context, appWidgetManager, it) }
+        WidgetStatusReporter.report(context)
+    }
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        WidgetStatusReporter.report(context)
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        super.onDeleted(context, appWidgetIds)
+        WidgetStatusReporter.report(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetStatusReporter.report(context)
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -254,10 +298,14 @@ object RelationshipWidgetRenderer {
         val isTogether = data?.optBoolean("isTogether", false) == true
         val rawDistance = data?.optDouble("distanceKm", Double.NaN)
         val distanceKm = rawDistance?.takeUnless { it.isNaN() }
+        val reason = data?.optString("reason", "") ?: ""
         val userInitial = data.initialFrom("userInitial", "userName")
         val partnerInitial = data.initialFrom("partnerInitial", "partnerName")
         val title = when {
             isTogether -> "We're together!"
+            distanceKm == null && reason == "partner_sharing_disabled" -> "Partner location off"
+            distanceKm == null && reason == "missing_partner" -> "Connect partner"
+            distanceKm == null && reason == "missing_location" -> "Open app to sync"
             distanceKm == null -> "Share location"
             distanceKm >= 10 -> "Our distance: ${Math.round(distanceKm).toInt()} km"
             else -> "Our distance: ${String.format(Locale.US, "%.1f", distanceKm)} km"

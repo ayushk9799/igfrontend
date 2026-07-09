@@ -10,8 +10,11 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     // App Group identifier - must match widget's App Group
     private let appGroupIdentifier = "group.com.thousandways.love"
     private var locationManager: CLLocationManager?
+    private var backgroundLocationManager: CLLocationManager?
     private var locationResolver: RCTPromiseResolveBlock?
     private var locationRejecter: RCTPromiseRejectBlock?
+    private let trackingUserIdKey = "distance_widget_tracking_user_id"
+    private let trackingApiBaseKey = "distance_widget_tracking_api_base"
     
     /// Get the shared container URL for App Group
     private func getSharedContainerURL() -> URL? {
@@ -208,6 +211,16 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if manager === backgroundLocationManager {
+            switch manager.authorizationStatus {
+            case .authorizedAlways, .authorizedWhenInUse:
+                manager.startMonitoringSignificantLocationChanges()
+            default:
+                break
+            }
+            return
+        }
+
         switch manager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways:
             manager.requestLocation()
@@ -229,6 +242,11 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             return
         }
 
+        if manager === backgroundLocationManager || locationResolver == nil {
+            syncDistanceWidgetInBackground(location: location)
+            return
+        }
+
         locationResolver?([
             "latitude": location.coordinate.latitude,
             "longitude": location.coordinate.longitude,
@@ -239,6 +257,10 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        if manager === backgroundLocationManager {
+            return
+        }
+
         locationRejecter?("LOCATION_ERROR", "Failed to get current location: \(error.localizedDescription)", error)
         clearLocationPromise()
     }
@@ -300,6 +322,167 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             resolver(true)
         } else {
             resolver(false)
+        }
+    }
+
+    /// Store parity with Android bridge. iOS widget status is reported by JS after reading WidgetKit configurations.
+    @objc
+    func setWidgetTrackingContext(_ userId: NSString, apiBase: NSString, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        if let defaults = UserDefaults(suiteName: appGroupIdentifier) {
+            defaults.set(String(userId), forKey: trackingUserIdKey)
+            defaults.set(String(apiBase), forKey: trackingApiBaseKey)
+        }
+        resolver(true)
+    }
+
+    /// Start battery-friendly background refresh for the Distance widget.
+    @objc
+    func startDistanceBackgroundUpdates(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        DispatchQueue.main.async {
+            guard CLLocationManager.locationServicesEnabled() else {
+                resolver(false)
+                return
+            }
+
+            let manager = self.backgroundLocationManager ?? CLLocationManager()
+            self.backgroundLocationManager = manager
+            manager.delegate = self
+            manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            manager.pausesLocationUpdatesAutomatically = true
+            manager.allowsBackgroundLocationUpdates = true
+
+            switch manager.authorizationStatus {
+            case .notDetermined:
+                manager.requestAlwaysAuthorization()
+            case .authorizedWhenInUse:
+                manager.requestAlwaysAuthorization()
+                manager.startMonitoringSignificantLocationChanges()
+            case .authorizedAlways:
+                manager.startMonitoringSignificantLocationChanges()
+            default:
+                break
+            }
+
+            resolver(true)
+        }
+    }
+
+    /// Stop background Distance widget refresh.
+    @objc
+    func stopDistanceBackgroundUpdates(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        backgroundLocationManager?.stopMonitoringSignificantLocationChanges()
+        backgroundLocationManager?.delegate = nil
+        backgroundLocationManager = nil
+        resolver(true)
+    }
+
+    /// Return currently configured iOS widgets by kind.
+    @objc
+    func getWidgetConfigurations(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        guard #available(iOS 14.0, *) else {
+            resolver([:])
+            return
+        }
+
+        WidgetCenter.shared.getCurrentConfigurations { result in
+            switch result {
+            case .success(let configurations):
+                var counts: [String: Int] = [
+                    "scribble": 0,
+                    "togetherDays": 0,
+                    "togetherCountdown": 0,
+                    "distance": 0
+                ]
+
+                for configuration in configurations {
+                    switch configuration.kind {
+                    case "ScribbleWidget":
+                        counts["scribble", default: 0] += 1
+                    case "TogetherDaysWidget":
+                        counts["togetherDays", default: 0] += 1
+                    case "TogetherCountdownWidget":
+                        counts["togetherCountdown", default: 0] += 1
+                    case "DistanceWidget":
+                        counts["distance", default: 0] += 1
+                    default:
+                        break
+                    }
+                }
+
+                let payload = counts.reduce(into: [String: [String: Any]]()) { partialResult, item in
+                    partialResult[item.key] = [
+                        "installed": item.value > 0,
+                        "activeCount": item.value
+                    ]
+                }
+
+                resolver(payload)
+            case .failure(let error):
+                rejecter("ERROR", "Failed to read widget configurations: \(error.localizedDescription)", error)
+            }
+        }
+    }
+
+    private func syncDistanceWidgetInBackground(location: CLLocation) {
+        guard let defaults = UserDefaults(suiteName: appGroupIdentifier),
+              let userId = defaults.string(forKey: trackingUserIdKey),
+              let apiBase = defaults.string(forKey: trackingApiBaseKey)?.trimmingCharacters(in: CharacterSet(charactersIn: "/")),
+              let locationURL = URL(string: "\(apiBase)/api/user/location"),
+              let distanceURL = URL(string: "\(apiBase)/api/user/distance/\(userId)") else {
+            return
+        }
+
+        var locationRequest = URLRequest(url: locationURL)
+        locationRequest.httpMethod = "PUT"
+        locationRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        locationRequest.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "userId": userId,
+            "latitude": location.coordinate.latitude,
+            "longitude": location.coordinate.longitude,
+            "sharingEnabled": true
+        ])
+
+        URLSession.shared.dataTask(with: locationRequest) { _, response, error in
+            guard error == nil,
+                  let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                return
+            }
+
+            URLSession.shared.dataTask(with: distanceURL) { data, response, error in
+                guard error == nil,
+                      let data = data,
+                      let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      json["success"] as? Bool == true else {
+                    return
+                }
+
+                var payload = json["data"] as? [String: Any] ?? [:]
+                payload["locked"] = false
+                payload["isPremium"] = true
+                payload["updatedAt"] = ISO8601DateFormatter().string(from: Date())
+                self.saveDistancePayloadToWidget(payload)
+            }.resume()
+        }.resume()
+    }
+
+    private func saveDistancePayloadToWidget(_ payload: [String: Any]) {
+        guard let containerURL = getSharedContainerURL() else {
+            return
+        }
+
+        do {
+            let jsonURL = containerURL.appendingPathComponent("distance.json")
+            let jsonData = try JSONSerialization.data(withJSONObject: payload, options: .prettyPrinted)
+            try jsonData.write(to: jsonURL, options: .atomic)
+
+            if #available(iOS 14.0, *) {
+                WidgetCenter.shared.reloadTimelines(ofKind: "DistanceWidget")
+            }
+        } catch {
+            print("❌ Failed to save background distance widget data: \(error)")
         }
     }
     

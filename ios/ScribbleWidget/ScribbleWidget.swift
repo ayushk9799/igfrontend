@@ -417,24 +417,24 @@ struct TogetherCountdownView: View {
                     .minimumScaleFactor(0.7)
                     .padding(.horizontal, 8)
             } else {
-                VStack(spacing: 3) {
-                    HStack(spacing: 4) {
+                VStack(spacing: 1) {
+                    HStack(spacing: 3) {
                         Text("together for")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
                         Image(systemName: "heart.fill")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                     }
                     .foregroundStyle(.white)
 
-                    HStack(alignment: .lastTextBaseline, spacing: 9) {
+                    HStack(alignment: .lastTextBaseline, spacing: 6) {
                         TimeColumn(value: days, label: "days", minDigits: 1)
                         TimeColumn(value: hours, label: "hr", minDigits: 2)
                         TimeColumn(value: minutes, label: "min", minDigits: 2)
                         TimeColumn(value: seconds, label: "sec", minDigits: 2)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+                .padding(.horizontal, 2)
+                .padding(.vertical, 1)
             }
         }
     }
@@ -452,14 +452,14 @@ struct TimeColumn: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(displayValue)
-                .font(.system(size: 19, weight: .bold, design: .rounded))
+                .font(.system(size: 26, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.white)
                 .lineLimit(1)
-                .minimumScaleFactor(0.55)
+                .minimumScaleFactor(0.8)
 
             Text(label)
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.84))
                 .lineLimit(1)
         }
@@ -490,18 +490,18 @@ struct TogetherDaysView: View {
             } else {
                 VStack(spacing: 0) {
                     Image(systemName: "heart.fill")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(.white)
 
                     Text("\(days)")
-                        .font(.system(size: 19, weight: .bold, design: .rounded))
+                        .font(.system(size: 29, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.45)
+                        .minimumScaleFactor(0.75)
 
                     Text("days")
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.84))
                         .lineLimit(1)
                 }
@@ -533,6 +533,7 @@ struct TogetherCountdownWidget: Widget {
         .configurationDisplayName("Time Together")
         .description("Shows the time elapsed since your anniversary.")
         .supportedFamilies(families)
+        .contentMarginsDisabled()
     }
 }
 
@@ -558,6 +559,7 @@ struct TogetherDaysWidget: Widget {
         .configurationDisplayName("Days Together")
         .description("Shows only your days together on the Lock Screen.")
         .supportedFamilies(families)
+        .contentMarginsDisabled()
     }
 }
 
@@ -569,6 +571,7 @@ struct DistanceEntry: TimelineEntry {
     let locked: Bool
     let userInitial: String
     let partnerInitial: String
+    let reason: String?
     let updatedAt: String?
 }
 
@@ -576,7 +579,7 @@ struct DistanceProvider: TimelineProvider {
     private let appGroupIdentifier = "group.com.thousandways.love"
 
     func placeholder(in context: Context) -> DistanceEntry {
-        DistanceEntry(date: Date(), distanceKm: 381, isTogether: false, locked: false, userInitial: "T", partnerInitial: "K", updatedAt: nil)
+        DistanceEntry(date: Date(), distanceKm: 381, isTogether: false, locked: false, userInitial: "T", partnerInitial: "K", reason: nil, updatedAt: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (DistanceEntry) -> Void) {
@@ -591,13 +594,13 @@ struct DistanceProvider: TimelineProvider {
 
     private func loadDistanceEntry() -> DistanceEntry {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, locked: false, userInitial: "?", partnerInitial: "?", updatedAt: nil)
+            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, locked: false, userInitial: "?", partnerInitial: "?", reason: nil, updatedAt: nil)
         }
 
         let jsonURL = containerURL.appendingPathComponent("distance.json")
         guard let data = try? Data(contentsOf: jsonURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, locked: false, userInitial: "?", partnerInitial: "?", updatedAt: nil)
+            return DistanceEntry(date: Date(), distanceKm: nil, isTogether: false, locked: false, userInitial: "?", partnerInitial: "?", reason: nil, updatedAt: nil)
         }
 
         let rawDistance = json["distanceKm"]
@@ -617,6 +620,7 @@ struct DistanceProvider: TimelineProvider {
             locked: json["locked"] as? Bool ?? false,
             userInitial: json["userInitial"] as? String ?? "?",
             partnerInitial: json["partnerInitial"] as? String ?? "?",
+            reason: json["reason"] as? String,
             updatedAt: json["updatedAt"] as? String
         )
     }
@@ -659,32 +663,41 @@ struct DistanceWidgetView: View {
 
     private var titleText: String {
         if entry.isTogether {
-            return "We're together!"
+            return "Together!"
         }
         guard let distanceKm = entry.distanceKm else {
+            if entry.reason == "partner_sharing_disabled" {
+                return "Partner location off"
+            }
+            if entry.reason == "missing_partner" {
+                return "Connect partner"
+            }
+            if entry.reason == "missing_location" {
+                return "Open app to sync"
+            }
             return "Share location"
         }
         if distanceKm >= 10 {
-            return "Our distance: \(Int(distanceKm.rounded())) km"
+            return "\(Int(distanceKm.rounded())) km apart"
         }
-        return "Our distance: \(String(format: "%.1f", distanceKm)) km"
+        return "\(String(format: "%.1f", distanceKm)) km apart"
     }
 
     var body: some View {
         if entry.locked {
             VStack(spacing: 3) {
                 Image(systemName: "lock.fill")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.white)
 
                 Text("Premium widget")
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
 
                 Text("Open app to unlock")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(.white.opacity(0.82))
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -692,12 +705,12 @@ struct DistanceWidgetView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
         } else {
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Text(titleText)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.system(size: 21, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.85)
 
                 ZStack {
                     GeometryReader { proxy in
@@ -730,8 +743,8 @@ struct DistanceWidgetView: View {
                 }
                 .frame(height: circleSize)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
+            .padding(.horizontal, 2)
+            .padding(.vertical, 1)
         }
     }
 }
@@ -740,13 +753,13 @@ struct DistanceDoubleHeart: View {
     var body: some View {
         ZStack {
             Image(systemName: "heart.fill")
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(.white.opacity(0.92))
                 .shadow(color: .black.opacity(0.3), radius: 2.5, x: 0, y: 1.5)
                 .offset(x: 5, y: -4)
 
             Image(systemName: "heart.fill")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(.white)
                 .offset(x: -4, y: 1)
                 .shadow(color: .black.opacity(0.35), radius: 3, x: 0, y: 1.5)
@@ -768,7 +781,7 @@ struct DistanceInitialCircle: View {
                 )
 
             Text(String(initial.prefix(1)))
-                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
         }
         .frame(width: 34, height: 34)
@@ -797,6 +810,7 @@ struct DistanceWidget: Widget {
         .configurationDisplayName("Our Distance")
         .description("Shows your distance from your partner.")
         .supportedFamilies(families)
+        .contentMarginsDisabled()
     }
 }
 

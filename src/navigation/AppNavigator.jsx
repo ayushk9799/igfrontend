@@ -44,7 +44,8 @@ import { API_BASE } from '../constants/Api';
 import { QuestionChatsV2Api } from '../api/questionsV2Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
 import { getDeviceInfo } from '../utils/deviceInfo';
-import { saveLockedDistanceWidgetData, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import { refreshDistanceWidgetSnapshot, saveLockedDistanceWidgetData, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import { configureNativeWidgetTracking, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
@@ -308,6 +309,20 @@ export const AppNavigator = () => {
             distanceSyncInFlightRef.current = false;
         }
     }, [dispatch]);
+
+    const syncNativeWidgetsSilently = useCallback(async () => {
+        if (!['ios', 'android'].includes(Platform.OS)) return;
+
+        const activeUser = {
+            ...(userDataRef.current || {}),
+            ...(getUser() || {}),
+        };
+        const userId = activeUser?._id || activeUser?.id;
+        if (!userId) return;
+
+        await configureNativeWidgetTracking(activeUser);
+        await syncNativeWidgetStatus(activeUser);
+    }, []);
     const initPurchases = React.useCallback(async () => {
         try {
             if (purchasesConfiguredRef.current) return;
@@ -472,16 +487,19 @@ export const AppNavigator = () => {
         const userId = userData?.id || userData?._id;
         if (!userData?.isAuthenticated || !userId) return;
 
+        syncNativeWidgetsSilently();
         syncDistanceWidgetSilently({ force: true });
 
         const interval = setInterval(() => {
             if (AppState.currentState === 'active') {
+                syncNativeWidgetsSilently();
                 syncDistanceWidgetSilently();
             }
         }, DISTANCE_WIDGET_SYNC_INTERVAL_MS);
 
         const subscription = AppState.addEventListener('change', (nextAppState) => {
             if (nextAppState === 'active') {
+                syncNativeWidgetsSilently();
                 syncDistanceWidgetSilently({ force: true });
             }
         });
@@ -495,6 +513,7 @@ export const AppNavigator = () => {
         userData?._id,
         userData?.isAuthenticated,
         syncDistanceWidgetSilently,
+        syncNativeWidgetsSilently,
     ]);
 
     useEffect(() => {
@@ -911,6 +930,11 @@ export const AppNavigator = () => {
 
         // 3. Foreground Message Handler — mirror FCM as a local notification
         const unsubscribeForeground = setupForegroundMessageHandler((remoteMessage) => {
+            if (remoteMessage?.data?.type === 'distance_widget_refresh') {
+                refreshDistanceWidgetSnapshot().catch(() => {});
+                return;
+            }
+
             if (remoteMessage?.data?.type === 'scribble_update') return;
 
             const title = remoteMessage?.notification?.title || 'New notification';
@@ -1006,10 +1030,12 @@ export const AppNavigator = () => {
         };
 
         const handleMoodChanged = (data = {}) => {
-            const moodLabel = data.mood?.label ? `: ${data.mood.label}` : '';
+            const moodLabel = data.mood?.label
+                ? String(data.mood.label).trim().toLowerCase()
+                : 'in a new mood';
             showRoutedLocalNotification({
                 title: 'Mood Update',
-                body: `${data.userName || partnerName} updated their mood${moodLabel}`,
+                body: `${data.userName || partnerName} is ${moodLabel}`,
                 data: {
                     type: 'mood_update',
                 },

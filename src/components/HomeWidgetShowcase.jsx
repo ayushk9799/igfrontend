@@ -11,7 +11,6 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
 
-const SHOWCASE_TIME_SECONDS = (1954 * 86400) + (11 * 3600) + (44 * 60) + 12;
 const DISTANCE_STEPS = [
     'Our distance: 1,000 km',
     'Our distance: 700 km',
@@ -82,6 +81,15 @@ const WidgetInitial = ({ label, style }) => (
         <ShowcaseText style={styles.widgetInitialText}>{label}</ShowcaseText>
     </View>
 );
+
+const getElapsedSeconds = (startDate) => {
+    if (!startDate) return 0;
+
+    const startTime = new Date(startDate).getTime();
+    if (Number.isNaN(startTime)) return 0;
+
+    return Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+};
 
 const DistanceShowcaseCard = () => {
     const animationProgress = useMemo(() => new Animated.Value(0), []);
@@ -170,16 +178,18 @@ const DistanceShowcaseCard = () => {
     );
 };
 
-const TimeTogetherShowcaseCard = () => {
-    const [elapsed, setElapsed] = useState(SHOWCASE_TIME_SECONDS);
+const TimeTogetherShowcaseCard = ({ relationshipStartDate }) => {
+    const [elapsed, setElapsed] = useState(() => getElapsedSeconds(relationshipStartDate));
 
     useEffect(() => {
+        setElapsed(getElapsedSeconds(relationshipStartDate));
+
         const interval = setInterval(() => {
-            setElapsed(previous => previous + 1);
+            setElapsed(getElapsedSeconds(relationshipStartDate));
         }, 1000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [relationshipStartDate]);
 
     const values = useMemo(() => ({
         days: Math.floor(elapsed / 86400),
@@ -214,21 +224,21 @@ const TimeTogetherShowcaseCard = () => {
     );
 };
 
-const DaysTogetherShowcaseCard = () => (
+const DaysTogetherShowcaseCard = ({ daysTogether = 0 }) => (
     <View style={[styles.widgetShowcaseCard, styles.daysShowcaseCard]}>
         <WidgetShowcaseHeader>Days Together</WidgetShowcaseHeader>
         <View style={styles.cardHeaderDivider} />
         <View style={styles.daysShowcaseCenter}>
             <View style={styles.daysShowcaseCircle}>
                 <HeartIcon size={16} color="#FFFFFF" />
-                <ShowcaseText style={styles.daysShowcaseValue}>1954</ShowcaseText>
+                <ShowcaseText style={styles.daysShowcaseValue}>{daysTogether}</ShowcaseText>
                 <ShowcaseText style={styles.daysShowcaseLabel}>days</ShowcaseText>
             </View>
         </View>
     </View>
 );
 
-const HomeWidgetShowcase = ({ onPress }) => (
+const HomeWidgetShowcase = ({ onPress, relationshipStartDate, daysTogether = 0 }) => (
     <View style={styles.widgetShowcaseSection}>
         <ScrollView
             horizontal
@@ -242,12 +252,12 @@ const HomeWidgetShowcase = ({ onPress }) => (
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.widgetShowcasePressable}>
                 <View style={[styles.widgetShowcaseCardShell, styles.timeShowcaseShadow]}>
-                    <TimeTogetherShowcaseCard />
+                    <TimeTogetherShowcaseCard relationshipStartDate={relationshipStartDate} />
                 </View>
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.widgetShowcasePressable}>
                 <View style={[styles.widgetShowcaseCardShell, styles.daysShowcaseShadow]}>
-                    <DaysTogetherShowcaseCard />
+                    <DaysTogetherShowcaseCard daysTogether={daysTogether} />
                 </View>
             </TouchableOpacity>
         </ScrollView>

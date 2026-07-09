@@ -500,6 +500,7 @@ export const ScribbleScreen = ({
     userName = 'You',
     partnerName = 'Your Love',
     initialPaths = [],
+    initialLiveMode = false,
 }) => {
     const [paths, setPaths] = useState(() => normalizePaths(initialPaths, 'initial'));
     const [currentPath, setCurrentPath] = useState('');
@@ -510,7 +511,7 @@ export const ScribbleScreen = ({
     const [showWidgetTutorial, setShowWidgetTutorial] = useState(false);
     const [tutorialStep, setTutorialStep] = useState(0);
     const [connectionError, setConnectionError] = useState(false);
-    const [liveMode, setLiveMode] = useState(false);
+    const [liveMode, setLiveMode] = useState(initialLiveMode);
     const [liveSaving, setLiveSaving] = useState(false);
     const [livePartnerAvailable, setLivePartnerAvailable] = useState(false);
     const [liveClock, setLiveClock] = useState(new Date());
@@ -580,6 +581,7 @@ export const ScribbleScreen = ({
     const selectedSizeRef = useRef(selectedSize);
     const pathIdCounter = useRef(0);
     const liveModeRef = useRef(false);
+    const liveAnnouncedRef = useRef(false);
     const livePartnerAvailableRef = useRef(false);
     const isConnectedRef = useRef(isConnected);
     const socketRef = useRef(socket);
@@ -608,7 +610,27 @@ export const ScribbleScreen = ({
     }, [liveMode, onLiveModeChange]);
 
     React.useEffect(() => {
+        if (!socket || !isConnected) return undefined;
+
+        if (liveMode && !liveAnnouncedRef.current) {
+            socket.emit('scribble:liveStart');
+            liveAnnouncedRef.current = true;
+        }
+
+        if (!liveMode && liveAnnouncedRef.current) {
+            socket.emit('scribble:liveEnd');
+            liveAnnouncedRef.current = false;
+        }
+
+        return undefined;
+    }, [liveMode, socket, isConnected]);
+
+    React.useEffect(() => {
         return () => {
+            if (liveAnnouncedRef.current && socketRef.current && isConnectedRef.current) {
+                socketRef.current.emit('scribble:liveEnd');
+                liveAnnouncedRef.current = false;
+            }
             onLiveModeChange(false);
         };
     }, [onLiveModeChange]);
@@ -829,9 +851,6 @@ export const ScribbleScreen = ({
         liveModeRef.current = nextLiveMode;
         setLiveMode(nextLiveMode);
         setConnectionError(false);
-        if (socket && isConnected) {
-            socket.emit(nextLiveMode ? 'scribble:liveStart' : 'scribble:liveEnd');
-        }
     };
 
     const handleLiveBack = () => {
@@ -840,9 +859,6 @@ export const ScribbleScreen = ({
         setShowLivePicker(false);
         setShowLiveBrushPicker(false);
         setShowLiveGradientPicker(false);
-        if (socket && isConnected) {
-            socket.emit('scribble:liveEnd');
-        }
     };
 
     const handleSend = () => {

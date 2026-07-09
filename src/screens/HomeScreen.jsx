@@ -128,8 +128,11 @@ const HomeScreen = ({
     partnerMood = null,
     partnerScribble = null,
     todayChallenge = null,
+    relationshipStartDate = null,
+    daysTogether = 0,
     onMoodPress,
     onScribblePress,
+    onScribbleLivePress,
     onQuestionPress,
     onFindPartner,
     onSettingsPress,
@@ -461,10 +464,67 @@ const HomeScreen = ({
                         )}
                     </View>
 
+                    <TouchableOpacity onPress={onScribbleLivePress || onScribblePress} activeOpacity={0.9} style={styles.liveDrawPressable}>
+                        <View style={styles.liveDrawCard}>
+                            <LinearGradient
+                                colors={['#1B1237', '#4B2E83', '#EC7AB7']}
+                                locations={[0, 0.56, 1]}
+                                start={{ x: 0.05, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.liveDrawGradient}
+                                pointerEvents="none"
+                            />
+                            <View style={styles.liveDrawStars}>
+                                <View style={[styles.liveDrawStar, styles.liveDrawStarOne]} />
+                                <View style={[styles.liveDrawStar, styles.liveDrawStarTwo]} />
+                                <View style={[styles.liveDrawStar, styles.liveDrawStarThree]} />
+                            </View>
+                            <View style={styles.liveDrawIcon}>
+                                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z"
+                                        stroke="#FFFFFF"
+                                        strokeWidth={2}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                    <Path
+                                        d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031"
+                                        stroke="#FFFFFF"
+                                        strokeWidth={2}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </Svg>
+                            </View>
+                            <View style={styles.liveDrawCopy}>
+                                <HomeText style={styles.liveDrawTitle}>Draw Live</HomeText>
+                                <HomeText style={styles.liveDrawSubtitle}>
+                                    Open the shared live canvas
+                                </HomeText>
+                            </View>
+                            <View style={styles.liveDrawArrow}>
+                                <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M5 12H18M13 7L18 12L13 17"
+                                        stroke="#FFFFFF"
+                                        strokeWidth={2.4}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </Svg>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+
                     <View style={styles.widgetsSectionHeader}>
                         <HomeText style={styles.sectionTitle}>Widgets</HomeText>
                     </View>
-                    <HomeWidgetShowcase onPress={onWidgetsPress} />
+                    <HomeWidgetShowcase
+                        onPress={onWidgetsPress}
+                        relationshipStartDate={relationshipStartDate}
+                        daysTogether={daysTogether}
+                    />
 
                     <View style={styles.sectionHeader}>
                         <HomeText style={styles.sectionTitle}>Deepen your connection</HomeText>
@@ -666,6 +726,97 @@ const styles = StyleSheet.create({
     },
     canvasCard: {
         shadowColor: '#B899F0',
+    },
+    liveDrawPressable: {
+        marginTop: 12,
+    },
+    liveDrawCard: {
+        height: 70,
+        borderRadius: 22,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.72)',
+        paddingHorizontal: 13,
+        paddingVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1B1237',
+        ...cardShadow,
+    },
+    liveDrawGradient: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 22,
+    },
+    liveDrawStars: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    liveDrawStar: {
+        position: 'absolute',
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: '#FFFFFF',
+        opacity: 0.72,
+    },
+    liveDrawStarOne: {
+        top: 14,
+        right: 82,
+    },
+    liveDrawStarTwo: {
+        top: 44,
+        right: 132,
+        width: 3,
+        height: 3,
+        borderRadius: 1.5,
+        opacity: 0.56,
+    },
+    liveDrawStarThree: {
+        bottom: 14,
+        right: 38,
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        opacity: 0.64,
+    },
+    liveDrawIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 13,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.32)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 11,
+    },
+    liveDrawCopy: {
+        flex: 1,
+        paddingRight: 12,
+        justifyContent: 'center',
+        minWidth: 0,
+    },
+    liveDrawTitle: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        lineHeight: 19,
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.extraBold,
+    },
+    liveDrawSubtitle: {
+        color: 'rgba(255,255,255,0.78)',
+        fontSize: 11,
+        lineHeight: 13,
+        fontWeight: fontWeight('700'),
+        fontFamily: fontFamily.bold,
+        marginTop: 2,
+    },
+    liveDrawArrow: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,122,183,0.94)',
     },
     featureCardHeader: {
         zIndex: 2,
