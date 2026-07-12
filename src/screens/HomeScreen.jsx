@@ -140,6 +140,7 @@ const HomeScreen = ({
     duelBadgeCount = 0,
     onNotificationPress,
     onWidgetsPress,
+    onMemoriesPress,
 }) => {
     const { width } = useWindowDimensions();
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
@@ -464,6 +465,27 @@ const HomeScreen = ({
                         )}
                     </View>
 
+                    <TouchableOpacity onPress={onMemoriesPress} activeOpacity={0.9} style={styles.memoriesPressable}>
+                        <View style={styles.memoriesCard}>
+                            <View style={styles.memoriesRail}>
+                                <HomeText style={styles.memoriesMonth}>JUL</HomeText>
+                                <HomeText style={styles.memoriesDay}>11</HomeText>
+                                <View style={styles.memoriesDot} />
+                            </View>
+                            <View style={styles.memoriesThumbStack}>
+                                <View style={[styles.memoriesThumb, styles.memoriesThumbBack]} />
+                                <View style={[styles.memoriesThumb, styles.memoriesThumbFront]}>
+                                    <HeartDoodle color="#FF8AA4" size={21} />
+                                </View>
+                            </View>
+                            <View style={styles.memoriesCopy}>
+                                <HomeText style={styles.memoriesTitle}>Our Timeline</HomeText>
+                                <HomeText style={styles.memoriesSubtitle}>Firsts, dates, and photo memories.</HomeText>
+                            </View>
+                            <ArrowCircle color="#8DB5A5" />
+                        </View>
+                    </TouchableOpacity>
+
                     <TouchableOpacity onPress={onScribbleLivePress || onScribblePress} activeOpacity={0.9} style={styles.liveDrawPressable}>
                         <View style={styles.liveDrawCard}>
                             <LinearGradient
@@ -729,6 +751,92 @@ const styles = StyleSheet.create({
     },
     liveDrawPressable: {
         marginTop: 12,
+    },
+    memoriesPressable: {
+        marginTop: 12,
+    },
+    memoriesCard: {
+        minHeight: 86,
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.82)',
+        paddingHorizontal: 13,
+        paddingVertical: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF9F3',
+        ...cardShadow,
+    },
+    memoriesRail: {
+        width: 42,
+        alignItems: 'center',
+        marginRight: 9,
+    },
+    memoriesMonth: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 11,
+        fontWeight: fontWeight('800'),
+        color: '#C96F81',
+    },
+    memoriesDay: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 23,
+        lineHeight: 27,
+        fontWeight: fontWeight('800'),
+        color: '#2F2630',
+    },
+    memoriesDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#8DB5A5',
+        marginTop: 3,
+    },
+    memoriesThumbStack: {
+        width: 62,
+        height: 58,
+        marginRight: 12,
+    },
+    memoriesThumb: {
+        position: 'absolute',
+        width: 48,
+        height: 52,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    memoriesThumbBack: {
+        top: 4,
+        left: 10,
+        backgroundColor: '#D7E8DD',
+        transform: [{ rotate: '8deg' }],
+    },
+    memoriesThumbFront: {
+        top: 0,
+        left: 0,
+        backgroundColor: '#FFE0E8',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ rotate: '-6deg' }],
+    },
+    memoriesCopy: {
+        flex: 1,
+        paddingRight: 10,
+    },
+    memoriesTitle: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 20,
+        fontWeight: fontWeight('800'),
+        color: '#2F2630',
+    },
+    memoriesSubtitle: {
+        marginTop: 2,
+        fontFamily: fontFamily.medium,
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: fontWeight('600'),
+        color: '#8F7882',
     },
     liveDrawCard: {
         height: 70,

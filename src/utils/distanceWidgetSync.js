@@ -99,6 +99,41 @@ const ensureAndroidLocationPermission = async () => {
     );
 };
 
+const ensureAndroidBackgroundLocationPermission = async () => {
+    if (Platform.OS !== 'android' || Number(Platform.Version) < 29) {
+        return true;
+    }
+
+    const backgroundPermission = PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION;
+    const hasBackground = await PermissionsAndroid.check(backgroundPermission);
+    if (hasBackground) {
+        return true;
+    }
+
+    if (Number(Platform.Version) >= 30) {
+        throw createLocationPermissionError(
+            'LOCATION_ALWAYS_REQUIRED',
+            'Background distance updates need Location set to Allow all the time in Settings.'
+        );
+    }
+
+    const result = await PermissionsAndroid.request(backgroundPermission, {
+        title: 'Background Location Permission',
+        message: 'Allow location all the time so the Distance widget can update when the app is closed.',
+        buttonPositive: 'Allow',
+        buttonNegative: 'Not Now',
+    });
+
+    if (result === PermissionsAndroid.RESULTS.GRANTED) {
+        return true;
+    }
+
+    throw createLocationPermissionError(
+        'LOCATION_ALWAYS_REQUIRED',
+        'Background distance updates need Location set to Allow all the time in Settings.'
+    );
+};
+
 const ensureLocationPermission = async () => {
     if (Platform.OS === 'android') {
         return ensureAndroidLocationPermission();
@@ -291,6 +326,9 @@ export const syncDistanceWidgetLocation = async ({
     let backgroundUpdatesError = null;
     if (enableBackgroundUpdates) {
         try {
+            if (Platform.OS === 'android') {
+                await ensureAndroidBackgroundLocationPermission();
+            }
             backgroundUpdatesStarted = await startDistanceBackgroundUpdates(updatedUser);
         } catch (error) {
             backgroundUpdatesError = normalizeLocationPermissionError(error);

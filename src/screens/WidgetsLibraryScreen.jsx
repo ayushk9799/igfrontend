@@ -366,10 +366,10 @@ export const WidgetsLibraryScreen = ({
                 dispatch(updateUser(result.user));
             }
             setDistanceModalVisible(false);
-            if (result?.backgroundUpdatesError && Platform.OS === 'ios') {
+            if (result?.backgroundUpdatesError && ['ios', 'android'].includes(Platform.OS)) {
                 Alert.alert(
                     'Allow Always Location',
-                    result.backgroundUpdatesError.message || 'Background distance updates need Location set to Always.',
+                    result.backgroundUpdatesError.message || 'Background distance updates need Location set to Always in Settings.',
                     [
                         { text: 'Later', style: 'cancel' },
                         {

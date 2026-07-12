@@ -8,6 +8,7 @@ import AccountScreen from '../screens/AccountScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import GamesScreen from '../screens/GamesScreen';
 import DailyChallengeScreen from '../screens/DailyChallengeScreen';
+import MemoriesScreen from '../screens/MemoriesScreen';
 import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
 import ChatListScreen from '../screens/ChatListScreen';
 import NotificationCenterScreen from '../screens/NotificationCenterScreen';
@@ -367,6 +368,16 @@ export const MainTabNavigator = ({
                         duelBadgeCount={duelBadgeCount}
                         onNotificationPress={() => setIsNotificationVisible(true)}
                         onWidgetsPress={() => setCurrentTab('widgetsLibrary')}
+                        onMemoriesPress={() => setCurrentTab('memories')}
+                    />
+                );
+            case 'memories':
+                return (
+                    <MemoriesScreen
+                        userId={userData?._id || userData?.id}
+                        hasPartner={hasPartner}
+                        onLinkPartner={onFindPartner}
+                        onBack={() => setCurrentTab('home')}
                     />
                 );
             case 'widgetsLibrary':

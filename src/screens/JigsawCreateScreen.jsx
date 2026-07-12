@@ -18,7 +18,7 @@ import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 
 import { Camera } from 'react-native-camera-kit';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
@@ -216,7 +216,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             const originX = (width - size) / 2;
             const originY = (height - size) / 2;
 
-            const cropResult = await ImageManipulator.manipulateAsync(
+            const cropResult = await manipulateAsync(
                 uri,
                 [{ crop: { originX, originY, width: size, height: size } }],
                 { compress: 0.9, format: SaveFormat.JPEG }
