@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Heart, ImagePlus, Minus, Plus, X } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { BlurView } from 'expo-blur';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { colors } from '../theme';
 import { storage } from '../utils/authStorage';
@@ -208,8 +209,8 @@ const mergeMemories = (current, incoming) => {
     return Array.from(byId.values()).sort((a, b) => {
         const aTime = new Date(a.capturedAt).getTime();
         const bTime = new Date(b.capturedAt).getTime();
-        if (aTime !== bTime) return bTime - aTime;
-        return String(b._id).localeCompare(String(a._id));
+        if (aTime !== bTime) return aTime - bTime;
+        return String(a._id).localeCompare(String(b._id));
     });
 };
 
@@ -273,28 +274,42 @@ const MemoryCard = ({ item }) => {
                 {hasImage ? (
                     <MemoryImage uri={item.imageUrl} aspectRatio={aspectRatio} />
                 ) : (
-                    <View style={[styles.momentCard, isSpecialDate && styles.dateMomentCard]}>
-                        <View style={[styles.momentIcon, isSpecialDate && styles.dateMomentIcon]}>
-                            {isSpecialDate ? (
-                                <Text style={styles.momentGlyph}>{specialIcon.glyph}</Text>
-                            ) : (
-                                <Heart color="#FF758F" size={22} strokeWidth={2} />
-                            )}
+                    isSpecialDate ? (
+                        <View style={styles.specialDateCardWrapper}>
+                            <LinearGradient
+                                colors={['#FF829C', '#E55875']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.specialDateCardGradient}
+                            />
+                            <View style={styles.specialDateCardContent}>
+                                <Text style={styles.specialDateCardEmoji}>{specialIcon.glyph}</Text>
+                                <View style={styles.specialDateCardCopy}>
+                                    {!!item.title && <Text style={styles.specialDateCardTitle}>{item.title}</Text>}
+                                    {!!item.caption && <Text style={styles.specialDateCardCaption}>{item.caption}</Text>}
+                                </View>
+                            </View>
                         </View>
-                        <Text style={styles.momentKicker}>{isSpecialDate ? 'SPECIAL DATE' : 'MEMORY'}</Text>
-                        {!!item.title && <Text style={styles.momentTitle}>{item.title}</Text>}
-                        {!!item.caption && <Text style={styles.momentCaption}>{item.caption}</Text>}
-                    </View>
+                    ) : (
+                        <View style={styles.momentCard}>
+                            <View style={styles.momentIcon}>
+                                <Heart color="#FF758F" size={22} strokeWidth={2} />
+                            </View>
+                            <Text style={styles.momentKicker}>MEMORY</Text>
+                            {!!item.title && <Text style={styles.momentTitle}>{item.title}</Text>}
+                            {!!item.caption && <Text style={styles.momentCaption}>{item.caption}</Text>}
+                        </View>
+                    )
                 )}
                 {(hasImage && (item.title || item.caption)) && (
                     <View style={styles.captionRow}>
                         <View style={styles.captionCopy}>
-                            {isSpecialDate && (
-                                <Text style={[styles.momentKicker, styles.inlineKicker]}>
-                                    {specialIcon.glyph} SPECIAL DATE
-                                </Text>
-                            )}
-                            {!!item.title && <Text style={styles.photoTitleText}>{item.title}</Text>}
+                            <View style={styles.captionTitleLayout}>
+                                {isSpecialDate && (
+                                    <Text style={styles.specialDatePhotoEmoji}>{specialIcon.glyph}</Text>
+                                )}
+                                {!!item.title && <Text style={styles.photoTitleText}>{item.title}</Text>}
+                            </View>
                             {!!item.caption && <Text style={styles.captionText}>{item.caption}</Text>}
                         </View>
                     </View>
@@ -304,19 +319,57 @@ const MemoryCard = ({ item }) => {
     );
 };
 
-const EmptyState = ({ onAdd }) => (
-    <View style={styles.emptyState}>
-        <View style={styles.emptyIcon}>
-            <ImagePlus color="#FF758F" size={30} strokeWidth={1.8} />
+const EmptyState = ({ onAdd }) => {
+    const spreadAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.spring(spreadAnim, {
+            toValue: 1,
+            friction: 6,
+            tension: 40,
+            useNativeDriver: true,
+        }).start();
+    }, [spreadAnim]);
+
+    const card1Style = {
+        zIndex: 1,
+        transform: [
+            { rotate: spreadAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-12deg'] }) },
+            { translateX: spreadAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -50] }) },
+            { translateY: spreadAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] }) },
+        ],
+    };
+
+    const card2Style = {
+        zIndex: 2,
+        transform: [
+            { rotate: spreadAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '10deg'] }) },
+            { translateX: spreadAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 50] }) },
+            { translateY: spreadAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] }) },
+        ],
+    };
+
+    const card3Style = {
+        zIndex: 3,
+        transform: [
+            { rotate: spreadAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-2deg'] }) },
+            { translateX: spreadAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0] }) },
+            { translateY: spreadAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 30] }) },
+        ],
+    };
+
+    return (
+        <View style={styles.emptyState}>
+            <View style={styles.emptyStackContainer}>
+                <Animated.Image source={require('../../assets/images/1_timeline.png')} style={[styles.emptyStackImage, card1Style]} />
+                <Animated.Image source={require('../../assets/images/4_timeline.png')} style={[styles.emptyStackImage, card2Style]} />
+                <Animated.Image source={require('../../assets/images/2_timeline.png')} style={[styles.emptyStackImage, card3Style]} />
+            </View>
+            <Text style={styles.emptyTitle}>Your timeline is empty</Text>
+            <Text style={styles.emptyText}>Add when you met, first kisses, special dates, and the photos that belong to them.</Text>
         </View>
-        <Text style={styles.emptyTitle}>Start your timeline</Text>
-        <Text style={styles.emptyText}>Add when you met, first kisses, special dates, and the photos that belong to them.</Text>
-        <TouchableOpacity style={styles.emptyButton} onPress={onAdd} activeOpacity={0.88}>
-            <Plus color="#FFFFFF" size={18} strokeWidth={2.4} />
-            <Text style={styles.emptyButtonText}>Add to timeline</Text>
-        </TouchableOpacity>
-    </View>
-);
+    );
+};
 
 const AddActionButton = ({ icon, label, style, onPress }) => (
     <Animated.View style={[styles.addActionWrap, style]}>
@@ -327,7 +380,7 @@ const AddActionButton = ({ icon, label, style, onPress }) => (
     </Animated.View>
 );
 
-const TimelineFab = ({ isOpen, progress, onToggle, onSelect, bottomInset }) => {
+const TimelineFab = ({ isOpen, progress, onToggle, onSelect, bottomInset, pulse }) => {
     const backdropOpacity = progress.interpolate({
         inputRange: [0, 1],
         outputRange: [0, 1],
@@ -336,6 +389,45 @@ const TimelineFab = ({ isOpen, progress, onToggle, onSelect, bottomInset }) => {
         inputRange: [0, 1],
         outputRange: ['0deg', '45deg'],
     });
+
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const pulseLoop = useRef(null);
+
+    useEffect(() => {
+        if (pulse && !isOpen) {
+            pulseAnim.setValue(1);
+            pulseLoop.current = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.15,
+                        duration: 700,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            pulseLoop.current.start();
+        } else {
+            if (pulseLoop.current) {
+                pulseLoop.current.stop();
+                pulseLoop.current = null;
+            }
+            Animated.spring(pulseAnim, {
+                toValue: 1,
+                useNativeDriver: true,
+            }).start();
+        }
+
+        return () => {
+            if (pulseLoop.current) {
+                pulseLoop.current.stop();
+            }
+        };
+    }, [pulse, isOpen, pulseAnim]);
 
     const actionStyle = (x, y, index) => ({
         opacity: progress,
@@ -381,11 +473,13 @@ const TimelineFab = ({ isOpen, progress, onToggle, onSelect, bottomInset }) => {
                     style={actionStyle(-36, -116, 1)}
                     onPress={() => onSelect('special_date')}
                 />
-                <TouchableOpacity style={styles.mainFab} onPress={onToggle} activeOpacity={0.9}>
-                    <Animated.View style={{ transform: [{ rotate: plusRotation }] }}>
-                        <Plus color="#FFFFFF" size={20} strokeWidth={2.8} />
-                    </Animated.View>
-                </TouchableOpacity>
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                    <TouchableOpacity style={styles.mainFab} onPress={onToggle} activeOpacity={0.9}>
+                        <Animated.View style={{ transform: [{ rotate: plusRotation }] }}>
+                            <Plus color="#FFFFFF" size={20} strokeWidth={2.8} />
+                        </Animated.View>
+                    </TouchableOpacity>
+                </Animated.View>
             </View>
         </>
     );
@@ -472,24 +566,31 @@ const AddMemoryModal = ({
 
     return (
         <Modal visible={visible} transparent={false} animationType="slide" statusBarTranslucent onRequestClose={onClose}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            <LinearGradient
+                colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+                locations={[0, 0.34, 0.72, 1]}
+                start={{ x: 0.25, y: 0 }}
+                end={{ x: 0.75, y: 1 }}
                 style={styles.pageRoot}
             >
-                <View style={[styles.pageHeader, { paddingTop: insets.top + 10 }]}>
-                    <TouchableOpacity style={styles.pageHeaderBack} onPress={onClose} disabled={!!phase}>
-                        <ChevronLeft color="#302832" size={24} strokeWidth={2} />
-                    </TouchableOpacity>
-                    <Text style={styles.pageHeaderTitle}>{typeConfig.modalTitle}</Text>
-                    <View style={{ width: 44 }} />
-                </View>
-
-                <ScrollView
-                    style={styles.pageScroll}
-                    contentContainerStyle={[styles.pageScrollContent, { paddingBottom: insets.bottom + 24 }]}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={{ flex: 1 }}
                 >
+                    <View style={[styles.pageHeader, { paddingTop: insets.top + 10 }]}>
+                        <TouchableOpacity style={styles.pageHeaderBack} onPress={onClose} disabled={!!phase}>
+                            <ChevronLeft color="#302832" size={24} strokeWidth={2} />
+                        </TouchableOpacity>
+                        <Text style={styles.pageHeaderTitle}>{typeConfig.modalTitle}</Text>
+                        <View style={{ width: 44 }} />
+                    </View>
+
+                    <ScrollView
+                        style={styles.pageScroll}
+                        contentContainerStyle={[styles.pageScrollContent, { paddingBottom: insets.bottom + 24 }]}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                    >
                     {draft?.uri && (
                         <View style={styles.previewButton}>
                             <Image source={{ uri: draft.uri }} style={styles.previewImage} resizeMode="cover" />
@@ -588,6 +689,7 @@ const AddMemoryModal = ({
                     <UploadProgress phase={phase} />
                 </ScrollView>
             </KeyboardAvoidingView>
+            </LinearGradient>
             {showPicker && (
                 <TimelineDatePicker
                     value={capturedAt}
@@ -668,7 +770,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const [phase, setPhase] = useState('');
 
     const headerOpacity = scrollY.interpolate({
-        inputRange: [0, 60],
+        inputRange: [0, 40],
         outputRange: [0, 1],
         extrapolate: 'clamp',
     });
@@ -862,22 +964,25 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     }, [caption, capturedAt, capturedAtSource, draft, entryType, iconKey, phase, resetDraft, title, userId]);
 
     const contentPadding = useMemo(() => ({
-        paddingTop: insets.top + 90,
-        paddingBottom: insets.bottom + 158,
+        paddingTop: insets.top + 58,
+        paddingBottom: insets.bottom + 94,
     }), [insets.bottom, insets.top]);
 
     return (
         <LinearGradient
-            colors={['#FFF8F3', '#FFF7FA', '#F8F1EA']}
-            locations={[0, 0.52, 1]}
+            colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+            locations={[0, 0.34, 0.72, 1]}
+            start={{ x: 0.25, y: 0 }}
+            end={{ x: 0.75, y: 1 }}
             style={styles.screen}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <Animated.View style={[styles.headerBlur, { opacity: headerOpacity }]} />
-            <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+            <Animated.View style={[styles.headerBlur, { opacity: headerOpacity, height: insets.top + 46 }]}>
+                <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
+            </Animated.View>
+            <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
                 <View style={styles.headerCopy}>
                     <Text style={styles.title}>Our Timeline</Text>
-                    <Text style={styles.subtitle}>The story of us</Text>
                 </View>
             </View>
 
@@ -947,6 +1052,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 onToggle={toggleActionMenu}
                 onSelect={openAdd}
                 bottomInset={insets.bottom}
+                pulse={memories.length === 0}
             />
         </LinearGradient>
     );
@@ -973,8 +1079,6 @@ const styles = StyleSheet.create({
         top: 0,
         left: 0,
         right: 0,
-        height: 118,
-        backgroundColor: 'rgba(255, 248, 246, 0.94)',
         zIndex: 4,
     },
     header: {
@@ -984,7 +1088,7 @@ const styles = StyleSheet.create({
         right: 0,
         zIndex: 5,
         paddingHorizontal: 18,
-        paddingBottom: 10,
+        paddingBottom: 4,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
@@ -996,14 +1100,8 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
         color: '#2F2630',
-        fontSize: 30,
-    },
-    subtitle: {
-        marginTop: -2,
-        fontFamily: fontFamily.medium,
-        fontWeight: fontWeight('600'),
-        color: '#967985',
-        fontSize: 13,
+        fontSize: 20,
+        lineHeight: 24,
     },
     listContent: {
         paddingLeft: 6,
@@ -1054,7 +1152,7 @@ const styles = StyleSheet.create({
     railLine: {
         width: 1,
         flex: 1,
-        minHeight: 112,
+        minHeight: 16,
         backgroundColor: '#E9D8D3',
     },
     timeText: {
@@ -1165,6 +1263,59 @@ const styles = StyleSheet.create({
     inlineKicker: {
         marginBottom: 4,
     },
+    specialDateCardWrapper: {
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+        backgroundColor: '#FF829C',
+        shadowColor: '#E55875',
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 3,
+        position: 'relative',
+    },
+    specialDateCardGradient: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 23,
+    },
+    specialDateCardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        padding: 18,
+    },
+    specialDateCardEmoji: {
+        fontSize: 36,
+        lineHeight: 42,
+    },
+    specialDateCardCopy: {
+        flex: 1,
+    },
+    specialDateCardTitle: {
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        color: '#FFFFFF',
+        fontSize: 17,
+        lineHeight: 22,
+        marginBottom: 3,
+    },
+    specialDateCardCaption: {
+        fontFamily: fontFamily.regular,
+        color: '#FFE3E8',
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    captionTitleLayout: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
+    specialDatePhotoEmoji: {
+        fontSize: 20,
+        lineHeight: 24,
+    },
     momentTitle: {
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
@@ -1195,18 +1346,27 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         paddingBottom: 80,
     },
-    emptyIcon: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
+    emptyStackContainer: {
+        width: 260,
+        height: 200,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F1DCD6',
-        marginBottom: 18,
-        ...cardShadow,
+        marginBottom: 36,
+        position: 'relative',
     },
+    emptyStackImage: {
+        position: 'absolute',
+        width: 100,
+        height: 133,
+        borderRadius: 14,
+        borderWidth: 3,
+        borderColor: '#FFFFFF',
+        shadowColor: '#2F2630',
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+    },
+
     emptyTitle: {
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
@@ -1248,7 +1408,6 @@ const styles = StyleSheet.create({
     },
     pageRoot: {
         flex: 1,
-        backgroundColor: '#FFF9F5',
     },
     pageHeader: {
         flexDirection: 'row',
@@ -1257,8 +1416,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingBottom: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#F1DED8',
-        backgroundColor: '#FFF9F5',
+        borderBottomColor: 'rgba(241, 222, 216, 0.6)',
+        backgroundColor: 'transparent',
     },
     pageHeaderBack: {
         width: 44,

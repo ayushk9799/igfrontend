@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -6,29 +6,18 @@ import {
     Dimensions,
     TouchableOpacity,
     Animated,
-    Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { ClipPath, Defs, Path, Rect } from 'react-native-svg';
 
-import { colors, spacing, borderRadius, shadows } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 
 const { width, height } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(width - 40, 360);
-const HERO_WIDTH = Math.min(width * 0.66, 270);
-const progressRingSize = 92;
-const progressRingStroke = 9;
-const progressRingRadius = (progressRingSize - progressRingStroke) / 2;
-const progressRingCircumference = 2 * Math.PI * progressRingRadius;
-
-const completionAssets = {
-    hero: require('../../assets/daily-done/completion-hero.png'),
-    penguinLeft: require('../../assets/daily-done/penguin-left.png'),
-    penguinRight: require('../../assets/daily-done/penguin-right.png'),
-};
+const HEART_PATH = 'M12 21.2C11.4 20.7 10.5 19.9 9.4 18.9C5.2 15.2 2 12.2 2 8.2C2 5.2 4.2 3 7.2 3C9.1 3 10.8 3.9 12 5.3C13.2 3.9 14.9 3 16.8 3C19.8 3 22 5.2 22 8.2C22 12.2 18.8 15.2 14.6 18.9C13.5 19.9 12.6 20.7 12 21.2Z';
 
 // Sparkle star component
 const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
@@ -142,6 +131,18 @@ const BellIcon = ({ color = '#FFFFFF', size = 22 }) => (
     </Svg>
 );
 
+const PathSvgCheck = () => (
+    <Svg width={38} height={38} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M5 12.5L9.2 16.7L19 6.8"
+            stroke="#FFFFFF"
+            strokeWidth={3.1}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </Svg>
+);
+
 const BookIcon = ({ color = '#FF6F9F', size = 22 }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path
@@ -159,61 +160,39 @@ const BookIcon = ({ color = '#FF6F9F', size = 22 }) => (
     </Svg>
 );
 
-const ProgressRing = ({ answeredCount, totalCount }) => {
-    const progress = totalCount > 0 ? Math.min(answeredCount / totalCount, 1) : 0;
-    const strokeDashoffset = progressRingCircumference * (1 - progress);
+const HeartStateIcon = ({ state = 'empty' }) => {
+    const leftClipIdRef = useRef(`heartLeft${Math.random().toString(36).slice(2)}`);
+    const rightClipIdRef = useRef(`heartRight${Math.random().toString(36).slice(2)}`);
+    const leftFill = state === 'empty' ? '#F3EEF2' : '#C91532';
+    const rightFill = state === 'full' ? '#C91532' : '#F3EEF2';
 
     return (
-        <View style={styles.progressRingWrap}>
-            <Svg width={progressRingSize} height={progressRingSize} viewBox={`0 0 ${progressRingSize} ${progressRingSize}`}>
-                <Circle
-                    cx={progressRingSize / 2}
-                    cy={progressRingSize / 2}
-                    r={progressRingRadius}
-                    stroke="#FFE0EA"
-                    strokeWidth={progressRingStroke}
-                    fill="rgba(255,255,255,0.72)"
-                />
-                <Circle
-                    cx={progressRingSize / 2}
-                    cy={progressRingSize / 2}
-                    r={progressRingRadius}
-                    stroke="#FF7AA6"
-                    strokeWidth={progressRingStroke}
-                    strokeDasharray={`${progressRingCircumference} ${progressRingCircumference}`}
-                    strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round"
-                    fill="transparent"
-                    rotation="-90"
-                    originX={progressRingSize / 2}
-                    originY={progressRingSize / 2}
-                />
-            </Svg>
-            <Text style={styles.progressRingText}>{answeredCount}/{totalCount}</Text>
-        </View>
+        <Svg width={112} height={112} viewBox="0 0 24 24">
+            <Defs>
+                <ClipPath id={leftClipIdRef.current}>
+                    <Rect x="0" y="0" width="12" height="24" />
+                </ClipPath>
+                <ClipPath id={rightClipIdRef.current}>
+                    <Rect x="12" y="0" width="12" height="24" />
+                </ClipPath>
+            </Defs>
+            <Path d={HEART_PATH} clipPath={`url(#${leftClipIdRef.current})`} fill={leftFill} />
+            <Path d={HEART_PATH} clipPath={`url(#${rightClipIdRef.current})`} fill={rightFill} />
+            <Path d={HEART_PATH} fill="none" stroke="#FF5D93" strokeWidth={0.9} strokeLinejoin="round" />
+        </Svg>
     );
-};
-
-// Category emoji mapping
-const categoryEmojis = {
-    likelyto: '⚖️',
-    neverhaveiever: '🤫',
-    deep: '💭',
-    takephoto: '📸'
 };
 
 export default function DailyChallengeDoneScreen({
     partnerName = 'Your Love',
-    userAnswers = [],
-    tasks = [],
     isComplete = false,
     showConfetti = false,
+    streak = null,
     onBack = () => { },
     onCompareWithPartner = () => { },
     onRemindPartner = () => { },
 }) {
     const insets = useSafeAreaInsets();
-    const [showAnswers, setShowAnswers] = useState(false);
 
     // Entrance animation
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -224,9 +203,13 @@ export default function DailyChallengeDoneScreen({
         alignItems: 'center',
     };
 
-    // Calculate answered count
-    const answeredCount = userAnswers.filter(a => a !== undefined && a !== null).length;
-    const totalCount = Math.max(tasks.length || 6, answeredCount);
+    const heartState = streak?.heartState || (isComplete ? 'half' : 'empty');
+    const currentStreak = streak?.currentStreak || 0;
+    const streakDelta = heartState === 'full' ? '+1 gained today' : '+1 waiting';
+    const ritualTitle = heartState === 'full' ? 'Full heart locked' : 'Half heart complete';
+    const ritualLine = heartState === 'full'
+        ? 'You both kept the streak alive.'
+        : `Waiting for ${partnerName} to lock the streak.`;
 
     useEffect(() => {
         // Trigger entrance animation on mount
@@ -300,47 +283,32 @@ export default function DailyChallengeDoneScreen({
                 showsVerticalScrollIndicator={false}
             >
                 <Animated.View style={contentMotionStyle}>
-                    <Image
-                        source={completionAssets.hero}
-                        style={styles.heroImage}
-                        resizeMode="contain"
-                    />
-                    <Text style={styles.completionTitle}>Daily Challenge Done!</Text>
-                    <Text style={styles.completionSubtitle}>
-                        You've completed today's challenge.{'\n'}Come back tomorrow for more!
-                    </Text>
+                    <View style={styles.checkBadge}>
+                        <PathSvgCheck />
+                    </View>
+                    <Text style={styles.completionTitle}>Daily Ritual Done</Text>
 
-                    {/* Progress indicator */}
-                    <View style={styles.progressCard}>
-                        <ProgressRing answeredCount={answeredCount} totalCount={totalCount} />
-                        <View style={styles.progressCopy}>
-                            <Text style={styles.progressLabel}>Today's Progress</Text>
-                            <Text style={styles.progressText}>questions answered</Text>
-                        </View>
-                        <Image
-                            source={completionAssets.penguinRight}
-                            style={styles.progressPenguin}
-                            resizeMode="contain"
+                    <View style={styles.streakHeroCard}>
+                        <LinearGradient
+                            colors={['#FFFFFF', '#FFF4F8', '#FFE8F1']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.streakHeroGradient}
                         />
+                        <View style={styles.gainedPill}>
+                            <Text style={styles.gainedPillText}>{streakDelta}</Text>
+                        </View>
+                        <View style={styles.heroHeartWrap}>
+                            <HeartStateIcon state={heartState} />
+                        </View>
+                        <Text style={styles.streakNumber}>{currentStreak}</Text>
+                        <Text style={styles.streakLabel}>DAY STREAK</Text>
+                        <Text style={styles.ritualStatusTitle}>{ritualTitle}</Text>
+                        <Text style={styles.ritualStatusText}>{ritualLine}</Text>
                     </View>
 
-                    {/* Notify partner message */}
-                    {!isComplete && (
-                        <View style={styles.notifyCard}>
-                            <Image
-                                source={completionAssets.penguinLeft}
-                                style={styles.notifyPenguin}
-                                resizeMode="contain"
-                            />
-                            <Text style={styles.notifyText}>
-                                Waiting for <Text style={styles.notifyName}>{partnerName}</Text>{'\n'}to complete their challenge
-                            </Text>
-                            <Text style={styles.notifyHeart}>♥</Text>
-                        </View>
-                    )}
-
                     {/* Dynamic Action Button */}
-                    {isComplete ? (
+                    {heartState === 'full' ? (
                         <TouchableOpacity style={styles.compareBtn} onPress={onCompareWithPartner}>
                             <BookIcon color="#FFFFFF" size={23} />
                             <Text style={styles.compareBtnText}>Chat about today with {partnerName}</Text>
@@ -352,40 +320,6 @@ export default function DailyChallengeDoneScreen({
                         </TouchableOpacity>
                     )}
 
-                    {/* View My Answers Toggle */}
-                    <TouchableOpacity style={styles.viewAnswersBtn} onPress={() => setShowAnswers(!showAnswers)}>
-                        <BookIcon color="#FF6F9F" size={23} />
-                        <Text style={styles.viewAnswersBtnText}>
-                            {showAnswers ? 'Hide My Answers' : 'View My Answers'}
-                        </Text>
-                    </TouchableOpacity>
-
-                    {showAnswers && (
-                        <View style={styles.answersContainer}>
-                            {userAnswers.map((item, idx) => {
-                                if (!item) return null;
-                                return (
-                                    <View key={idx} style={styles.answerItem}>
-                                        <Text style={styles.answerEmoji}>{categoryEmojis[item.task?.category] || '❓'}</Text>
-                                        <View style={styles.answerContent}>
-                                            <Text style={styles.answerQuestion} numberOfLines={2}>
-                                                {item.task?.taskstatement || `Question ${idx + 1}`}
-                                            </Text>
-                                            <Text style={styles.answerValue}>
-                                                Your answer: {
-                                                    item.task?.category === 'likelyto'
-                                                        ? (item.answer === 'you' ? 'Me' : 'You')
-                                                        : item.answer
-                                                }
-                                            </Text>
-                                        </View>
-                                    </View>
-                                );
-                            })}
-                        </View>
-                    )}
-
-                 
                     <TouchableOpacity style={styles.homeLink} onPress={onBack}>
                         <Text style={styles.homeLinkText}>← Back to Home</Text>
                     </TouchableOpacity>
@@ -457,133 +391,119 @@ const styles = StyleSheet.create({
         fontSize: 56,
         color: '#FF9EBD',
     },
-    heroImage: {
-        width: HERO_WIDTH,
-        height: HERO_WIDTH * 1.03,
-        marginTop: -spacing.lg,
-        marginBottom: -spacing.lg,
+    checkBadge: {
+        width: 76,
+        height: 76,
+        borderRadius: 38,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: spacing.sm,
+        marginBottom: spacing.sm,
+        backgroundColor: '#FF5D93',
+        shadowColor: '#FF5D93',
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0.22,
+        shadowRadius: 24,
+        elevation: 9,
     },
     completionTitle: {
         fontFamily: fontFamily.extraBold,
-        fontSize: width < 380 ? 28 : 32,
+        fontSize: width < 380 ? 30 : 35,
         fontWeight: '800',
         color: '#1F1749',
-        marginTop: 0,
+        marginTop: spacing.xs,
+        marginBottom: spacing.md,
         textAlign: 'center',
         letterSpacing: 0,
     },
-    completionSubtitle: {
-        fontFamily: fontFamily.medium,
-        fontSize: 15.5,
-        color: '#7D739E',
-        marginTop: spacing.xs,
-        marginBottom: spacing.sm,
-        textAlign: 'center',
-        lineHeight: 22,
-    },
-
-    // Progress card
-    progressCard: {
+    streakHeroCard: {
         width: CARD_WIDTH,
-        minHeight: 108,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: 28,
-        paddingVertical: spacing.sm,
-        paddingLeft: spacing.lg,
-        paddingRight: 92,
-        flexDirection: 'row',
+        minHeight: 330,
+        borderRadius: 32,
+        overflow: 'hidden',
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.xl,
         alignItems: 'center',
         marginBottom: spacing.md,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.78)',
+        borderColor: 'rgba(255, 255, 255, 0.9)',
+        backgroundColor: 'rgba(255,255,255,0.92)',
         shadowColor: '#F68AB0',
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.15,
-        shadowRadius: 28,
-        elevation: 8,
+        shadowOffset: { width: 0, height: 18 },
+        shadowOpacity: 0.18,
+        shadowRadius: 30,
+        elevation: 10,
     },
-    progressRingWrap: {
-        width: progressRingSize,
-        height: progressRingSize,
+    streakHeroGradient: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    gainedPill: {
+        alignSelf: 'center',
+        paddingHorizontal: spacing.md,
+        paddingVertical: 7,
+        borderRadius: borderRadius.full,
+        backgroundColor: '#FF5D93',
+        marginBottom: spacing.md,
+        shadowColor: '#FF5D93',
+        shadowOffset: { width: 0, height: 7 },
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+        elevation: 5,
+    },
+    gainedPillText: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#FFFFFF',
+    },
+    heroHeartWrap: {
+        width: 118,
+        height: 118,
+        borderRadius: 59,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: spacing.lg,
+        backgroundColor: 'rgba(255, 93, 147, 0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 93, 147, 0.28)',
+        marginBottom: spacing.sm,
     },
-    progressRingText: {
-        position: 'absolute',
+    streakNumber: {
         fontFamily: fontFamily.extraBold,
-        fontSize: 30,
-        fontWeight: '800',
-        color: '#FF5D93',
-    },
-    progressCopy: {
-        flex: 1,
-        minWidth: 0,
-    },
-    progressLabel: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 17,
+        fontSize: width < 380 ? 82 : 96,
+        lineHeight: width < 380 ? 88 : 102,
         fontWeight: '800',
         color: '#1F1749',
-        marginBottom: spacing.xs,
+        letterSpacing: 0,
+        textAlign: 'center',
     },
-    progressText: {
+    streakLabel: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#FF5D93',
+        letterSpacing: 0,
+        marginTop: -spacing.xs,
+        marginBottom: spacing.md,
+        textAlign: 'center',
+    },
+    ritualStatusTitle: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 19,
+        fontWeight: '800',
+        color: '#1F1749',
+        lineHeight: 24,
+        textAlign: 'center',
+    },
+    ritualStatusText: {
         fontFamily: fontFamily.medium,
         fontSize: 14.5,
-        fontWeight: '600',
-        color: '#7D739E',
-        lineHeight: 19,
-    },
-    progressPenguin: {
-        position: 'absolute',
-        right: 14,
-        bottom: 12,
-        width: 76,
-        height: 96,
-    },
-
-    // Notify card
-    notifyCard: {
-        width: CARD_WIDTH,
-        minHeight: 68,
-        backgroundColor: 'rgba(255, 255, 255, 0.88)',
-        borderRadius: 24,
-        paddingVertical: spacing.sm,
-        paddingLeft: spacing.md,
-        paddingRight: 44,
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: spacing.md,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.76)',
-        ...shadows.sm,
-    },
-    notifyPenguin: {
-        width: 70,
-        height: 70,
-        marginRight: spacing.md,
-    },
-    notifyText: {
-        flex: 1,
-        minWidth: 0,
-        fontFamily: fontFamily.bold,
-        fontSize: 15,
         fontWeight: '700',
-        color: '#746A95',
-        lineHeight: 22,
+        color: '#7D739E',
+        lineHeight: 20,
+        marginTop: 5,
+        textAlign: 'center',
     },
-    notifyName: {
-        color: '#FF6F9F',
-        fontFamily: fontFamily.extraBold,
-    },
-    notifyHeart: {
-        position: 'absolute',
-        right: 20,
-        top: 22,
-        fontSize: 24,
-        color: '#FF8EAE',
-    },
-
     // Compare button
     compareBtn: {
         flexDirection: 'row',
@@ -638,74 +558,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         flexShrink: 1,
         textAlign: 'center',
-    },
-
-    // View answers button
-    viewAnswersBtn: {
-        width: CARD_WIDTH,
-        minHeight: 48,
-        borderRadius: borderRadius.full,
-        borderWidth: 1.5,
-        borderColor: '#FFB2CB',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: spacing.sm,
-        paddingVertical: spacing.sm,
-        paddingHorizontal: spacing.xl,
-        marginBottom: spacing.md,
-        backgroundColor: 'rgba(255,255,255,0.46)',
-    },
-    viewAnswersBtnText: {
-        fontFamily: fontFamily.bold,
-        fontSize: 16,
-        fontWeight: '800',
-        color: '#FF6F9F',
-        flexShrink: 1,
-        textAlign: 'center',
-    },
-
-    // Answers container
-    answersContainer: {
-        width: CARD_WIDTH,
-        marginBottom: spacing.md,
-    },
-    answerItem: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(255, 255, 255, 0.88)',
-        padding: spacing.md,
-        borderRadius: 18,
-        marginBottom: spacing.sm,
-        alignItems: 'flex-start',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.76)',
-        ...shadows.sm,
-    },
-    answerEmoji: {
-        fontSize: 24,
-        marginRight: spacing.sm,
-    },
-    answerContent: {
-        flex: 1,
-    },
-    answerQuestion: {
-        fontFamily: fontFamily.bold,
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.text,
-        marginBottom: 4,
-    },
-    answerValue: {
-        fontFamily: fontFamily.medium,
-        fontSize: 13,
-        color: colors.primary,
-        fontWeight: '500',
-    },
-    footerPenguins: {
-        width: Math.min(width * 0.38, 165),
-        height: Math.min(width * 0.23, 104),
-        marginTop: -spacing.sm,
-        marginBottom: 0,
     },
 
     // Home link

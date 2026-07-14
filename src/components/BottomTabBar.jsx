@@ -12,7 +12,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { House, Brush, CalendarDays, Gamepad2, MessageCircle } from 'lucide-react-native';
+import { House, CalendarDays, Gamepad2, MessageCircle, Notebook } from 'lucide-react-native';
 
 const getLiquidGlassModule = () => {
     if (Platform.OS !== 'ios') return null;
@@ -50,7 +50,7 @@ const getGlassAvailability = () => {
 // Lucide icon mapping for each tab
 const iconMap = {
     home: House,
-    canvas: Brush,
+    timeline: Notebook,
     today: CalendarDays,
     games: Gamepad2,
     chats: MessageCircle,
@@ -195,7 +195,7 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
 
     const tabs = [
         { key: 'home', label: 'Home', iconKey: 'home' },
-        { key: 'canvas', label: 'Canvas', iconKey: 'canvas' },
+        { key: 'memories', label: 'Timeline', iconKey: 'timeline' },
         { key: 'dailyChallenge', label: 'Today', iconKey: 'today' },
         { key: 'games', label: 'Games', iconKey: 'games' },
         { key: 'chats', label: 'Chats', iconKey: 'chats', badge: chatBadge },

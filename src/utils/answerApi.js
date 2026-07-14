@@ -119,3 +119,18 @@ export const getChallengeWithAnswers = async (date, userId) => {
         return { success: false, error: error.message };
     }
 };
+
+/**
+ * Get the shared active daily ritual for the user's couple.
+ */
+export const getCoupleTodayChallenge = async (userId) => {
+    try {
+        const url = `${API_BASE}/api/daily-challenge/couple-today?userId=${userId}`;
+        const response = await fetch(url);
+
+        return await response.json();
+    } catch (error) {
+        console.error('❌ [GET_COUPLE_TODAY] Error:', error);
+        return { success: false, error: error.message };
+    }
+};

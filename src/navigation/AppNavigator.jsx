@@ -778,6 +778,11 @@ export const AppNavigator = () => {
                 return;
             }
 
+            if (data.route === 'memories' || data.tab === 'memories') {
+                openHomeTab('memories');
+                return;
+            }
+
             switch (data.type) {
                 case 'chat': {
                     if (!data.chatId) return;
@@ -867,6 +872,10 @@ export const AppNavigator = () => {
 
                 case 'scribble':
                     openHomeTab('canvas');
+                    break;
+
+                case 'memory':
+                    openHomeTab('memories');
                     break;
 
                 case 'mood_update':

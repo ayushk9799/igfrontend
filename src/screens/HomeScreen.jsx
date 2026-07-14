@@ -70,6 +70,42 @@ const isMoodStale = (mood, now) => {
     return Number.isNaN(updatedAt) || now - updatedAt > MOOD_STALE_MS;
 };
 
+const getTimeUntilLabel = (targetDate, now) => {
+    if (!targetDate) {
+        return null;
+    }
+
+    const targetTime = new Date(targetDate).getTime();
+    if (Number.isNaN(targetTime)) {
+        return null;
+    }
+
+    const diffMs = targetTime - now;
+    if (diffMs <= 0) {
+        return 'ending soon';
+    }
+
+    const totalMinutes = Math.ceil(diffMs / (60 * 1000));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours <= 0) {
+        return `${minutes}m left`;
+    }
+
+    if (minutes === 0) {
+        return `${hours}h left`;
+    }
+
+    return `${hours}h ${minutes}m left`;
+};
+
+const getHeartSymbol = (heartState) => {
+    if (heartState === 'full') return '♥';
+    if (heartState === 'half') return '◐';
+    return '♡';
+};
+
 const HomeText = ({ children, style, ...props }) => (
     <Text {...props} style={[{ fontFamily: fontFamily.regular }, style]} maxFontSizeMultiplier={1.2}>
         {children}
@@ -140,7 +176,6 @@ const HomeScreen = ({
     duelBadgeCount = 0,
     onNotificationPress,
     onWidgetsPress,
-    onMemoriesPress,
 }) => {
     const { width } = useWindowDimensions();
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
@@ -158,6 +193,12 @@ const HomeScreen = ({
     const isYourMoodStale = hasPartner && isMoodStale(yourMood, now);
     const isChallengeComplete = todayChallenge?.progress?.isComplete || false;
     const completedCount = todayChallenge?.progress?.completedCount || 0;
+    const ritualStreak = todayChallenge?.streak || null;
+    const heartState = ritualStreak?.heartState || 'empty';
+    const ritualTimeLeft = getTimeUntilLabel(todayChallenge?.closesAt, now);
+    const ritualStreakText = ritualStreak?.currentStreak > 0
+        ? `${ritualStreak.currentStreak} day streak`
+        : 'Start the streak';
 
     const showNudge = hasPartner && isYourMoodStale;
     const nudgeKey = yourMood?.updatedAt || 'missing-mood';
@@ -360,7 +401,7 @@ const HomeScreen = ({
                             >
                                 <View style={styles.featureCardHeader}>
                                     <View style={styles.cardTitleRow}>
-                                        <HomeText style={[styles.smallCardTitle, styles.scribbleCardTitle]}>Scribble board</HomeText>
+                                        <HomeText style={[styles.smallCardTitle, styles.scribbleCardTitle]}>Canvas board</HomeText>
                                         <HeartDoodle style={styles.cardTitleHeart} color="#FF8BB8" size={18} />
                                     </View>
                                 </View>
@@ -413,15 +454,20 @@ const HomeScreen = ({
                                     style={[styles.featureMiniCard, styles.streakCard, styles.completedStreakCard]}
                                 >
                                     <View style={styles.featureCardHeader}>
-                                        <View style={styles.cardTitleRow}>
-                                            <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
-                                            <HeartDoodle style={styles.cardTitleHeart} color="#FF8AA4" size={24} />
+                                        <View style={styles.cardTitleRowBetween}>
+                                            <View style={styles.cardTitleRow}>
+                                                <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
+                                                <HomeText style={styles.ritualHeartStatus}>{getHeartSymbol(heartState)}</HomeText>
+                                            </View>
+                                            <HomeText style={styles.ritualStreakBadge}>{ritualStreakText}</HomeText>
                                         </View>
                                     </View>
                                     <View style={[styles.ritualPaper, styles.completedRitualPaper]}>
                                         <View style={styles.paperTape} />
                                         <HomeText style={styles.ritualQuestion} numberOfLines={3}>
-                                            Challenge done! Come back tomorrow for a new prompt.
+                                            {heartState === 'full'
+                                                ? `Both done today. ${ritualTimeLeft || 'Next ritual soon'}`
+                                                : `You finished. Waiting for partner. ${ritualTimeLeft || ''}`}
                                         </HomeText>
                                     </View>
                                     <ArrowCircle color="#FF4568" />
@@ -436,14 +482,23 @@ const HomeScreen = ({
                                     style={[styles.featureMiniCard, styles.streakCard]}
                                 >
                                     <View style={styles.featureCardHeader}>
-                                        <View style={styles.cardTitleRow}>
-                                            <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
-                                            <HeartDoodle style={styles.cardTitleHeart} color="#FF8AA4" size={18} />
+                                        <View style={styles.cardTitleRowBetween}>
+                                            <View style={styles.cardTitleRow}>
+                                                <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
+                                                <HomeText style={styles.ritualHeartStatus}>{getHeartSymbol(heartState)}</HomeText>
+                                            </View>
+                                            <HomeText style={styles.ritualStreakBadge}>{ritualStreakText}</HomeText>
                                         </View>
                                     </View>
                                     <View style={styles.ritualPaper}>
                                         <View style={styles.paperTape} />
-                                        {currentTask ? (
+                                        {ritualStreak?.partnerComplete ? (
+                                            <View style={styles.challengePromptContainer}>
+                                                <HomeText style={styles.ritualQuestion} numberOfLines={3}>
+                                                    Partner finished. Your turn to make it full heart.
+                                                </HomeText>
+                                            </View>
+                                        ) : currentTask ? (
                                             <View style={styles.challengePromptContainer}>
                                                 <HomeText style={styles.ritualQuestion} numberOfLines={3}>
                                                     {currentTask.taskstatement}
@@ -464,27 +519,6 @@ const HomeScreen = ({
                             </TouchableOpacity>
                         )}
                     </View>
-
-                    <TouchableOpacity onPress={onMemoriesPress} activeOpacity={0.9} style={styles.memoriesPressable}>
-                        <View style={styles.memoriesCard}>
-                            <View style={styles.memoriesRail}>
-                                <HomeText style={styles.memoriesMonth}>JUL</HomeText>
-                                <HomeText style={styles.memoriesDay}>11</HomeText>
-                                <View style={styles.memoriesDot} />
-                            </View>
-                            <View style={styles.memoriesThumbStack}>
-                                <View style={[styles.memoriesThumb, styles.memoriesThumbBack]} />
-                                <View style={[styles.memoriesThumb, styles.memoriesThumbFront]}>
-                                    <HeartDoodle color="#FF8AA4" size={21} />
-                                </View>
-                            </View>
-                            <View style={styles.memoriesCopy}>
-                                <HomeText style={styles.memoriesTitle}>Our Timeline</HomeText>
-                                <HomeText style={styles.memoriesSubtitle}>Firsts, dates, and photo memories.</HomeText>
-                            </View>
-                            <ArrowCircle color="#8DB5A5" />
-                        </View>
-                    </TouchableOpacity>
 
                     <TouchableOpacity onPress={onScribbleLivePress || onScribblePress} activeOpacity={0.9} style={styles.liveDrawPressable}>
                         <View style={styles.liveDrawCard}>
@@ -752,92 +786,6 @@ const styles = StyleSheet.create({
     liveDrawPressable: {
         marginTop: 12,
     },
-    memoriesPressable: {
-        marginTop: 12,
-    },
-    memoriesCard: {
-        minHeight: 86,
-        borderRadius: 24,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.82)',
-        paddingHorizontal: 13,
-        paddingVertical: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF9F3',
-        ...cardShadow,
-    },
-    memoriesRail: {
-        width: 42,
-        alignItems: 'center',
-        marginRight: 9,
-    },
-    memoriesMonth: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 11,
-        fontWeight: fontWeight('800'),
-        color: '#C96F81',
-    },
-    memoriesDay: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 23,
-        lineHeight: 27,
-        fontWeight: fontWeight('800'),
-        color: '#2F2630',
-    },
-    memoriesDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#8DB5A5',
-        marginTop: 3,
-    },
-    memoriesThumbStack: {
-        width: 62,
-        height: 58,
-        marginRight: 12,
-    },
-    memoriesThumb: {
-        position: 'absolute',
-        width: 48,
-        height: 52,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-    },
-    memoriesThumbBack: {
-        top: 4,
-        left: 10,
-        backgroundColor: '#D7E8DD',
-        transform: [{ rotate: '8deg' }],
-    },
-    memoriesThumbFront: {
-        top: 0,
-        left: 0,
-        backgroundColor: '#FFE0E8',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transform: [{ rotate: '-6deg' }],
-    },
-    memoriesCopy: {
-        flex: 1,
-        paddingRight: 10,
-    },
-    memoriesTitle: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 20,
-        fontWeight: fontWeight('800'),
-        color: '#2F2630',
-    },
-    memoriesSubtitle: {
-        marginTop: 2,
-        fontFamily: fontFamily.medium,
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: fontWeight('600'),
-        color: '#8F7882',
-    },
     liveDrawCard: {
         height: 70,
         borderRadius: 22,
@@ -964,8 +912,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 6,
     },
+    cardTitleRowBetween: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+    },
     cardTitleHeart: {
         marginTop: -1,
+    },
+    ritualHeartStatus: {
+        color: '#FF4568',
+        fontSize: 17,
+        lineHeight: 18,
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.bold,
+    },
+    ritualStreakBadge: {
+        color: '#A71F1F',
+        fontSize: 10,
+        lineHeight: 13,
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.extraBold,
+        maxWidth: 76,
+        textAlign: 'right',
     },
     scribblePaper: {
         position: 'absolute',

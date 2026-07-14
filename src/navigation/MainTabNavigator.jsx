@@ -24,6 +24,7 @@ import { selectGames } from '../store/slices/gamesSlice';
 import { selectDuelBadgeCount } from '../store/slices/notificationsSlice';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { API_BASE } from '../constants/Api';
+import { getCoupleTodayChallenge } from '../utils/answerApi';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -250,10 +251,7 @@ export const MainTabNavigator = ({
         if (!userId) return;
 
         try {
-            const now = new Date();
-            const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            const response = await fetch(`${API_BASE}/api/daily-challenge/date/${userLocalDate}/with-answers?userId=${userId}`);
-            const json = await response.json();
+            const json = await getCoupleTodayChallenge(userId);
             if (json.success) {
                 setTodayChallenge(json.data);
             }
@@ -368,7 +366,6 @@ export const MainTabNavigator = ({
                         duelBadgeCount={duelBadgeCount}
                         onNotificationPress={() => setIsNotificationVisible(true)}
                         onWidgetsPress={() => setCurrentTab('widgetsLibrary')}
-                        onMemoriesPress={() => setCurrentTab('memories')}
                     />
                 );
             case 'memories':

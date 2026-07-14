@@ -23,7 +23,7 @@ import DailyChallengeDoneScreen from './DailyChallengeDoneScreen';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import { API_BASE } from '../constants/Api';
-import { submitAnswer, getUserAnswers } from '../utils/answerApi';
+import { submitAnswer, getCoupleTodayChallenge } from '../utils/answerApi';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/userSlice';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
@@ -69,51 +69,40 @@ export default function DailyChallengeScreen({
   const [isComplete, setIsComplete] = useState(false);
   const [hasReachedEndOfStack, setHasReachedEndOfStack] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [ritualStatus, setRitualStatus] = useState(null);
 
-  useEffect(() => {
-    fetchToday();
-  }, [userId]); // Re-fetch when userId becomes available
-
-  useEffect(() => {
-    if (!hasPartner && onLinkPartner) {
-      onLinkPartner();
-    }
-  }, [hasPartner, onLinkPartner]);
-
-  const fetchToday = async () => {
+  const fetchToday = useCallback(async () => {
     try {
-      // Get user's local date in YYYY-MM-DD format (avoids timezone issues with server's "today")
-      const now = new Date();
-      const userLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-       //const userLocalDate='2026-05-20'
-      const res = await fetch(`${API_BASE}/api/daily-challenge/date/${userLocalDate}`);
-      const json = await res.json();
-      setChallenge(json.data);
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      const json = await getCoupleTodayChallenge(userId);
+      const challengeData = json.data?.challenge;
+
+      setChallenge(challengeData || null);
+      setRitualStatus(json.data?.streak || null);
       setCurrentIndex(0);
       setHasReachedEndOfStack(false);
+      setUserAnswers([]);
+      setIsComplete(false);
 
-      // Also fetch user's saved answers if userId is available
-      if (userId && json.data?._id) {
-        const answersRes = await getUserAnswers(json.data._id, userId);
-        if (answersRes.success && answersRes.data) {
-
-          // Convert backend format to local format
-          const savedAnswers = answersRes.data.answers.map((ans, idx) => {
+      if (json.success && challengeData?._id && json.data?.answers) {
+          const savedAnswers = json.data.answers.answers.map((ans, idx) => {
             if (!ans?.value) return null;
             return {
               taskIndex: idx,
               answer: ans.value,
-              task: json.data.tasks[idx],
+              task: challengeData.tasks[idx],
               answeredAt: ans.answeredAt
             };
           });
           setUserAnswers(savedAnswers);
 
-          // Check if already complete
-          if (answersRes.data.isComplete) {
+          if (json.data.answers.isComplete) {
             setIsComplete(true);
           }
-        }
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -121,9 +110,19 @@ export default function DailyChallengeScreen({
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
-  const tasks = challenge?.tasks || [];
+  useEffect(() => {
+    fetchToday();
+  }, [fetchToday]);
+
+  useEffect(() => {
+    if (!hasPartner && onLinkPartner) {
+      onLinkPartner();
+    }
+  }, [hasPartner, onLinkPartner]);
+
+  const tasks = useMemo(() => challenge?.tasks || [], [challenge?.tasks]);
 
   // Memoize answered count for performance - MUST be before early returns!
   const answeredCount = useMemo(() =>
@@ -200,6 +199,9 @@ export default function DailyChallengeScreen({
       // Actual answer content is stored in Chat model below
       const result = await submitAnswer(userId, challenge._id, taskIndex, 'answered', answerType);
       if (result.success) {
+        if (result.data?.ritual) {
+          setRitualStatus(result.data.ritual);
+        }
       }
     } catch (error) {
     }
@@ -271,6 +273,7 @@ export default function DailyChallengeScreen({
         tasks={tasks}
         isComplete={isComplete}
         showConfetti={showConfetti}
+        streak={ritualStatus}
         onBack={onBack}
         onCompareWithPartner={onCompareWithPartner}
         onRemindPartner={async () => {
