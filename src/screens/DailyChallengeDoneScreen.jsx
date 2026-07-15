@@ -1,122 +1,36 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    Dimensions,
-    TouchableOpacity,
     Animated,
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import Svg, { ClipPath, Defs, Path, Rect } from 'react-native-svg';
+import Svg, {
+    ClipPath,
+    Defs,
+    G,
+    LinearGradient as SvgLinearGradient,
+    Path,
+    RadialGradient,
+    Rect,
+    Stop,
+    Use,
+} from 'react-native-svg';
 
-import { colors, spacing, borderRadius } from '../theme';
+import { borderRadius, spacing } from '../theme';
 import { fontFamily } from '../constants/fonts';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(width - 40, 360);
 const HEART_PATH = 'M12 21.2C11.4 20.7 10.5 19.9 9.4 18.9C5.2 15.2 2 12.2 2 8.2C2 5.2 4.2 3 7.2 3C9.1 3 10.8 3.9 12 5.3C13.2 3.9 14.9 3 16.8 3C19.8 3 22 5.2 22 8.2C22 12.2 18.8 15.2 14.6 18.9C13.5 19.9 12.6 20.7 12 21.2Z';
 
-// Sparkle star component
-const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
-    const opacity = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        const animate = Animated.loop(
-            Animated.sequence([
-                Animated.delay(delay),
-                Animated.timing(opacity, {
-                    toValue: 0.8,
-                    duration: 1200,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(opacity, {
-                    toValue: 0.1,
-                    duration: 1200,
-                    useNativeDriver: true,
-                }),
-                Animated.delay(800),
-            ]),
-        );
-        animate.start();
-        return () => animate.stop();
-    }, [opacity, delay]);
-
-    const sparkleStyle = { position: 'absolute', left: x, top: y, opacity };
-
-    return (
-        <Animated.View style={sparkleStyle}>
-            <Svg width={size} height={size} viewBox="0 0 24 24">
-                <Path
-                    d="M12 0L14.59 8.41L24 12L14.59 15.59L12 24L9.41 15.59L0 12L9.41 8.41L12 0Z"
-                    fill="rgba(255,255,255,0.9)"
-                />
-            </Svg>
-        </Animated.View>
-    );
-};
-
-// Floating heart
-const FloatingHeart = ({ x, y, size = 16, delay = 0 }) => {
-    const translateY = useRef(new Animated.Value(0)).current;
-    const opacity = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        const animate = () => {
-            translateY.setValue(0);
-            opacity.setValue(0);
-            Animated.sequence([
-                Animated.delay(delay),
-                Animated.parallel([
-                    Animated.timing(translateY, {
-                        toValue: -60,
-                        duration: 3500,
-                        useNativeDriver: true,
-                    }),
-                    Animated.sequence([
-                        Animated.timing(opacity, {
-                            toValue: 0.7,
-                            duration: 600,
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(opacity, {
-                            toValue: 0.7,
-                            duration: 1800,
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(opacity, {
-                            toValue: 0,
-                            duration: 1100,
-                            useNativeDriver: true,
-                        }),
-                    ]),
-                ]),
-            ]).start(() => animate());
-        };
-        animate();
-        return () => {
-            translateY.stopAnimation();
-            opacity.stopAnimation();
-        };
-    }, [delay, translateY, opacity]);
-
-    const heartStyle = { position: 'absolute', left: x, top: y, opacity, transform: [{ translateY }] };
-
-    return (
-        <Animated.View style={heartStyle}>
-            <Svg width={size} height={size} viewBox="0 0 24 24">
-                <Path
-                    fill="#FF8FAB"
-                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                />
-            </Svg>
-        </Animated.View>
-    );
-};
-
-const BellIcon = ({ color = '#FFFFFF', size = 22 }) => (
+const BellIcon = ({ color = '#FFFFFF', size = 24 }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path
             d="M18 8.5A6 6 0 0 0 6 8.5c0 7-3 7.5-3 9.5h18c0-2-3-2.5-3-9.5Z"
@@ -131,54 +45,95 @@ const BellIcon = ({ color = '#FFFFFF', size = 22 }) => (
     </Svg>
 );
 
-const PathSvgCheck = () => (
-    <Svg width={38} height={38} viewBox="0 0 24 24" fill="none">
-        <Path
-            d="M5 12.5L9.2 16.7L19 6.8"
-            stroke="#FFFFFF"
-            strokeWidth={3.1}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-    </Svg>
-);
-
-const BookIcon = ({ color = '#FF6F9F', size = 22 }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-            d="M4.5 5.5c0-1.1.9-2 2-2H10c1.1 0 2 .9 2 2v15c0-1.1-.9-2-2-2H6.5c-1.1 0-2 .9-2 2v-15Z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinejoin="round"
-        />
-        <Path
-            d="M19.5 5.5c0-1.1-.9-2-2-2H14c-1.1 0-2 .9-2 2v15c0-1.1.9-2 2-2h3.5c1.1 0 2 .9 2 2v-15Z"
-            stroke={color}
-            strokeWidth={2}
-            strokeLinejoin="round"
-        />
-    </Svg>
-);
-
-const HeartStateIcon = ({ state = 'empty' }) => {
-    const leftClipIdRef = useRef(`heartLeft${Math.random().toString(36).slice(2)}`);
-    const rightClipIdRef = useRef(`heartRight${Math.random().toString(36).slice(2)}`);
-    const leftFill = state === 'empty' ? '#F3EEF2' : '#C91532';
-    const rightFill = state === 'full' ? '#C91532' : '#F3EEF2';
+const HeartStateIcon = ({
+    youComplete = false,
+    partnerComplete = false,
+    size = 180,
+    yourColor = '#C91532',
+    partnerColor = '#C91532',
+    unfilledColor = '#E9E5EC',
+}) => {
+    const idSuffix = useRef(Math.random().toString(36).slice(2)).current;
+    const heartId = `heart-${idSuffix}`;
+    const leftId = `heart-left-${idSuffix}`;
+    const rightId = `heart-right-${idSuffix}`;
+    const shapeId = `heart-shape-${idSuffix}`;
+    const surfaceId = `heart-surface-${idSuffix}`;
+    const highlightId = `heart-highlight-${idSuffix}`;
+    const leftFill = youComplete ? yourColor : unfilledColor;
+    const rightFill = partnerComplete ? partnerColor : unfilledColor;
 
     return (
-        <Svg width={112} height={112} viewBox="0 0 24 24">
+        <Svg width={size} height={size} viewBox="0 0 24 24">
             <Defs>
-                <ClipPath id={leftClipIdRef.current}>
+                <Path id={heartId} d={HEART_PATH} />
+                <ClipPath id={shapeId}>
+                    <Use href={`#${heartId}`} />
+                </ClipPath>
+                <ClipPath id={leftId}>
                     <Rect x="0" y="0" width="12" height="24" />
                 </ClipPath>
-                <ClipPath id={rightClipIdRef.current}>
+                <ClipPath id={rightId}>
                     <Rect x="12" y="0" width="12" height="24" />
                 </ClipPath>
+                <SvgLinearGradient id={surfaceId} x1="0" y1="0" x2="0.72" y2="1">
+                    <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.3} />
+                    <Stop offset="0.42" stopColor="#FFFFFF" stopOpacity={0.06} />
+                    <Stop offset="0.7" stopColor="#2B1024" stopOpacity={0.02} />
+                    <Stop offset="1" stopColor="#1B0713" stopOpacity={0.24} />
+                </SvgLinearGradient>
+                <RadialGradient
+                    id={highlightId}
+                    cx="0.34"
+                    cy="0.29"
+                    rx="0.68"
+                    ry="0.62"
+                    fx="0.3"
+                    fy="0.24"
+                >
+                    <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.3} />
+                    <Stop offset="0.46" stopColor="#FFFFFF" stopOpacity={0.08} />
+                    <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+                </RadialGradient>
             </Defs>
-            <Path d={HEART_PATH} clipPath={`url(#${leftClipIdRef.current})`} fill={leftFill} />
-            <Path d={HEART_PATH} clipPath={`url(#${rightClipIdRef.current})`} fill={rightFill} />
-            <Path d={HEART_PATH} fill="none" stroke="#FF5D93" strokeWidth={0.9} strokeLinejoin="round" />
+
+            {/* Low, diffused depth keeps the heart dimensional without a sticker-like drop shadow. */}
+            <Use
+                href={`#${heartId}`}
+                transform="translate(0 0.6)"
+                fill="#351126"
+                opacity={0.14}
+            />
+
+            {/* Keep each completion state in its original solid color. */}
+            <Use
+                href={`#${heartId}`}
+                clipPath={`url(#${leftId})`}
+                fill={leftFill}
+            />
+            <Use
+                href={`#${heartId}`}
+                clipPath={`url(#${rightId})`}
+                fill={rightFill}
+            />
+
+            {/* Shared translucent lighting inflates both halves without replacing their colors. */}
+            <G clipPath={`url(#${shapeId})`}>
+                <Rect x="1" y="2" width="22" height="20" fill={`url(#${surfaceId})`} />
+                <Rect x="1" y="2" width="22" height="20" fill={`url(#${highlightId})`} />
+
+                {/* The split remains readable, but recedes into the form. */}
+                <Path d="M12 5.35V20.92" stroke="#FFFFFF" strokeWidth={0.12} opacity={0.13} />
+            </G>
+
+            <Use
+                href={`#${heartId}`}
+                fill="none"
+                stroke="#2A0B1E"
+                strokeOpacity={0.1}
+                strokeWidth={0.28}
+                strokeLinejoin="round"
+            />
         </Svg>
     );
 };
@@ -186,388 +141,381 @@ const HeartStateIcon = ({ state = 'empty' }) => {
 export default function DailyChallengeDoneScreen({
     partnerName = 'Your Love',
     isComplete = false,
+    hasCompletedMyPart = isComplete,
     showConfetti = false,
     streak = null,
-    onBack = () => { },
-    onCompareWithPartner = () => { },
-    onRemindPartner = () => { },
+    onBack = () => {},
+    onCompareWithPartner = () => {},
+    onRemindPartner = () => {},
 }) {
     const insets = useSafeAreaInsets();
+    const opacity = useRef(new Animated.Value(0)).current;
+    const heartScale = useRef(new Animated.Value(0.8)).current;
+    const heartFloat = useRef(new Animated.Value(0)).current;
+    const contentTranslateY = useRef(new Animated.Value(14)).current;
+    const cardTranslateY = useRef(new Animated.Value(24)).current;
+    const cardOpacity = useRef(new Animated.Value(0)).current;
+    const countScale = useRef(new Animated.Value(0.6)).current;
+    const countOpacity = useRef(new Animated.Value(0)).current;
+    const hasShownInitialHeart = useRef(false);
 
-    // Entrance animation
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(30)).current;
-    const contentMotionStyle = {
-        transform: [{ translateY: slideAnim }],
-        width: '100%',
-        alignItems: 'center',
-    };
-
-    const heartState = streak?.heartState || (isComplete ? 'half' : 'empty');
-    const currentStreak = streak?.currentStreak || 0;
-    const streakDelta = heartState === 'full' ? '+1 gained today' : '+1 waiting';
-    const ritualTitle = heartState === 'full' ? 'Full heart locked' : 'Half heart complete';
-    const ritualLine = heartState === 'full'
-        ? 'You both kept the streak alive.'
-        : `Waiting for ${partnerName} to lock the streak.`;
+    const youComplete = Boolean(hasCompletedMyPart || streak?.youComplete);
+    const partnerComplete = Boolean(streak?.partnerComplete);
+    const isFullHeart = youComplete && partnerComplete;
+    const currentStreak = Number(streak?.currentStreak) || 0;
 
     useEffect(() => {
-        // Trigger entrance animation on mount
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
+        const entrance = Animated.parallel([
+            Animated.timing(opacity, {
                 toValue: 1,
-                duration: 400,
+                duration: 380,
                 useNativeDriver: true,
             }),
-            Animated.timing(slideAnim, {
+            Animated.spring(contentTranslateY, {
                 toValue: 0,
-                duration: 400,
+                friction: 8,
+                tension: 75,
                 useNativeDriver: true,
             }),
-        ]).start();
-    }, [fadeAnim, slideAnim]);
+            Animated.sequence([
+                Animated.spring(heartScale, {
+                    toValue: 1.06,
+                    friction: 5,
+                    tension: 90,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(heartScale, {
+                    toValue: 1,
+                    friction: 6,
+                    tension: 80,
+                    useNativeDriver: true,
+                }),
+            ]),
+            Animated.sequence([
+                Animated.delay(100),
+                Animated.parallel([
+                    Animated.spring(cardTranslateY, {
+                        toValue: 0,
+                        friction: 8,
+                        tension: 75,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(cardOpacity, {
+                        toValue: 1,
+                        duration: 320,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ]),
+        ]);
+
+        const floatingHeart = Animated.loop(
+            Animated.sequence([
+                Animated.timing(heartFloat, {
+                    toValue: -4,
+                    duration: 1400,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(heartFloat, {
+                    toValue: 3,
+                    duration: 1800,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(heartFloat, {
+                    toValue: 0,
+                    duration: 1200,
+                    useNativeDriver: true,
+                }),
+            ]),
+        );
+
+        entrance.start(({ finished }) => {
+            if (finished) floatingHeart.start();
+        });
+
+        return () => {
+            entrance.stop();
+            floatingHeart.stop();
+        };
+    }, [cardOpacity, cardTranslateY, contentTranslateY, heartFloat, heartScale, opacity]);
+
+    useEffect(() => {
+        countScale.setValue(0.6);
+        countOpacity.setValue(0);
+
+        const countEntrance = Animated.sequence([
+            Animated.delay(220),
+            Animated.parallel([
+                Animated.spring(countScale, {
+                    toValue: 1,
+                    friction: 5,
+                    tension: 100,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(countOpacity, {
+                    toValue: 1,
+                    duration: 220,
+                    useNativeDriver: true,
+                }),
+            ]),
+        ]);
+
+        countEntrance.start();
+        return () => countEntrance.stop();
+    }, [countOpacity, countScale, currentStreak]);
+
+    useEffect(() => {
+        if (!hasShownInitialHeart.current) {
+            hasShownInitialHeart.current = true;
+            return undefined;
+        }
+
+        heartScale.setValue(0.88);
+        const stateChangePulse = Animated.sequence([
+            Animated.spring(heartScale, {
+                toValue: 1.08,
+                friction: 5,
+                tension: 95,
+                useNativeDriver: true,
+            }),
+            Animated.spring(heartScale, {
+                toValue: 1,
+                friction: 6,
+                tension: 80,
+                useNativeDriver: true,
+            }),
+        ]);
+
+        stateChangePulse.start();
+        return () => stateChangePulse.stop();
+    }, [heartScale, partnerComplete, youComplete]);
 
     return (
-        <View style={styles.completionWrapper}>
-            {/* Gradient Background */}
+        <View style={styles.screen}>
             <LinearGradient
-                colors={['#FFD5E8', '#FFF6FB', '#FFF8FB', '#FFDCEC']}
-                locations={[0, 0.28, 0.7, 1]}
-                start={{ x: 0.25, y: 0 }}
-                end={{ x: 0.75, y: 1 }}
-                style={StyleSheet.absoluteFill}
+                colors={['#FFE2EF', '#FFF9FC', '#FFEAF3']}
+                locations={[0, 0.5, 1]}
+                style={StyleSheet.absoluteFillObject}
             />
-            <View style={styles.topGlow} />
-            <View style={styles.midHill} />
-            <View style={styles.bottomHill} />
-            <View style={[styles.plant, styles.plantLeft]}>
-                <Text style={styles.plantText}>❦</Text>
-            </View>
-            <View style={[styles.plant, styles.plantRight]}>
-                <Text style={styles.plantText}>❦</Text>
-            </View>
+            <View style={styles.topOrb} />
+            <View style={styles.bottomOrb} />
 
-            {/* Sparkles and Hearts */}
-            <Sparkle x={width * 0.12} y={height * 0.12} size={14} delay={0} />
-            <Sparkle x={width * 0.28} y={height * 0.1} size={18} delay={600} />
-            <Sparkle x={width * 0.74} y={height * 0.08} size={11} delay={1000} />
-            <Sparkle x={width * 0.88} y={height * 0.18} size={16} delay={1400} />
-            <Sparkle x={width * 0.18} y={height * 0.4} size={8} delay={400} />
-            <Sparkle x={width * 0.12} y={height * 0.86} size={6} delay={900} />
-            <FloatingHeart x={width * 0.2} y={height * 0.22} size={18} delay={300} />
-            <FloatingHeart x={width * 0.8} y={height * 0.48} size={20} delay={600} />
-            <FloatingHeart x={width * 0.9} y={height * 0.84} size={18} delay={1000} />
-
-            {/* Confetti Animation */}
             {showConfetti && (
                 <ConfettiCannon
-                    count={150}
-                    origin={{ x: width / 2, y: -10 }}
+                    count={80}
+                    origin={{ x: width / 2, y: 80 }}
                     fadeOut
-                    explosionSpeed={350}
-                    fallSpeed={2500}
+                    explosionSpeed={250}
+                    fallSpeed={2200}
                 />
             )}
 
-            <Animated.ScrollView
-                style={[
-                    styles.completionContainer,
-                    {
-                        opacity: fadeAnim,
-                    }
-                ]}
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    { paddingTop: Math.max(insets.top - spacing.xl, 0) }
-                ]}
+            <ScrollView
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                    styles.content,
+                    { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl },
+                ]}
             >
-                <Animated.View style={contentMotionStyle}>
-                    <View style={styles.checkBadge}>
-                        <PathSvgCheck />
+                <Animated.View style={[
+                    styles.inner,
+                    { opacity, transform: [{ translateY: contentTranslateY }] },
+                ]}>
+                    <View style={styles.titleRow}>
+                        <Text style={styles.titleDark}>Ritual </Text>
+                        <Text style={styles.titlePink}>Complete!</Text>
                     </View>
-                    <Text style={styles.completionTitle}>Daily Ritual Done</Text>
 
-                    <View style={styles.streakHeroCard}>
-                        <LinearGradient
-                            colors={['#FFFFFF', '#FFF4F8', '#FFE8F1']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.streakHeroGradient}
+                    <Animated.View style={[
+                        styles.heartWrap,
+                        { transform: [{ translateY: heartFloat }, { scale: heartScale }] },
+                    ]}>
+                        <HeartStateIcon
+                            youComplete={youComplete}
+                            partnerComplete={partnerComplete}
                         />
-                        <View style={styles.gainedPill}>
-                            <Text style={styles.gainedPillText}>{streakDelta}</Text>
-                        </View>
-                        <View style={styles.heroHeartWrap}>
-                            <HeartStateIcon state={heartState} />
-                        </View>
-                        <Text style={styles.streakNumber}>{currentStreak}</Text>
-                        <Text style={styles.streakLabel}>DAY STREAK</Text>
-                        <Text style={styles.ritualStatusTitle}>{ritualTitle}</Text>
-                        <Text style={styles.ritualStatusText}>{ritualLine}</Text>
-                    </View>
+                    </Animated.View>
 
-                    {/* Dynamic Action Button */}
-                    {heartState === 'full' ? (
-                        <TouchableOpacity style={styles.compareBtn} onPress={onCompareWithPartner}>
-                            <BookIcon color="#FFFFFF" size={23} />
-                            <Text style={styles.compareBtnText}>Chat about today with {partnerName}</Text>
-                        </TouchableOpacity>
-                    ) : (
-                        <TouchableOpacity style={styles.remindBtn} onPress={onRemindPartner}>
-                            <BellIcon color="#FFFFFF" size={23} />
-                            <Text style={styles.remindBtnText}>Remind {partnerName} to Play</Text>
-                        </TouchableOpacity>
-                    )}
+                    <Animated.View style={[
+                        styles.streakCard,
+                        { opacity: cardOpacity, transform: [{ translateY: cardTranslateY }] },
+                    ]}>
+                        <Text style={styles.streakLabel}>Current Streak</Text>
+                        <Animated.View
+                            style={[
+                                styles.countWrap,
+                                { opacity: countOpacity, transform: [{ scale: countScale }] },
+                            ]}
+                        >
+                            <Text style={styles.streakNumber}>{currentStreak}</Text>
+                            <Text style={styles.streakUnit}>{currentStreak === 1 ? 'DAY' : 'DAYS'}</Text>
+                        </Animated.View>
+                    </Animated.View>
 
-                    <TouchableOpacity style={styles.homeLink} onPress={onBack}>
-                        <Text style={styles.homeLinkText}>← Back to Home</Text>
+                    <TouchableOpacity
+                        activeOpacity={0.88}
+                        onPress={isFullHeart ? onCompareWithPartner : onRemindPartner}
+                    >
+                        <LinearGradient
+                            colors={['#FF3F89', '#FF5C72']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.primaryButton}
+                        >
+                            {isFullHeart ? <Text style={styles.buttonEmoji}>💕</Text> : <BellIcon />}
+                            <Text style={styles.primaryButtonText}>
+                                {isFullHeart
+                                    ? `Chat with ${partnerName}`
+                                    : `Remind ${partnerName} to Play`}
+                            </Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                        <Text style={styles.backText}>← Back to Home</Text>
                     </TouchableOpacity>
                 </Animated.View>
-            </Animated.ScrollView>
+            </ScrollView>
         </View>
     );
 }
 
-/* ===================== STYLES ===================== */
-
 const styles = StyleSheet.create({
-    completionWrapper: {
+    screen: {
         flex: 1,
         overflow: 'hidden',
+        backgroundColor: '#FFF6FA',
     },
-    completionContainer: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingHorizontal: spacing.lg,
+    content: {
+        flexGrow: 1,
         alignItems: 'center',
-        paddingBottom: spacing.xl,
+        justifyContent: 'center',
+        paddingHorizontal: 20,
     },
-    topGlow: {
+    inner: {
+        width: '100%',
+        alignItems: 'center',
+    },
+    topOrb: {
         position: 'absolute',
-        top: -70,
+        top: -140,
         alignSelf: 'center',
-        width: width * 0.82,
-        height: width * 0.82,
+        width: width * 1.2,
+        height: width * 1.2,
         borderRadius: width,
-        backgroundColor: 'rgba(255, 255, 255, 0.46)',
+        backgroundColor: 'rgba(255,255,255,0.55)',
     },
-    midHill: {
+    bottomOrb: {
         position: 'absolute',
-        top: height * 0.28,
-        left: -width * 0.12,
-        width: width * 1.24,
-        height: 150,
-        borderTopLeftRadius: width,
-        borderTopRightRadius: width,
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    },
-    bottomHill: {
-        position: 'absolute',
-        bottom: -72,
-        left: -width * 0.18,
-        width: width * 1.36,
-        height: 170,
-        borderTopLeftRadius: width,
-        borderTopRightRadius: width,
-        backgroundColor: 'rgba(255, 255, 255, 0.62)',
-    },
-    plant: {
-        position: 'absolute',
-        opacity: 0.38,
-    },
-    plantLeft: {
-        left: 16,
-        bottom: 82,
-        transform: [{ rotate: '-18deg' }],
-    },
-    plantRight: {
-        right: 16,
-        bottom: 88,
-        transform: [{ rotate: '18deg' }],
-    },
-    plantText: {
-        fontSize: 56,
-        color: '#FF9EBD',
-    },
-    checkBadge: {
-        width: 76,
-        height: 76,
-        borderRadius: 38,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: spacing.sm,
-        marginBottom: spacing.sm,
-        backgroundColor: '#FF5D93',
-        shadowColor: '#FF5D93',
-        shadowOffset: { width: 0, height: 14 },
-        shadowOpacity: 0.22,
-        shadowRadius: 24,
-        elevation: 9,
-    },
-    completionTitle: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: width < 380 ? 30 : 35,
-        fontWeight: '800',
-        color: '#1F1749',
-        marginTop: spacing.xs,
-        marginBottom: spacing.md,
-        textAlign: 'center',
-        letterSpacing: 0,
-    },
-    streakHeroCard: {
-        width: CARD_WIDTH,
-        minHeight: 330,
-        borderRadius: 32,
-        overflow: 'hidden',
-        paddingHorizontal: spacing.lg,
-        paddingTop: spacing.lg,
-        paddingBottom: spacing.xl,
-        alignItems: 'center',
-        marginBottom: spacing.md,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.9)',
-        backgroundColor: 'rgba(255,255,255,0.92)',
-        shadowColor: '#F68AB0',
-        shadowOffset: { width: 0, height: 18 },
-        shadowOpacity: 0.18,
-        shadowRadius: 30,
-        elevation: 10,
-    },
-    streakHeroGradient: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    gainedPill: {
+        bottom: -160,
         alignSelf: 'center',
-        paddingHorizontal: spacing.md,
-        paddingVertical: 7,
-        borderRadius: borderRadius.full,
-        backgroundColor: '#FF5D93',
-        marginBottom: spacing.md,
-        shadowColor: '#FF5D93',
-        shadowOffset: { width: 0, height: 7 },
-        shadowOpacity: 0.18,
-        shadowRadius: 14,
-        elevation: 5,
+        width: width * 1.3,
+        height: 260,
+        borderRadius: width,
+        backgroundColor: 'rgba(255,255,255,0.48)',
     },
-    gainedPillText: {
+    titleRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        flexWrap: 'wrap',
+    },
+    titleDark: {
         fontFamily: fontFamily.extraBold,
-        fontSize: 13,
+        fontSize: width < 380 ? 36 : 42,
+        lineHeight: width < 380 ? 44 : 50,
         fontWeight: '800',
-        color: '#FFFFFF',
+        color: '#21184F',
     },
-    heroHeartWrap: {
-        width: 118,
-        height: 118,
-        borderRadius: 59,
+    titlePink: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: width < 380 ? 36 : 42,
+        lineHeight: width < 380 ? 44 : 50,
+        fontWeight: '800',
+        color: '#F4477B',
+    },
+    heartWrap: {
+        width: 200,
+        height: 200,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(255, 93, 147, 0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 93, 147, 0.28)',
-        marginBottom: spacing.sm,
+        marginTop: spacing.xl,
+        marginBottom: spacing.lg,
     },
-    streakNumber: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: width < 380 ? 82 : 96,
-        lineHeight: width < 380 ? 88 : 102,
-        fontWeight: '800',
-        color: '#1F1749',
-        letterSpacing: 0,
-        textAlign: 'center',
+    streakCard: {
+        width: CARD_WIDTH,
+        minHeight: 190,
+        borderRadius: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderWidth: 1,
+        borderColor: '#FFFFFF',
+        shadowColor: '#E89AB6',
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0.16,
+        shadowRadius: 25,
+        elevation: 7,
     },
     streakLabel: {
+        fontFamily: fontFamily.medium,
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#675F7B',
+    },
+    countWrap: {
+        alignItems: 'center',
+    },
+    streakNumber: {
+        marginTop: -2,
+        fontFamily: fontFamily.extraBold,
+        fontSize: 72,
+        lineHeight: 78,
+        fontWeight: '800',
+        color: '#F44778',
+    },
+    streakUnit: {
+        marginTop: -8,
         fontFamily: fontFamily.extraBold,
         fontSize: 18,
         fontWeight: '800',
-        color: '#FF5D93',
-        letterSpacing: 0,
-        marginTop: -spacing.xs,
-        marginBottom: spacing.md,
-        textAlign: 'center',
+        letterSpacing: 0.6,
+        color: '#F44778',
     },
-    ritualStatusTitle: {
+    primaryButton: {
+        width: CARD_WIDTH,
+        minHeight: 60,
+        marginTop: spacing.lg,
+        borderRadius: borderRadius.full,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+        paddingHorizontal: 22,
+        shadowColor: '#F43F78',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.28,
+        shadowRadius: 16,
+        elevation: 7,
+    },
+    primaryButtonText: {
+        flexShrink: 1,
         fontFamily: fontFamily.extraBold,
-        fontSize: 19,
-        fontWeight: '800',
-        color: '#1F1749',
-        lineHeight: 24,
-        textAlign: 'center',
-    },
-    ritualStatusText: {
-        fontFamily: fontFamily.medium,
-        fontSize: 14.5,
-        fontWeight: '700',
-        color: '#7D739E',
-        lineHeight: 20,
-        marginTop: 5,
-        textAlign: 'center',
-    },
-    // Compare button
-    compareBtn: {
-        flexDirection: 'row',
-        gap: spacing.md,
-        backgroundColor: '#FF6F9F',
-        paddingHorizontal: spacing.xl,
-        paddingVertical: spacing.md,
-        borderRadius: borderRadius.full,
-        marginBottom: spacing.md,
-        width: CARD_WIDTH,
-        minHeight: 52,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#FF5B91',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.32,
-        shadowRadius: 22,
-        elevation: 9,
-    },
-    compareBtnText: {
-        fontFamily: fontFamily.bold,
         fontSize: 16.5,
         fontWeight: '800',
-        color: '#fff',
-        flexShrink: 1,
+        color: '#FFFFFF',
         textAlign: 'center',
     },
-
-    // Remind button
-    remindBtn: {
-        flexDirection: 'row',
-        gap: spacing.md,
-        backgroundColor: '#FF6F9F',
-        paddingHorizontal: spacing.xl,
-        paddingVertical: spacing.md,
-        borderRadius: borderRadius.full,
-        marginBottom: spacing.md,
-        width: CARD_WIDTH,
-        minHeight: 52,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#FF5B91',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.32,
-        shadowRadius: 22,
-        elevation: 9,
+    buttonEmoji: {
+        fontSize: 22,
     },
-    remindBtnText: {
-        fontFamily: fontFamily.bold,
-        fontSize: 16.5,
-        fontWeight: '800',
-        color: '#fff',
-        flexShrink: 1,
-        textAlign: 'center',
+    backButton: {
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.lg,
     },
-
-    // Home link
-    homeLink: {
-        paddingVertical: spacing.sm,
-    },
-    homeLinkText: {
+    backText: {
         fontFamily: fontFamily.bold,
         fontSize: 15,
         fontWeight: '700',
-        color: colors.textSecondary,
+        color: '#655D78',
     },
 });

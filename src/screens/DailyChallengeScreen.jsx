@@ -70,6 +70,37 @@ export default function DailyChallengeScreen({
   const [hasReachedEndOfStack, setHasReachedEndOfStack] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [ritualStatus, setRitualStatus] = useState(null);
+  const [partnerNickname, setPartnerNickname] = useState(null);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    let isCancelled = false;
+
+    const fetchPartnerNickname = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/chat/user/${userId}`);
+        const json = await response.json();
+        const nickname = json.data?.chats?.find(chat => chat?.partner?.nickname)?.partner?.nickname?.trim();
+
+        if (!isCancelled && nickname) {
+          setPartnerNickname(nickname);
+        }
+      } catch (error) {
+        // Keep the non-generic partner name fallback when chat metadata is unavailable.
+      }
+    };
+
+    fetchPartnerNickname();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [userId]);
+
+  const displayPartnerName = partnerNickname
+    || (partnerName?.trim().toLowerCase() === 'user' ? 'Partner' : partnerName)
+    || 'Partner';
 
   const fetchToday = useCallback(async () => {
     try {
@@ -201,6 +232,7 @@ export default function DailyChallengeScreen({
       if (result.success) {
         if (result.data?.ritual) {
           setRitualStatus(result.data.ritual);
+          setShowConfetti(true);
         }
       }
     } catch (error) {
@@ -268,10 +300,12 @@ export default function DailyChallengeScreen({
   if (shouldShowDoneScreen) {
     return (
       <DailyChallengeDoneScreen
-        partnerName={partnerName}
+        userName={userName}
+        partnerName={displayPartnerName}
         userAnswers={userAnswers}
         tasks={tasks}
         isComplete={isComplete}
+        hasCompletedMyPart={isComplete || hasAnsweredAllTasks || answeredCount >= 1}
         showConfetti={showConfetti}
         streak={ritualStatus}
         onBack={onBack}

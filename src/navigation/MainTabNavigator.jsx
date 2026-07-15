@@ -408,13 +408,14 @@ export const MainTabNavigator = ({
                 return (
                     <DailyChallengeScreen
                         partnerName={partnerName}
-                        userName={userData?.name || 'You'}
+                        userName={userData?.nickname || userData?.name || 'You'}
                         userAvatar={userData?.avatar || null}
                         partnerAvatar={userData?.partnerAvatar || null}
                         userId={userData?._id || userData?.id}
                         hasPartner={hasPartner}
                         onLinkPartner={onFindPartner}
                         onBack={() => setCurrentTab('home')}
+                        onCompareWithPartner={() => setCurrentTab('chats')}
                     />
                 );
             case 'games':

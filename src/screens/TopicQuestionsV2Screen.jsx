@@ -55,6 +55,17 @@ const formatLabel = {
     takephoto: 'Photo',
 };
 
+const formatDescription = {
+    deep: 'Notice the small things that mean everything',
+    neverhaveiever: 'Share stories, surprises and playful truths',
+    likelyto: 'Sweet truths about each other',
+    wouldyourather: 'Fun choices for unforgettable nights',
+    thisorthat: 'Discover how you give and receive love',
+    slider: 'Rate, reflect and grow together',
+    voicerecord: 'Say what is easier to feel than type',
+    takephoto: 'Capture a little moment together',
+};
+
 const getSetEmoji = (format, title) => {
     const titleLower = (title || '').toLowerCase();
     const formatLower = (format || '').toLowerCase();
@@ -107,23 +118,23 @@ const getSetIconImageSource = (set) => {
 const getFormatTheme = (format) => {
     switch (format) {
         case 'deep':
-            return { bg: '#0F766E', text: '#FFFFFF' };
+            return { accent: '#C2185B', card: '#FDE7F0' };
         case 'neverhaveiever':
-            return { bg: '#7C3AED', text: '#FFFFFF' };
+            return { accent: '#7C3AED', card: '#F0E7FD' };
         case 'likelyto':
-            return { bg: '#BE185D', text: '#FFFFFF' };
+            return { accent: '#E6530A', card: '#FFF0DE' };
         case 'wouldyourather':
-            return { bg: '#1D4ED8', text: '#FFFFFF' };
+            return { accent: '#7A32D0', card: '#F1E8FD' };
         case 'thisorthat':
-            return { bg: '#B45309', text: '#FFFFFF' };
+            return { accent: '#078B87', card: '#DDF6F2' };
         case 'slider':
-            return { bg: '#475569', text: '#FFFFFF' };
+            return { accent: '#2864C2', card: '#E3F1FC' };
         case 'voicerecord':
-            return { bg: '#4F46E5', text: '#FFFFFF' };
+            return { accent: '#5448D9', card: '#EAE8FD' };
         case 'takephoto':
-            return { bg: '#BE123C', text: '#FFFFFF' };
+            return { accent: '#BE315C', card: '#FDE7EE' };
         default:
-            return { bg: '#7C3AED', text: '#FFFFFF' };
+            return { accent: '#C2185B', card: '#FDE8F0' };
     }
 };
 
@@ -150,7 +161,9 @@ const SetStatusAvatar = ({ avatar, name, complete, variant = 'user' }) => {
             {avatarSource ? (
                 <Image source={avatarSource} style={styles.statusAvatarImage} resizeMode="cover" />
             ) : (
-                <Text style={styles.statusAvatarInitial}>{getAvatarInitial(name)}</Text>
+                <Text style={styles.statusAvatarInitial} allowFontScaling={false}>
+                    {getAvatarInitial(name)}
+                </Text>
             )}
         </View>
     );
@@ -544,72 +557,84 @@ export default function TopicQuestionsV2Screen({
                     return (
                         <TouchableOpacity
                             key={set.setId}
-                            style={styles.setCardTouchable}
+                            style={[styles.setCardTouchable, { backgroundColor: theme.card }]}
                             onPress={() => handleSelectSet(set)}
                             activeOpacity={0.85}
                         >
-                            <View style={styles.emojiBadgeContainer}>
-                                {iconImageSource ? (
-                                    <Image source={iconImageSource} style={styles.setIconImage} resizeMode="contain" />
-                                ) : (
-                                    <Text style={styles.emojiText}>{emoji}</Text>
-                                )}
-                            </View>
-
-                            {/* Info Column */}
-                            <View style={styles.setCardInfo}>
-                                <View style={styles.metaRow}>
-                                    <View style={[styles.formatBadge, { backgroundColor: theme.bg }]}>
-                                        <Text style={[styles.formatBadgeText, { color: theme.text }]}>
-                                            {formatLabel[set.format] || set.format}
-                                        </Text>
-                                    </View>
+                            <View style={styles.setCardContent}>
+                                <View style={styles.emojiBadgeContainer}>
+                                    {iconImageSource ? (
+                                        <Image source={iconImageSource} style={styles.setIconImage} resizeMode="contain" />
+                                    ) : (
+                                        <Text style={styles.emojiText} allowFontScaling={false}>{emoji}</Text>
+                                    )}
                                 </View>
-                                <Text style={styles.setTitle}>{set.title}</Text>
-                            </View>
 
-                            {/* Status avatars on the right */}
-                            <View style={styles.setCardRightColumn}>
-                                <View style={styles.statusAvatarRow}>
-                                    {set.partnerProgress ? (
+                                <View style={styles.setCardInfo}>
+                                    <View style={styles.metaRow}>
+                                        <View style={[styles.formatBadge, { backgroundColor: theme.accent }]}>
+                                            <Text style={styles.formatBadgeText} allowFontScaling={false}>
+                                                {formatLabel[set.format] || set.format}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Text
+                                        style={[styles.setTitle, { color: theme.accent }]}
+                                        numberOfLines={2}
+                                        allowFontScaling={false}
+                                    >
+                                        {set.title}
+                                    </Text>
+                                    <Text
+                                        style={[styles.setDescription, { color: theme.accent }]}
+                                        numberOfLines={2}
+                                        allowFontScaling={false}
+                                    >
+                                        {set.subtitle || set.description || formatDescription[set.format] || 'A new way to connect together'}
+                                    </Text>
+                                </View>
+
+                                <View style={styles.setCardRightColumn}>
+                                    <View style={styles.statusAvatarRow}>
+                                        {set.partnerProgress ? (
+                                            <SetStatusAvatar
+                                                avatar={effectivePartnerAvatar}
+                                                name={partnerName}
+                                                complete={partnerComplete}
+                                                variant="partner"
+                                            />
+                                        ) : null}
                                         <SetStatusAvatar
-                                            avatar={effectivePartnerAvatar}
-                                            name={partnerName}
-                                            complete={partnerComplete}
-                                            variant="partner"
+                                            avatar={effectiveUserAvatar}
+                                            name={userName}
+                                            complete={userComplete}
+                                            variant={set.partnerProgress ? 'userOverlap' : 'user'}
                                         />
-                                    ) : null}
-                                    <SetStatusAvatar
-                                        avatar={effectiveUserAvatar}
-                                        name={userName}
-                                        complete={userComplete}
-                                        variant={set.partnerProgress ? 'userOverlap' : 'user'}
-                                    />
+                                    </View>
+                                    {set.premium && !isPremium ? (
+                                        <View style={styles.premiumBadge}>
+                                            <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+                                                <Path
+                                                    d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2c0-1.1-.9-2-2-2Z"
+                                                    fill="#D97706"
+                                                />
+                                                <Path
+                                                    d="M7 11V7a5 5 0 0110 0v4"
+                                                    stroke="#D97706"
+                                                    strokeWidth={2.5}
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </Svg>
+                                        </View>
+                                    ) : (
+                                        <View style={[styles.startButton, { backgroundColor: theme.accent }]}>
+                                            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                                                <Path d="M9 5l7 7-7 7" stroke="#FFFFFF" strokeWidth={2.7} strokeLinecap="round" strokeLinejoin="round" />
+                                            </Svg>
+                                        </View>
+                                    )}
                                 </View>
-                                {set.premium && !isPremium ? (
-                                    <View style={[styles.premiumBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                                        <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
-                                            <Path
-                                                d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2z"
-                                                fill="#D97706"
-                                            />
-                                            <Path
-                                                d="M7 11V7a5 5 0 0110 0v4"
-                                                stroke="#D97706"
-                                                strokeWidth={2.5}
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            />
-                                        </Svg>
-                                        <Text style={styles.premiumText}>Locked</Text>
-                                    </View>
-                                ) : (
-                                    <View style={styles.startButton}>
-                                        <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
-                                            <Path d="M9 5l7 7-7 7" stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-                                        </Svg>
-                                    </View>
-                                )}
                             </View>
                         </TouchableOpacity>
                     );
@@ -676,8 +701,8 @@ export default function TopicQuestionsV2Screen({
 
     return (
         <LinearGradient
-            colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
-            locations={[0, 0.34, 0.72, 1]}
+            colors={['#F8D9EC', '#FFF9FB', '#FFF6F8', '#F5DDEC']}
+            locations={[0, 0.3, 0.72, 1]}
             start={{ x: 0.25, y: 0 }}
             end={{ x: 0.75, y: 1 }}
             style={styles.screen}
@@ -746,17 +771,22 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: spacing.lg,
-        paddingBottom: spacing.md,
+        paddingBottom: spacing.xl,
     },
     headerBackBtn: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: 'rgba(255,255,255,0.86)',
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        backgroundColor: 'rgba(255,255,255,0.94)',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#F7DDEA',
+        borderColor: 'rgba(255,255,255,0.98)',
+        shadowColor: '#9A5578',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 15,
+        elevation: 4,
     },
     headerTextBlock: {
         flex: 1,
@@ -764,7 +794,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     headerSpacer: {
-        width: 42,
+        width: 54,
     },
     headerTitle: {
         fontSize: 22,
@@ -816,66 +846,80 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     setsContent: {
-        paddingHorizontal: spacing.lg,
+        paddingHorizontal: 18,
         paddingBottom: 120,
-        gap: spacing.md,
+        gap: 12,
     },
     setCardTouchable: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 16,
+        width: '100%',
+        minHeight: 112,
+        borderRadius: 24,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.92)',
+        overflow: 'visible',
+        shadowColor: '#A76B89',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.07,
+        shadowRadius: 16,
+        elevation: 3,
+    },
+    setCardContent: {
+        width: '100%',
+        flex: 1,
+        minWidth: 0,
         flexDirection: 'row',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(0, 0, 0, 0.05)',
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.04,
-        shadowRadius: 12,
-        elevation: 2,
     },
     emojiBadgeContainer: {
-        width: 46,
-        minHeight: 56,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        flexShrink: 0,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 14,
+        marginRight: 12,
+        backgroundColor: 'rgba(255,255,255,0.58)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.76)',
     },
     emojiText: {
         fontSize: 34,
-        lineHeight: 42,
+        lineHeight: 40,
     },
     setIconImage: {
-        width: 44,
-        height: 44,
+        width: 42,
+        height: 42,
     },
     setCardInfo: {
         flex: 1,
+        minWidth: 0,
         justifyContent: 'center',
     },
     setTitle: {
-        marginTop: 6,
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#0F172A',
-        fontFamily: fontFamily.bold,
+        marginTop: 5,
+        fontSize: 17,
+        lineHeight: 20,
+        fontWeight: '800',
+        fontFamily: fontFamily.extraBold,
     },
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 4,
+        marginTop: 0,
         gap: 8,
     },
     formatBadge: {
         paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
+        paddingVertical: 4,
+        borderRadius: 8,
     },
     formatBadgeText: {
+        color: '#FFFFFF',
         fontSize: 11,
-        fontWeight: '600',
-        fontFamily: fontFamily.medium,
+        fontWeight: '700',
+        fontFamily: fontFamily.bold,
     },
     statusAvatarRow: {
         flexDirection: 'row',
@@ -884,15 +928,17 @@ const styles = StyleSheet.create({
         minWidth: 54,
     },
     setCardRightColumn: {
+        width: 48,
+        flexShrink: 0,
+        minHeight: 82,
         alignItems: 'flex-end',
-        justifyContent: 'center',
-        marginLeft: 12,
-        gap: 6,
+        justifyContent: 'space-between',
+        marginLeft: 6,
     },
     statusAvatar: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
         borderWidth: 1,
         borderColor: '#F5A3CB',
         backgroundColor: '#FFE7F2',
@@ -919,7 +965,7 @@ const styles = StyleSheet.create({
     statusAvatarImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 14,
+        borderRadius: 15,
     },
     statusAvatarInitial: {
         color: '#B31975',
@@ -929,17 +975,20 @@ const styles = StyleSheet.create({
     },
     setDescription: {
         fontSize: 12,
-        color: '#64748B',
-        marginTop: 6,
-        fontFamily: fontFamily.regular,
+        lineHeight: 15,
+        marginTop: 4,
+        opacity: 0.82,
+        fontFamily: fontFamily.medium,
     },
     premiumBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        borderRadius: 20,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         borderWidth: 1,
         borderColor: '#F59E0B',
-        backgroundColor: 'transparent',
+        backgroundColor: 'rgba(255,255,255,0.6)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     premiumText: {
         color: '#D97706',
@@ -948,12 +997,16 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.bold,
     },
     startButton: {
-        paddingHorizontal: 13,
-        paddingVertical: 8,
-        borderRadius: 20,
-        flexDirection: 'row',
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         alignItems: 'center',
-        backgroundColor: '#0F172A',
+        justifyContent: 'center',
+        shadowColor: '#7A315D',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 10,
+        elevation: 3,
     },
     startButtonText: {
         color: '#FFFFFF',
