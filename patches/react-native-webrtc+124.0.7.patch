@@ -1,0 +1,74 @@
+diff --git a/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModule+RTCAudioSession.m b/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModule+RTCAudioSession.m
+index cd4fa13..a8d65b5 100644
+--- a/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModule+RTCAudioSession.m
++++ b/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModule+RTCAudioSession.m
+@@ -17,4 +17,46 @@ @implementation WebRTCModule (RTCAudioSession)
+     return nil;
+ }
+ 
++RCT_REMAP_METHOD(setAudioOutput,
++                 setAudioOutputToSpeaker:(BOOL)speaker
++                 resolver:(RCTPromiseResolveBlock)resolve
++                 rejecter:(RCTPromiseRejectBlock)reject) {
++    [RTCDispatcher dispatchAsyncOnType:RTCDispatcherTypeAudioSession block:^{
++        RTCAudioSession *rtcSession = [RTCAudioSession sharedInstance];
++        [rtcSession lockForConfiguration];
++
++        NSError *error = nil;
++        AVAudioSessionCategoryOptions options = AVAudioSessionCategoryOptionAllowBluetoothHFP
++            | AVAudioSessionCategoryOptionAllowBluetoothA2DP;
++        if (speaker) {
++            options |= AVAudioSessionCategoryOptionDefaultToSpeaker;
++        }
++
++        BOOL configured = [rtcSession setCategory:AVAudioSessionCategoryPlayAndRecord
++                                             mode:(speaker ? AVAudioSessionModeVideoChat : AVAudioSessionModeVoiceChat)
++                                          options:options
++                                            error:&error];
++        BOOL routed = configured && [rtcSession overrideOutputAudioPort:(speaker
++            ? AVAudioSessionPortOverrideSpeaker
++            : AVAudioSessionPortOverrideNone) error:&error];
++
++        [rtcSession unlockForConfiguration];
++
++        if (!routed) {
++            reject(@"audio_route_failed", error.localizedDescription ?: @"Unable to change audio output.", error);
++            return;
++        }
++
++        // AVAudioSession updates currentRoute asynchronously. Resolve only
++        // after the output has had time to move between speaker and receiver.
++        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(250 * NSEC_PER_MSEC)),
++                       dispatch_get_main_queue(), ^{
++            AVAudioSessionPortDescription *output = rtcSession.session.currentRoute.outputs.firstObject;
++            BOOL isSpeaker = [output.portType isEqualToString:AVAudioSessionPortBuiltInSpeaker];
++            NSString *route = output.portType ?: @"unknown";
++            resolve(@{ @"route": route, @"speaker": @(isSpeaker) });
++        });
++    }];
++}
++
+ @end
+diff --git a/node_modules/react-native-webrtc/src/RTCAudioSession.ts b/node_modules/react-native-webrtc/src/RTCAudioSession.ts
+index f2996e7..f480b66 100644
+--- a/node_modules/react-native-webrtc/src/RTCAudioSession.ts
++++ b/node_modules/react-native-webrtc/src/RTCAudioSession.ts
+@@ -3,6 +3,18 @@ import { NativeModules, Platform } from 'react-native';
+ const { WebRTCModule } = NativeModules;
+ 
+ export default class RTCAudioSession {
++    /**
++     * Route iOS WebRTC audio through the loudspeaker or the system default
++     * receiver while holding WebRTC's own audio-session configuration lock.
++     */
++    static async setAudioOutput(speaker: boolean): Promise<{ route: string; speaker: boolean }> {
++        if (Platform.OS !== 'ios') {
++            return { route: 'unsupported', speaker: false };
++        }
++
++        return WebRTCModule.setAudioOutput(speaker);
++    }
++
+     /**
+      * To be called when CallKit activates the audio session.
+      */

@@ -128,6 +128,12 @@ const IconSvg = ({ type, color = '#7867F6', size = 26 }) => {
                     <Path d="M19 12A7 7 0 0018.9 10.8L21 9.1L19 5.7L16.5 6.7A7 7 0 0014.5 5.5L14.1 3H10L9.5 5.5A7 7 0 007.5 6.7L5 5.7L3 9.1L5.1 10.8A7 7 0 005.1 13.2L3 14.9L5 18.3L7.5 17.3A7 7 0 009.5 18.5L10 21H14L14.5 18.5A7 7 0 0016.5 17.3L19 18.3L21 14.9L18.9 13.2A7 7 0 0019 12Z" stroke={stroke} strokeWidth={1.4} strokeLinejoin="round" />
                 </>
             )}
+            {type === 'video' && (
+                <>
+                    <Path d="M4.5 7.5A2.5 2.5 0 017 5H14A2.5 2.5 0 0116.5 7.5V16.5A2.5 2.5 0 0114 19H7A2.5 2.5 0 014.5 16.5V7.5Z" stroke={stroke} strokeWidth={1.8} strokeLinejoin="round" />
+                    <Path d="M16.5 10L21 7.8V16.2L16.5 14V10Z" stroke={stroke} strokeWidth={1.8} strokeLinejoin="round" />
+                </>
+            )}
         </Svg>
     );
 };
@@ -176,6 +182,8 @@ const HomeScreen = ({
     duelBadgeCount = 0,
     onNotificationPress,
     onWidgetsPress,
+    onVideoCallPress,
+    partnerOnline = false,
 }) => {
     const { width } = useWindowDimensions();
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
@@ -338,6 +346,17 @@ const HomeScreen = ({
                         </View>
 
                         <View style={styles.headerActions}>
+                            {hasPartner && (
+                                <TouchableOpacity
+                                    style={[styles.headerButton, !partnerOnline && styles.offlineHeaderButton]}
+                                    onPress={onVideoCallPress}
+                                    activeOpacity={0.82}
+                                    accessibilityLabel="Start video call"
+                                >
+                                    <IconSvg type="video" color={partnerOnline ? '#D84F86' : '#A99CA9'} size={22} />
+                                    <View style={[styles.presenceDot, partnerOnline ? styles.onlineDot : styles.offlineDot]} />
+                                </TouchableOpacity>
+                            )}
                             <TouchableOpacity style={styles.headerButton} onPress={onNotificationPress} activeOpacity={0.82}>
                                 <IconSvg type="bell" color={colors.text} size={22} />
                                 {duelBadgeCount > 0 && (
@@ -679,6 +698,25 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#F7DDEA',
         ...cardShadow,
+    },
+    offlineHeaderButton: {
+        opacity: 0.78,
+    },
+    presenceDot: {
+        position: 'absolute',
+        right: 3,
+        bottom: 3,
+        width: 9,
+        height: 9,
+        borderRadius: 5,
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
+    },
+    onlineDot: {
+        backgroundColor: '#42B883',
+    },
+    offlineDot: {
+        backgroundColor: '#B8ADB7',
     },
     badge: {
         position: 'absolute',

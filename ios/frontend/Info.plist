@@ -47,7 +47,7 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>This app needs access to your camera to take photos for daily challenges.</string>
+	<string>Penguin uses your camera for video calls and to take photos for daily challenges.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to your photo library to select photos for daily challenges.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
@@ -57,7 +57,7 @@
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Penguin uses background location only to keep your Distance widget updated when you meaningfully move.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs access to your microphone to record voice messages for your partner.</string>
+	<string>Penguin uses your microphone for calls and voice messages with your partner.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

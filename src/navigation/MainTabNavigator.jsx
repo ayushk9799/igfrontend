@@ -25,6 +25,8 @@ import { selectDuelBadgeCount } from '../store/slices/notificationsSlice';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { API_BASE } from '../constants/Api';
 import { getCoupleTodayChallenge } from '../utils/answerApi';
+import { useCall } from '../calling/CallContext';
+import { CALL_STATE } from '../calling/callConstants';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -184,7 +186,10 @@ export const MainTabNavigator = ({
     const duelBadgeCount = useSelector(selectDuelBadgeCount);
 
     // Socket context for real-time data
-    const { socket, partnerMood, partnerScribble } = useSocketContext();
+    const { socket, partnerMood, partnerScribble, partnerOnline } = useSocketContext();
+    const { startCall, callState, expandCall } = useCall();
+    const callActive = callState !== CALL_STATE.IDLE;
+    const handleCallPress = callActive ? expandCall : startCall;
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -366,6 +371,8 @@ export const MainTabNavigator = ({
                         duelBadgeCount={duelBadgeCount}
                         onNotificationPress={() => setIsNotificationVisible(true)}
                         onWidgetsPress={() => setCurrentTab('widgetsLibrary')}
+                        onVideoCallPress={handleCallPress}
+                        partnerOnline={partnerOnline}
                     />
                 );
             case 'memories':
@@ -432,6 +439,9 @@ export const MainTabNavigator = ({
                         onTicTacToePress={onTicTacToePress}
                         onWordlePress={onWordlePress}
                         onRefreshPuzzle={onRefreshPuzzle}
+                        onVideoCallPress={handleCallPress}
+                        callActive={callActive}
+                        partnerOnline={partnerOnline}
                     />
                 );
             case 'topicQuestions':

@@ -26,6 +26,8 @@ import { cardStyles as styles } from './cardStyles';
 import { fontFamily } from '../../constants/fonts';
 import { spacing } from '../../theme';
 import { uploadAudioToS3 } from '../../utils/uploadApi';
+import { useCall } from '../../calling/CallContext';
+import { CALL_STATE } from '../../calling/callConstants';
 
 const WAVEFORM_BAR_HEIGHTS = [
     0.38, 0.64, 0.46, 0.82, 0.58, 0.94, 0.52, 0.74,
@@ -55,6 +57,8 @@ const VoiceRecordCard = React.memo(({
     onNavigateToPremium = () => { },
 }) => {
     const config = categoryConfig.voicerecord;
+    const { callState } = useCall();
+    const callActive = callState !== CALL_STATE.IDLE;
     const lastTaskIdRef = useRef(task._id);
 
     // Create audio recorder player instance
@@ -140,6 +144,18 @@ const VoiceRecordCard = React.memo(({
         }
     }, [isRecording, pulseOpacity, pulseScale]);
 
+    useEffect(() => {
+        if (!callActive || !isRecording || !audioRecorderPlayerRef.current) return;
+
+        audioRecorderPlayerRef.current.stopRecorder()
+            .then((uri) => {
+                audioRecorderPlayerRef.current?.removeRecordBackListener();
+                setIsRecording(false);
+                if (uri) setRecordingUri(uri);
+            })
+            .catch(() => setIsRecording(false));
+    }, [callActive, isRecording]);
+
     const pulseAnimatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: pulseScale.value }],
         opacity: pulseOpacity.value,
@@ -186,6 +202,10 @@ const VoiceRecordCard = React.memo(({
             await handleStopRecording();
         } else {
             // Start recording
+            if (callActive) {
+                Alert.alert('Call in progress', 'End the call before recording a voice answer.');
+                return;
+            }
             if (!hasPermission) {
                 Alert.alert('Microphone Needed', 'Microphone access is needed to record voice messages.');
                 if (Platform.OS === 'android') {

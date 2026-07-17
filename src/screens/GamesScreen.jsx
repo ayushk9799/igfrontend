@@ -83,6 +83,9 @@ const GamesScreen = ({
     onTicTacToePress,
     onWordlePress,
     onRefreshPuzzle,
+    onVideoCallPress,
+    callActive = false,
+    partnerOnline = false,
 }) => {
     const insets = useSafeAreaInsets();
     const blinkAnim = useRef(new Animated.Value(1)).current;
@@ -171,6 +174,14 @@ const GamesScreen = ({
                             <Text style={styles.headerTitle}>Play Games</Text>
                             <Text style={styles.headerSubtitle}>Challenge your partner to a friendly duel!</Text>
                         </View>
+                        <TouchableOpacity
+                            style={[styles.callPill, !partnerOnline && !callActive && styles.callPillOffline]}
+                            onPress={onVideoCallPress}
+                            activeOpacity={0.82}
+                        >
+                            <Text style={styles.callPillIcon}>▣</Text>
+                            <Text style={styles.callPillText}>{callActive ? 'In call' : 'Call'}</Text>
+                        </TouchableOpacity>
                         <Sparkle style={styles.heroSparkleOne} color="#FF9833" />
                         <Sparkle style={styles.heroSparkleTwo} color="#7C61F8" />
                     </View>
@@ -239,8 +250,33 @@ const styles = StyleSheet.create({
         marginBottom: 14,
     },
     heroCopy: {
-        width: '100%',
+        width: '72%',
         zIndex: 2,
+    },
+    callPill: {
+        position: 'absolute',
+        right: 0,
+        top: 8,
+        zIndex: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 13,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: '#D84F86',
+    },
+    callPillOffline: {
+        backgroundColor: '#B9AAB7',
+    },
+    callPillIcon: {
+        color: '#FFFFFF',
+        fontSize: 14,
+    },
+    callPillText: {
+        color: '#FFFFFF',
+        fontFamily: fontFamily.extraBold,
+        fontSize: 13,
     },
     headerTitle: {
         fontFamily: fontFamily.extraBold,
