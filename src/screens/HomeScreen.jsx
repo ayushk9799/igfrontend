@@ -353,12 +353,12 @@ const HomeScreen = ({
                                     activeOpacity={0.82}
                                     accessibilityLabel="Start video call"
                                 >
-                                    <IconSvg type="video" color={partnerOnline ? '#D84F86' : '#A99CA9'} size={22} />
+                                    <IconSvg type="video" color={partnerOnline ? '#D84F86' : '#A99CA9'} size={20} />
                                     <View style={[styles.presenceDot, partnerOnline ? styles.onlineDot : styles.offlineDot]} />
                                 </TouchableOpacity>
                             )}
                             <TouchableOpacity style={styles.headerButton} onPress={onNotificationPress} activeOpacity={0.82}>
-                                <IconSvg type="bell" color={colors.text} size={22} />
+                                <IconSvg type="bell" color={colors.text} size={20} />
                                 {duelBadgeCount > 0 && (
                                     <View style={styles.badge}>
                                         <Text style={styles.badgeText}>{duelBadgeCount > 9 ? '9+' : duelBadgeCount}</Text>
@@ -366,7 +366,7 @@ const HomeScreen = ({
                                 )}
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.headerButton} onPress={onSettingsPress} activeOpacity={0.82}>
-                                <IconSvg type="settings" color={colors.text} size={22} />
+                                <IconSvg type="settings" color={colors.text} size={20} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: 8,
+        marginTop: 3,
         marginBottom: 18,
         zIndex: 10,
     },
@@ -680,18 +680,18 @@ const styles = StyleSheet.create({
 
     },
     brandLogo: {
-        width: 135,
-        height: 40,
+        width: 128,
+        height: 38,
         marginLeft: -12,
     },
     headerActions: {
         flexDirection: 'row',
-        gap: 8,
+        gap: 7,
     },
     headerButton: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
+        width: 39,
+        height: 39,
+        borderRadius: 19.5,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255,255,255,0.86)',

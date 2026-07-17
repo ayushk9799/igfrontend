@@ -1587,9 +1587,7 @@ export const ScribbleScreen = ({
                         </View>
                         <View style={styles.headerSecondaryActions}>
                             {/* Widget Button */}
-                            <TouchableOpacity style={styles.addHomeButton} onPress={() => setShowWidgetTutorial(true)} activeOpacity={0.85}>
-                                <Text style={styles.addHomeButtonText}>+ Home Screen</Text>
-                            </TouchableOpacity>
+                           
                             {hasPartner && (
                                 <TouchableOpacity
                                     style={[
@@ -1603,7 +1601,7 @@ export const ScribbleScreen = ({
                                         styles.liveToggleText,
                                         liveMode && styles.liveToggleTextActive,
                                     ]}>
-                                        {liveMode ? 'Live On' : 'Live Off'}
+                                        {liveMode ? 'Live On' : 'Live Mode'}
                                     </Text>
                                 </TouchableOpacity>
                             )}

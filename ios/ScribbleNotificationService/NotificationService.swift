@@ -6,6 +6,7 @@
 //  and update widget when app is killed
 //
 
+import Foundation
 import UserNotifications
 import WidgetKit
 
@@ -13,6 +14,9 @@ class NotificationService: UNNotificationServiceExtension {
     
     var contentHandler: ((UNNotificationContent) -> Void)?
     var bestAttemptContent: UNMutableNotificationContent?
+    private var fetchTask: URLSessionDataTask?
+    private var didFinish = false
+    private let finishLock = NSLock()
     
     private let appGroupIdentifier = "group.com.thousandways.love"
     private let widgetKind = "ScribbleWidget"  // Must match Widget's kind
@@ -21,8 +25,8 @@ class NotificationService: UNNotificationServiceExtension {
         self.contentHandler = contentHandler
         bestAttemptContent = (request.content.mutableCopy() as? UNMutableNotificationContent)
         
-        guard let bestAttemptContent = bestAttemptContent else {
-            contentHandler(request.content)
+        guard bestAttemptContent != nil else {
+            finish(with: request.content)
             return
         }
         
@@ -30,44 +34,110 @@ class NotificationService: UNNotificationServiceExtension {
         
         // Extract data - FCM puts data fields at ROOT level of userInfo
         let type = userInfo["type"] as? String
-        let pathsString = userInfo["paths"] as? String
-        let senderName = userInfo["senderName"] as? String
-        let canvasWidth = parseDimension(userInfo["canvasWidth"], fallback: 350)
-        let canvasHeight = parseDimension(userInfo["canvasHeight"], fallback: canvasWidth)
-        let timestamp = userInfo["timestamp"] as? String ?? ISO8601DateFormatter().string(from: Date())
-        
-        if type == "scribble", let pathsString = pathsString, let senderName = senderName {
-            // Parse paths JSON
-            if let pathsData = pathsString.data(using: .utf8),
-               let paths = try? JSONSerialization.jsonObject(with: pathsData) as? [[String: Any]] {
-                
-                // Save to App Group with a unique version to bust cache
-                let saved = saveScribbleToAppGroup(
-                    paths: paths,
-                    senderName: senderName,
-                    timestamp: timestamp,
-                    canvasWidth: canvasWidth,
-                    canvasHeight: canvasHeight
-                )
-                
-                if saved {
-                    // Trigger widget refresh using SPECIFIC kind
-                    if #available(iOS 14.0, *) {
-                        WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
-                    }
-                } else {
-                }
-            } else {
-            }
-        } else {
+        guard type == "scribble" else {
+            finish()
+            return
         }
-        
-        contentHandler(bestAttemptContent)
+
+        // New payloads contain a signed URL for the current shared canvas.
+        // Keeping the legacy parser supports older app builds during rollout.
+        if let scribbleUrlString = userInfo["scribbleUrl"] as? String,
+           let scribbleUrl = URL(string: scribbleUrlString) {
+            fetchCurrentScribble(from: scribbleUrl)
+            return
+        }
+
+        if let pathsString = userInfo["paths"] as? String,
+           let pathsData = pathsString.data(using: .utf8),
+           let paths = try? JSONSerialization.jsonObject(with: pathsData) as? [[String: Any]] {
+            let legacyCanvasWidth = parseDimension(userInfo["canvasWidth"], fallback: 350)
+            saveAndReloadWidget(
+                paths: paths,
+                senderName: userInfo["senderName"] as? String ?? "Your Love",
+                timestamp: userInfo["timestamp"] as? String ?? ISO8601DateFormatter().string(from: Date()),
+                canvasWidth: legacyCanvasWidth,
+                canvasHeight: parseDimension(userInfo["canvasHeight"], fallback: legacyCanvasWidth),
+                canvasRevision: parseRevision(userInfo["canvasRevision"])
+            )
+        }
+
+        finish()
     }
     
     override func serviceExtensionTimeWillExpire() {
-        if let contentHandler = contentHandler, let bestAttemptContent = bestAttemptContent {
-            contentHandler(bestAttemptContent)
+        fetchTask?.cancel()
+        finish()
+    }
+
+    private func fetchCurrentScribble(from url: URL) {
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 20
+
+        fetchTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            defer { self.finish() }
+
+            guard error == nil,
+                  let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let scribble = json["data"] as? [String: Any],
+                  let paths = scribble["paths"] as? [[String: Any]] else {
+                return
+            }
+
+            let canvasWidth = self.parseDimension(scribble["canvasWidth"], fallback: 350)
+            let canvasHeight = self.parseDimension(scribble["canvasHeight"], fallback: canvasWidth)
+
+            self.saveAndReloadWidget(
+                paths: paths,
+                senderName: scribble["senderName"] as? String ?? "Your Love",
+                timestamp: scribble["timestamp"] as? String ?? ISO8601DateFormatter().string(from: Date()),
+                canvasWidth: canvasWidth,
+                canvasHeight: canvasHeight,
+                canvasRevision: self.parseRevision(scribble["canvasRevision"])
+            )
+        }
+        fetchTask?.resume()
+    }
+
+    private func saveAndReloadWidget(
+        paths: [[String: Any]],
+        senderName: String,
+        timestamp: String,
+        canvasWidth: Double,
+        canvasHeight: Double,
+        canvasRevision: Int64
+    ) {
+        if saveScribbleToAppGroup(
+            paths: paths,
+            senderName: senderName,
+            timestamp: timestamp,
+            canvasWidth: canvasWidth,
+            canvasHeight: canvasHeight,
+            canvasRevision: canvasRevision
+        ) {
+            if #available(iOS 14.0, *) {
+                WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
+            }
+        }
+    }
+
+    private func finish(with fallbackContent: UNNotificationContent? = nil) {
+        finishLock.lock()
+        guard !didFinish else {
+            finishLock.unlock()
+            return
+        }
+        didFinish = true
+        let handler = contentHandler
+        let content = fallbackContent ?? bestAttemptContent
+        finishLock.unlock()
+
+        if let handler = handler, let content = content {
+            handler(content)
         }
     }
     
@@ -80,19 +150,53 @@ class NotificationService: UNNotificationServiceExtension {
         }
         return fallback
     }
+
+    private func parseRevision(_ value: Any?) -> Int64 {
+        if let number = value as? NSNumber {
+            return number.int64Value
+        }
+        if let string = value as? String, let number = Int64(string) {
+            return number
+        }
+        return Int64(Date().timeIntervalSince1970 * 1000)
+    }
+
+    private func parseTimestamp(_ value: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: value) {
+            return date
+        }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: value)
+    }
     
     private func saveScribbleToAppGroup(
         paths: [[String: Any]],
         senderName: String,
         timestamp: String,
         canvasWidth: Double,
-        canvasHeight: Double
+        canvasHeight: Double,
+        canvasRevision: Int64
     ) -> Bool {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
             return false
         }
         
         do {
+            let jsonURL = containerURL.appendingPathComponent("scribble.json")
+
+            // A delayed push must never overwrite a newer shared-canvas state
+            // that arrived through Socket.IO or a more recent notification.
+            if let existingData = try? Data(contentsOf: jsonURL),
+               let existing = try? JSONSerialization.jsonObject(with: existingData) as? [String: Any],
+               let existingTimestamp = existing["timestamp"] as? String,
+               let existingDate = parseTimestamp(existingTimestamp),
+               let incomingDate = parseTimestamp(timestamp),
+               existingDate > incomingDate {
+                return true
+            }
+
             // Add a unique version number to ensure widget sees this as new data
             let version = Int(Date().timeIntervalSince1970 * 1000)
             
@@ -103,10 +207,10 @@ class NotificationService: UNNotificationServiceExtension {
                 "canvasWidth": canvasWidth,
                 "canvasHeight": canvasHeight,
                 "savedAt": ISO8601DateFormatter().string(from: Date()),
+                "canvasRevision": canvasRevision,
                 "version": version  // Unique version to bust cache
             ]
             
-            let jsonURL = containerURL.appendingPathComponent("scribble.json")
             let jsonData = try JSONSerialization.data(withJSONObject: scribbleData, options: .prettyPrinted)
             try jsonData.write(to: jsonURL, options: .atomic)
             

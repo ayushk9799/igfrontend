@@ -36,10 +36,11 @@ struct ScribbleProvider: TimelineProvider {
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<ScribbleEntry>) -> Void) {
         let entry = loadScribbleEntry()
-        // Use .after with current date + 1 second to force immediate refresh when reloadTimelines is called
-        // This prevents iOS from caching the old data
-        let refreshDate = Calendar.current.date(byAdding: .second, value: 1, to: Date()) ?? Date()
-        let timeline = Timeline(entries: [entry], policy: .after(refreshDate))
+        // Canvas changes are event-driven. The app and notification service
+        // extension call reloadTimelines after writing the shared canvas.
+        // A one-second policy exhausts WidgetKit's limited refresh budget and
+        // can cause later, meaningful reload requests to be throttled.
+        let timeline = Timeline(entries: [entry], policy: .never)
         completion(timeline)
     }
     
