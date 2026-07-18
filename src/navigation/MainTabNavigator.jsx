@@ -61,6 +61,7 @@ export const MainTabNavigator = ({
     onDeleteAccount,
     onTabChange,
     onEditRelationshipDate,
+    onLiveChatPress,
     canAutoOpenMoodPrompt = true,
 }) => {
     const [currentTab, setCurrentTab] = useState(initialTab || 'home');
@@ -523,6 +524,9 @@ export const MainTabNavigator = ({
                     <ChatListScreen
                         userId={userData?._id || userData?.id}
                         partnerName={partnerName || 'Partner'}
+                        partnerOnline={partnerOnline}
+                        liveChatDisabled={callActive}
+                        onLiveChatPress={onLiveChatPress}
                         onSelectChat={(chat) => {
                             // Navigate to ChatScreen - handled by AppNavigator
                             // For now, we'll use a callback if available, or log

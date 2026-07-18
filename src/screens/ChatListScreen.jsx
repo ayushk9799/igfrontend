@@ -83,6 +83,9 @@ const mergeChats = (currentChats, changedChats) => {
 export default function ChatListScreen({
     userId,
     partnerName = 'Partner',
+    partnerOnline = false,
+    liveChatDisabled = false,
+    onLiveChatPress,
     onSelectChat,
     onBack,
 }) {
@@ -293,6 +296,44 @@ export default function ChatListScreen({
                     <View style={{ width: 44 }} />
                 </View>
 
+                <TouchableOpacity
+                    style={[styles.liveChatCard, liveChatDisabled && styles.liveChatCardDisabled]}
+                    onPress={onLiveChatPress}
+                    disabled={liveChatDisabled || !onLiveChatPress}
+                    activeOpacity={0.84}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open Live Chat Mode"
+                >
+                    <LinearGradient
+                        colors={liveChatDisabled ? ['#D9D3D8', '#C8C1C8'] : ['#F94E82', '#D83C73']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.liveChatIcon}
+                    >
+                        <Text style={styles.liveChatIconText}>◉</Text>
+                    </LinearGradient>
+                    <View style={styles.liveChatCopy}>
+                        <View style={styles.liveChatTitleRow}>
+                            <Text style={styles.liveChatTitle}>Live Chat Mode</Text>
+                            <View style={styles.liveBadge}>
+                                <Text style={styles.liveBadgeText}>LIVE</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.liveChatSubtitle} numberOfLines={1}>
+                            {liveChatDisabled
+                                ? 'Available after your video call ends'
+                                : 'One message each, with their reaction live'}
+                        </Text>
+                        <View style={styles.livePresenceRow}>
+                            <View style={[styles.livePresenceDot, partnerOnline && styles.livePresenceDotOnline]} />
+                            <Text style={styles.livePresenceText}>
+                                {partnerOnline ? `${partnerName} is online` : `${partnerName} can join when online`}
+                            </Text>
+                        </View>
+                    </View>
+                    <Text style={styles.liveChatChevron}>›</Text>
+                </TouchableOpacity>
+
                 {/* Error state */}
                 {error && (
                     <View style={styles.errorContainer}>
@@ -377,6 +418,93 @@ const styles = StyleSheet.create({
         color: colors.text,
         letterSpacing: 0.5,
         fontFamily: fontFamily.extraBold,
+    },
+    liveChatCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: spacing.md,
+        marginTop: spacing.md,
+        padding: 14,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        borderWidth: 1.5,
+        borderColor: '#F7C6D8',
+        ...cardShadow,
+    },
+    liveChatCardDisabled: {
+        opacity: 0.65,
+    },
+    liveChatIcon: {
+        width: 50,
+        height: 50,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    liveChatIconText: {
+        color: '#FFFFFF',
+        fontSize: 27,
+        fontWeight: fontWeight('900'),
+    },
+    liveChatCopy: {
+        flex: 1,
+    },
+    liveChatTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    liveChatTitle: {
+        color: colors.text,
+        fontSize: 16,
+        fontFamily: fontFamily.extraBold,
+        fontWeight: fontWeight('800'),
+    },
+    liveBadge: {
+        backgroundColor: '#FFE5EE',
+        borderRadius: 7,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+    },
+    liveBadgeText: {
+        color: '#D83C73',
+        fontSize: 9,
+        fontFamily: fontFamily.extraBold,
+        fontWeight: fontWeight('900'),
+        letterSpacing: 0.7,
+    },
+    liveChatSubtitle: {
+        color: colors.textSecondary,
+        fontSize: 12,
+        fontFamily: fontFamily.medium,
+        marginTop: 3,
+    },
+    livePresenceRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 5,
+    },
+    livePresenceDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        backgroundColor: '#B7AFB7',
+        marginRight: 5,
+    },
+    livePresenceDotOnline: {
+        backgroundColor: '#35C985',
+    },
+    livePresenceText: {
+        color: colors.textSecondary,
+        fontSize: 11,
+        fontFamily: fontFamily.medium,
+    },
+    liveChatChevron: {
+        color: '#D83C73',
+        fontSize: 30,
+        marginLeft: 8,
+        marginTop: -2,
     },
     loadingText: {
         marginTop: spacing.md,

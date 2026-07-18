@@ -18,6 +18,7 @@ import LikelyToQuestionScreen from '../screens/LikelyToQuestionScreen';
 import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
 import ChatScreen from '../screens/ChatScreen';
+import LiveChatScreen from '../screens/LiveChatScreen';
 import AnimatedSplashScreen from '../screens/AnimatedSplashScreen';
 import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
 import OnboardingFeaturesScreen from '../screens/OnboardingFeaturesScreen';
@@ -1780,11 +1781,11 @@ export const AppNavigator = () => {
 
             const homeSubScreens = [
                 'mood', 'scribble', 'questions', 'jigsawCreate',
-                'jigsawPuzzle', 'ticTacToe', 'wordle', 'chat', 'questionChatV2',
+                'jigsawPuzzle', 'ticTacToe', 'wordle', 'chat', 'liveChat', 'questionChatV2',
                 'premium', 'dailyChallenge', 'questionCategories',
             ];
 
-            if (currentScreen === 'chat') {
+            if (currentScreen === 'chat' || currentScreen === 'liveChat') {
                 setHomeInitialTab('chats');
                 navigate('home');
                 return true;
@@ -1942,6 +1943,7 @@ export const AppNavigator = () => {
                                 navigate('dailyChallenge');
                             }
                         }}
+                        onLiveChatPress={() => navigate('liveChat')}
                         onAvatarPress={() => navigate('avatarSelection')}
                         onFindPartner={() => navigate('partnerCode')}
                         onEditRelationshipDate={() => navigate('relationshipStartDate')}
@@ -2159,6 +2161,20 @@ export const AppNavigator = () => {
                         userId={userData?.id}
                         userName={userData?.name || 'You'}
                         partnerName={userData?.partnerUsername || 'Partner'}
+                        onBack={() => {
+                            setHomeInitialTab('chats');
+                            navigate('home');
+                        }}
+                    />
+                );
+
+            case 'liveChat':
+                return (
+                    <LiveChatScreen
+                        userId={userData?.id || userData?._id}
+                        partnerId={userData?.partnerId}
+                        partnerName={userData?.partnerUsername || 'Partner'}
+                        partnerAvatar={userData?.partnerAvatarThumbnail || userData?.partnerAvatar}
                         onBack={() => {
                             setHomeInitialTab('chats');
                             navigate('home');
