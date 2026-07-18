@@ -1,5 +1,7 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, useEffect, useRef, memo } from 'react';
 import {
+    Animated,
+    Easing,
     Image,
     StyleSheet,
     Text,
@@ -14,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius } from '../theme';
 import { emojis } from '../constants/Moods';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const GRID_COLUMNS = 3;
 const GRID_GAP = 10;
@@ -117,6 +119,19 @@ export const MoodScreen = ({
 }) => {
     const [selectedMood, setSelectedMood] = useState(currentMood);
     const insets = useSafeAreaInsets();
+    const sheetOffset = useRef(new Animated.Value(height * 0.6)).current;
+
+    useEffect(() => {
+        const animation = Animated.timing(sheetOffset, {
+            toValue: 0,
+            delay: 30,
+            duration: 360,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+        });
+        animation.start();
+        return () => animation.stop();
+    }, [sheetOffset]);
 
     const handleSelectMood = useCallback((mood) => {
         setSelectedMood(mood);
@@ -145,7 +160,7 @@ export const MoodScreen = ({
                 activeOpacity={1}
                 onPress={onBack}
             />
-            <View style={styles.sheetContainer}>
+            <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: sheetOffset }] }]}>
                 {Platform.OS === 'ios' ? (
                     <BlurView intensity={42} tint="light" style={StyleSheet.absoluteFillObject} />
                 ) : (
@@ -205,7 +220,7 @@ export const MoodScreen = ({
                         </Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+            </Animated.View>
         </View>
     );
 };

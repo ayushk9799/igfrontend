@@ -898,7 +898,7 @@ export const AppNavigator = () => {
     };
 
     const getNotificationKey = useCallback((data = {}) => {
-        const targetId = data.chatId || data.gameId || data.puzzleId || data.challengeId || '';
+        const targetId = data.chatId || data.gameId || data.puzzleId || data.challengeId || data.memoryId || '';
         return `${data.type || 'unknown'}:${targetId}`;
     }, []);
 

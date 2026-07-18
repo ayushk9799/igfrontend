@@ -58,19 +58,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     return false
   }
   
-  // Refresh widget when app becomes active
+  // Refresh widgets when app becomes active
   func applicationDidBecomeActive(_ application: UIApplication) {
-    // Refresh the scribble widget to show latest data
     if #available(iOS 14.0, *) {
       WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "ScribbleWidget")
+      WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "CouplePhotoWidget")
     }
   }
   
-  // Refresh widget when app enters background (closes)
+  // Refresh widgets when app enters background (closes)
   func applicationDidEnterBackground(_ application: UIApplication) {
-    // Refresh the scribble widget to show any new data received while app was open
     if #available(iOS 14.0, *) {
       WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "ScribbleWidget")
+      WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "CouplePhotoWidget")
     }
   }
 }

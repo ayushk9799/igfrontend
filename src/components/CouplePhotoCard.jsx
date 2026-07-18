@@ -31,8 +31,7 @@ const CouplePhotoCard = ({
     onFindPartner,
     onOpenCapture,
 }) => {
-    const displayPhoto = partnerPhoto || myPhoto;
-    const isIncoming = Boolean(partnerPhoto);
+    const displayPhoto = partnerPhoto;
 
     const handlePress = () => {
         if (!hasPartner) {
@@ -52,13 +51,19 @@ const CouplePhotoCard = ({
                 resizeMode="cover"
             />
             <LinearGradient colors={['rgba(20,8,26,0.02)', 'rgba(20,8,26,0.82)']} style={StyleSheet.absoluteFill} />
-            <View style={styles.cameraBadge}><CameraIcon /></View>
+            {myPhoto?.imageUrl ? (
+                <Image source={{ uri: myPhoto.imageUrl }} style={styles.myPhotoOverlay} resizeMode="cover" />
+            ) : (
+                <View style={styles.cameraBadge}><CameraIcon /></View>
+            )}
             <View style={styles.widgetCopy}>
                 <Text style={styles.widgetTitle} numberOfLines={1}>
-                    {displayPhoto ? (isIncoming ? `From ${partnerName}` : `Sent to ${partnerName}`) : 'Partner Photo'}
+                    {displayPhoto ? `From ${partnerName}` : (myPhoto ? `Sent to ${partnerName}` : 'Partner Photo')}
                 </Text>
                 <Text style={styles.widgetSubtitle} numberOfLines={1}>
-                    {displayPhoto ? timeLabel(displayPhoto.updatedAt) : (hasPartner ? 'Tap to send' : 'Connect partner')}
+                    {(displayPhoto || myPhoto)
+                        ? timeLabel((displayPhoto || myPhoto).updatedAt)
+                        : (hasPartner ? 'Tap to send' : 'Connect partner')}
                 </Text>
             </View>
         </TouchableOpacity>
@@ -80,6 +85,7 @@ const styles = StyleSheet.create({
         }),
     },
     photo: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+    myPhotoOverlay: { position: 'absolute', right: 10, top: 10, width: 46, height: 46, borderRadius: 14, borderWidth: 2, borderColor: '#FFFFFF', backgroundColor: '#F4EAF5' },
     cameraBadge: { position: 'absolute', right: 11, top: 11, width: 34, height: 34, borderRadius: 17, backgroundColor: '#D94E86', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.8)' },
     widgetCopy: { position: 'absolute', left: 13, right: 11, bottom: 12 },
     widgetTitle: { color: '#FFFFFF', fontSize: 14, lineHeight: 17, fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },

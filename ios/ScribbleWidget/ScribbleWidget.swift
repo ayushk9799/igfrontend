@@ -874,7 +874,8 @@ struct DistanceWidget: Widget {
 
 struct CouplePhotoEntry: TimelineEntry {
     let date: Date
-    let image: UIImage?
+    let partnerImage: UIImage?
+    let myImage: UIImage?
     let senderName: String
 }
 
@@ -882,7 +883,7 @@ struct CouplePhotoProvider: TimelineProvider {
     private let appGroupIdentifier = "group.com.thousandways.love"
 
     func placeholder(in context: Context) -> CouplePhotoEntry {
-        CouplePhotoEntry(date: Date(), image: nil, senderName: "Your partner")
+        CouplePhotoEntry(date: Date(), partnerImage: nil, myImage: nil, senderName: "Your partner")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CouplePhotoEntry) -> Void) {
@@ -899,15 +900,16 @@ struct CouplePhotoProvider: TimelineProvider {
 
     private func loadEntry() -> CouplePhotoEntry {
         guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            return CouplePhotoEntry(date: Date(), image: nil, senderName: "Your partner")
+            return CouplePhotoEntry(date: Date(), partnerImage: nil, myImage: nil, senderName: "Your partner")
         }
-        let image = loadWidgetImage(at: container.appendingPathComponent("partner_photo.jpg"))
+        let partnerImage = loadWidgetImage(at: container.appendingPathComponent("partner_photo.jpg"))
+        let myImage = loadWidgetImage(at: container.appendingPathComponent("my_photo.jpg"))
         var senderName = "Your partner"
         if let data = try? Data(contentsOf: container.appendingPathComponent("partner_photo.json")),
            let metadata = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             senderName = metadata["senderName"] as? String ?? senderName
         }
-        return CouplePhotoEntry(date: Date(), image: image, senderName: senderName)
+        return CouplePhotoEntry(date: Date(), partnerImage: partnerImage, myImage: myImage, senderName: senderName)
     }
 
     private func loadWidgetImage(at url: URL) -> UIImage? {
@@ -943,27 +945,34 @@ struct CouplePhotoWidgetView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .bottomLeading) {
-                if let image = entry.image {
+                if let image = entry.partnerImage {
                     receivedPhoto(image)
                         .scaledToFill()
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .clipped()
-                    LinearGradient(colors: [.clear, .black.opacity(0.72)], startPoint: .center, endPoint: .bottom)
-                    Text("From \(entry.senderName)")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .padding(12)
                 } else {
                     LinearGradient(colors: [Color(red: 1, green: 0.92, blue: 0.96), Color(red: 0.91, green: 0.89, blue: 1)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     VStack(alignment: .leading, spacing: 7) {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 24, weight: .semibold))
+                        if entry.myImage == nil {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 24, weight: .semibold))
+                        }
                         Text("Send each other a moment")
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(Color(red: 0.72, green: 0.25, blue: 0.48))
                     .padding(14)
+                }
+
+                if let myImage = entry.myImage {
+                    receivedPhoto(myImage)
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(.white, lineWidth: 2))
+                        .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(10)
                 }
             }
         }

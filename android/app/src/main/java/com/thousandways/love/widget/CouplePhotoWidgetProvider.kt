@@ -33,6 +33,8 @@ class CouplePhotoWidgetProvider : AppWidgetProvider() {
         val prefs = context.getSharedPreferences(ScribbleWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
         val imageFile = File(context.filesDir, PHOTO_FILE_NAME)
         val bitmap = if (imageFile.exists()) BitmapFactory.decodeFile(imageFile.absolutePath) else null
+        val myImageFile = File(context.filesDir, MY_PHOTO_FILE_NAME)
+        val myBitmap = if (myImageFile.exists()) BitmapFactory.decodeFile(myImageFile.absolutePath) else null
 
         if (bitmap != null) {
             views.setImageViewBitmap(R.id.couple_photo_image, bitmap)
@@ -46,6 +48,13 @@ class CouplePhotoWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.couple_photo_empty, View.VISIBLE)
         }
 
+        if (myBitmap != null) {
+            views.setImageViewBitmap(R.id.couple_photo_my_image, myBitmap)
+            views.setViewVisibility(R.id.couple_photo_my_image, View.VISIBLE)
+        } else {
+            views.setViewVisibility(R.id.couple_photo_my_image, View.GONE)
+        }
+
         val intent = Intent(context, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         views.setOnClickPendingIntent(R.id.couple_photo_container, pendingIntent)
@@ -54,7 +63,9 @@ class CouplePhotoWidgetProvider : AppWidgetProvider() {
 
     companion object {
         const val PHOTO_FILE_NAME = "partner_photo.jpg"
+        const val MY_PHOTO_FILE_NAME = "my_photo.jpg"
         const val KEY_SENDER_NAME = "couple_photo_sender_name"
         const val KEY_REVISION = "couple_photo_revision"
+        const val KEY_MY_REVISION = "couple_photo_my_revision"
     }
 }

@@ -310,6 +310,7 @@ export default function DailyChallengeScreen({
         streak={ritualStatus}
         onBack={onBack}
         onCompareWithPartner={onCompareWithPartner}
+        onChatNow={onCompareWithPartner}
         onRemindPartner={async () => {
           try {
             const response = await fetch(`${API_BASE}/api/daily-challenge/remind`, {

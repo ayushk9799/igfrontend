@@ -121,11 +121,20 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun savePartnerPhoto(imageUrl: String, metadata: ReadableMap, promise: Promise) {
+        saveCouplePhoto(imageUrl, metadata, CouplePhotoWidgetProvider.PHOTO_FILE_NAME, CouplePhotoWidgetProvider.KEY_REVISION, promise)
+    }
+
+    @ReactMethod
+    fun saveMyPhoto(imageUrl: String, metadata: ReadableMap, promise: Promise) {
+        saveCouplePhoto(imageUrl, metadata, CouplePhotoWidgetProvider.MY_PHOTO_FILE_NAME, CouplePhotoWidgetProvider.KEY_MY_REVISION, promise)
+    }
+
+    private fun saveCouplePhoto(imageUrl: String, metadata: ReadableMap, fileName: String, revisionKey: String, promise: Promise) {
         Thread {
             try {
                 val revision = if (metadata.hasKey("revision")) metadata.getDouble("revision").toLong() else System.currentTimeMillis()
                 val prefs = reactContext.getSharedPreferences(ScribbleWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
-                val existingRevision = prefs.getLong(CouplePhotoWidgetProvider.KEY_REVISION, 0L)
+                val existingRevision = prefs.getLong(revisionKey, 0L)
                 if (revision < existingRevision) {
                     promise.resolve(true)
                     return@Thread
@@ -137,14 +146,18 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
                     useCaches = false
                 }
                 connection.getInputStream().use { input ->
-                    File(reactContext.filesDir, CouplePhotoWidgetProvider.PHOTO_FILE_NAME).outputStream().use { output ->
+                    File(reactContext.filesDir, fileName).outputStream().use { output ->
                         input.copyTo(output)
                     }
                 }
                 prefs.edit()
-                    .putString(CouplePhotoWidgetProvider.KEY_SENDER_NAME, metadata.getString("senderName") ?: "Your partner")
-                    .putLong(CouplePhotoWidgetProvider.KEY_REVISION, revision)
+                    .putLong(revisionKey, revision)
                     .apply()
+                if (fileName == CouplePhotoWidgetProvider.PHOTO_FILE_NAME) {
+                    prefs.edit()
+                        .putString(CouplePhotoWidgetProvider.KEY_SENDER_NAME, metadata.getString("senderName") ?: "Your partner")
+                        .apply()
+                }
                 refreshProvider(CouplePhotoWidgetProvider::class.java)
                 promise.resolve(true)
             } catch (error: Exception) {
@@ -155,17 +168,26 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun clearPartnerPhoto(promise: Promise) {
+        clearCouplePhoto(CouplePhotoWidgetProvider.PHOTO_FILE_NAME, CouplePhotoWidgetProvider.KEY_REVISION, true, promise)
+    }
+
+    @ReactMethod
+    fun clearMyPhoto(promise: Promise) {
+        clearCouplePhoto(CouplePhotoWidgetProvider.MY_PHOTO_FILE_NAME, CouplePhotoWidgetProvider.KEY_MY_REVISION, false, promise)
+    }
+
+    private fun clearCouplePhoto(fileName: String, revisionKey: String, clearSender: Boolean, promise: Promise) {
         try {
-            File(reactContext.filesDir, CouplePhotoWidgetProvider.PHOTO_FILE_NAME).delete()
-            reactContext.getSharedPreferences(ScribbleWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
+            File(reactContext.filesDir, fileName).delete()
+            val editor = reactContext.getSharedPreferences(ScribbleWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
-                .remove(CouplePhotoWidgetProvider.KEY_SENDER_NAME)
-                .remove(CouplePhotoWidgetProvider.KEY_REVISION)
-                .apply()
+                .remove(revisionKey)
+            if (clearSender) editor.remove(CouplePhotoWidgetProvider.KEY_SENDER_NAME)
+            editor.apply()
             refreshProvider(CouplePhotoWidgetProvider::class.java)
             promise.resolve(true)
         } catch (error: Exception) {
-            promise.reject("ERROR", "Failed to clear partner photo: ${error.message}", error)
+            promise.reject("ERROR", "Failed to clear couple photo: ${error.message}", error)
         }
     }
 

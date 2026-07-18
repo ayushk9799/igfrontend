@@ -484,7 +484,6 @@ const HomeScreen = ({
                                                 <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
                                                 <HomeText style={styles.ritualHeartStatus}>{getHeartSymbol(heartState)}</HomeText>
                                             </View>
-                                            <HomeText style={styles.ritualStreakBadge}>{ritualStreakText}</HomeText>
                                         </View>
                                     </View>
                                     <View style={[styles.ritualPaper, styles.completedRitualPaper]}>
@@ -512,7 +511,6 @@ const HomeScreen = ({
                                                 <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
                                                 <HomeText style={styles.ritualHeartStatus}>{getHeartSymbol(heartState)}</HomeText>
                                             </View>
-                                            <HomeText style={styles.ritualStreakBadge}>{ritualStreakText}</HomeText>
                                         </View>
                                     </View>
                                     <View style={styles.ritualPaper}>
@@ -824,7 +822,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     featureMiniCard: {
-        height: 190,
+        height: 184,
         borderRadius: 18,
         overflow: 'hidden',
         padding: 0,
@@ -994,7 +992,7 @@ const styles = StyleSheet.create({
         left: 15,
         right: 15,
         bottom: 16,
-        height: 136,
+        height: 130,
         overflow: 'hidden',
         borderRadius: 11,
         backgroundColor: '#FFFDF9',
@@ -1120,7 +1118,7 @@ const styles = StyleSheet.create({
         left: 16,
         right: 16,
         bottom: 16,
-        height: 136,
+        height: 130,
         borderRadius: 11,
         backgroundColor: '#FFFDF9',
         borderWidth: 1,

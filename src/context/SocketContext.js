@@ -100,11 +100,10 @@ export const SocketProvider = ({ children }) => {
             const photos = await fetchCurrentCouplePhotos(currentUserId);
             setMyCurrentPhoto(photos?.myPhoto || null);
             setPartnerCurrentPhoto(photos?.partnerPhoto || null);
-            if (photos?.partnerPhoto) {
-                syncCouplePhotoWidget(photos.partnerPhoto, currentUser.partnerUsername || 'Your partner');
-            } else {
-                clearCouplePhotoWidget();
-            }
+            syncCouplePhotoWidget({
+                partnerPhoto: photos?.partnerPhoto || null,
+                myPhoto: photos?.myPhoto || null,
+            }, currentUser.partnerUsername || 'Your partner');
         } catch (error) {
             console.warn('Failed to refresh couple photos:', error?.message || error);
         }
@@ -305,9 +304,21 @@ export const SocketProvider = ({ children }) => {
             if (!data.photo?.ownerId) return;
             if (String(data.photo.ownerId) === String(userId)) {
                 setMyCurrentPhoto(data.photo);
+                if (ScribbleWidgetBridge?.saveMyPhoto) {
+                    ScribbleWidgetBridge.saveMyPhoto(data.photo.imageUrl, {
+                        timestamp: data.photo.updatedAt || new Date().toISOString(),
+                        revision: Number(data.photo.revision) || Date.now(),
+                    }).catch(error => console.warn('Failed to sync own photo widget:', error?.message || error));
+                }
             } else {
                 setPartnerCurrentPhoto(data.photo);
-                syncCouplePhotoWidget(data.photo, data.senderName || 'Your partner');
+                if (ScribbleWidgetBridge?.savePartnerPhoto) {
+                    ScribbleWidgetBridge.savePartnerPhoto(data.photo.imageUrl, {
+                        senderName: data.senderName || 'Your partner',
+                        timestamp: data.photo.updatedAt || new Date().toISOString(),
+                        revision: Number(data.photo.revision) || Date.now(),
+                    }).catch(error => console.warn('Failed to sync partner photo widget:', error?.message || error));
+                }
             }
         });
 

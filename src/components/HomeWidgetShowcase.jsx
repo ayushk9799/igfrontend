@@ -59,44 +59,32 @@ const WidgetInitial = ({ label, style }) => (
     </View>
 );
 
-const getElapsedSeconds = (startDate) => {
+const getElapsedSeconds = (startDate, now = Date.now()) => {
     if (!startDate) return 0;
 
     const startTime = new Date(startDate).getTime();
     if (Number.isNaN(startTime)) return 0;
 
-    return Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+    return Math.max(0, Math.floor((now - startTime) / 1000));
 };
 
-const getTogetherDuration = (startDate) => {
-    const start = new Date(startDate);
-    if (!startDate || Number.isNaN(start.getTime())) return 'Start your story';
+const getTogetherDuration = (startDate, now = Date.now()) => {
+    const startTime = new Date(startDate).getTime();
+    if (!startDate || Number.isNaN(startTime)) return null;
 
-    const now = new Date();
-    const startDay = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
-    const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-    if (startDay > nowDay) return 'Starting today';
+    const elapsed = getElapsedSeconds(startDate, now);
+    const days = Math.floor(elapsed / 86400);
+    const hours = Math.floor((elapsed % 86400) / 3600);
+    const minutes = Math.floor((elapsed % 3600) / 60);
+    const seconds = elapsed % 60;
+    const twoDigits = value => String(value).padStart(2, '0');
 
-    let totalMonths = (now.getFullYear() - start.getFullYear()) * 12
-        + now.getMonth() - start.getMonth();
-    if (now.getDate() < start.getDate()) totalMonths -= 1;
-    totalMonths = Math.max(0, totalMonths);
-
-    const anchorYear = start.getFullYear() + Math.floor((start.getMonth() + totalMonths) / 12);
-    const anchorMonth = (start.getMonth() + totalMonths) % 12;
-    const lastAnchorDay = new Date(anchorYear, anchorMonth + 1, 0).getDate();
-    const anchor = Date.UTC(anchorYear, anchorMonth, Math.min(start.getDate(), lastAnchorDay));
-    const remainingDays = Math.max(0, Math.floor((nowDay - anchor) / 86400000));
-    const years = Math.floor(totalMonths / 12);
-    const months = totalMonths % 12;
-
-    if (years > 0) {
-        return `${years} ${years === 1 ? 'year' : 'years'}, ${months} ${months === 1 ? 'month' : 'months'}`;
-    }
-    if (totalMonths > 0) {
-        return `${totalMonths} ${totalMonths === 1 ? 'month' : 'months'}, ${remainingDays} ${remainingDays === 1 ? 'day' : 'days'}`;
-    }
-    return `${remainingDays} ${remainingDays === 1 ? 'day' : 'days'}`;
+    return [
+        { value: days, label: 'days' },
+        { value: twoDigits(hours), label: 'hr' },
+        { value: twoDigits(minutes), label: 'min' },
+        { value: twoDigits(seconds), label: 'sec' },
+    ];
 };
 
 const DistanceShowcaseCard = ({ isLocationSetup = false }) => {
@@ -197,8 +185,15 @@ const DistanceShowcaseCard = ({ isLocationSetup = false }) => {
 };
 
 const TimeTogetherShowcaseCard = ({ relationshipStartDate, daysTogether = 0 }) => {
-    const elapsedDays = Math.floor(getElapsedSeconds(relationshipStartDate) / 86400);
-    const duration = getTogetherDuration(relationshipStartDate);
+    const [now, setNow] = useState(Date.now());
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const elapsedDays = Math.floor(getElapsedSeconds(relationshipStartDate, now) / 86400);
+    const durationParts = getTogetherDuration(relationshipStartDate, now);
 
     return (
         <View style={[styles.widgetShowcaseCard, styles.timeShowcaseCard]}>
@@ -206,16 +201,20 @@ const TimeTogetherShowcaseCard = ({ relationshipStartDate, daysTogether = 0 }) =
                 <View style={styles.togetherDurationPlate}>
                     <View style={styles.togetherDurationHeading}>
                         <ShowcaseText style={styles.togetherDurationEyebrow}>together for</ShowcaseText>
-                        <HeartIcon size={12} color="#FFFFFF" />
+                        <HeartIcon size={17} color="#FFFFFF" />
                     </View>
-                    <ShowcaseText
-                        style={styles.togetherDurationValue}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.72}
-                    >
-                        {duration}
-                    </ShowcaseText>
+                    {durationParts ? (
+                        <View style={styles.togetherDurationColumns}>
+                            {durationParts.map(part => (
+                                <View key={part.label} style={styles.togetherDurationColumn}>
+                                    <ShowcaseText style={styles.togetherDurationValue}>{part.value}</ShowcaseText>
+                                    <ShowcaseText style={styles.togetherDaysLabel}>{part.label}</ShowcaseText>
+                                </View>
+                            ))}
+                        </View>
+                    ) : (
+                        <ShowcaseText style={styles.togetherDurationValue}>Start your story</ShowcaseText>
+                    )}
                 </View>
                 <View style={styles.togetherDaysOrb}>
                     <ShowcaseText style={styles.togetherDaysValue}>{daysTogether || elapsedDays}</ShowcaseText>
@@ -464,7 +463,7 @@ const styles = StyleSheet.create({
     },
     togetherDurationPlate: {
         position: 'absolute',
-        left: 18,
+        left: 12,
         right: 0,
         bottom: 4,
         minHeight: 72,
@@ -482,13 +481,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 5,
+        transform: [{ translateY: -5 }],
     },
     togetherDurationEyebrow: {
         color: 'rgba(255,255,255,0.9)',
-        fontSize: 10,
-        lineHeight: 12,
+        fontSize: 13,
+        lineHeight: 16,
         fontFamily: fontFamily.bold,
         fontWeight: fontWeight('700'),
+    },
+    togetherDurationColumns: {
+        flexDirection: 'row',
+    },
+    togetherDurationColumn: {
+        flex: 1,
+        alignItems: 'center',
     },
     togetherDurationValue: {
         color: '#FFFFFF',

@@ -147,6 +147,7 @@ export default function DailyChallengeDoneScreen({
     onBack = () => {},
     onCompareWithPartner = () => {},
     onRemindPartner = () => {},
+    onChatNow = () => {},
 }) {
     const insets = useSafeAreaInsets();
     const opacity = useRef(new Animated.Value(0)).current;
@@ -355,21 +356,30 @@ export default function DailyChallengeDoneScreen({
                     <TouchableOpacity
                         activeOpacity={0.88}
                         onPress={isFullHeart ? onCompareWithPartner : onRemindPartner}
+                        style={styles.primaryButton}
                     >
-                        <LinearGradient
-                            colors={['#FF3F89', '#FF5C72']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.primaryButton}
+                        {isFullHeart ? <Text style={styles.buttonEmoji}>💕</Text> : <BellIcon />}
+                        <Text
+                            style={styles.primaryButtonText}
+                            numberOfLines={2}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.78}
                         >
-                            {isFullHeart ? <Text style={styles.buttonEmoji}>💕</Text> : <BellIcon />}
-                            <Text style={styles.primaryButtonText}>
-                                {isFullHeart
-                                    ? `Chat with ${partnerName}`
-                                    : `Remind ${partnerName} to Play`}
-                            </Text>
-                        </LinearGradient>
+                            {isFullHeart
+                                ? `Chat with ${partnerName}`
+                                : `Remind ${partnerName} to Play`}
+                        </Text>
                     </TouchableOpacity>
+
+                    {!isFullHeart && (
+                        <TouchableOpacity
+                            activeOpacity={0.84}
+                            style={styles.chatButton}
+                            onPress={onChatNow}
+                        >
+                            <Text style={styles.chatButtonText}>Chat now</Text>
+                        </TouchableOpacity>
+                    )}
 
                     <TouchableOpacity style={styles.backButton} onPress={onBack}>
                         <Text style={styles.backText}>← Back to Home</Text>
@@ -490,7 +500,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 12,
-        paddingHorizontal: 22,
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        backgroundColor: '#FF4D7D',
         shadowColor: '#F43F78',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.28,
@@ -507,6 +519,24 @@ const styles = StyleSheet.create({
     },
     buttonEmoji: {
         fontSize: 22,
+    },
+    chatButton: {
+        width: CARD_WIDTH,
+        minHeight: 52,
+        marginTop: spacing.md,
+        borderRadius: borderRadius.full,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#F44778',
+        backgroundColor: 'rgba(255,255,255,0.82)',
+        paddingHorizontal: 18,
+    },
+    chatButtonText: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#F44778',
     },
     backButton: {
         paddingHorizontal: spacing.lg,

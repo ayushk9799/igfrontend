@@ -136,8 +136,17 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
 
     @objc
     func savePartnerPhoto(_ imageUrl: String, metadata: NSDictionary, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        saveCouplePhoto(imageUrl, metadata: metadata, filePrefix: "partner_photo", resolver: resolver, rejecter: rejecter)
+    }
+
+    @objc
+    func saveMyPhoto(_ imageUrl: String, metadata: NSDictionary, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        saveCouplePhoto(imageUrl, metadata: metadata, filePrefix: "my_photo", resolver: resolver, rejecter: rejecter)
+    }
+
+    private func saveCouplePhoto(_ imageUrl: String, metadata: NSDictionary, filePrefix: String, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         guard let remoteURL = URL(string: imageUrl), let containerURL = getSharedContainerURL() else {
-            rejecter("ERROR", "Invalid partner photo URL or App Group", nil)
+            rejecter("ERROR", "Invalid couple photo URL or App Group", nil)
             return
         }
 
@@ -149,39 +158,48 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
                   (200...299).contains(http.statusCode),
                   let data = data,
                   UIImage(data: data) != nil else {
-                rejecter("ERROR", "Failed to download partner photo", error)
+                rejecter("ERROR", "Failed to download couple photo", error)
                 return
             }
 
             do {
-                try data.write(to: containerURL.appendingPathComponent("partner_photo.jpg"), options: .atomic)
+                try data.write(to: containerURL.appendingPathComponent("\(filePrefix).jpg"), options: .atomic)
                 let photoMetadata: [String: Any] = [
                     "senderName": metadata["senderName"] ?? "Your partner",
                     "timestamp": metadata["timestamp"] ?? ISO8601DateFormatter().string(from: Date()),
                     "revision": metadata["revision"] ?? Int(Date().timeIntervalSince1970 * 1000)
                 ]
                 let json = try JSONSerialization.data(withJSONObject: photoMetadata)
-                try json.write(to: containerURL.appendingPathComponent("partner_photo.json"), options: .atomic)
+                try json.write(to: containerURL.appendingPathComponent("\(filePrefix).json"), options: .atomic)
                 DispatchQueue.main.async {
                     WidgetCenter.shared.reloadTimelines(ofKind: "CouplePhotoWidget")
                     WidgetCenter.shared.reloadAllTimelines()
                     resolver(true)
                 }
             } catch {
-                rejecter("ERROR", "Failed to cache partner photo: \(error.localizedDescription)", error)
+                rejecter("ERROR", "Failed to cache couple photo: \(error.localizedDescription)", error)
             }
         }.resume()
     }
 
     @objc
     func clearPartnerPhoto(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        clearCouplePhoto(filePrefix: "partner_photo", resolver: resolver, rejecter: rejecter)
+    }
+
+    @objc
+    func clearMyPhoto(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        clearCouplePhoto(filePrefix: "my_photo", resolver: resolver, rejecter: rejecter)
+    }
+
+    private func clearCouplePhoto(filePrefix: String, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         guard let containerURL = getSharedContainerURL() else {
             rejecter("ERROR", "App Group container not found", nil)
             return
         }
 
         do {
-            for fileName in ["partner_photo.jpg", "partner_photo.json"] {
+            for fileName in ["\(filePrefix).jpg", "\(filePrefix).json"] {
                 let fileURL = containerURL.appendingPathComponent(fileName)
                 if FileManager.default.fileExists(atPath: fileURL.path) {
                     try FileManager.default.removeItem(at: fileURL)
@@ -193,7 +211,7 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             }
             resolver(true)
         } catch {
-            rejecter("ERROR", "Failed to clear partner photo: \(error.localizedDescription)", error)
+            rejecter("ERROR", "Failed to clear couple photo: \(error.localizedDescription)", error)
         }
     }
     

@@ -634,26 +634,29 @@ export const MainTabNavigator = ({
 
             <Modal
                 visible={isMoodVisible && callState !== CALL_STATE.INCOMING}
-                animationType={callState === CALL_STATE.INCOMING ? 'none' : 'slide'}
+                animationType="none"
                 transparent={true}
+                presentationStyle="overFullScreen"
                 statusBarTranslucent={true}
                 onRequestClose={closeMoodPicker}
             >
-                <MoodScreen
-                    currentMood={getEmojiById(yourMood?.id) || getEmojiByLabel(yourMood?.label) || emojis[0]}
-                    partnerMood={partnerMood ? (getEmojiById(partnerMood.id) || getEmojiByLabel(partnerMood.label)) : null}
-                    partnerName={userData?.partnerUsername || partnerName || 'Your Love'}
-                    onMoodSelect={(mood) => {
-                        setMoodPreview(null);
-                        setIsMoodRefreshPrompt(false);
-                        onMoodSelect?.(mood);
-                        setIsMoodVisible(false);
-                    }}
-                    onMoodPreview={setMoodPreview}
-                    onBack={closeMoodPicker}
-                    isRefreshPrompt={isMoodRefreshPrompt}
-                    moodUpdatedAt={yourMood?.updatedAt}
-                />
+                {isMoodVisible && callState !== CALL_STATE.INCOMING && (
+                    <MoodScreen
+                        currentMood={getEmojiById(yourMood?.id) || getEmojiByLabel(yourMood?.label) || emojis[0]}
+                        partnerMood={partnerMood ? (getEmojiById(partnerMood.id) || getEmojiByLabel(partnerMood.label)) : null}
+                        partnerName={userData?.partnerUsername || partnerName || 'Your Love'}
+                        onMoodSelect={(mood) => {
+                            setMoodPreview(null);
+                            setIsMoodRefreshPrompt(false);
+                            onMoodSelect?.(mood);
+                            setIsMoodVisible(false);
+                        }}
+                        onMoodPreview={setMoodPreview}
+                        onBack={closeMoodPicker}
+                        isRefreshPrompt={isMoodRefreshPrompt}
+                        moodUpdatedAt={yourMood?.updatedAt}
+                    />
+                )}
             </Modal>
         </View>
     );
