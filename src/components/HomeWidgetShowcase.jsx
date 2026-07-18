@@ -8,8 +8,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import CouplePhotoCard from './CouplePhotoCard';
 
 const DISTANCE_STEPS = [
     'Our distance: 1,000 km',
@@ -45,31 +47,6 @@ const HeartIcon = ({ color = '#FF758F', size = 16, style }) => (
     </Svg>
 );
 
-const LockIcon = ({ color = '#FF758F', size = 11, style }) => (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
-        <Path
-            d="M8 10V7a4 4 0 0 1 8 0v3"
-            stroke={color}
-            strokeWidth={3.0}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-        <Path
-            d="M5 10h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z"
-            stroke={color}
-            strokeWidth={3.0}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-        <Path
-            d="M12 14v3"
-            stroke={color}
-            strokeWidth={3.0}
-            strokeLinecap="round"
-        />
-    </Svg>
-);
-
 const WidgetShowcaseHeader = ({ children }) => (
     <ShowcaseText style={styles.widgetShowcaseTitle} numberOfLines={1}>
         {children}
@@ -91,7 +68,38 @@ const getElapsedSeconds = (startDate) => {
     return Math.max(0, Math.floor((Date.now() - startTime) / 1000));
 };
 
-const DistanceShowcaseCard = () => {
+const getTogetherDuration = (startDate) => {
+    const start = new Date(startDate);
+    if (!startDate || Number.isNaN(start.getTime())) return 'Start your story';
+
+    const now = new Date();
+    const startDay = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+    const nowDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    if (startDay > nowDay) return 'Starting today';
+
+    let totalMonths = (now.getFullYear() - start.getFullYear()) * 12
+        + now.getMonth() - start.getMonth();
+    if (now.getDate() < start.getDate()) totalMonths -= 1;
+    totalMonths = Math.max(0, totalMonths);
+
+    const anchorYear = start.getFullYear() + Math.floor((start.getMonth() + totalMonths) / 12);
+    const anchorMonth = (start.getMonth() + totalMonths) % 12;
+    const lastAnchorDay = new Date(anchorYear, anchorMonth + 1, 0).getDate();
+    const anchor = Date.UTC(anchorYear, anchorMonth, Math.min(start.getDate(), lastAnchorDay));
+    const remainingDays = Math.max(0, Math.floor((nowDay - anchor) / 86400000));
+    const years = Math.floor(totalMonths / 12);
+    const months = totalMonths % 12;
+
+    if (years > 0) {
+        return `${years} ${years === 1 ? 'year' : 'years'}, ${months} ${months === 1 ? 'month' : 'months'}`;
+    }
+    if (totalMonths > 0) {
+        return `${totalMonths} ${totalMonths === 1 ? 'month' : 'months'}, ${remainingDays} ${remainingDays === 1 ? 'day' : 'days'}`;
+    }
+    return `${remainingDays} ${remainingDays === 1 ? 'day' : 'days'}`;
+};
+
+const DistanceShowcaseCard = ({ isLocationSetup = false }) => {
     const animationProgress = useMemo(() => new Animated.Value(0), []);
     const [distanceText, setDistanceText] = useState(DISTANCE_STEPS[0]);
 
@@ -133,19 +141,19 @@ const DistanceShowcaseCard = () => {
 
     const leftTranslate = animationProgress.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 54.5],
+        outputRange: [0, 28],
     });
     const rightTranslate = animationProgress.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, -54.5],
+        outputRange: [0, -28],
     });
     const dashLeft = animationProgress.interpolate({
         inputRange: [0, 1],
-        outputRange: [30, 84.5],
+        outputRange: [25, 53],
     });
     const dashRight = animationProgress.interpolate({
         inputRange: [0, 1],
-        outputRange: [30, 84.5],
+        outputRange: [25, 53],
     });
     const heartScale = animationProgress.interpolate({
         inputRange: [0, 0.72, 1],
@@ -153,14 +161,21 @@ const DistanceShowcaseCard = () => {
     });
 
     return (
-        <View style={[styles.widgetShowcaseCard, styles.distanceShowcaseCard]}>
-            <View style={styles.cardHeaderRow}>
+        <LinearGradient
+            colors={['#FFF7FA', '#FFE4EF', '#F2E8FF']}
+            locations={[0, 0.58, 1]}
+            start={{ x: 0.08, y: 0 }}
+            end={{ x: 0.94, y: 1 }}
+            style={[styles.widgetShowcaseCard, styles.distanceShowcaseCard]}
+        >
+            <View style={styles.distanceHeader}>
                 <WidgetShowcaseHeader>Our Distance</WidgetShowcaseHeader>
-                <LockIcon size={11.5} color="#FF758F" style={styles.lockIcon} />
             </View>
-            <View style={styles.cardHeaderDivider} />
+            <View style={[styles.cardHeaderDivider, styles.distanceHeaderDivider]} />
             <View style={styles.distanceShowcaseCenterTrack}>
-                <ShowcaseText style={styles.distanceShowcaseValue} numberOfLines={1}>{distanceText}</ShowcaseText>
+                <ShowcaseText style={styles.distanceShowcaseValue} numberOfLines={1}>
+                    {isLocationSetup ? distanceText : 'See how close you are'}
+                </ShowcaseText>
                 <View style={styles.distanceShowcaseTrack}>
                     <Animated.View style={[styles.distanceShowcaseDash, { left: dashLeft, right: dashRight }]} />
                     <Animated.View style={[styles.distanceShowcaseLeft, { transform: [{ translateX: leftTranslate }] }]}>
@@ -173,91 +188,86 @@ const DistanceShowcaseCard = () => {
                         <WidgetInitial label="?" />
                     </Animated.View>
                 </View>
+                {!isLocationSetup && (
+                    <ShowcaseText style={styles.distanceSetupText}>Tap to set up</ShowcaseText>
+                )}
             </View>
-        </View>
+        </LinearGradient>
     );
 };
 
-const TimeTogetherShowcaseCard = ({ relationshipStartDate }) => {
-    const [elapsed, setElapsed] = useState(() => getElapsedSeconds(relationshipStartDate));
-
-    useEffect(() => {
-        setElapsed(getElapsedSeconds(relationshipStartDate));
-
-        const interval = setInterval(() => {
-            setElapsed(getElapsedSeconds(relationshipStartDate));
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [relationshipStartDate]);
-
-    const values = useMemo(() => ({
-        days: Math.floor(elapsed / 86400),
-        hr: Math.floor((elapsed % 86400) / 3600),
-        min: Math.floor((elapsed % 3600) / 60),
-        sec: elapsed % 60,
-    }), [elapsed]);
+const TimeTogetherShowcaseCard = ({ relationshipStartDate, daysTogether = 0 }) => {
+    const elapsedDays = Math.floor(getElapsedSeconds(relationshipStartDate) / 86400);
+    const duration = getTogetherDuration(relationshipStartDate);
 
     return (
         <View style={[styles.widgetShowcaseCard, styles.timeShowcaseCard]}>
-            <WidgetShowcaseHeader>Time Together</WidgetShowcaseHeader>
-            <View style={styles.cardHeaderDivider} />
-            <View style={styles.timeShowcaseGrid}>
-                <View style={styles.timeShowcaseBlock}>
-                    <ShowcaseText style={styles.timeShowcaseValue} numberOfLines={1}>{values.days}</ShowcaseText>
-                    <ShowcaseText style={styles.timeShowcaseLabel}>days</ShowcaseText>
+            <View style={styles.togetherComposition}>
+                <View style={styles.togetherDurationPlate}>
+                    <View style={styles.togetherDurationHeading}>
+                        <ShowcaseText style={styles.togetherDurationEyebrow}>together for</ShowcaseText>
+                        <HeartIcon size={12} color="#FFFFFF" />
+                    </View>
+                    <ShowcaseText
+                        style={styles.togetherDurationValue}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.72}
+                    >
+                        {duration}
+                    </ShowcaseText>
                 </View>
-                <View style={styles.timeShowcaseBlock}>
-                    <ShowcaseText style={styles.timeShowcaseValue}>{String(values.hr).padStart(2, '0')}</ShowcaseText>
-                    <ShowcaseText style={styles.timeShowcaseLabel}>hr</ShowcaseText>
-                </View>
-                <View style={styles.timeShowcaseBlock}>
-                    <ShowcaseText style={styles.timeShowcaseValue}>{String(values.min).padStart(2, '0')}</ShowcaseText>
-                    <ShowcaseText style={styles.timeShowcaseLabel}>min</ShowcaseText>
-                </View>
-                <View style={styles.timeShowcaseBlock}>
-                    <ShowcaseText style={styles.timeShowcaseValue}>{String(values.sec).padStart(2, '0')}</ShowcaseText>
-                    <ShowcaseText style={styles.timeShowcaseLabel}>sec</ShowcaseText>
+                <View style={styles.togetherDaysOrb}>
+                    <ShowcaseText style={styles.togetherDaysValue}>{daysTogether || elapsedDays}</ShowcaseText>
+                    <View style={styles.togetherDaysLabelRow}>
+                        <ShowcaseText style={styles.togetherDaysLabel}>days</ShowcaseText>
+                        <HeartIcon size={10} color="#FFFFFF" />
+                    </View>
                 </View>
             </View>
         </View>
     );
 };
 
-const DaysTogetherShowcaseCard = ({ daysTogether = 0 }) => (
-    <View style={[styles.widgetShowcaseCard, styles.daysShowcaseCard]}>
-        <WidgetShowcaseHeader>Days Together</WidgetShowcaseHeader>
-        <View style={styles.cardHeaderDivider} />
-        <View style={styles.daysShowcaseCenter}>
-            <View style={styles.daysShowcaseCircle}>
-                <HeartIcon size={16} color="#FFFFFF" />
-                <ShowcaseText style={styles.daysShowcaseValue}>{daysTogether}</ShowcaseText>
-                <ShowcaseText style={styles.daysShowcaseLabel}>days</ShowcaseText>
-            </View>
-        </View>
-    </View>
-);
-
-const HomeWidgetShowcase = ({ onPress, relationshipStartDate, daysTogether = 0 }) => (
+const HomeWidgetShowcase = ({
+    onPress,
+    relationshipStartDate,
+    daysTogether = 0,
+    hasPartner = false,
+    partnerName,
+    partnerPhoto,
+    myPhoto,
+    onFindPartner,
+    onOpenPhotoCapture,
+    isLocationSetup = false,
+    onDistancePress,
+}) => (
     <View style={styles.widgetShowcaseSection}>
         <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.widgetShowcaseScroll}
         >
-            <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.widgetShowcasePressable}>
-                <View style={[styles.widgetShowcaseCardShell, styles.distanceShowcaseShadow]}>
-                    <DistanceShowcaseCard />
-                </View>
+            <CouplePhotoCard
+                hasPartner={hasPartner}
+                partnerName={partnerName}
+                partnerPhoto={partnerPhoto}
+                myPhoto={myPhoto}
+                onFindPartner={onFindPartner}
+                onOpenCapture={onOpenPhotoCapture}
+            />
+            <TouchableOpacity
+                activeOpacity={0.92}
+                onPress={onDistancePress || onPress}
+                style={[styles.widgetShowcasePressable, styles.distanceShowcaseShadow]}
+                accessibilityRole="button"
+                accessibilityLabel={isLocationSetup ? 'Open distance widgets' : 'Set up location for Our Distance'}
+            >
+                <DistanceShowcaseCard isLocationSetup={isLocationSetup} />
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.widgetShowcasePressable}>
                 <View style={[styles.widgetShowcaseCardShell, styles.timeShowcaseShadow]}>
-                    <TimeTogetherShowcaseCard relationshipStartDate={relationshipStartDate} />
-                </View>
-            </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.widgetShowcasePressable}>
-                <View style={[styles.widgetShowcaseCardShell, styles.daysShowcaseShadow]}>
-                    <DaysTogetherShowcaseCard daysTogether={daysTogether} />
+                    <TimeTogetherShowcaseCard relationshipStartDate={relationshipStartDate} daysTogether={daysTogether} />
                 </View>
             </TouchableOpacity>
         </ScrollView>
@@ -279,47 +289,54 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     widgetShowcasePressable: {
-        borderRadius: 18,
+        borderRadius: 24,
     },
     widgetShowcaseCardShell: {
-        borderRadius: 18,
+        borderRadius: 24,
         backgroundColor: '#FFF0F3',
         ...cardShadow,
     },
     widgetShowcaseCard: {
-        width: 184,
-        height: 100,
-        borderRadius: 18,
+        width: 160,
+        height: 160,
+        borderRadius: 24,
         paddingHorizontal: 14,
-        paddingVertical: 8,
+        paddingVertical: 11,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: '#FFFFFF',
     },
     distanceShowcaseCard: {
-        width: 236,
         backgroundColor: '#FFF0F3',
+        paddingHorizontal: 0,
+        paddingVertical: 0,
+    },
+    distanceHeader: {
+        height: 37,
+        justifyContent: 'center',
+        paddingHorizontal: 14,
+    },
+    distanceHeaderDivider: {
+        marginHorizontal: 0,
+        marginTop: 0,
+        marginBottom: 0,
     },
     timeShowcaseCard: {
-        backgroundColor: '#FFF0F3',
-    },
-    daysShowcaseCard: {
-        width: 130,
-        backgroundColor: '#FFF0F3',
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+        backgroundColor: '#FAD8E6',
     },
     distanceShowcaseShadow: {
+        ...cardShadow,
         shadowColor: '#FF9FBE',
     },
     timeShowcaseShadow: {
         shadowColor: '#FF9FBE',
     },
-    daysShowcaseShadow: {
-        shadowColor: '#FF9FBE',
-    },
     widgetShowcaseTitle: {
         color: '#FF758F',
-        fontSize: 11,
-        lineHeight: 14,
+        fontSize: 12,
+        lineHeight: 15,
         fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
     },
@@ -352,39 +369,43 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
         marginTop: 0,
+        paddingHorizontal: 12,
+        paddingBottom: 8,
+        zIndex: 1,
     },
     distanceShowcaseValue: {
         color: '#2E1E3C',
-        fontSize: 11.5,
-        lineHeight: 15,
+        fontSize: 13,
+        lineHeight: 17,
         fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
         textAlign: 'center',
-        marginBottom: 2,
+        marginBottom: 7,
     },
     distanceShowcaseTrack: {
         width: '100%',
-        height: 34,
+        height: 44,
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
     },
     distanceShowcaseDash: {
         position: 'absolute',
-        top: 18,
-        borderTopWidth: 4,
-        borderColor: '#FF5A9A',
+        top: 21,
+        borderTopWidth: 3,
+        borderColor: 'rgba(217, 78, 134, 0.48)',
+        borderStyle: 'dashed',
         borderRadius: 4,
     },
     distanceShowcaseLeft: {
         position: 'absolute',
         left: 0,
-        top: 3,
+        top: 5,
     },
     distanceShowcaseRight: {
         position: 'absolute',
         right: 0,
-        top: 3,
+        top: 5,
     },
     distanceHeartCluster: {
         width: 28,
@@ -393,73 +414,89 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         zIndex: 2,
     },
-    timeShowcaseGrid: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 0,
-    },
-    timeShowcaseBlock: {
-        minWidth: 34,
-        alignItems: 'center',
-    },
-    timeShowcaseValue: {
-        color: '#2E1E3C',
-        fontSize: 15,
-        lineHeight: 18,
-        fontWeight: fontWeight('900'),
-        fontFamily: fontFamily.extraBold,
-        letterSpacing: 0,
-    },
-    timeShowcaseLabel: {
-        color: '#766F9B',
-        fontSize: 9,
-        fontWeight: fontWeight('800'),
+    distanceSetupText: {
+        color: '#D94E86',
+        fontSize: 10,
+        lineHeight: 13,
         fontFamily: fontFamily.bold,
-        marginTop: 2,
+        fontWeight: fontWeight('800'),
     },
-    daysShowcaseCenter: {
+    togetherComposition: {
         flex: 1,
+        position: 'relative',
+    },
+    togetherDaysOrb: {
+        position: 'absolute',
+        left: 4,
+        top: 1,
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        zIndex: 2,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingTop: 2,
+        backgroundColor: '#E98DAF',
+        borderWidth: 4,
+        borderColor: '#FFFFFF',
+        shadowColor: '#B54E78',
+        shadowOpacity: 0.22,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 4 },
     },
-    daysShowcaseCircle: {
-        marginTop: 0,
-        width: 54,
-        height: 54,
-        borderRadius: 27,
-        backgroundColor: 'rgba(46,30,60,0.38)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.24)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    daysShowcaseValue: {
-        marginTop: 1,
+    togetherDaysValue: {
         color: '#FFFFFF',
-        fontSize: 13,
-        lineHeight: 15,
+        fontSize: 20,
+        lineHeight: 22,
         fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
-        letterSpacing: 0,
     },
-    daysShowcaseLabel: {
-        color: 'rgba(255,255,255,0.86)',
-        fontSize: 8,
-        lineHeight: 10,
-        fontWeight: fontWeight('800'),
-        fontFamily: fontFamily.bold,
-        marginTop: 0,
-    },
-    cardHeaderRow: {
+    togetherDaysLabelRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        gap: 3,
     },
-    lockIcon: {
-        marginTop: -0.5,
+    togetherDaysLabel: {
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 10,
+        lineHeight: 12,
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+    },
+    togetherDurationPlate: {
+        position: 'absolute',
+        left: 18,
+        right: 0,
+        bottom: 4,
+        minHeight: 72,
+        borderRadius: 20,
+        justifyContent: 'center',
+        paddingLeft: 18,
+        paddingRight: 9,
+        paddingTop: 9,
+        backgroundColor: '#F1A9C3',
+        borderWidth: 4,
+        borderColor: '#FFFFFF',
+        transform: [{ rotate: '-1.5deg' }],
+    },
+    togetherDurationHeading: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+    togetherDurationEyebrow: {
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 10,
+        lineHeight: 12,
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+    },
+    togetherDurationValue: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        lineHeight: 14,
+        fontFamily: fontFamily.extraBold,
+        fontWeight: fontWeight('900'),
+        marginTop: 3,
     },
 });
 

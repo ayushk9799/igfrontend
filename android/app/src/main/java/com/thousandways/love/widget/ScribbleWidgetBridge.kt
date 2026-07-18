@@ -12,6 +12,8 @@ import com.facebook.react.bridge.*
 import com.google.android.gms.location.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.net.URL
 
 /**
  * ScribbleWidgetBridge - React Native native module for Android widget
@@ -114,6 +116,57 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
     private fun refreshAllWidgetsInternal() {
         refreshScribbleWidgetInternal()
         refreshRelationshipWidgetsInternal()
+        refreshProvider(CouplePhotoWidgetProvider::class.java)
+    }
+
+    @ReactMethod
+    fun savePartnerPhoto(imageUrl: String, metadata: ReadableMap, promise: Promise) {
+        Thread {
+            try {
+                val revision = if (metadata.hasKey("revision")) metadata.getDouble("revision").toLong() else System.currentTimeMillis()
+                val prefs = reactContext.getSharedPreferences(ScribbleWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
+                val existingRevision = prefs.getLong(CouplePhotoWidgetProvider.KEY_REVISION, 0L)
+                if (revision < existingRevision) {
+                    promise.resolve(true)
+                    return@Thread
+                }
+
+                val connection = URL(imageUrl).openConnection().apply {
+                    connectTimeout = 15000
+                    readTimeout = 20000
+                    useCaches = false
+                }
+                connection.getInputStream().use { input ->
+                    File(reactContext.filesDir, CouplePhotoWidgetProvider.PHOTO_FILE_NAME).outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                prefs.edit()
+                    .putString(CouplePhotoWidgetProvider.KEY_SENDER_NAME, metadata.getString("senderName") ?: "Your partner")
+                    .putLong(CouplePhotoWidgetProvider.KEY_REVISION, revision)
+                    .apply()
+                refreshProvider(CouplePhotoWidgetProvider::class.java)
+                promise.resolve(true)
+            } catch (error: Exception) {
+                promise.reject("ERROR", "Failed to cache partner photo: ${error.message}", error)
+            }
+        }.start()
+    }
+
+    @ReactMethod
+    fun clearPartnerPhoto(promise: Promise) {
+        try {
+            File(reactContext.filesDir, CouplePhotoWidgetProvider.PHOTO_FILE_NAME).delete()
+            reactContext.getSharedPreferences(ScribbleWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .remove(CouplePhotoWidgetProvider.KEY_SENDER_NAME)
+                .remove(CouplePhotoWidgetProvider.KEY_REVISION)
+                .apply()
+            refreshProvider(CouplePhotoWidgetProvider::class.java)
+            promise.resolve(true)
+        } catch (error: Exception) {
+            promise.reject("ERROR", "Failed to clear partner photo: ${error.message}", error)
+        }
     }
 
     @ReactMethod

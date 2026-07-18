@@ -2,7 +2,7 @@ import { NativeModules, Platform } from 'react-native';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 
-const WIDGET_TYPES = ['scribble', 'togetherDays', 'togetherCountdown', 'distance'];
+const WIDGET_TYPES = ['scribble', 'togetherDays', 'togetherCountdown', 'distance', 'couplePhoto'];
 
 const getUserId = (user) => user?._id || user?.id || null;
 

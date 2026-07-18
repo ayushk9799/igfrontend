@@ -5,6 +5,8 @@ import { AppState, NativeModules, Platform } from 'react-native';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 import { setAuthErrorHandler } from '../utils/apiFetch';
+import { fetchCurrentCouplePhotos } from '../api/couplePhotoApi';
+import { clearCouplePhotoWidget, syncCouplePhotoWidget } from '../utils/couplePhotoWidget';
 
 // Create context
 const SocketContext = createContext(null);
@@ -78,9 +80,35 @@ export const SocketProvider = ({ children }) => {
     const [moodHistory, setMoodHistory] = useState([]);
     const [partnerMoodHistory, setPartnerMoodHistory] = useState([]);
     const [partnerScribble, setPartnerScribble] = useState(null); // Partner's scribble
+    const [myCurrentPhoto, setMyCurrentPhoto] = useState(null);
+    const [partnerCurrentPhoto, setPartnerCurrentPhoto] = useState(null);
     const socketRef = useRef(null);
     const appState = useRef(AppState.currentState);
     const onMoodUpdatedRef = useRef(null); // Callback for when mood is updated
+
+    const refreshCurrentPhotos = useCallback(async () => {
+        const currentUser = getUser();
+        const currentUserId = currentUser?.id || currentUser?._id;
+        if (!currentUserId) {
+            setMyCurrentPhoto(null);
+            setPartnerCurrentPhoto(null);
+            clearCouplePhotoWidget();
+            return;
+        }
+
+        try {
+            const photos = await fetchCurrentCouplePhotos(currentUserId);
+            setMyCurrentPhoto(photos?.myPhoto || null);
+            setPartnerCurrentPhoto(photos?.partnerPhoto || null);
+            if (photos?.partnerPhoto) {
+                syncCouplePhotoWidget(photos.partnerPhoto, currentUser.partnerUsername || 'Your partner');
+            } else {
+                clearCouplePhotoWidget();
+            }
+        } catch (error) {
+            console.warn('Failed to refresh couple photos:', error?.message || error);
+        }
+    }, []);
 
     // Initialize socket connection
     const connect = useCallback(() => {
@@ -94,6 +122,7 @@ export const SocketProvider = ({ children }) => {
         if (socketRef.current?.connected) {
             // If the connected userId matches the current user, we're good
             if (socketRef.current.auth?.userId === userId) {
+                refreshCurrentPhotos();
                 return;
             }
             // Otherwise, we have a stale connection (e.g. after logout/login)
@@ -127,6 +156,7 @@ export const SocketProvider = ({ children }) => {
             socketInstance.emit('mood:getHistory', { days: 31 });
             socketInstance.emit('mood:getPartnerHistory', { days: 31 });
             socketInstance.emit('scribble:getPartner'); // Fetch partner's scribble
+            refreshCurrentPhotos();
         });
 
         socketInstance.on('disconnect', (reason) => {
@@ -271,6 +301,16 @@ export const SocketProvider = ({ children }) => {
             console.error('❌ Scribble error:', data.message);
         });
 
+        socketInstance.on('couple-photo:updated', (data = {}) => {
+            if (!data.photo?.ownerId) return;
+            if (String(data.photo.ownerId) === String(userId)) {
+                setMyCurrentPhoto(data.photo);
+            } else {
+                setPartnerCurrentPhoto(data.photo);
+                syncCouplePhotoWidget(data.photo, data.senderName || 'Your partner');
+            }
+        });
+
         // Scribble loaded from DB (partner's scribble sent when user was offline)
         socketInstance.on('scribble:partnerScribble', (data) => {
             if (data.hasScribble && data.paths && data.paths.length > 0) {
@@ -287,7 +327,7 @@ export const SocketProvider = ({ children }) => {
 
         socketRef.current = socketInstance;
         setSocket(socketInstance);
-    }, []);
+    }, [refreshCurrentPhotos]);
 
     // Disconnect socket
     const disconnect = useCallback(() => {
@@ -305,6 +345,7 @@ export const SocketProvider = ({ children }) => {
             if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
                 // App came to foreground - reconnect if disconnected
                 connect();
+                refreshCurrentPhotos();
             } else if (nextAppState.match(/inactive|background/)) {
                 // App went to background - could optionally disconnect
                 // We keep the connection alive for push-like behavior
@@ -315,7 +356,7 @@ export const SocketProvider = ({ children }) => {
         return () => {
             subscription?.remove();
         };
-    }, [connect]);
+    }, [connect, refreshCurrentPhotos]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -346,10 +387,13 @@ export const SocketProvider = ({ children }) => {
         moodHistory,
         partnerMoodHistory,
         partnerScribble,
+        myCurrentPhoto,
+        partnerCurrentPhoto,
         connect,
         disconnect,
         setOnMoodUpdated,
         refreshMoodHistory,
+        refreshCurrentPhotos,
     };
 
     return (
@@ -376,10 +420,13 @@ export const useSocketContext = () => {
             moodHistory: [],
             partnerMoodHistory: [],
             partnerScribble: null,
+            myCurrentPhoto: null,
+            partnerCurrentPhoto: null,
             connect: () => { },
             disconnect: () => { },
             setOnMoodUpdated: () => { },
             refreshMoodHistory: () => { },
+            refreshCurrentPhotos: () => { },
         };
     }
     return context;

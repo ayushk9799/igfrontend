@@ -169,6 +169,8 @@ const HomeScreen = ({
     yourMood = null,
     partnerMood = null,
     partnerScribble = null,
+    partnerCurrentPhoto = null,
+    myCurrentPhoto = null,
     todayChallenge = null,
     relationshipStartDate = null,
     daysTogether = 0,
@@ -184,6 +186,10 @@ const HomeScreen = ({
     onWidgetsPress,
     onVideoCallPress,
     partnerOnline = false,
+    partnerName = 'Your partner',
+    onPartnerPhotoPress,
+    isLocationSetup = false,
+    onDistanceSetupPress,
 }) => {
     const { width } = useWindowDimensions();
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
@@ -599,6 +605,14 @@ const HomeScreen = ({
                         onPress={onWidgetsPress}
                         relationshipStartDate={relationshipStartDate}
                         daysTogether={daysTogether}
+                        hasPartner={hasPartner}
+                        partnerName={partnerName}
+                        partnerPhoto={partnerCurrentPhoto}
+                        myPhoto={myCurrentPhoto}
+                        onFindPartner={onFindPartner}
+                        onOpenPhotoCapture={onPartnerPhotoPress}
+                        isLocationSetup={isLocationSetup}
+                        onDistancePress={onDistanceSetupPress || onWidgetsPress}
                     />
 
                     <View style={styles.sectionHeader}>

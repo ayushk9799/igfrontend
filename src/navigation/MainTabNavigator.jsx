@@ -15,6 +15,7 @@ import NotificationCenterScreen from '../screens/NotificationCenterScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import MoodScreen from '../screens/MoodScreen';
 import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
+import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
@@ -27,6 +28,7 @@ import { API_BASE } from '../constants/Api';
 import { getCoupleTodayChallenge } from '../utils/answerApi';
 import { useCall } from '../calling/CallContext';
 import { CALL_STATE } from '../calling/callConstants';
+import { sendCurrentCouplePhoto } from '../api/couplePhotoApi';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -75,6 +77,7 @@ export const MainTabNavigator = ({
     const [isScribbleLiveFullscreen, setIsScribbleLiveFullscreen] = useState(false);
     const [tabBarRenderKey, setTabBarRenderKey] = useState(0);
     const [openScribbleLiveMode, setOpenScribbleLiveMode] = useState(false);
+    const [openDistanceSetup, setOpenDistanceSetup] = useState(false);
     const lastAutoOpenedMoodRef = React.useRef(null);
     const currentTabRef = useRef(currentTab);
 
@@ -186,10 +189,25 @@ export const MainTabNavigator = ({
     const duelBadgeCount = useSelector(selectDuelBadgeCount);
 
     // Socket context for real-time data
-    const { socket, partnerMood, partnerScribble, partnerOnline } = useSocketContext();
+    const {
+        socket,
+        partnerMood,
+        partnerScribble,
+        partnerOnline,
+        myCurrentPhoto,
+        partnerCurrentPhoto,
+        refreshCurrentPhotos,
+    } = useSocketContext();
     const { startCall, callState, expandCall } = useCall();
     const callActive = callState !== CALL_STATE.IDLE;
     const handleCallPress = callActive ? expandCall : startCall;
+
+    const handleSendCouplePhoto = useCallback(async (asset) => {
+        const userId = userData?._id || userData?.id;
+        if (!userId) throw new Error('Please sign in again');
+        await sendCurrentCouplePhoto({ userId, asset });
+        await refreshCurrentPhotos();
+    }, [refreshCurrentPhotos, userData]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -202,6 +220,7 @@ export const MainTabNavigator = ({
     useEffect(() => {
         if (
             !canAutoOpenMoodPrompt ||
+            callActive ||
             currentTab !== 'home' ||
             !hasPartner ||
             isMoodVisible ||
@@ -217,7 +236,7 @@ export const MainTabNavigator = ({
         lastAutoOpenedMoodRef.current = yourMood.updatedAt;
         setIsMoodRefreshPrompt(true);
         setIsMoodVisible(true);
-    }, [canAutoOpenMoodPrompt, currentTab, hasPartner, isMoodVisible, moodRefreshNow, yourMood]);
+    }, [callActive, canAutoOpenMoodPrompt, currentTab, hasPartner, isMoodVisible, moodRefreshNow, yourMood]);
 
     const openMoodPicker = useCallback(() => {
         setIsMoodRefreshPrompt(false);
@@ -229,6 +248,16 @@ export const MainTabNavigator = ({
         setIsMoodRefreshPrompt(false);
         setIsMoodVisible(false);
     }, []);
+
+    useEffect(() => {
+        if (callState !== CALL_STATE.INCOMING) return;
+
+        // Native React Native modals cannot reliably stack on iOS. Release any
+        // tab-level modal before the global incoming-call sheet is presented.
+        closeMoodPicker();
+        setIsNotificationVisible(false);
+        setIsPremiumOpenInAccount(false);
+    }, [callState, closeMoodPicker]);
 
     // Fetch unread chat count
     const fetchChatBadge = useCallback(async () => {
@@ -269,8 +298,9 @@ export const MainTabNavigator = ({
     useEffect(() => {
         if (currentTab === 'home') {
             fetchTodayChallenge();
+            refreshCurrentPhotos();
         }
-    }, [fetchTodayChallenge, currentTab]);
+    }, [fetchTodayChallenge, currentTab, refreshCurrentPhotos]);
 
     // Listen for new chat messages to update badge
     useEffect(() => {
@@ -325,6 +355,8 @@ export const MainTabNavigator = ({
                         yourMood={moodPreview || yourMood}
                         partnerMood={partnerMood}
                         partnerScribble={partnerScribble}
+                        partnerCurrentPhoto={partnerCurrentPhoto}
+                        myCurrentPhoto={myCurrentPhoto}
                         todayChallenge={todayChallenge}
                         relationshipStartDate={
                             userData?.relationshipStartDate
@@ -373,6 +405,21 @@ export const MainTabNavigator = ({
                         onWidgetsPress={() => setCurrentTab('widgetsLibrary')}
                         onVideoCallPress={handleCallPress}
                         partnerOnline={partnerOnline}
+                        partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
+                        onPartnerPhotoPress={() => setCurrentTab('partnerPhotoCapture')}
+                        isLocationSetup={userData?.locationSharingEnabled === true}
+                        onDistanceSetupPress={() => {
+                            setOpenDistanceSetup(userData?.locationSharingEnabled !== true);
+                            setCurrentTab('widgetsLibrary');
+                        }}
+                    />
+                );
+            case 'partnerPhotoCapture':
+                return (
+                    <CouplePhotoCaptureScreen
+                        partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
+                        onSendPhoto={handleSendCouplePhoto}
+                        onBack={() => setCurrentTab('home')}
                     />
                 );
             case 'memories':
@@ -391,6 +438,8 @@ export const MainTabNavigator = ({
                         isPremium={hasPremiumAccess}
                         onNavigateToPremium={onPremiumPress}
                         onBack={() => handleBottomTabChange('home')}
+                        openDistanceSetup={openDistanceSetup}
+                        onDistanceSetupHandled={() => setOpenDistanceSetup(false)}
                     />
                 );
             case 'canvas':
@@ -494,7 +543,7 @@ export const MainTabNavigator = ({
     return (
         <View style={styles.container}>
             {renderScreen()}
-            {!isScribbleLiveFullscreen && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge'].includes(currentTab) && (
+            {!isScribbleLiveFullscreen && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab) && (
                 <BottomTabBar
                     key={tabBarRenderKey}
                     currentTab={currentTab}
@@ -584,8 +633,8 @@ export const MainTabNavigator = ({
             </Modal>
 
             <Modal
-                visible={isMoodVisible}
-                animationType="slide"
+                visible={isMoodVisible && callState !== CALL_STATE.INCOMING}
+                animationType={callState === CALL_STATE.INCOMING ? 'none' : 'slide'}
                 transparent={true}
                 statusBarTranslucent={true}
                 onRequestClose={closeMoodPicker}

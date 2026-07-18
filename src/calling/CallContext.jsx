@@ -115,6 +115,19 @@ export const CallProvider = ({ children }) => {
         return localStreamRef.current;
     }, []);
 
+    const stopCallSounds = useCallback(() => {
+        try {
+            InCallManager.stopRingback();
+        } catch (error) {
+            // Ringback may not have started on this device.
+        }
+        try {
+            InCallManager.stopRingtone();
+        } catch (error) {
+            // Ringtone may not have started on this device.
+        }
+    }, []);
+
     const stopMedia = useCallback(() => {
         if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
         if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
@@ -135,6 +148,7 @@ export const CallProvider = ({ children }) => {
     }, []);
 
     const resetCall = useCallback(() => {
+        stopCallSounds();
         stopMedia();
         activeCallRef.current = null;
         setActiveCall(null);
@@ -153,7 +167,7 @@ export const CallProvider = ({ children }) => {
         finishingRef.current = false;
         pendingOutgoingRef.current = false;
         settingsDeviceRef.current = null;
-    }, [stopMedia]);
+    }, [stopCallSounds, stopMedia]);
 
     const sendDiagnostic = useCallback(async ({ outcome, failureCode }) => {
         const call = activeCallRef.current;
@@ -199,6 +213,7 @@ export const CallProvider = ({ children }) => {
     } = {}) => {
         if (finishingRef.current) return;
         finishingRef.current = true;
+        stopCallSounds();
         const call = activeCallRef.current;
 
         if (notifyServer && socket && call?.callId) {
@@ -207,7 +222,7 @@ export const CallProvider = ({ children }) => {
         await sendDiagnostic({ outcome, failureCode });
         resetCall();
         if (message) notifyError(message);
-    }, [notifyError, resetCall, sendDiagnostic, socket]);
+    }, [notifyError, resetCall, sendDiagnostic, socket, stopCallSounds]);
 
     const emitLocalMediaState = useCallback((overrides = {}) => {
         const callId = activeCallRef.current?.callId;
@@ -540,6 +555,7 @@ export const CallProvider = ({ children }) => {
     const acceptCall = useCallback(async () => {
         const call = activeCallRef.current;
         if (!call?.callId) return;
+        stopCallSounds();
         diagnosticRef.current = initialDiagnostic();
 
         // The caller prepares already-granted devices on the pre-call screen.
@@ -561,7 +577,7 @@ export const CallProvider = ({ children }) => {
             microphoneEnabled: audioTrackRef.current?.enabled === true,
             cameraEnabled: videoTrackRef.current?.enabled === true,
         });
-    }, [activateDevice, refreshPermissionStatuses, socket]);
+    }, [activateDevice, refreshPermissionStatuses, socket, stopCallSounds]);
 
     const rejectCall = useCallback(() => {
         const call = activeCallRef.current;
@@ -617,13 +633,19 @@ export const CallProvider = ({ children }) => {
 
     const toggleSpeaker = useCallback(async () => {
         if (isChangingAudioOutput) return;
+        const previous = speakerPreferenceRef.current;
         const next = !speakerPreferenceRef.current;
+
+        // Audio-route confirmation is intentionally delayed on iOS. Reflect the
+        // user's choice immediately and verify/retry the native route silently.
+        speakerPreferenceRef.current = next;
+        setIsSpeakerOn(next);
         setIsChangingAudioOutput(true);
         try {
             await applyConfirmedSpeakerRoute(next);
-            speakerPreferenceRef.current = next;
-            setIsSpeakerOn(next);
         } catch (error) {
+            speakerPreferenceRef.current = previous;
+            setIsSpeakerOn(previous);
             notifyError('The phone did not change its audio output.');
         } finally {
             setIsChangingAudioOutput(false);
@@ -658,6 +680,20 @@ export const CallProvider = ({ children }) => {
         });
         return () => subscription.remove();
     }, [activateDevice, emitLocalMediaState, refreshPermissionStatuses]);
+
+    useEffect(() => {
+        try {
+            if (callState === CALL_STATE.OUTGOING && activeCall?.callId) {
+                InCallManager.startRingback('_DEFAULT_');
+            } else if (callState === CALL_STATE.INCOMING) {
+                InCallManager.startRingtone('_DEFAULT_');
+            }
+        } catch (error) {
+            // A ringtone failure should not prevent the call from continuing.
+        }
+
+        return stopCallSounds;
+    }, [activeCall?.callId, callState, stopCallSounds]);
 
     const isCallAudioActive = [CALL_STATE.CONNECTING, CALL_STATE.CONNECTED].includes(callState);
     useEffect(() => {
@@ -694,18 +730,15 @@ export const CallProvider = ({ children }) => {
             try {
                 const desiredSpeaker = speakerPreferenceRef.current;
                 const result = await applySpeakerRoute(desiredSpeaker);
-                if (!cancelled) {
+                if (!cancelled && speakerPreferenceRef.current === desiredSpeaker) {
                     setIsSpeakerOn(result.speaker);
-                    setIsChangingAudioOutput(false);
                 }
             } catch (error) {
                 if (isFinalAttempt && !cancelled) {
-                    setIsChangingAudioOutput(false);
                     notifyError('The phone did not switch to loudspeaker.');
                 }
             }
         };
-        setIsChangingAudioOutput(true);
         reapplyRoute();
         const settleTimer = setTimeout(reapplyRoute, 500);
         const finalTimer = setTimeout(() => reapplyRoute(true), 1500);
@@ -806,6 +839,7 @@ export const CallProvider = ({ children }) => {
         const onAccepted = async data => {
             const call = activeCallRef.current;
             if (!call || data.callId !== call.callId || call.callerId !== userId) return;
+            stopCallSounds();
             try {
                 setRemoteMediaState(data.partnerMediaState || initialMediaState);
                 setCallState(CALL_STATE.CONNECTING);
@@ -889,7 +923,15 @@ export const CallProvider = ({ children }) => {
         socket.on('webrtc:answer', onAnswer);
         socket.on('webrtc:ice-candidate', onCandidate);
         socket.on('call:partner-media-state', onPartnerMediaState);
-        const onRejected = remoteFinish({ outcome: 'rejected', failureCode: 'partner_rejected', message: 'Your partner declined the call.' });
+        const onRejected = data => {
+            const call = activeCallRef.current;
+            if (!call || data.callId !== call.callId) return;
+            finishCall({
+                outcome: 'rejected',
+                failureCode: 'partner_rejected',
+                message: `${call.partnerName || 'Your partner'} declined the call.`,
+            });
+        };
         const onCancelled = remoteFinish({ outcome: 'cancelled', message: 'The call was cancelled.' });
         const onMissed = remoteFinish({ outcome: 'missed', failureCode: 'ring_timeout', message: 'The call was not answered.' });
         const onEnded = remoteFinish({ outcome: 'ended', failureCode: 'remote_ended', message: 'The call ended.' });
@@ -916,7 +958,7 @@ export const CallProvider = ({ children }) => {
             socket.off('call:busy', onError);
             socket.off('call:error', onError);
         };
-    }, [attachAnswerTracks, createPeerConnection, emitLocalMediaState, finishCall, flushPendingCandidates, refreshPermissionStatuses, socket, user.partnerAvatar, user.partnerAvatarThumbnail, user.partnerUsername, userId]);
+    }, [attachAnswerTracks, createPeerConnection, emitLocalMediaState, finishCall, flushPendingCandidates, refreshPermissionStatuses, socket, stopCallSounds, user.partnerAvatar, user.partnerAvatarThumbnail, user.partnerUsername, userId]);
 
     useEffect(() => () => stopMedia(), [stopMedia]);
 

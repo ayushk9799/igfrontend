@@ -11,4 +11,7 @@
     <string name="together_days_widget_description">Show your days together</string>
     <string name="together_countdown_widget_description">Show your time together</string>
     <string name="distance_widget_description">Show your distance from your partner</string>
+    <string name="couple_photo_widget_label">Partner Photo</string>
+    <string name="couple_photo_widget_description">See the latest photo from your partner</string>
+    <string name="couple_photo_empty">Send each other a moment</string>
 </resources>

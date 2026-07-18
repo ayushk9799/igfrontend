@@ -879,6 +879,7 @@ export const AppNavigator = () => {
                     break;
 
                 case 'mood_update':
+                case 'couple_photo':
                 case 'partner_paired':
                 case 'nudge':
                     openHomeTab('home');

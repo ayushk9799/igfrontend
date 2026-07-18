@@ -133,6 +133,69 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             rejecter("ERROR", "Failed to save scribble image: \(error.localizedDescription)", error)
         }
     }
+
+    @objc
+    func savePartnerPhoto(_ imageUrl: String, metadata: NSDictionary, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        guard let remoteURL = URL(string: imageUrl), let containerURL = getSharedContainerURL() else {
+            rejecter("ERROR", "Invalid partner photo URL or App Group", nil)
+            return
+        }
+
+        var request = URLRequest(url: remoteURL)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard error == nil,
+                  let http = response as? HTTPURLResponse,
+                  (200...299).contains(http.statusCode),
+                  let data = data,
+                  UIImage(data: data) != nil else {
+                rejecter("ERROR", "Failed to download partner photo", error)
+                return
+            }
+
+            do {
+                try data.write(to: containerURL.appendingPathComponent("partner_photo.jpg"), options: .atomic)
+                let photoMetadata: [String: Any] = [
+                    "senderName": metadata["senderName"] ?? "Your partner",
+                    "timestamp": metadata["timestamp"] ?? ISO8601DateFormatter().string(from: Date()),
+                    "revision": metadata["revision"] ?? Int(Date().timeIntervalSince1970 * 1000)
+                ]
+                let json = try JSONSerialization.data(withJSONObject: photoMetadata)
+                try json.write(to: containerURL.appendingPathComponent("partner_photo.json"), options: .atomic)
+                DispatchQueue.main.async {
+                    WidgetCenter.shared.reloadTimelines(ofKind: "CouplePhotoWidget")
+                    WidgetCenter.shared.reloadAllTimelines()
+                    resolver(true)
+                }
+            } catch {
+                rejecter("ERROR", "Failed to cache partner photo: \(error.localizedDescription)", error)
+            }
+        }.resume()
+    }
+
+    @objc
+    func clearPartnerPhoto(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        guard let containerURL = getSharedContainerURL() else {
+            rejecter("ERROR", "App Group container not found", nil)
+            return
+        }
+
+        do {
+            for fileName in ["partner_photo.jpg", "partner_photo.json"] {
+                let fileURL = containerURL.appendingPathComponent(fileName)
+                if FileManager.default.fileExists(atPath: fileURL.path) {
+                    try FileManager.default.removeItem(at: fileURL)
+                }
+            }
+            if #available(iOS 14.0, *) {
+                WidgetCenter.shared.reloadTimelines(ofKind: "CouplePhotoWidget")
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+            resolver(true)
+        } catch {
+            rejecter("ERROR", "Failed to clear partner photo: \(error.localizedDescription)", error)
+        }
+    }
     
     /// Trigger widget refresh
     @objc
@@ -476,7 +539,8 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
                     "scribble": 0,
                     "togetherDays": 0,
                     "togetherCountdown": 0,
-                    "distance": 0
+                    "distance": 0,
+                    "couplePhoto": 0
                 ]
 
                 for configuration in configurations {
@@ -489,6 +553,8 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
                         counts["togetherCountdown", default: 0] += 1
                     case "DistanceWidget":
                         counts["distance", default: 0] += 1
+                    case "CouplePhotoWidget":
+                        counts["couplePhoto", default: 0] += 1
                     default:
                         break
                     }

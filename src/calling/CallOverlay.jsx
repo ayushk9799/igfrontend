@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
@@ -70,6 +70,21 @@ const PersonPlaceholder = ({ name, avatar, compact = false }) => (
             )}
         </View>
         {!compact && <Text style={styles.placeholderName}>{name || 'Your Love'}</Text>}
+    </LinearGradient>
+);
+
+const CallAvatar = ({ name, avatar, small = false }) => (
+    <LinearGradient
+        colors={['#F7DCEB', '#E9E0F6']}
+        style={[styles.sheetAvatar, small && styles.smallSheetAvatar]}
+    >
+        {avatar ? (
+            <Image source={{ uri: avatar }} style={styles.sheetAvatarImage} />
+        ) : (
+            <Text style={[styles.sheetAvatarText, small && styles.smallSheetAvatarText]}>
+                {(name || 'P').trim().charAt(0).toUpperCase()}
+            </Text>
+        )}
     </LinearGradient>
 );
 
@@ -260,22 +275,37 @@ const PreCall = () => {
 };
 
 const IncomingCall = () => {
+    const insets = useSafeAreaInsets();
     const { activeCall, acceptCall, rejectCall } = useCall();
+    const partnerName = activeCall?.partnerName || 'Your partner';
+
     return (
-        <View style={styles.backdropCard}>
-            <PersonPlaceholder name={activeCall?.partnerName} avatar={activeCall?.partnerAvatar} compact />
-            <Text style={styles.sheetTitle}>{activeCall?.partnerName || 'Your partner'} is calling</Text>
-            <Text style={styles.sheetBody}>You can answer with your microphone and camera off.</Text>
+        <View style={[styles.incomingSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.incomingHeader}>
+                <CallAvatar name={partnerName} avatar={activeCall?.partnerAvatar} />
+                <View style={styles.incomingHeaderCopy}>
+                    <View style={styles.incomingTypeRow}>
+                        <Video color="#B43D73" size={14} strokeWidth={2.4} />
+                        <Text style={styles.incomingType}>Incoming video call</Text>
+                    </View>
+                    <Text style={styles.incomingName} numberOfLines={1}>{partnerName}</Text>
+                    <Text style={styles.incomingBody}>Choose how you want to answer.</Text>
+                </View>
+            </View>
             <PermissionIssue compact />
-            <DeviceControls dark={false} />
+            <View style={styles.incomingPreferences}>
+                <Text style={styles.incomingPreferencesLabel}>Join preferences</Text>
+                <DeviceControls dark={false} />
+            </View>
             <View style={styles.incomingActions}>
-                <TouchableOpacity style={[styles.roundAction, styles.declineAction]} onPress={rejectCall}>
-                    <X color="#FFF" size={28} strokeWidth={2.5} />
-                    <Text style={styles.roundActionLabel}>Decline</Text>
+                <TouchableOpacity style={styles.declineAction} onPress={rejectCall} activeOpacity={0.84}>
+                    <PhoneOff color="#C7465B" size={21} strokeWidth={2.4} />
+                    <Text style={styles.declineActionLabel}>Decline</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.roundAction, styles.acceptAction]} onPress={acceptCall}>
-                    <Check color="#FFF" size={29} strokeWidth={2.6} />
-                    <Text style={styles.roundActionLabel}>Accept</Text>
+                <TouchableOpacity style={styles.acceptAction} onPress={acceptCall} activeOpacity={0.84}>
+                    <Check color="#FFF" size={22} strokeWidth={2.7} />
+                    <Text style={styles.acceptActionLabel}>Accept</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -283,17 +313,22 @@ const IncomingCall = () => {
 };
 
 const OutgoingCall = () => {
+    const insets = useSafeAreaInsets();
     const { activeCall, cancelCall } = useCall();
+    const partnerName = activeCall?.partnerName || 'your partner';
+
     return (
-        <View style={styles.outgoingCard}>
-            <PersonPlaceholder name={activeCall?.partnerName} avatar={activeCall?.partnerAvatar} compact />
+        <View style={[styles.outgoingCard, { bottom: Math.max(insets.bottom + 68, 92) }]}>
+            <CallAvatar name={partnerName} avatar={activeCall?.partnerAvatar} small />
             <View style={styles.outgoingCopy}>
-                <Text style={styles.outgoingTitle}>Calling {activeCall?.partnerName || 'your partner'}…</Text>
-                <Text style={styles.outgoingSubtitle}>Waiting for them to answer</Text>
-                <DeviceControls dark={false} />
+                <Text style={styles.outgoingTitle} numberOfLines={1}>Calling {partnerName}</Text>
+                <View style={styles.outgoingStatusRow}>
+                    <View style={styles.outgoingStatusDot} />
+                    <Text style={styles.outgoingSubtitle}>Ringing…</Text>
+                </View>
             </View>
-            <TouchableOpacity style={styles.cancelPill} onPress={cancelCall}>
-                <Text style={styles.cancelPillText}>Cancel</Text>
+            <TouchableOpacity style={styles.cancelCallButton} onPress={cancelCall} activeOpacity={0.82}>
+                <PhoneOff color="#FFF" size={21} strokeWidth={2.5} />
             </TouchableOpacity>
         </View>
     );
@@ -307,7 +342,6 @@ const FullScreenCall = () => {
         localStream,
         remoteStream,
         isCameraEnabled,
-        isChangingAudioOutput,
         isSpeakerOn,
         isRemoteCameraEnabled,
         isRemoteMuted,
@@ -389,7 +423,6 @@ const FullScreenCall = () => {
                             icon={isSpeakerOn ? Volume2 : Volume1}
                             onPress={toggleSpeaker}
                             enabled={isSpeakerOn}
-                            loading={isChangingAudioOutput}
                         />
                         <CallButton label="End" icon={PhoneOff} onPress={endCall} danger />
                     </View>
@@ -490,12 +523,31 @@ const FloatingCall = () => {
 };
 
 export const CallOverlay = () => {
-    const { callState, isExpanded, errorMessage } = useCall();
+    const { callState, isExpanded, errorMessage, rejectCall } = useCall();
+    const [isIncomingSheetReady, setIsIncomingSheetReady] = useState(false);
+
+    useEffect(() => {
+        if (callState !== CALL_STATE.INCOMING) {
+            setIsIncomingSheetReady(false);
+            return undefined;
+        }
+
+        // Give an already-presented native app modal one moment to dismiss.
+        // Without this handoff iOS can reject the incoming-call presentation.
+        const timer = setTimeout(() => setIsIncomingSheetReady(true), 180);
+        return () => clearTimeout(timer);
+    }, [callState]);
 
     return (
         <>
-            <Modal visible={callState === CALL_STATE.INCOMING} transparent animationType="fade" statusBarTranslucent>
-                <View style={styles.modalBackdrop}><IncomingCall /></View>
+            <Modal
+                visible={callState === CALL_STATE.INCOMING && isIncomingSheetReady}
+                transparent
+                animationType="slide"
+                statusBarTranslucent
+                onRequestClose={rejectCall}
+            >
+                <View style={styles.incomingBackdrop}><IncomingCall /></View>
             </Modal>
 
             <Modal visible={callState === CALL_STATE.PRECALL} animationType="slide" statusBarTranslucent>
@@ -524,10 +576,22 @@ export const CallOverlay = () => {
 };
 
 const styles = StyleSheet.create({
-    modalBackdrop: { flex: 1, backgroundColor: 'rgba(35, 20, 43, 0.48)', justifyContent: 'center', padding: 24 },
-    backdropCard: { backgroundColor: '#FFF9FC', borderRadius: 28, padding: 24, alignItems: 'center', shadowColor: '#3B183B', shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 },
-    sheetTitle: { fontFamily: fontFamily.bold, color: '#392B3C', fontSize: 22, textAlign: 'center', marginTop: 12 },
-    sheetBody: { fontFamily: fontFamily.regular, color: '#766778', fontSize: 15, lineHeight: 21, textAlign: 'center', marginTop: 8 },
+    incomingBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(35,20,43,0.42)' },
+    incomingSheet: { backgroundColor: '#FFF9FC', borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 20, paddingTop: 10, shadowColor: '#321B33', shadowOpacity: 0.18, shadowRadius: 24, elevation: 24 },
+    sheetHandle: { alignSelf: 'center', width: 42, height: 5, borderRadius: 3, backgroundColor: '#DDCFD9', marginBottom: 20 },
+    sheetAvatar: { width: 68, height: 68, borderRadius: 24, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
+    smallSheetAvatar: { width: 56, height: 56, borderRadius: 20 },
+    sheetAvatarImage: { width: '100%', height: '100%' },
+    sheetAvatarText: { color: '#B94378', fontFamily: fontFamily.bold, fontSize: 29 },
+    smallSheetAvatarText: { fontSize: 24 },
+    incomingHeader: { flexDirection: 'row', alignItems: 'center' },
+    incomingHeaderCopy: { flex: 1, marginLeft: 14 },
+    incomingTypeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    incomingType: { color: '#B43D73', fontFamily: fontFamily.bold, fontSize: 12 },
+    incomingName: { color: '#3D303F', fontFamily: fontFamily.bold, fontSize: 23, marginTop: 3 },
+    incomingBody: { color: '#817282', fontFamily: fontFamily.regular, fontSize: 13, marginTop: 2 },
+    incomingPreferences: { marginTop: 18, paddingVertical: 15, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#F8EEF4' },
+    incomingPreferencesLabel: { color: '#766378', fontFamily: fontFamily.bold, fontSize: 11, textAlign: 'center', marginBottom: 12 },
     personPlaceholder: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' },
     compactPlaceholder: { flex: 0, width: 82, height: 82, borderRadius: 30 },
     avatar: { width: 108, height: 108, borderRadius: 54, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
@@ -573,18 +637,18 @@ const styles = StyleSheet.create({
     startCallButton: { backgroundColor: '#D84F86', borderRadius: 20, minHeight: 58, alignItems: 'center', justifyContent: 'center', marginTop: 22, paddingVertical: 10 },
     startCallButtonText: { color: '#FFF', fontFamily: fontFamily.bold, fontSize: 17 },
     startCallButtonSubtext: { color: 'rgba(255,255,255,0.8)', fontFamily: fontFamily.regular, fontSize: 10, marginTop: 2 },
-    incomingActions: { flexDirection: 'row', justifyContent: 'center', gap: 54, marginTop: 22 },
-    roundAction: { alignItems: 'center', justifyContent: 'center', width: 82, height: 82, borderRadius: 41 },
-    declineAction: { backgroundColor: '#E95666' },
-    acceptAction: { backgroundColor: '#49B77B' },
-    roundActionIcon: { color: '#FFF', fontSize: 28, fontFamily: fontFamily.bold },
-    roundActionLabel: { color: '#FFF', fontFamily: fontFamily.bold, fontSize: 12, marginTop: 2 },
-    outgoingCard: { position: 'absolute', left: 14, right: 14, top: 58, zIndex: 1000, elevation: 20, flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 22, backgroundColor: '#FFF9FC', shadowColor: '#3B183B', shadowOpacity: 0.22, shadowRadius: 16 },
+    incomingActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+    declineAction: { flex: 1, minHeight: 54, borderRadius: 18, backgroundColor: '#FBE8EB', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    declineActionLabel: { color: '#C7465B', fontFamily: fontFamily.bold, fontSize: 15 },
+    acceptAction: { flex: 1.2, minHeight: 54, borderRadius: 18, backgroundColor: '#35A978', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: '#237553', shadowOpacity: 0.18, shadowRadius: 8, elevation: 4 },
+    acceptActionLabel: { color: '#FFF', fontFamily: fontFamily.bold, fontSize: 15 },
+    outgoingCard: { position: 'absolute', left: 14, right: 14, zIndex: 1000, elevation: 20, flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 22, backgroundColor: '#FFF9FC', borderWidth: 1, borderColor: '#F2E5ED', shadowColor: '#3B183B', shadowOpacity: 0.2, shadowRadius: 16 },
     outgoingCopy: { flex: 1, paddingHorizontal: 12 },
-    outgoingTitle: { fontFamily: fontFamily.bold, color: '#392B3C', fontSize: 15 },
-    outgoingSubtitle: { fontFamily: fontFamily.regular, color: '#8B7C8E', fontSize: 12, marginTop: 2, marginBottom: 8 },
-    cancelPill: { backgroundColor: '#FBE5EC', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 9 },
-    cancelPillText: { fontFamily: fontFamily.bold, color: '#CA3F68', fontSize: 13 },
+    outgoingTitle: { fontFamily: fontFamily.bold, color: '#3D303F', fontSize: 15 },
+    outgoingStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+    outgoingStatusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#D84F86' },
+    outgoingSubtitle: { fontFamily: fontFamily.medium, color: '#8B7C8E', fontSize: 12 },
+    cancelCallButton: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E55264', shadowColor: '#A62E40', shadowOpacity: 0.2, shadowRadius: 7, elevation: 4 },
     fullScreen: { flex: 1, backgroundColor: '#2F2233' },
     remoteVideo: { ...StyleSheet.absoluteFillObject },
     remoteAudioSurface: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },

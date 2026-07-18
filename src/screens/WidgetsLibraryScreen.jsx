@@ -325,11 +325,29 @@ const ScribbleCard = () => (
     </View>
 );
 
+const PartnerPhotoCard = () => (
+    <View style={styles.lockWidgetTile}>
+        <LinearGradient colors={['#FFB7CF', '#C8B5FF', '#9DDCFF']} style={styles.partnerPhotoPreview}>
+            <View style={styles.partnerPhotoCamera}>
+                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                    <Path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h2l1.2-2h4.6l1.2 2h2A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-8Z" stroke="#FFFFFF" strokeWidth={1.9} strokeLinejoin="round" />
+                    <Path d="M15.5 12.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" stroke="#FFFFFF" strokeWidth={1.9} />
+                </Svg>
+            </View>
+            <Text style={styles.partnerPhotoPreviewText}>From your love</Text>
+        </LinearGradient>
+        <Text style={styles.widgetTileName}>Partner Photo</Text>
+        <Text style={styles.widgetDescription}>Latest photo from your partner</Text>
+    </View>
+);
+
 export const WidgetsLibraryScreen = ({
     userData = {},
     isPremium = false,
     onBack,
     onNavigateToPremium,
+    openDistanceSetup = false,
+    onDistanceSetupHandled,
 }) => {
     const insets = useSafeAreaInsets();
     const dispatch = useDispatch();
@@ -464,6 +482,13 @@ export const WidgetsLibraryScreen = ({
         }
     }, [isPremium, onNavigateToPremium, userData, handleConfirmLocation]);
 
+    useEffect(() => {
+        if (!openDistanceSetup) return;
+
+        onDistanceSetupHandled?.();
+        handleEnableDistance();
+    }, [handleEnableDistance, onDistanceSetupHandled, openDistanceSetup]);
+
     return (
         <View style={styles.root}>
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
@@ -504,6 +529,7 @@ export const WidgetsLibraryScreen = ({
                     )}
                     <View style={styles.widgetGrid}>
                         <ScribbleCard />
+                        <PartnerPhotoCard />
                     </View>
                 </ScrollView>
             </LinearGradient>
@@ -1035,6 +1061,27 @@ const styles = StyleSheet.create({
     scribbleCardLottie: {
         width: '88%',
         height: '88%',
+    },
+    partnerPhotoPreview: {
+        height: 118,
+        borderRadius: 13,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    partnerPhotoCamera: {
+        width: 52,
+        height: 52,
+        borderRadius: 18,
+        backgroundColor: 'rgba(46,30,60,0.24)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    partnerPhotoPreviewText: {
+        marginTop: 9,
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '800',
     },
     widgetPermissionHint: {
         marginTop: 2,

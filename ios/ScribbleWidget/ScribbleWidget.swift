@@ -9,6 +9,8 @@
 import WidgetKit
 import SwiftUI
 import Foundation
+import UIKit
+import ImageIO
 
 // MARK: - Widget Entry
 struct ScribbleEntry: TimelineEntry {
@@ -870,6 +872,125 @@ struct DistanceWidget: Widget {
     }
 }
 
+struct CouplePhotoEntry: TimelineEntry {
+    let date: Date
+    let image: UIImage?
+    let senderName: String
+}
+
+struct CouplePhotoProvider: TimelineProvider {
+    private let appGroupIdentifier = "group.com.thousandways.love"
+
+    func placeholder(in context: Context) -> CouplePhotoEntry {
+        CouplePhotoEntry(date: Date(), image: nil, senderName: "Your partner")
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (CouplePhotoEntry) -> Void) {
+        completion(loadEntry())
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<CouplePhotoEntry>) -> Void) {
+        // Event-driven reloads are still the fast path, but periodically read
+        // the App Group again so a missed WidgetCenter reload cannot leave the
+        // home-screen widget on its placeholder forever.
+        let nextRefresh = Date().addingTimeInterval(15 * 60)
+        completion(Timeline(entries: [loadEntry()], policy: .after(nextRefresh)))
+    }
+
+    private func loadEntry() -> CouplePhotoEntry {
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+            return CouplePhotoEntry(date: Date(), image: nil, senderName: "Your partner")
+        }
+        let image = loadWidgetImage(at: container.appendingPathComponent("partner_photo.jpg"))
+        var senderName = "Your partner"
+        if let data = try? Data(contentsOf: container.appendingPathComponent("partner_photo.json")),
+           let metadata = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            senderName = metadata["senderName"] as? String ?? senderName
+        }
+        return CouplePhotoEntry(date: Date(), image: image, senderName: senderName)
+    }
+
+    private func loadWidgetImage(at url: URL) -> UIImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 600,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return nil
+        }
+        return UIImage(cgImage: cgImage)
+    }
+}
+
+struct CouplePhotoWidgetView: View {
+    let entry: CouplePhotoEntry
+
+    @ViewBuilder
+    private func receivedPhoto(_ image: UIImage) -> some View {
+        if #available(iOSApplicationExtension 18.0, *) {
+            Image(uiImage: image)
+                .resizable()
+                .widgetAccentedRenderingMode(.fullColor)
+        } else {
+            Image(uiImage: image)
+                .resizable()
+        }
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .bottomLeading) {
+                if let image = entry.image {
+                    receivedPhoto(image)
+                        .scaledToFill()
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                    LinearGradient(colors: [.clear, .black.opacity(0.72)], startPoint: .center, endPoint: .bottom)
+                    Text("From \(entry.senderName)")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .padding(12)
+                } else {
+                    LinearGradient(colors: [Color(red: 1, green: 0.92, blue: 0.96), Color(red: 0.91, green: 0.89, blue: 1)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    VStack(alignment: .leading, spacing: 7) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                        Text("Send each other a moment")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundStyle(Color(red: 0.72, green: 0.25, blue: 0.48))
+                    .padding(14)
+                }
+            }
+        }
+    }
+}
+
+struct CouplePhotoWidget: Widget {
+    let kind = "CouplePhotoWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CouplePhotoProvider()) { entry in
+            if #available(iOSApplicationExtension 17.0, *) {
+                CouplePhotoWidgetView(entry: entry)
+                    .containerBackground(for: .widget) {
+                        Color(red: 1, green: 0.92, blue: 0.96)
+                    }
+            } else {
+                CouplePhotoWidgetView(entry: entry)
+            }
+        }
+        .configurationDisplayName("Partner Photo")
+        .description("See the latest photo from your partner.")
+        .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
+    }
+}
+
 @main
 struct PenguinWidgets: WidgetBundle {
     var body: some Widget {
@@ -877,6 +998,7 @@ struct PenguinWidgets: WidgetBundle {
         TogetherCountdownWidget()
         TogetherDaysWidget()
         DistanceWidget()
+        CouplePhotoWidget()
     }
 }
 

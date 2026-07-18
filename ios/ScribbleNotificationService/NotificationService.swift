@@ -34,6 +34,17 @@ class NotificationService: UNNotificationServiceExtension {
         
         // Extract data - FCM puts data fields at ROOT level of userInfo
         let type = userInfo["type"] as? String
+        if type == "couple_photo",
+           let imageUrlString = userInfo["imageUrl"] as? String,
+           let imageUrl = URL(string: imageUrlString) {
+            fetchPartnerPhoto(
+                from: imageUrl,
+                senderName: userInfo["senderName"] as? String ?? "Your partner",
+                timestamp: userInfo["timestamp"] as? String ?? ISO8601DateFormatter().string(from: Date()),
+                revision: parseRevision(userInfo["revision"])
+            )
+            return
+        }
         guard type == "scribble" else {
             finish()
             return
@@ -62,6 +73,49 @@ class NotificationService: UNNotificationServiceExtension {
         }
 
         finish()
+    }
+
+    private func fetchPartnerPhoto(from url: URL, senderName: String, timestamp: String, revision: Int64) {
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 20
+
+        fetchTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            defer { self.finish() }
+            guard error == nil,
+                  let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let data = data else { return }
+            self.savePartnerPhoto(data: data, senderName: senderName, timestamp: timestamp, revision: revision)
+        }
+        fetchTask?.resume()
+    }
+
+    private func savePartnerPhoto(data: Data, senderName: String, timestamp: String, revision: Int64) {
+        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else { return }
+        let metadataURL = container.appendingPathComponent("partner_photo.json")
+        if let existingData = try? Data(contentsOf: metadataURL),
+           let existing = try? JSONSerialization.jsonObject(with: existingData) as? [String: Any],
+           parseRevision(existing["revision"]) > revision {
+            return
+        }
+
+        do {
+            try data.write(to: container.appendingPathComponent("partner_photo.jpg"), options: .atomic)
+            let metadata: [String: Any] = [
+                "senderName": senderName,
+                "timestamp": timestamp,
+                "revision": revision
+            ]
+            try JSONSerialization.data(withJSONObject: metadata).write(to: metadataURL, options: .atomic)
+            if #available(iOS 14.0, *) {
+                WidgetCenter.shared.reloadTimelines(ofKind: "CouplePhotoWidget")
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+        } catch {
+            return
+        }
     }
     
     override func serviceExtensionTimeWillExpire() {
