@@ -163,6 +163,8 @@ export const AccountScreen = ({
     onDeleteAccount,
     onNavigateToPremium,
     onWidgetsPress,
+    onJournalOnboardingPress,
+    onQuestionsOnboardingPress,
     onBack,
     onEditRelationshipDate,
 }) => {
@@ -496,6 +498,20 @@ export const AccountScreen = ({
                             </TouchableOpacity>
                         </View>
                     )}
+
+                    <View style={styles.menuSection}>
+                        <Text style={styles.sectionTitle}>Onboarding Previews</Text>
+                        <MenuItem
+                            title="Journal Onboarding"
+                            subtitle="Preview the shared journal introduction"
+                            onPress={onJournalOnboardingPress}
+                        />
+                        <MenuItem
+                            title="Questions Onboarding"
+                            subtitle="Preview the couple questions introduction"
+                            onPress={onQuestionsOnboardingPress}
+                        />
+                    </View>
 
                     <View style={styles.menuSection}>
                         <Text style={styles.sectionTitle}>Widgets</Text>

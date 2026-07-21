@@ -7,7 +7,6 @@ import {
     TouchableOpacity,
     Animated,
     Dimensions,
-    Platform,
     Image,
     StatusBar,
 } from 'react-native';
@@ -46,11 +45,7 @@ const TinyHeart = ({ color = "#FF8FAB" }) => (
     </Svg>
 );
 
-const ChevronRight = () => (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-        <Path d="M9 18L15 12L9 6" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-);
+
 
 const BellIcon = () => (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
@@ -58,10 +53,21 @@ const BellIcon = () => (
     </Svg>
 );
 
+const phoneWidth = isCompactHeight ? width * 0.74 : width * 0.82;
+const phoneHeight = phoneWidth * (1844 / 853);
+
 const NotificationPermissionScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(40)).current;
+
+    // Animated values for the three popping notifications
+    const notif1Scale = useRef(new Animated.Value(0)).current;
+    const notif1Opacity = useRef(new Animated.Value(0)).current;
+    const notif2Scale = useRef(new Animated.Value(0)).current;
+    const notif2Opacity = useRef(new Animated.Value(0)).current;
+    const notif3Scale = useRef(new Animated.Value(0)).current;
+    const notif3Opacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.parallel([
@@ -77,6 +83,84 @@ const NotificationPermissionScreen = ({ onComplete }) => {
             }),
         ]).start();
     }, [fadeAnim, slideAnim]);
+
+    // Animation for notifications popped simulation (runs once on mount)
+    useEffect(() => {
+        // Reset all
+        notif1Scale.setValue(0);
+        notif1Opacity.setValue(0);
+        notif2Scale.setValue(0);
+        notif2Opacity.setValue(0);
+        notif3Scale.setValue(0);
+        notif3Opacity.setValue(0);
+
+        Animated.sequence([
+            Animated.delay(600), // Wait for entry animation
+
+            // 1st notification pops
+            Animated.parallel([
+                Animated.spring(notif1Scale, {
+                    toValue: 1,
+                    friction: 6,
+                    tension: 40,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(notif1Opacity, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true,
+                })
+            ]),
+            Animated.delay(800),
+
+            // 2nd notification pops
+            Animated.parallel([
+                Animated.spring(notif2Scale, {
+                    toValue: 1,
+                    friction: 6,
+                    tension: 40,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(notif2Opacity, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true,
+                })
+            ]),
+            Animated.delay(800),
+
+            // 3rd notification pops
+            Animated.parallel([
+                Animated.spring(notif3Scale, {
+                    toValue: 1,
+                    friction: 6,
+                    tension: 40,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(notif3Opacity, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true,
+                })
+            ])
+        ]).start();
+
+        return () => {
+            notif1Scale.stopAnimation();
+            notif1Opacity.stopAnimation();
+            notif2Scale.stopAnimation();
+            notif2Opacity.stopAnimation();
+            notif3Scale.stopAnimation();
+            notif3Opacity.stopAnimation();
+        };
+    }, [
+        notif1Opacity,
+        notif1Scale,
+        notif2Opacity,
+        notif2Scale,
+        notif3Opacity,
+        notif3Scale,
+    ]);
 
     const handleAllowNotifications = async () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -102,7 +186,7 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                 style={styles.gradient}
             >
                 <View style={[styles.container, { paddingTop: insets.top + 4, paddingBottom: insets.bottom + 10 }]}>
-                    
+
                     {/* Brand Logo */}
                     <View style={styles.brandContainer}>
                         <Image 
@@ -122,15 +206,6 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                             },
                         ]}
                     >
-                        <View style={styles.mascotContainer}>
-                            <View style={styles.mascotBackgroundCircle} />
-                            <Image 
-                                source={require('../../assets/images/notification-muscot.png')} 
-                                style={styles.mascotImage} 
-                                resizeMode="contain" 
-                            />
-                        </View>
-
                         <View style={styles.titleRow}>
                             <View style={styles.titleBurstContainer}>
                                 <TitleBurst />
@@ -145,61 +220,81 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                         </Text>
                     </Animated.View>
 
-                    {/* Features Card */}
+                    {/* Simulated Mobile Mockup with Notifications */}
                     <Animated.View
                         style={[
-                            styles.featuresCard,
+                            styles.phoneWrapper,
                             {
                                 opacity: fadeAnim,
                                 transform: [{ translateY: slideAnim }],
                             },
                         ]}
                     >
-                        {/* Feature 1 */}
-                        <View style={styles.featureRow}>
-                            <View style={[styles.featureIconBox, { backgroundColor: '#FFEAF2' }]}>
-                                <Text style={styles.featureEmoji}>💬</Text>
+                        <Image
+                            source={require('../../assets/images/mobile_notification.png')}
+                            style={styles.phoneImage}
+                            resizeMode="contain"
+                        />
+                        <View style={styles.notificationsOverlay}>
+                            <View style={styles.lockScreenClock}>
+                                <Text style={styles.lockScreenTime}>9:41</Text>
+                                <Text style={styles.lockScreenDate}>Sunday, July 19</Text>
                             </View>
-                            <View style={styles.featureTextContainer}>
-                                <Text style={styles.featureTitle}>Partner Messages</Text>
-                                <Text style={styles.featureSubtitle}>Never miss a sweet message</Text>
-                            </View>
-                            <ChevronRight />
-                        </View>
-                        
-                        <View style={styles.divider} />
 
-                        {/* Feature 2 */}
-                        <View style={styles.featureRow}>
-                            <View style={[styles.featureIconBox, { backgroundColor: '#F0EFFF' }]}>
-                                <Text style={styles.featureEmoji}>🖍️</Text>
-                            </View>
-                            <View style={styles.featureTextContainer}>
-                                <Text style={styles.featureTitle}>New Scribbles</Text>
-                                <Text style={styles.featureSubtitle}>See their drawings right away</Text>
-                            </View>
-                            <ChevronRight />
-                        </View>
+                            {/* Notification 1 */}
+                            <Animated.View style={[styles.notificationBubble, { opacity: notif1Opacity, transform: [{ scale: notif1Scale }] }]}>
+                                <View style={[styles.notifIconBox, { backgroundColor: '#FFEAF2' }]}>
+                                    <Text style={styles.notifEmoji}>💬</Text>
+                                </View>
+                                <View style={styles.notifTextContainer}>
+                                    <View style={styles.notifTitleRow}>
+                                        <Text style={styles.notifTitle}>Partner Message</Text>
+                                        <Text style={styles.notifTime}>now</Text>
+                                    </View>
+                                    <Text style={styles.notifBody}>Can't wait to see you today! 🥰</Text>
+                                </View>
+                            </Animated.View>
 
-                        <View style={styles.divider} />
+                            {/* Notification 2 */}
+                            <Animated.View style={[styles.notificationBubble, { opacity: notif2Opacity, transform: [{ scale: notif2Scale }] }]}>
+                                <View style={[styles.notifIconBox, { backgroundColor: '#F0EFFF' }]}>
+                                    <Text style={styles.notifEmoji}>🖍️</Text>
+                                </View>
+                                <View style={styles.notifTextContainer}>
+                                    <View style={styles.notifTitleRow}>
+                                        <Text style={styles.notifTitle}>New Scribble</Text>
+                                        <Text style={styles.notifTime}>now</Text>
+                                    </View>
+                                    <Text style={styles.notifBody}>Alex sent you a cute drawing 🐾</Text>
+                                </View>
+                            </Animated.View>
 
-                        {/* Feature 3 */}
-                        <View style={styles.featureRow}>
-                            <View style={[styles.featureIconBox, { backgroundColor: '#EAF4FF' }]}>
-                                <Text style={styles.featureEmoji}>🎮</Text>
-                            </View>
-                            <View style={styles.featureTextContainer}>
-                                <Text style={styles.featureTitle}>Game Invites</Text>
-                                <Text style={styles.featureSubtitle}>Jump into fun challenges together</Text>
-                            </View>
-                            <ChevronRight />
+                            {/* Notification 3 */}
+                            <Animated.View style={[styles.notificationBubble, { opacity: notif3Opacity, transform: [{ scale: notif3Scale }] }]}>
+                                <View style={[styles.notifIconBox, { backgroundColor: '#EAF4FF' }]}>
+                                    <Text style={styles.notifEmoji}>🎮</Text>
+                                </View>
+                                <View style={styles.notifTextContainer}>
+                                    <View style={styles.notifTitleRow}>
+                                        <Text style={styles.notifTitle}>Game Invite</Text>
+                                        <Text style={styles.notifTime}>now</Text>
+                                    </View>
+                                    <Text style={styles.notifBody}>Let's play Tic-Tac-Toe! 🎮✨</Text>
+                                </View>
+                            </Animated.View>
                         </View>
+                        <LinearGradient
+                            pointerEvents="none"
+                            colors={['rgba(255,244,247,0)', 'rgba(255,244,247,0.72)', '#FFF4F7']}
+                            locations={[0, 0.52, 1]}
+                            style={styles.phoneBottomFade}
+                        />
                     </Animated.View>
 
                     <View style={styles.spacer} />
 
                     {/* Bottom Actions */}
-                    <View style={styles.bottomSection}>
+                    <View style={[styles.bottomSection, { bottom: insets.bottom + 14 }]}>
                         <View style={styles.buttonContainer}>
                             <View style={styles.buttonBurstContainer}>
                                 <ButtonBurst />
@@ -263,28 +358,8 @@ const styles = StyleSheet.create({
     },
     heroSection: {
         alignItems: 'center',
-        marginTop: isCompactHeight ? 0 : 20,
-        marginBottom: isCompactHeight ? 15 : 30,
-    },
-    mascotContainer: {
-        width: isCompactHeight ? 240 : 280,
-        height: isCompactHeight ? 240 : 280,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: -20,
-        position: 'relative',
-    },
-    mascotBackgroundCircle: {
-        position: 'absolute',
-        width: isCompactHeight ? 190 : 230,
-        height: isCompactHeight ? 190 : 230,
-        borderRadius: isCompactHeight ? 95 : 115,
-        backgroundColor: '#FFE4EC',
-        opacity: 0.8,
-    },
-    mascotImage: {
-        width: '100%',
-        height: '100%',
+        marginTop: isCompactHeight ? 0 : 15,
+        marginBottom: isCompactHeight ? 10 : 20,
     },
     titleRow: {
         flexDirection: 'row',
@@ -320,61 +395,117 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         fontWeight: fontWeight('500'),
     },
-    featuresCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        paddingHorizontal: isCompactHeight ? 16 : 24,
-        paddingVertical: isCompactHeight ? 2 : 4,
-        shadowColor: '#FFB5D0',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 6,
+    phoneWrapper: {
+        width: phoneWidth,
+        height: phoneHeight,
+        alignSelf: 'center',
+        marginTop: isCompactHeight ? 4 : 10,
+        marginBottom: isCompactHeight ? -150 : -190,
+        position: 'relative',
+        zIndex: 1,
     },
-    featureRow: {
+    phoneImage: {
+        width: '100%',
+        height: '100%',
+    },
+    notificationsOverlay: {
+        position: 'absolute',
+        top: '15%', // Lift the clock and notifications slightly within the phone
+        left: '8%',
+        right: '8%',
+        bottom: '10%',
+        alignItems: 'center',
+    },
+    phoneBottomFade: {
+        position: 'absolute',
+        left: -4,
+        right: -4,
+        bottom: 0,
+        height: '38%',
+        zIndex: 4,
+    },
+    lockScreenClock: {
+        alignItems: 'center',
+        marginBottom: isCompactHeight ? 12 : 18,
+    },
+    lockScreenTime: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: isCompactHeight ? 48 : 58,
+        color: navy,
+        fontWeight: fontWeight('800'),
+        letterSpacing: -0.5,
+    },
+    lockScreenDate: {
+        fontFamily: fontFamily.medium,
+        fontSize: isCompactHeight ? 9 : 11,
+        color: '#7380A1',
+        fontWeight: fontWeight('600'),
+        marginTop: -2,
+    },
+    notificationBubble: {
+        width: '100%',
+        backgroundColor: 'rgba(255, 255, 255, 0.94)',
+        borderRadius: 14,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: isCompactHeight ? 6 : 8,
+        marginBottom: 8,
+        // Premium drop shadow
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.5)',
     },
-    featureIconBox: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
+    notifIconBox: {
+        width: 30,
+        height: 30,
+        borderRadius: 9,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
+        marginRight: 10,
     },
-    featureEmoji: {
-        fontSize: 18,
+    notifEmoji: {
+        fontSize: 16,
     },
-    featureTextContainer: {
+    notifTextContainer: {
         flex: 1,
     },
-    featureTitle: {
+    notifTitleRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    notifTitle: {
         fontFamily: fontFamily.bold,
-        fontSize: 14,
+        fontSize: isCompactHeight ? 10 : 12,
         fontWeight: fontWeight('700'),
         color: navy,
-        letterSpacing: -0.3,
     },
-    featureSubtitle: {
+    notifTime: {
         fontFamily: fontFamily.medium,
-        fontSize: 11,
-        color: '#7380A1',
-        marginTop: 1,
-        fontWeight: fontWeight('500'),
+        fontSize: isCompactHeight ? 8 : 10,
+        color: '#9E9E9E',
     },
-    divider: {
-        height: 1,
-        backgroundColor: '#FFEAF2',
-        marginHorizontal: 10,
+    notifBody: {
+        fontFamily: fontFamily.medium,
+        fontSize: isCompactHeight ? 9 : 11,
+        color: '#555555',
+        marginTop: 2,
+        fontWeight: fontWeight('500'),
     },
     spacer: {
         height: isCompactHeight ? 16 : 26,
     },
     bottomSection: {
+        position: 'absolute',
+        left: 24,
+        right: 24,
         alignItems: 'center',
-        marginBottom: isCompactHeight ? 10 : 20,
+        zIndex: 10,
     },
     buttonContainer: {
         width: '100%',
@@ -411,8 +542,8 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     skipButton: {
-        marginTop: 20,
-        paddingVertical: 10,
+        marginTop: isCompactHeight ? 10 : 14,
+        paddingVertical: 8,
     },
     skipText: {
         fontFamily: fontFamily.bold,

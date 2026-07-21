@@ -16,6 +16,8 @@ import PremiumScreen from '../screens/PremiumScreen';
 import MoodScreen from '../screens/MoodScreen';
 import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
 import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
+import JournalOnboardingScreen from '../screens/JournalOnboardingScreen';
+import QuestionsOnboardingScreen from '../screens/QuestionsOnboardingScreen';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
@@ -69,6 +71,7 @@ export const MainTabNavigator = ({
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
     const [todayChallenge, setTodayChallenge] = useState(null);
     const [isAccountVisible, setIsAccountVisible] = useState(false);
+    const [accountPreview, setAccountPreview] = useState(null);
     const [isPremiumOpenInAccount, setIsPremiumOpenInAccount] = useState(false);
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
     const [isMoodVisible, setIsMoodVisible] = useState(false);
@@ -94,6 +97,7 @@ export const MainTabNavigator = ({
                 useNativeDriver: true,
             }).start();
         } else {
+            setAccountPreview(null);
             Animated.timing(slideAnim, {
                 toValue: SCREEN_WIDTH,
                 duration: 200,
@@ -332,6 +336,10 @@ export const MainTabNavigator = ({
     useEffect(() => {
         const backAction = () => {
             if (isAccountVisible) {
+                if (accountPreview) {
+                    setAccountPreview(null);
+                    return true;
+                }
                 setIsAccountVisible(false);
                 setIsPremiumOpenInAccount(false);
                 return true;
@@ -345,7 +353,7 @@ export const MainTabNavigator = ({
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    }, [handleBottomTabChange, currentTab, isAccountVisible]);
+    }, [accountPreview, handleBottomTabChange, currentTab, isAccountVisible]);
 
     const renderScreen = () => {
         switch (currentTab) {
@@ -568,6 +576,15 @@ export const MainTabNavigator = ({
                     ]}
                     {...panResponder.panHandlers}
                 >
+                    {accountPreview === 'journal' ? (
+                        <JournalOnboardingScreen
+                            onComplete={() => setAccountPreview(null)}
+                        />
+                    ) : accountPreview === 'questions' ? (
+                        <QuestionsOnboardingScreen
+                            onComplete={() => setAccountPreview(null)}
+                        />
+                    ) : (
                     <AccountScreen
                         userData={userData}
                         partnerName={partnerName}
@@ -596,6 +613,8 @@ export const MainTabNavigator = ({
                             setIsPremiumOpenInAccount(false);
                             setCurrentTab('widgetsLibrary');
                         }}
+                        onJournalOnboardingPress={() => setAccountPreview('journal')}
+                        onQuestionsOnboardingPress={() => setAccountPreview('questions')}
                         onEditRelationshipDate={() => {
                             setIsAccountVisible(false);
                             onEditRelationshipDate?.();
@@ -605,6 +624,7 @@ export const MainTabNavigator = ({
                             setIsPremiumOpenInAccount(false);
                         }}
                     />
+                    )}
 
                 </Animated.View>
             )}
