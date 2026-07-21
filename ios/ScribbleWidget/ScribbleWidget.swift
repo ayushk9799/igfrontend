@@ -502,6 +502,7 @@ struct TimeColumn: View {
 
 struct TogetherDaysView: View {
     let entry: TogetherEntry
+    @Environment(\.widgetFamily) private var family
 
     private var days: Int {
         guard let startDate = entry.startDate else { return 0 }
@@ -529,41 +530,85 @@ struct TogetherDaysView: View {
     }
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(.white.opacity(0.18))
-                .overlay(
-                    Circle()
-                        .stroke(.white.opacity(0.28), lineWidth: 1)
-                )
+        Group {
+            if family == .systemSmall {
+                ZStack {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 1, green: 0.72, blue: 0.81),
+                            Color(red: 0.70, green: 0.61, blue: 1),
+                            Color(red: 0.55, green: 0.82, blue: 1)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
 
-            if entry.startDate == nil {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
-            } else {
-                VStack(spacing: 0) {
-                    if digitCount < 5 {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: iconFontSize, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-
-                    Text("\(days)")
-                        .font(.system(size: numberFontSize, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+                    if entry.startDate == nil {
+                        VStack(spacing: 8) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 28, weight: .bold))
+                            Text("Set anniversary")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        }
                         .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.68)
-                        .allowsTightening(true)
-                        .frame(maxWidth: .infinity)
+                    } else {
+                        VStack(spacing: 3) {
+                            Image(systemName: "heart.fill")
+                                .font(.system(size: 25, weight: .bold))
 
-                    Text("days")
-                        .font(.system(size: labelFontSize, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.84))
-                        .lineLimit(1)
+                            Text("\(days)")
+                                .font(.system(size: 46, weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.55)
+                                .allowsTightening(true)
+
+                            Text("days together")
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                    }
                 }
-                .padding(.horizontal, 3)
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(.white.opacity(0.18))
+                        .overlay(
+                            Circle()
+                                .stroke(.white.opacity(0.28), lineWidth: 1)
+                        )
+
+                    if entry.startDate == nil {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else {
+                        VStack(spacing: 0) {
+                            if digitCount < 5 {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: iconFontSize, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+
+                            Text("\(days)")
+                                .font(.system(size: numberFontSize, weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.68)
+                                .allowsTightening(true)
+                                .frame(maxWidth: .infinity)
+
+                            Text("days")
+                                .font(.system(size: labelFontSize, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.84))
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 3)
+                    }
+                }
             }
         }
     }
@@ -600,9 +645,9 @@ struct TogetherDaysWidget: Widget {
 
     private var families: [WidgetFamily] {
         if #available(iOSApplicationExtension 16.0, *) {
-            return [.accessoryCircular]
+            return [.accessoryCircular, .systemSmall]
         }
-        return []
+        return [.systemSmall]
     }
 
     var body: some WidgetConfiguration {
@@ -686,6 +731,7 @@ struct DistanceProvider: TimelineProvider {
 
 struct DistanceWidgetView: View {
     let entry: DistanceEntry
+    @Environment(\.widgetFamily) private var family
     private let circleSize: CGFloat = 34
     private let heartWidth: CGFloat = 22
     private let heartSafeGap: CGFloat = 0
@@ -742,67 +788,81 @@ struct DistanceWidgetView: View {
     }
 
     var body: some View {
-        if entry.locked {
-            VStack(spacing: 3) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.white)
-
-                Text("Premium widget")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-
-                Text("Open app to unlock")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.82))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+        ZStack {
+            if family == .systemSmall {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.83, green: 0.70, blue: 1),
+                        Color(red: 0.61, green: 0.80, blue: 1),
+                        Color(red: 1, green: 0.70, blue: 0.79)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-        } else {
-            VStack(spacing: 2) {
-                Text(titleText)
-                    .font(.system(size: 21, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
 
-                ZStack {
-                    GeometryReader { proxy in
-                        let centers = circleCenters(for: proxy.size.width)
-                        let y = proxy.size.height / 2
-                        let lineStart = centers.left + circleSize / 2
-                        let lineEnd = centers.right - circleSize / 2
+            if entry.locked {
+                VStack(spacing: family == .systemSmall ? 7 : 3) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: family == .systemSmall ? 23 : 16, weight: .bold))
+                        .foregroundStyle(.white)
 
-                        if !entry.isTogether {
-                            Path { path in
-                                path.move(to: CGPoint(x: lineStart, y: y))
-                                path.addLine(to: CGPoint(x: max(lineStart, lineEnd), y: y))
+                    Text("Premium widget")
+                        .font(.system(size: family == .systemSmall ? 18 : 17, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+
+                    Text("Open app to unlock")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+            } else {
+                VStack(spacing: family == .systemSmall ? 12 : 2) {
+                    Text(titleText)
+                        .font(.system(size: family == .systemSmall ? 19 : 21, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+
+                    ZStack {
+                        GeometryReader { proxy in
+                            let centers = circleCenters(for: proxy.size.width)
+                            let y = proxy.size.height / 2
+                            let lineStart = centers.left + circleSize / 2
+                            let lineEnd = centers.right - circleSize / 2
+
+                            if !entry.isTogether {
+                                Path { path in
+                                    path.move(to: CGPoint(x: lineStart, y: y))
+                                    path.addLine(to: CGPoint(x: max(lineStart, lineEnd), y: y))
+                                }
+                                .stroke(
+                                    .white.opacity(0.9),
+                                    style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [1, 4])
+                                )
                             }
-                            .stroke(
-                                .white.opacity(0.9),
-                                style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [1, 4])
-                            )
+
+                            DistanceDoubleHeart()
+                                .position(x: proxy.size.width / 2, y: y)
+
+                            DistanceInitialCircle(initial: entry.userInitial)
+                                .position(x: centers.left, y: y)
+
+                            DistanceInitialCircle(initial: entry.partnerInitial)
+                                .position(x: centers.right, y: y)
                         }
-
-                        DistanceDoubleHeart()
-                            .position(x: proxy.size.width / 2, y: y)
-
-                        DistanceInitialCircle(initial: entry.userInitial)
-                            .position(x: centers.left, y: y)
-
-                        DistanceInitialCircle(initial: entry.partnerInitial)
-                            .position(x: centers.right, y: y)
+                        .frame(height: circleSize)
                     }
                     .frame(height: circleSize)
                 }
-                .frame(height: circleSize)
+                .padding(.horizontal, family == .systemSmall ? 12 : 2)
+                .padding(.vertical, 1)
             }
-            .padding(.horizontal, 2)
-            .padding(.vertical, 1)
         }
     }
 }
@@ -851,9 +911,9 @@ struct DistanceWidget: Widget {
 
     private var families: [WidgetFamily] {
         if #available(iOSApplicationExtension 16.0, *) {
-            return [.accessoryRectangular]
+            return [.accessoryRectangular, .systemSmall]
         }
-        return []
+        return [.systemSmall]
     }
 
     var body: some WidgetConfiguration {

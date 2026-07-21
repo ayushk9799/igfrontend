@@ -45,12 +45,6 @@ const BrushIcon = () => (
     </Svg>
 );
 
-const Avatar = ({ label, variant = 'pink', style }) => (
-    <View style={[styles.avatar, variant === 'lavender' && styles.avatarLavender, style]}>
-        <Text style={styles.avatarText}>{label}</Text>
-    </View>
-);
-
 const TimeTogetherWidget = () => {
     const [elapsed, setElapsed] = useState(DUMMY_TIME_TOGETHER_SECONDS);
 
@@ -291,23 +285,43 @@ const LockDistanceCard = ({ onPress, isEnabled, isPremium }) => (
     </TouchableOpacity>
 );
 
-const DaysTogetherCard = ({ days }) => (
-    <View style={styles.daysTogetherCard}>
+const HomeDaysTogetherCard = ({ days }) => (
+    <View style={styles.lockWidgetTile}>
         <LinearGradient
-            colors={['rgba(255,117,143,0.22)', 'rgba(139,92,246,0.2)', 'rgba(255,255,255,0.4)']}
+            colors={['#FFB8CF', '#B3A0FF', '#8ED1FF']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.daysLeftPane}>
-            <View style={styles.daysAvatars}>
-                <Avatar label="R" />
-                <Avatar label="?" variant="lavender" style={styles.overlapAvatar} />
-            </View>
-            <Text style={styles.daysTogetherNumber}>{days} days</Text>
-            <Text style={styles.daysTogetherText}>together</Text>
-        </View>
+            style={styles.homeWidgetPreview}
+        >
+            <HeartIcon size={25} color="#FFFFFF" />
+            <Text style={styles.homeDaysNumber}>{days}</Text>
+            <Text style={styles.homeDaysLabel}>days together</Text>
+        </LinearGradient>
+        <Text style={styles.widgetTileName}>Days Together</Text>
     </View>
+);
+
+const HomeDistanceCard = ({ onPress, isEnabled, isPremium }) => (
+    <TouchableOpacity style={styles.lockWidgetTile} onPress={onPress} activeOpacity={0.85}>
+        <LinearGradient
+            colors={['#D4B3FF', '#9CCBFF', '#FFB3C8']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.homeWidgetPreview}
+        >
+            <Text style={styles.homeDistanceTitle}>{isEnabled ? '381 km apart' : 'Share location'}</Text>
+            <View style={styles.homeDistanceTrack}>
+                <View style={styles.homeDistanceLine} />
+                <View style={styles.homeDistanceAvatar}><Text style={styles.homeDistanceAvatarText}>R</Text></View>
+                <HeartIcon size={21} color="#FFFFFF" />
+                <View style={styles.homeDistanceAvatar}><Text style={styles.homeDistanceAvatarText}>?</Text></View>
+            </View>
+        </LinearGradient>
+        <Text style={styles.widgetTileName}>Our Distance</Text>
+        <Text style={[styles.widgetPermissionHint, isEnabled && isPremium && styles.widgetPermissionEnabled]}>
+            {!isPremium ? 'Premium widget' : (isEnabled ? 'Location sharing active ✓' : 'Requires location permission')}
+        </Text>
+    </TouchableOpacity>
 );
 
 const ScribbleCard = () => (
@@ -528,6 +542,14 @@ export const WidgetsLibraryScreen = ({
                         <Text style={[styles.sectionTitle, styles.homeTitle]}>Home screen</Text>
                     )}
                     <View style={styles.widgetGrid}>
+                        {Platform.OS === 'ios' && <HomeDaysTogetherCard days={daysTogether} />}
+                        {Platform.OS === 'ios' && (
+                            <HomeDistanceCard
+                                onPress={handleEnableDistance}
+                                isEnabled={userData?.locationSharingEnabled === true}
+                                isPremium={isPremium}
+                            />
+                        )}
                         <ScribbleCard />
                         <PartnerPhotoCard />
                     </View>
@@ -957,25 +979,6 @@ const styles = StyleSheet.create({
         left: 0,
         top: 1,
     },
-    avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#FFF4F8',
-        borderWidth: 2,
-        borderColor: '#FFD0DE',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    avatarLavender: {
-        backgroundColor: '#F3EAFF',
-        borderColor: '#DDC4FF',
-    },
-    avatarText: {
-        color: colors.primary,
-        fontSize: 16,
-        fontWeight: '900',
-    },
     timeWidgetPreview: {
         minWidth: 130,
         alignItems: 'center',
@@ -1014,39 +1017,62 @@ const styles = StyleSheet.create({
         fontSize: 8,
         fontWeight: '800',
     },
-    overlapAvatar: {
-        marginLeft: -8,
-    },
-    daysTogetherCard: {
-        width: '57%',
-        height: 128,
+    homeWidgetPreview: {
+        width: '100%',
+        aspectRatio: 1,
         borderRadius: 18,
         overflow: 'hidden',
-        backgroundColor: 'rgba(255,255,255,0.14)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.18)',
-        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 8,
     },
-    daysLeftPane: {
-        flex: 1,
+    homeDaysNumber: {
+        marginTop: 3,
+        color: '#FFFFFF',
+        fontSize: 38,
+        lineHeight: 42,
+        fontWeight: '900',
+    },
+    homeDaysLabel: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    homeDistanceTitle: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '900',
+    },
+    homeDistanceTrack: {
+        width: '100%',
+        marginTop: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    homeDistanceLine: {
+        position: 'absolute',
+        left: 22,
+        right: 22,
+        height: 1,
+        borderTopWidth: 2,
+        borderStyle: 'dashed',
+        borderColor: 'rgba(255,255,255,0.85)',
+    },
+    homeDistanceAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.4)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    daysAvatars: {
-        flexDirection: 'row',
-        marginBottom: 7,
-    },
-    daysTogetherNumber: {
+    homeDistanceAvatarText: {
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '900',
-        letterSpacing: 0,
-    },
-    daysTogetherText: {
-        color: '#FFFFFF',
-        fontSize: 15,
-        fontWeight: '900',
-        letterSpacing: 0,
     },
 
     scribbleCard: {
