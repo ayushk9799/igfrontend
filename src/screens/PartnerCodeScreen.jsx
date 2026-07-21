@@ -330,6 +330,9 @@ export const PartnerCodeScreen = ({
                     connectionDate: data.partner.connectionDate,
                     relationshipStartDate: data.partner.relationshipStartDate,
                     shouldAskRelationshipStartDate: data.partner.shouldAskRelationshipStartDate || false,
+                    partnerIsPremium: data.partner.isPremium === true,
+                    partnerPremiumPlan: data.partner.premiumPlan || null,
+                    partnerPremiumExpiresAt: data.partner.premiumExpiresAt || null,
                 });
 
                 // Show connected screen with floating hearts

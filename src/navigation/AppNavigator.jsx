@@ -33,10 +33,11 @@ import TicTacToeScreen from '../screens/TicTacToeScreen';
 import WordleScreen from '../screens/WordleScreen';
 import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
 import PremiumScreen from '../screens/PremiumScreen';
+import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
-import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding } from '../utils/authStorage';
+import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, isOnboarded as isOnboardedStorage, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding, hasSeenOnboardingPremium, setSeenOnboardingPremium } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
 import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener, checkNotificationPermission } from '../utils/pushNotifications';
@@ -150,6 +151,19 @@ export const AppNavigator = () => {
     const needsRelationshipStartDate = (user) => !!user?.partnerId
         && !user?.relationshipStartDate
         && user?.shouldAskRelationshipStartDate === true;
+
+    const isPremiumDateActive = (date) => {
+        if (!date) return false;
+        const expiresAt = new Date(date).getTime();
+        return !Number.isNaN(expiresAt) && expiresAt > Date.now();
+    };
+
+    const hasActiveCouplePremium = (user) => (
+        user?.isPremium === true
+        || user?.partnerIsPremium === true
+        || isPremiumDateActive(user?.premiumExpiresAt)
+        || isPremiumDateActive(user?.partnerPremiumExpiresAt)
+    );
 
     // In-app update instance (debug flag mirrors __DEV__)
     const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
@@ -272,10 +286,17 @@ export const AppNavigator = () => {
     const userDataRef = React.useRef(userData);
     const distanceSyncInFlightRef = React.useRef(false);
     const lastDistanceSyncAtRef = React.useRef(0);
+    const partnerCompletionRouteRef = React.useRef(false);
 
     useEffect(() => {
         userDataRef.current = userData;
     }, [userData]);
+
+    useEffect(() => {
+        if (currentScreen === 'partnerCode') {
+            partnerCompletionRouteRef.current = false;
+        }
+    }, [currentScreen]);
 
     const syncDistanceWidgetSilently = useCallback(async ({ force = false } = {}) => {
         if (!['ios', 'android'].includes(Platform.OS)) return;
@@ -694,9 +715,13 @@ export const AppNavigator = () => {
                     };
                     const isDateActive = (d) => d && new Date(d) > new Date();
                     const userPremium = isDateActive(userData.premiumExpiresAt);
-                    const partnerPremium = isDateActive(statusData.partner.premiumExpiresAt);
+                    const partnerPremium = statusData.partner.isPremium === true
+                        || isDateActive(statusData.partner.premiumExpiresAt);
                     const effectivePremium = userPremium || partnerPremium;
                     const premiumSource = userPremium ? (userData.premiumSource || 'self') : (partnerPremium ? 'partner' : null);
+                    const shouldShowPremiumStep = !isOnboardedStorage()
+                        && userData?.isOnboarded !== true
+                        && !hasSeenOnboardingPremium(userData.id);
 
                     updateUserStorage({ ...partnerData, isPremium: effectivePremium, premiumSource });
                     dispatch(updateUser({ ...partnerData, isPremium: effectivePremium, premiumSource, isOnboarded: true }));
@@ -707,15 +732,37 @@ export const AppNavigator = () => {
                         connectionDate: statusData.connectionDate,
                         relationshipStartDate: statusData.relationshipStartDate,
                         shouldAskRelationshipStartDate: statusData.shouldAskRelationshipStartDate || false,
+                        isPremium: partnerPremium,
+                        premiumPlan: statusData.partner.premiumPlan || null,
+                        premiumExpiresAt: statusData.partner.premiumExpiresAt || null,
                     }));
                     cancelPartnerInviteReminders().catch(() => {});
-                    setOnboardedStorage(true);
                     requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
 
-                    // Auto-navigate to home after a short delay so PartnerCodeScreen can show the connected text
+                    // Continue onboarding after a short delay so PartnerCodeScreen can show the connected text.
                     if (currentScreen === 'partnerCode') {
                         setTimeout(() => {
-                            setCurrentScreen('home');
+                            if (partnerCompletionRouteRef.current) return;
+                            partnerCompletionRouteRef.current = true;
+
+                            const nextUser = {
+                                ...userData,
+                                ...partnerData,
+                                isPremium: effectivePremium,
+                            };
+
+                            if (effectivePremium || !shouldShowPremiumStep) {
+                                if (needsRelationshipStartDate(nextUser)) {
+                                    setCurrentScreen('relationshipStartDate');
+                                } else {
+                                    checkNotificationPermission().then((hasPermission) => {
+                                        setCurrentScreen(hasPermission ? 'home' : 'notificationPermission');
+                                    });
+                                }
+                            } else {
+                                setSeenOnboardingPremium(userData.id, true);
+                                setCurrentScreen('onboardingPremium');
+                            }
                         }, 2500);
                     }
                 }
@@ -729,7 +776,7 @@ export const AppNavigator = () => {
         return () => {
             socket.off('partner:paired', handlePartnerPaired);
         };
-    }, [socket, userData?.id, userData?.isPremium, currentScreen, dispatch]);
+    }, [socket, userData, currentScreen, dispatch]);
 
     useEffect(() => {
         if (!socket) return;
@@ -1598,51 +1645,127 @@ export const AppNavigator = () => {
         });
     };
 
+    const continueAfterPartnerStep = async (nextUser = userData) => {
+        if (needsRelationshipStartDate(nextUser)) {
+            setCurrentScreen('relationshipStartDate');
+            return;
+        }
 
-    // Handle successful pairing
-    const handlePartnerPaired = async (partner) => {
-        // Update stored user with partner info
-        const partnerData = {
-            partnerId: partner.id,
-            partnerUsername: partner.name,
-            partnerAvatar: partner.avatar || null,
-            connectionDate: partner.connectionDate,
-            relationshipStartDate: partner.relationshipStartDate,
-            pendingRelationshipStartDate: partner.pendingRelationshipStartDate || null,
-            shouldAskRelationshipStartDate: partner.shouldAskRelationshipStartDate || false,
-        };
-        updateUserStorage(partnerData);
-        dispatch(setPartner(partner));
-        cancelPartnerInviteReminders().catch(() => {});
-        setOnboardedStorage(true);
-        requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
-
-        // Check if notification permission is already granted
-        const hasPermission = await checkNotificationPermission();
-        startTransition(() => {
-            if (needsRelationshipStartDate({ ...userData, ...partnerData })) {
-                setCurrentScreen('relationshipStartDate');
-                return;
-            }
-
-            if (hasPermission) {
-                setCurrentScreen('home');
-            } else {
-                setCurrentScreen('notificationPermission');
-            }
-        });
-    };
-
-    // Handle skip partner pairing
-    const handleSkipPartner = () => {
         dispatch(setOnboarded(true));
         setOnboardedStorage(true);
 
-        // Go directly to home - don't re-check notification permission
-        // since the user already passed through the notification screen
-        startTransition(() => {
+        // A user who deferred pairing already passed the notification step.
+        if (!nextUser.partnerId) {
             setCurrentScreen('home');
+            return;
+        }
+
+        const hasPermission = await checkNotificationPermission();
+        setCurrentScreen(hasPermission ? 'home' : 'notificationPermission');
+    };
+
+    const shouldShowOnboardingPremium = () => (
+        !isOnboardedStorage()
+        && userData?.isOnboarded !== true
+        && !hasSeenOnboardingPremium(userData?.id)
+    );
+
+    const showOnboardingPremiumOnce = () => {
+        setSeenOnboardingPremium(userData?.id, true);
+        setCurrentScreen('onboardingPremium');
+    };
+
+
+    // Handle successful pairing
+    const handlePartnerPaired = async (partner) => {
+        if (partnerCompletionRouteRef.current) return;
+
+        const shouldShowPremiumStep = shouldShowOnboardingPremium();
+        let resolvedPartner = partner;
+
+        // Refresh the couple status so premium purchased by the code owner is
+        // known before deciding whether the second user should see the offer.
+        try {
+            const response = await fetch(`${API_BASE}/api/partner/status/${userData.id}`);
+            const statusData = await response.json();
+            if (statusData?.success && statusData?.isPaired && statusData?.partner) {
+                resolvedPartner = {
+                    ...partner,
+                    ...statusData.partner,
+                    connectionDate: statusData.connectionDate,
+                    relationshipStartDate: statusData.relationshipStartDate,
+                    pendingRelationshipStartDate: statusData.pendingRelationshipStartDate || null,
+                    shouldAskRelationshipStartDate: statusData.shouldAskRelationshipStartDate || false,
+                };
+            }
+        } catch (error) {
+            console.warn('Failed to refresh premium status after pairing:', error?.message || error);
+        }
+
+        if (partnerCompletionRouteRef.current) return;
+        partnerCompletionRouteRef.current = true;
+
+        const partnerPremiumExpiresAt = resolvedPartner.premiumExpiresAt || null;
+        const partnerIsPremium = resolvedPartner.isPremium === true
+            || isPremiumDateActive(partnerPremiumExpiresAt);
+
+        // Update stored user with partner info
+        const partnerData = {
+            partnerId: resolvedPartner.id,
+            partnerUsername: resolvedPartner.name,
+            partnerAvatar: resolvedPartner.avatar || null,
+            connectionDate: resolvedPartner.connectionDate,
+            relationshipStartDate: resolvedPartner.relationshipStartDate,
+            pendingRelationshipStartDate: resolvedPartner.pendingRelationshipStartDate || null,
+            shouldAskRelationshipStartDate: resolvedPartner.shouldAskRelationshipStartDate || false,
+            partnerIsPremium,
+            partnerPremiumPlan: resolvedPartner.premiumPlan || null,
+            partnerPremiumExpiresAt,
+        };
+        const nextUser = { ...userData, ...partnerData };
+        const coupleIsPremium = hasActiveCouplePremium(nextUser);
+
+        updateUserStorage({
+            ...partnerData,
+            isPremium: coupleIsPremium,
+            premiumSource: userData.premiumSource
+                || (partnerIsPremium ? 'partner' : null),
         });
+        dispatch(setPartner(resolvedPartner));
+        cancelPartnerInviteReminders().catch(() => {});
+        requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
+
+        if (coupleIsPremium) {
+            await continueAfterPartnerStep({ ...nextUser, isPremium: true });
+            return;
+        }
+
+        if (shouldShowPremiumStep) {
+            startTransition(showOnboardingPremiumOnce);
+        } else {
+            await continueAfterPartnerStep(nextUser);
+        }
+    };
+
+    // Handle skip partner pairing
+    const handleSkipPartner = async () => {
+        if (partnerCompletionRouteRef.current) return;
+        partnerCompletionRouteRef.current = true;
+
+        const shouldShowPremiumStep = shouldShowOnboardingPremium();
+        dispatch(setOnboarded(true));
+        setOnboardedStorage(true);
+
+        if (shouldShowPremiumStep) {
+            startTransition(showOnboardingPremiumOnce);
+        } else {
+            await continueAfterPartnerStep(userData);
+        }
+    };
+
+    // Continue to the next required step after the onboarding premium offer.
+    const handleOnboardingPremiumComplete = async () => {
+        await continueAfterPartnerStep(userData);
     };
 
     // Handle notification permission completion (allow or skip)
@@ -1906,6 +2029,13 @@ export const AppNavigator = () => {
                         partnerUsername={userData.partnerUsername}
                         onPaired={handlePartnerPaired}
                         onSkip={handleSkipPartner}
+                    />
+                );
+
+            case 'onboardingPremium':
+                return (
+                    <OnboardingPremiumScreen
+                        onBack={handleOnboardingPremiumComplete}
                     />
                 );
 

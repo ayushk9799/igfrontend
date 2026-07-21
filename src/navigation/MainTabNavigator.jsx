@@ -13,6 +13,7 @@ import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
 import ChatListScreen from '../screens/ChatListScreen';
 import NotificationCenterScreen from '../screens/NotificationCenterScreen';
 import PremiumScreen from '../screens/PremiumScreen';
+import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
 import MoodScreen from '../screens/MoodScreen';
 import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
 import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
@@ -70,6 +71,7 @@ export const MainTabNavigator = ({
     const [todayChallenge, setTodayChallenge] = useState(null);
     const [isAccountVisible, setIsAccountVisible] = useState(false);
     const [isPremiumOpenInAccount, setIsPremiumOpenInAccount] = useState(false);
+    const [isHomePremiumVisible, setIsHomePremiumVisible] = useState(false);
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
     const [isMoodVisible, setIsMoodVisible] = useState(false);
     const [isMoodRefreshPrompt, setIsMoodRefreshPrompt] = useState(false);
@@ -413,6 +415,7 @@ export const MainTabNavigator = ({
                             setOpenDistanceSetup(userData?.locationSharingEnabled !== true);
                             setCurrentTab('widgetsLibrary');
                         }}
+                        onPremiumPress={() => setIsHomePremiumVisible(true)}
                     />
                 );
             case 'partnerPhotoCapture':
@@ -618,6 +621,18 @@ export const MainTabNavigator = ({
             >
                 <PremiumScreen
                     onBack={() => setIsPremiumOpenInAccount(false)}
+                />
+            </Modal>
+
+            <Modal
+                visible={isHomePremiumVisible}
+                animationType="slide"
+                transparent={false}
+                statusBarTranslucent={true}
+                onRequestClose={() => setIsHomePremiumVisible(false)}
+            >
+                <OnboardingPremiumScreen
+                    onBack={() => setIsHomePremiumVisible(false)}
                 />
             </Modal>
 

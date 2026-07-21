@@ -10,7 +10,14 @@ const KEYS = {
     IS_AUTHENTICATED: 'auth_is_authenticated',
     IS_ONBOARDED: 'auth_is_onboarded',
     HAS_SEEN_ONBOARDING: 'has_seen_onboarding', // First-launch intro screens
+    HAS_SEEN_ONBOARDING_PREMIUM: 'has_seen_onboarding_premium',
 };
+
+const getOnboardingPremiumKey = (userId) => (
+    userId
+        ? `${KEYS.HAS_SEEN_ONBOARDING_PREMIUM}:${userId}`
+        : KEYS.HAS_SEEN_ONBOARDING_PREMIUM
+);
 
 /**
  * Get current user from storage
@@ -148,6 +155,27 @@ export const setSeenOnboarding = (value = true) => {
     }
 };
 
+/**
+ * Check whether this user has already been shown the one-time onboarding
+ * premium offer.
+ */
+export const hasSeenOnboardingPremium = (userId) => {
+    try {
+        return storage.getBoolean(getOnboardingPremiumKey(userId)) === true;
+    } catch (error) {
+        return false;
+    }
+};
+
+/** Mark the one-time onboarding premium offer as shown for this user. */
+export const setSeenOnboardingPremium = (userId, value = true) => {
+    try {
+        storage.set(getOnboardingPremiumKey(userId), value);
+    } catch (error) {
+        console.error('Error setting onboarding premium status:', error);
+    }
+};
+
 export default {
     storage,
     getUser,
@@ -161,5 +189,6 @@ export default {
     getPartnerCode,
     hasSeenOnboarding,
     setSeenOnboarding,
+    hasSeenOnboardingPremium,
+    setSeenOnboardingPremium,
 };
-

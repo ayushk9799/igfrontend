@@ -47,8 +47,10 @@ const userSlice = createSlice({
         },
         setPartner: (state, action) => {
             const partnerExpiresAt = action.payload.premiumExpiresAt || null;
-            const partnerPremium = !!(partnerExpiresAt && new Date(partnerExpiresAt) > new Date());
-            const userPremium = !!(state.premiumExpiresAt && new Date(state.premiumExpiresAt) > new Date());
+            const partnerPremium = action.payload.isPremium === true
+                || !!(partnerExpiresAt && new Date(partnerExpiresAt) > new Date());
+            const userPremium = (state.premiumSource === 'self' && state.isPremium === true)
+                || !!(state.premiumExpiresAt && new Date(state.premiumExpiresAt) > new Date());
             return {
                 ...state,
                 partnerId: action.payload.id,
