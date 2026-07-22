@@ -64,7 +64,9 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
 
     useEffect(() => {
         if (initialSource !== 'camera') return;
-        requestCamera().catch(() => setHasPermission(false));
+        ImagePicker.getCameraPermissionsAsync()
+            .then(permission => setHasPermission(permission.granted))
+            .catch(() => setHasPermission(false));
     }, [initialSource]);
 
     const capture = async () => {

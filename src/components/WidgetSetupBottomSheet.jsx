@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
@@ -32,20 +32,20 @@ const ActionButton = ({ children, onPress, disabled = false, secondary = false }
     </TouchableOpacity>
 );
 
-const LocationPreview = ({ enabled, statusLabel }) => (
+const LocationPreview = ({ enabled, statusLabel, isWaiting = false }) => (
     <View style={styles.locationPreview}>
         <View style={[styles.initialBubble, styles.initialBubblePink]}><Text style={styles.initialText}>A</Text></View>
         <View style={styles.routeLine} />
         <View style={styles.pinCircle}>
             <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-                <Path d="M12 22s7-7.75 7-13a7 7 0 1 0-14 0c0 5.25 7 13 7 13Z" fill="#F45C91" />
+                <Path d="M12 22s7-7.75 7-13a7 7 0 1 0-14 0c0 5.25 7 13 7 13Z" fill={isWaiting ? "#F59E0B" : "#F45C91"} />
                 <Circle cx="12" cy="9" r="2.5" fill="#FFFFFF" />
             </Svg>
         </View>
         <View style={styles.routeLine} />
         <View style={[styles.initialBubble, styles.initialBubblePurple]}><Text style={styles.initialText}>B</Text></View>
-        <View style={[styles.statusPill, enabled && styles.statusPillEnabled]}>
-            <View style={[styles.statusDot, enabled && styles.statusDotEnabled]} />
+        <View style={[styles.statusPill, enabled && styles.statusPillEnabled, isWaiting && styles.statusPillAmber]}>
+            <View style={[styles.statusDot, enabled && styles.statusDotEnabled, isWaiting && styles.statusDotAmber]} />
             <Text style={styles.statusPillText}>{statusLabel || (enabled ? 'Location is on' : 'Not active')}</Text>
         </View>
     </View>
@@ -268,6 +268,7 @@ const WidgetSetupBottomSheet = ({
     cameraMessage,
     onHowToAdd,
     onConnectPartner,
+    onRemindPartner,
     partnerPhoto,
     myPhoto,
     daysTogether,
@@ -275,6 +276,8 @@ const WidgetSetupBottomSheet = ({
 }) => {
     const insets = useSafeAreaInsets();
     const [isMounted, setIsMounted] = useState(visible);
+    const [isRemindLoading, setIsRemindLoading] = useState(false);
+    const [reminderSentText, setReminderSentText] = useState('');
     const backdropOpacity = useRef(new Animated.Value(0)).current;
     const sheetTranslateY = useRef(new Animated.Value(500)).current;
     const onCloseRef = useRef(onClose);
@@ -282,6 +285,20 @@ const WidgetSetupBottomSheet = ({
     useEffect(() => {
         onCloseRef.current = onClose;
     }, [onClose]);
+
+    const handleRemindPress = useCallback(async () => {
+        if (isRemindLoading) return;
+        setIsRemindLoading(true);
+        try {
+            await onRemindPartner?.();
+            setReminderSentText(`Reminder sent to ${partnerName}! 📬`);
+            setTimeout(() => setReminderSentText(''), 4000);
+        } catch {
+            // No-op.
+        } finally {
+            setIsRemindLoading(false);
+        }
+    }, [isRemindLoading, onRemindPartner, partnerName]);
 
     const handleSheetGesture = ({ nativeEvent }) => {
         sheetTranslateY.setValue(Math.max(0, nativeEvent.translationY));
@@ -313,15 +330,23 @@ const WidgetSetupBottomSheet = ({
     const locationAccessBlocked = (Platform.OS === 'ios' && ['denied', 'restricted'].includes(locationPermissionStatus?.status))
         || /settings/i.test(locationMessage || '');
 
+    const isWaitingForPartner = hasPartner && hasCompleteLocationAccess && (
+        distanceReason === 'partner_sharing_disabled' ||
+        distanceReason === 'missing_location'
+    );
+    const isCheckingPartner = hasPartner && hasCompleteLocationAccess && distanceReason === 'checking';
+
     const locationStatusLabel = !hasForegroundLocation
         ? 'Not active'
         : !hasBackgroundLocation
             ? 'Always access needed'
         : !hasPartner
             ? 'Partner needed'
-            : distanceReason === 'partner_sharing_disabled'
-            ? 'Waiting for partner'
-                : 'Location is on';
+        : isCheckingPartner
+            ? 'Checking partner status...'
+        : isWaitingForPartner
+            ? `Waiting for ${partnerName} ⏳`
+            : 'Location is on';
 
     const locationCopy = !hasForegroundLocation
         ? `Give us access to your location so we can show the distance between you and ${hasPartner ? partnerName : 'your partner'}.`
@@ -329,9 +354,11 @@ const WidgetSetupBottomSheet = ({
             ? 'Allow location access all the time so your distance stays updated even when Penguin is closed.'
         : !hasPartner
             ? 'Your location is ready. Connect with your partner to see the distance between you.'
-            : distanceReason === 'partner_sharing_disabled'
+        : isCheckingPartner
+            ? `Connecting to check location sharing with ${partnerName}...`
+        : isWaitingForPartner
             ? `${partnerName} still needs to enable location. Your distance will appear automatically once you’re both sharing.`
-                : `Your location is ready. We’ll use it to keep the distance between you and ${partnerName} updated.`;
+            : `Your location is ready. We’ll use it to keep the distance between you and ${partnerName} updated.`;
 
     useEffect(() => {
         if (visible) {
@@ -396,13 +423,34 @@ const WidgetSetupBottomSheet = ({
                     <View style={styles.handle} />
                     {kind === 'distance' && (
                         <>
-                            <LocationPreview enabled={hasCompleteLocationAccess} statusLabel={locationStatusLabel} />
-                            <Text style={styles.locationCopy}>{locationCopy}</Text>
+                            <LocationPreview
+                                enabled={hasCompleteLocationAccess}
+                                statusLabel={locationStatusLabel}
+                                isWaiting={isWaitingForPartner}
+                            />
+
+                            {isWaitingForPartner ? (
+                                <View style={styles.partnerNoticeCard}>
+                                    <View style={styles.partnerNoticeHeader}>
+                                        <Text style={styles.partnerNoticeIcon}>📍</Text>
+                                        <Text style={styles.partnerNoticeTitle}>{partnerName} needs to turn on location</Text>
+                                    </View>
+                                    <Text style={styles.partnerNoticeText}>
+                                        Your location is active! {partnerName} must also enable location in Penguin so your distance widget can calculate distance.
+                                    </Text>
+                                </View>
+                            ) : (
+                                <Text style={styles.locationCopy}>{locationCopy}</Text>
+                            )}
+
                             <View style={styles.permissionList}>
                                 <PermissionRow icon="➤" label="While using the app" complete={hasForegroundLocation} />
                                 <PermissionRow icon="▣" label={Platform.OS === 'ios' ? 'Always allow' : 'Allow in background'} complete={hasBackgroundLocation} />
                             </View>
+
                             {!!locationMessage && <Text style={styles.inlineMessage}>{locationMessage}</Text>}
+                            {!!reminderSentText && <Text style={styles.successMessage}>{reminderSentText}</Text>}
+
                             {locationAccessBlocked ? (
                                 <ActionButton onPress={onOpenSettings}>Open Settings</ActionButton>
                             ) : !hasCompleteLocationAccess ? (
@@ -411,6 +459,13 @@ const WidgetSetupBottomSheet = ({
                                 </ActionButton>
                             ) : !hasPartner ? (
                                 <ActionButton onPress={onConnectPartner}>Connect Partner</ActionButton>
+                            ) : isWaitingForPartner ? (
+                                <>
+                                    <ActionButton disabled={isRemindLoading} onPress={handleRemindPress}>
+                                        {isRemindLoading ? 'Sending...' : `Remind ${partnerName}`}
+                                    </ActionButton>
+                                    <ActionButton secondary onPress={onHowToAdd}>How to add widget</ActionButton>
+                                </>
                             ) : locationMessage ? (
                                 <ActionButton onPress={onOpenSettings}>Open Settings</ActionButton>
                             ) : (
@@ -441,12 +496,16 @@ const WidgetSetupBottomSheet = ({
                                 <Text style={styles.cameraStatusIcon}>▣</Text>
                                 <Text style={styles.cameraStatusText}>Camera access needed</Text>
                             </View>
+                            {!cameraMessage && (
+                                <Text style={styles.inlineMessage}>
+                                    Allow camera access to take a photo and share the moment with your partner.
+                                </Text>
+                            )}
                             {!!cameraMessage && <Text style={styles.inlineMessage}>{cameraMessage}</Text>}
                             <ActionButton onPress={cameraMessage ? onOpenSettings : onAllowCamera}>
                                 {cameraMessage ? 'Open Settings' : 'Allow Camera'}
                             </ActionButton>
-                            {!cameraMessage && <ActionButton secondary onPress={onOpenSettings}>Open Settings</ActionButton>}
-                            <TouchableOpacity onPress={onClose} style={styles.quietAction}><Text style={styles.quietActionText}>Cancel</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={onClose} style={styles.quietAction}><Text style={styles.quietActionText}>Not now</Text></TouchableOpacity>
                         </>
                     )}
                     {kind === 'time' && (
@@ -478,9 +537,51 @@ const styles = StyleSheet.create({
     pinCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
     statusPill: { position: 'absolute', bottom: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13, paddingVertical: 6, borderRadius: 16, backgroundColor: '#EEECEF' },
     statusPillEnabled: { backgroundColor: '#E6F7E8' },
+    statusPillAmber: { backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A' },
     statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#9B969D', marginRight: 7 },
     statusDotEnabled: { backgroundColor: '#49B657' },
+    statusDotAmber: { backgroundColor: '#F59E0B' },
     statusPillText: { color: '#4B424C', fontSize: 12, fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },
+    partnerNoticeCard: {
+        width: '100%',
+        backgroundColor: '#FFFBEB',
+        borderWidth: 1,
+        borderColor: '#FCD34D',
+        borderRadius: 18,
+        padding: 14,
+        marginTop: 12,
+        marginBottom: 10,
+    },
+    partnerNoticeHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
+    partnerNoticeIcon: {
+        fontSize: 16,
+    },
+    partnerNoticeTitle: {
+        color: '#92400E',
+        fontSize: 14,
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        flex: 1,
+    },
+    partnerNoticeText: {
+        color: '#B45309',
+        fontSize: 12,
+        lineHeight: 17,
+        fontFamily: fontFamily.regular,
+    },
+    successMessage: {
+        color: '#10B981',
+        fontSize: 13,
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        textAlign: 'center',
+        marginVertical: 8,
+    },
     permissionList: { borderRadius: 18, borderWidth: 1, borderColor: '#E8E2E9', overflow: 'hidden', marginTop: 14, marginBottom: 14 },
     permissionRow: { minHeight: 54, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E8E2E9' },
     permissionIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#F0E6FA', alignItems: 'center', justifyContent: 'center', marginRight: 11 },

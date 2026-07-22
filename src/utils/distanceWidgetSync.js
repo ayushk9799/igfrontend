@@ -280,6 +280,37 @@ export const stopDistanceBackgroundUpdates = async () => {
     }
 };
 
+export const disableDistanceLocationSharing = async (user = getUser()) => {
+    const activeUser = user || getUser();
+    const userId = getUserId(activeUser);
+    if (!userId) {
+        return { skipped: true, reason: 'missing_user' };
+    }
+
+    const response = await fetch(`${API_BASE}/api/user/location`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            userId,
+            sharingEnabled: false,
+        }),
+    });
+    const json = await readJsonResponse(response, 'Failed to disable location sharing.');
+    if (!response.ok || !json.success) {
+        throw new Error(json.error || 'Failed to disable location sharing.');
+    }
+
+    const updates = {
+        locationSharingEnabled: false,
+    };
+    updateStoredUser(updates);
+    await stopDistanceBackgroundUpdates();
+
+    return {
+        user: json.user || updates,
+    };
+};
+
 export const syncDistanceWidgetLocation = async ({
     user,
     enableSharing = false,

@@ -45,7 +45,7 @@ import { API_BASE } from '../constants/Api';
 import { QuestionChatsV2Api } from '../api/questionsV2Api';
 import { setAuthErrorHandler } from '../utils/apiFetch';
 import { getDeviceInfo } from '../utils/deviceInfo';
-import { refreshDistanceWidgetSnapshot, saveLockedDistanceWidgetData, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import { disableDistanceLocationSharing, getDistanceLocationPermissionStatus, refreshDistanceWidgetSnapshot, saveLockedDistanceWidgetData, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 import { configureNativeWidgetTracking, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 // Redux actions
@@ -271,11 +271,42 @@ export const AppNavigator = () => {
     const hasHiddenBootSplashRef = React.useRef(false);
     const userDataRef = React.useRef(userData);
     const distanceSyncInFlightRef = React.useRef(false);
+    const distanceRevocationSyncInFlightRef = React.useRef(false);
     const lastDistanceSyncAtRef = React.useRef(0);
 
     useEffect(() => {
         userDataRef.current = userData;
     }, [userData]);
+
+    const auditDistanceLocationPermission = useCallback(async () => {
+        if (!['ios', 'android'].includes(Platform.OS) || distanceRevocationSyncInFlightRef.current) return;
+
+        const activeUser = {
+            ...(userDataRef.current || {}),
+            ...(getUser() || {}),
+        };
+        if (!activeUser?._id && !activeUser?.id) return;
+
+        try {
+            const permission = await getDistanceLocationPermissionStatus();
+            if (!['denied', 'restricted'].includes(permission?.status)) return;
+
+            distanceRevocationSyncInFlightRef.current = true;
+            const result = await disableDistanceLocationSharing(activeUser);
+            if (result?.user) {
+                dispatch(updateUser(result.user));
+                userDataRef.current = {
+                    ...userDataRef.current,
+                    ...result.user,
+                    locationSharingEnabled: false,
+                };
+            }
+        } catch (error) {
+            console.warn('Distance permission revocation sync failed:', error?.message || error);
+        } finally {
+            distanceRevocationSyncInFlightRef.current = false;
+        }
+    }, [dispatch]);
 
     const syncDistanceWidgetSilently = useCallback(async ({ force = false } = {}) => {
         if (!['ios', 'android'].includes(Platform.OS)) return;
@@ -489,11 +520,13 @@ export const AppNavigator = () => {
         if (!userData?.isAuthenticated || !userId) return;
 
         syncNativeWidgetsSilently();
+        auditDistanceLocationPermission();
         syncDistanceWidgetSilently({ force: true });
 
         const interval = setInterval(() => {
             if (AppState.currentState === 'active') {
                 syncNativeWidgetsSilently();
+                auditDistanceLocationPermission();
                 syncDistanceWidgetSilently();
             }
         }, DISTANCE_WIDGET_SYNC_INTERVAL_MS);
@@ -501,6 +534,7 @@ export const AppNavigator = () => {
         const subscription = AppState.addEventListener('change', (nextAppState) => {
             if (nextAppState === 'active') {
                 syncNativeWidgetsSilently();
+                auditDistanceLocationPermission();
                 syncDistanceWidgetSilently({ force: true });
             }
         });
@@ -513,6 +547,7 @@ export const AppNavigator = () => {
         userData?.id,
         userData?._id,
         userData?.isAuthenticated,
+        auditDistanceLocationPermission,
         syncDistanceWidgetSilently,
         syncNativeWidgetsSilently,
     ]);

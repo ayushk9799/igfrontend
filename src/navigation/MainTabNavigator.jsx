@@ -32,8 +32,8 @@ import { getCoupleTodayChallenge } from '../utils/answerApi';
 import { useCall } from '../calling/CallContext';
 import { CALL_STATE } from '../calling/callConstants';
 import { sendCurrentCouplePhoto } from '../api/couplePhotoApi';
-import { getDistanceLocationPermissionStatus, isLocationSettingsError, refreshDistanceWidgetSnapshot, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
-import { reportWidgetIntent, syncNativeWidgetStatus } from '../api/widgetStatusApi';
+import { disableDistanceLocationSharing, getDistanceLocationPermissionStatus, isLocationSettingsError, refreshDistanceWidgetSnapshot, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import { reportWidgetIntent, sendPartnerLocationReminder, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import * as ImagePicker from 'expo-image-picker';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
@@ -94,6 +94,8 @@ export const MainTabNavigator = ({
     const [photoCaptureSource, setPhotoCaptureSource] = useState('camera');
     const [cameraPermissionMessage, setCameraPermissionMessage] = useState('');
     const locationSettingsPendingRef = useRef(false);
+    const cameraSettingsPendingRef = useRef(false);
+    const locationRevocationSyncRef = useRef(false);
     const lastAutoOpenedMoodRef = React.useRef(null);
     const currentTabRef = useRef(currentTab);
 
@@ -229,26 +231,42 @@ export const MainTabNavigator = ({
 
     const refreshLocationPermissionStatus = useCallback(() => {
         getDistanceLocationPermissionStatus()
-            .then(status => {
+            .then(async status => {
                 if (!status) return;
                 setLocationPermissionStatus(status);
                 if (status.foregroundGranted || status.backgroundGranted) {
                     setLocationMessage('');
                 }
+                if (
+                    ['denied', 'restricted'].includes(status.status)
+                    && userData?.locationSharingEnabled === true
+                    && !locationRevocationSyncRef.current
+                ) {
+                    locationRevocationSyncRef.current = true;
+                    try {
+                        const result = await disableDistanceLocationSharing(userData);
+                        if (result?.user) {
+                            dispatch(updateUser(result.user));
+                        }
+                        setDistanceReason('sharing_disabled');
+                    } finally {
+                        locationRevocationSyncRef.current = false;
+                    }
+                }
             })
             .catch(() => {});
-    }, []);
+    }, [dispatch, userData]);
 
     const openWidgetSheet = useCallback((kind) => {
         setLocationMessage('');
         setCameraPermissionMessage('');
         if (kind === 'distance') {
             refreshLocationPermissionStatus();
-            setDistanceReason(hasPartner ? null : 'missing_partner');
+            setDistanceReason(hasPartner ? 'checking' : 'missing_partner');
             if (hasPartner && hasPremiumAccess) {
                 refreshDistanceWidgetSnapshot(userData)
                     .then(result => setDistanceReason(result?.distance?.reason || null))
-                    .catch(() => {});
+                    .catch(() => setDistanceReason(null));
             }
         }
         setWidgetSheet(kind);
@@ -350,8 +368,35 @@ export const MainTabNavigator = ({
             openPhotoCapture('camera');
             return;
         }
-        setCameraPermissionMessage('Camera access is blocked. Enable it in Settings.');
+        setCameraPermissionMessage(
+            permission.canAskAgain === false
+                ? 'Camera access is blocked. Enable it in Settings.'
+                : ''
+        );
     }, [openPhotoCapture]);
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', nextState => {
+            if (nextState !== 'active' || widgetSheet !== 'cameraPermission' || !cameraSettingsPendingRef.current) return;
+
+            cameraSettingsPendingRef.current = false;
+            ImagePicker.getCameraPermissionsAsync()
+                .then(permission => {
+                    if (permission.granted) {
+                        openPhotoCapture('camera');
+                        return;
+                    }
+                    setCameraPermissionMessage(
+                        permission.canAskAgain === false
+                            ? 'Camera access is blocked. Enable it in Settings.'
+                            : ''
+                    );
+                })
+                .catch(() => setCameraPermissionMessage('Could not check camera access. Please try again.'));
+        });
+
+        return () => subscription.remove();
+    }, [openPhotoCapture, widgetSheet]);
 
     const showWidgetInstructions = useCallback(() => {
         Alert.alert(
@@ -362,6 +407,7 @@ export const MainTabNavigator = ({
 
     const handleOpenLocationSettings = useCallback(() => {
         locationSettingsPendingRef.current = widgetSheet === 'distance';
+        cameraSettingsPendingRef.current = widgetSheet === 'cameraPermission';
         Linking.openSettings();
     }, [widgetSheet]);
 
@@ -469,12 +515,20 @@ export const MainTabNavigator = ({
             }
         };
 
+        const handleDistanceStatusUpdate = () => {
+            refreshDistanceWidgetSnapshot(userData)
+                .then(result => setDistanceReason(result?.distance?.reason || null))
+                .catch(() => {});
+        };
+
         socket.on('chat:notification', handleChatNotification);
+        socket.on('distance_status_updated', handleDistanceStatusUpdate);
 
         return () => {
             socket.off('chat:notification', handleChatNotification);
+            socket.off('distance_status_updated', handleDistanceStatusUpdate);
         };
-    }, [socket, currentTab]);
+    }, [socket, currentTab, userData]);
 
     // Clear badge when entering chats tab
     useEffect(() => {
@@ -566,7 +620,7 @@ export const MainTabNavigator = ({
                         onVideoCallPress={handleCallPress}
                         partnerOnline={partnerOnline}
                         partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
-                        onPartnerPhotoPress={() => openWidgetSheet('photo')}
+                        onPartnerPhotoPress={handleTakePhoto}
                         isLocationSetup={userData?.locationSharingEnabled === true}
                         onDistanceSetupPress={() => openWidgetSheet('distance')}
                     />
@@ -852,6 +906,9 @@ export const MainTabNavigator = ({
                 onConnectPartner={() => {
                     setWidgetSheet(null);
                     onFindPartner?.();
+                }}
+                onRemindPartner={async () => {
+                    await sendPartnerLocationReminder(userData);
                 }}
                 partnerPhoto={partnerCurrentPhoto}
                 myPhoto={myCurrentPhoto}

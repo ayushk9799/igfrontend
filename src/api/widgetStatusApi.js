@@ -105,4 +105,14 @@ export const syncNativeWidgetStatus = async (user = getUser()) => {
     }
 };
 
+export const sendPartnerLocationReminder = async (user = getUser()) => {
+    const userId = getUserId(user);
+    if (!userId) return null;
+
+    return safeRequest('/api/user/distance/remind', {
+        method: 'POST',
+        body: JSON.stringify({ userId }),
+    });
+};
+
 export const fetchWidgetStats = async () => safeRequest('/api/user/widgets/stats');
