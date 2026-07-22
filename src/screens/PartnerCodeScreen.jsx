@@ -333,6 +333,10 @@ export const PartnerCodeScreen = ({
                     partnerIsPremium: data.partner.isPremium === true,
                     partnerPremiumPlan: data.partner.premiumPlan || null,
                     partnerPremiumExpiresAt: data.partner.premiumExpiresAt || null,
+                    partnerPremiumWillRenew: data.partner.premiumWillRenew ?? null,
+                    partnerPremiumCancelledAt: data.partner.premiumCancelledAt || null,
+                    partnerSubscriptionStatus: data.partner.subscriptionStatus || null,
+                    partnerSubscriptionBillingIssueAt: data.partner.subscriptionBillingIssueAt || null,
                 });
 
                 // Show connected screen with floating hearts

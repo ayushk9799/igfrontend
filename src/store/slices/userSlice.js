@@ -24,7 +24,12 @@ const initialState = {
     customerInfo: null,
     premiumExpiresAt: null,
     premiumPlan: null,
+    premiumWillRenew: null,
+    premiumCancelledAt: null,
     premiumSource: null,           // 'self' | 'partner' | null
+    premiumOwnerUserId: null,
+    subscriptionStatus: null,
+    subscriptionBillingIssueAt: null,
     timezone: null,
     platform: 'unknown',
     locationSharingEnabled: false,
@@ -33,6 +38,10 @@ const initialState = {
     partnerIsPremium: false,
     partnerPremiumPlan: null,
     partnerPremiumExpiresAt: null,
+    partnerPremiumWillRenew: null,
+    partnerPremiumCancelledAt: null,
+    partnerSubscriptionStatus: null,
+    partnerSubscriptionBillingIssueAt: null,
 };
 
 const userSlice = createSlice({
@@ -63,6 +72,10 @@ const userSlice = createSlice({
                 partnerIsPremium: partnerPremium,
                 partnerPremiumPlan: action.payload.premiumPlan || null,
                 partnerPremiumExpiresAt: partnerExpiresAt,
+                partnerPremiumWillRenew: action.payload.premiumWillRenew ?? null,
+                partnerPremiumCancelledAt: action.payload.premiumCancelledAt || null,
+                partnerSubscriptionStatus: action.payload.subscriptionStatus || null,
+                partnerSubscriptionBillingIssueAt: action.payload.subscriptionBillingIssueAt || null,
                 // Activate couple premium if partner is premium but user isn't
                 isPremium: userPremium || partnerPremium,
                 premiumSource: userPremium ? (state.premiumSource || 'self') : (partnerPremium ? 'partner' : state.premiumSource),
@@ -74,14 +87,37 @@ const userSlice = createSlice({
         },
         // Premium-related reducers
         setCustomerInfo: (state, action) => {
-            state.isPremium = action.payload?.activeSubscriptions?.length > 0;
             state.customerInfo = action.payload || null;
         },
         setPremiumStatus: (state, action) => {
             state.isPremium = action.payload.isPremium;
             state.premiumExpiresAt = action.payload.premiumExpiresAt;
             state.premiumPlan = action.payload.premiumPlan;
-            state.premiumSource = action.payload.premiumSource || 'self';
+            if (Object.prototype.hasOwnProperty.call(action.payload, 'premiumWillRenew')) {
+                state.premiumWillRenew = action.payload.premiumWillRenew ?? null;
+            }
+            if (Object.prototype.hasOwnProperty.call(action.payload, 'premiumCancelledAt')) {
+                state.premiumCancelledAt = action.payload.premiumCancelledAt || null;
+            }
+            state.premiumSource = action.payload.premiumSource ?? null;
+            if (Object.prototype.hasOwnProperty.call(action.payload, 'premiumOwnerUserId')) {
+                state.premiumOwnerUserId = action.payload.premiumOwnerUserId || null;
+            }
+            if (Object.prototype.hasOwnProperty.call(action.payload, 'subscriptionStatus')) {
+                state.subscriptionStatus = action.payload.subscriptionStatus || null;
+            }
+            if (Object.prototype.hasOwnProperty.call(action.payload, 'subscriptionBillingIssueAt')) {
+                state.subscriptionBillingIssueAt = action.payload.subscriptionBillingIssueAt || null;
+            }
+            if (Object.prototype.hasOwnProperty.call(action.payload, 'partnerIsPremium')) {
+                state.partnerIsPremium = action.payload.partnerIsPremium === true;
+                state.partnerPremiumExpiresAt = action.payload.partnerPremiumExpiresAt || null;
+                state.partnerPremiumPlan = action.payload.partnerPremiumPlan || null;
+                state.partnerPremiumWillRenew = action.payload.partnerPremiumWillRenew ?? null;
+                state.partnerPremiumCancelledAt = action.payload.partnerPremiumCancelledAt || null;
+                state.partnerSubscriptionStatus = action.payload.partnerSubscriptionStatus || null;
+                state.partnerSubscriptionBillingIssueAt = action.payload.partnerSubscriptionBillingIssueAt || null;
+            }
         },
         logout: () => initialState,
     },
@@ -97,7 +133,15 @@ export const selectHasPartner = (state) => !!state.user.partnerId;
 export const selectPartnerName = (state) => state.user.partnerUsername;
 const isDateActive = (dateStr) => !!(dateStr && new Date(dateStr) > new Date());
 export const selectIsPremium = (state) => {
-    return isDateActive(state.user.premiumExpiresAt) || isDateActive(state.user.partnerPremiumExpiresAt);
+    const activeStatuses = ['active', 'cancelled', 'billing_issue', 'paused'];
+    const canonicalAccess = state.user.isPremium === true
+        && activeStatuses.includes(state.user.subscriptionStatus);
+    const partnerCanonicalAccess = state.user.partnerIsPremium === true
+        && activeStatuses.includes(state.user.partnerSubscriptionStatus);
+    return canonicalAccess
+        || partnerCanonicalAccess
+        || isDateActive(state.user.premiumExpiresAt)
+        || isDateActive(state.user.partnerPremiumExpiresAt);
 }
 export const selectDaysTogether = (state) => {
     const startDate = state.user.relationshipStartDate || state.user.pendingRelationshipStartDate || state.user.connectionDate;

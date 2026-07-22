@@ -34,6 +34,9 @@ import WordleScreen from '../screens/WordleScreen';
 import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
+import FreeScreen from '../screens/FreeScreen';
+import PartnerPremiumPurchaseModal from '../components/PartnerPremiumPurchaseModal';
+import PartnerConnectedModal from '../components/PartnerConnectedModal';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
@@ -48,6 +51,7 @@ import { setAuthErrorHandler } from '../utils/apiFetch';
 import { getDeviceInfo } from '../utils/deviceInfo';
 import { refreshDistanceWidgetSnapshot, saveLockedDistanceWidgetData, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 import { configureNativeWidgetTracking, syncNativeWidgetStatus } from '../api/widgetStatusApi';
+import { getPremiumEntitlement, getSubscriptionStatus, mapSubscriptionAccessToUser, refreshSubscription } from '../api/subscriptionApi';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
@@ -68,6 +72,31 @@ const fetchWithTimeout = async (url, options = {}, timeoutMs = UPDATE_CHECK_TIME
     } finally {
         clearTimeout(timeoutId);
     }
+};
+
+const isPremiumDateActive = (date) => {
+    if (!date) return false;
+    const expiresAt = new Date(date).getTime();
+    return !Number.isNaN(expiresAt) && expiresAt > Date.now();
+};
+
+const hasActiveCouplePremium = (user) => (
+    user?.isPremium === true
+    || user?.partnerIsPremium === true
+    || isPremiumDateActive(user?.premiumExpiresAt)
+    || isPremiumDateActive(user?.partnerPremiumExpiresAt)
+);
+
+const hasActiveOwnPremium = (user) => {
+    const userId = user?.id || user?._id;
+    const canonicalOwnerMatches = user?.premiumOwnerUserId
+        && String(user.premiumOwnerUserId) === String(userId);
+    const canonicalStatusActive = ['active', 'cancelled', 'billing_issue', 'paused']
+        .includes(user?.subscriptionStatus);
+
+    return isPremiumDateActive(user?.premiumExpiresAt)
+        || (user?.premiumSource === 'self' && user?.isPremium === true)
+        || (canonicalOwnerMatches && canonicalStatusActive);
 };
 
 const getMoodUpdateMetadata = () => {
@@ -144,6 +173,8 @@ export const AppNavigator = () => {
     const [homeInitialTab, setHomeInitialTab] = useState(null); // Track which tab to open in MainTabNavigator
     const [lastHomeTab, setLastHomeTab] = useState('home'); // Remember active tab before opening full-screen routes
     const [versionGate, setVersionGate] = useState({ status: 'checking', policy: null });
+    const [partnerPremiumAlertVisible, setPartnerPremiumAlertVisible] = useState(false);
+    const [partnerConnectedAlert, setPartnerConnectedAlert] = useState(null);
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -152,18 +183,6 @@ export const AppNavigator = () => {
         && !user?.relationshipStartDate
         && user?.shouldAskRelationshipStartDate === true;
 
-    const isPremiumDateActive = (date) => {
-        if (!date) return false;
-        const expiresAt = new Date(date).getTime();
-        return !Number.isNaN(expiresAt) && expiresAt > Date.now();
-    };
-
-    const hasActiveCouplePremium = (user) => (
-        user?.isPremium === true
-        || user?.partnerIsPremium === true
-        || isPremiumDateActive(user?.premiumExpiresAt)
-        || isPremiumDateActive(user?.partnerPremiumExpiresAt)
-    );
 
     // In-app update instance (debug flag mirrors __DEV__)
     const inAppUpdates = useMemo(() => new SpInAppUpdates(__DEV__), []);
@@ -422,71 +441,63 @@ export const AppNavigator = () => {
 
     // Sync premium status from RevenueCat on app startup
     const syncPremiumFromRevenueCat = React.useCallback(async (userId) => {
+        if (!userId) return;
+
+        let customerInfo = null;
         try {
             await initPurchases();
-            if (!purchasesConfiguredRef.current) return;
-            const customerInfo = await Purchases.getCustomerInfo();
-            dispatch(setCustomerInfo(customerInfo));
-
-            const active = customerInfo?.entitlements?.active || {};
-            const activeList = Object.values(active || {});
-            const hasActive = activeList.length > 0;
-            let premiumExpiresAt = null;
-            let premiumPlan = null;
-
-            if (hasActive) {
-                const maxDate = activeList.reduce((acc, e) => {
-                    const d = e?.expirationDate ? new Date(e.expirationDate) : null;
-                    if (!d) return acc;
-                    if (!acc) return d;
-                    return d > acc ? d : acc;
-                }, null);
-                premiumExpiresAt = maxDate ? maxDate.toISOString() : null;
-                premiumPlan = activeList[0]?.productIdentifier || null;
+            if (purchasesConfiguredRef.current) {
+                customerInfo = await Purchases.getCustomerInfo();
+                dispatch(setCustomerInfo(customerInfo));
             }
-
-            if (!userId) return;
-
-            // Update backend with the user's own RevenueCat status
-            await fetch(`${API_BASE}/api/user/premium`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId,
-                    isPremium: hasActive,
-                    premiumExpiresAt: hasActive ? premiumExpiresAt : null,
-                    premiumPlan: hasActive ? premiumPlan : null,
-                }),
-            });
-
-            // Compute effective couple premium: user's own OR partner's
-            const storedUser = getUser();
-            const isDateActive = (d) => d && new Date(d) > new Date();
-            const partnerPremium = isDateActive(storedUser?.partnerPremiumExpiresAt);
-            const effectivePremium = hasActive || partnerPremium;
-            const premiumSource = hasActive ? 'self' : (partnerPremium ? 'partner' : null);
-
-            // Update local storage (preserve couple premium)
-            updateUserStorage({
-                isPremium: effectivePremium,
-                premiumExpiresAt: hasActive ? premiumExpiresAt : null,
-                premiumPlan: hasActive ? premiumPlan : null,
-                premiumSource,
-            });
-
-            // Update Redux state (preserve couple premium)
-            dispatch(setPremiumStatus({
-                isPremium: effectivePremium,
-                premiumExpiresAt: hasActive ? premiumExpiresAt : null,
-                premiumPlan: hasActive ? premiumPlan : null,
-                premiumSource,
-            }));
-
-            if (!effectivePremium) {
-                saveLockedDistanceWidgetData(storedUser || {}).catch(() => {});
-            }
-
         } catch (e) {
+            // Server state below remains available if the device SDK is offline.
+        }
+
+        try {
+            let response;
+            try {
+                response = await refreshSubscription(userId);
+            } catch (refreshError) {
+                response = await getSubscriptionStatus(userId);
+            }
+
+            const premiumData = mapSubscriptionAccessToUser(response);
+            if (!premiumData) return;
+
+            const localEntitlement = getPremiumEntitlement(customerInfo);
+            if (!premiumData.isPremium && localEntitlement) {
+                premiumData.isPremium = true;
+                premiumData.premiumSource = 'self';
+                premiumData.premiumExpiresAt = localEntitlement.expirationDate || null;
+                premiumData.premiumPlan = localEntitlement.productIdentifier || null;
+                premiumData.premiumWillRenew = localEntitlement.willRenew ?? null;
+                premiumData.premiumCancelledAt = localEntitlement.unsubscribeDetectedAt || null;
+            }
+
+            updateUserStorage(premiumData);
+            dispatch(updateUser(premiumData));
+            dispatch(setPremiumStatus(premiumData));
+
+            if (!premiumData.isPremium) {
+                saveLockedDistanceWidgetData(getUser() || {}).catch(() => {});
+            }
+        } catch (serverError) {
+            // Preserve current/legacy access on all verification failures. The
+            // purchaser may still receive immediate local access after checkout.
+            const entitlement = getPremiumEntitlement(customerInfo);
+            if (entitlement) {
+                const optimistic = {
+                    isPremium: true,
+                    premiumExpiresAt: entitlement.expirationDate || null,
+                    premiumPlan: entitlement.productIdentifier || null,
+                    premiumWillRenew: entitlement.willRenew ?? null,
+                    premiumCancelledAt: entitlement.unsubscribeDetectedAt || null,
+                    premiumSource: 'self',
+                };
+                updateUserStorage(optimistic);
+                dispatch(setPremiumStatus(optimistic));
+            }
         }
     }, [initPurchases, dispatch]);
 
@@ -629,6 +640,59 @@ export const AppNavigator = () => {
         identifyAndSync();
     }, [userData?.email, userData?.id, identifyPurchasesUser, syncPremiumFromRevenueCat]);
 
+    // Refresh couple premium whenever the app returns to the foreground, so a
+    // partner purchase is reflected without requiring another login.
+    useEffect(() => {
+        const userId = userData?.id || userData?._id;
+        if (!userData?.isAuthenticated || !userId) return;
+
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active') {
+                syncPremiumFromRevenueCat(userId);
+            }
+        });
+
+        return () => subscription?.remove();
+    }, [
+        userData?.id,
+        userData?._id,
+        userData?.isAuthenticated,
+        syncPremiumFromRevenueCat,
+    ]);
+
+    // Webhooks notify both members of the couple. Refresh from the backend so
+    // an already-open partner app receives purchase/cancellation changes.
+    useEffect(() => {
+        const userId = userData?.id || userData?._id;
+        if (!socket || !userId) return;
+
+        const handleSubscriptionUpdated = async (event = {}) => {
+            try {
+                const response = await getSubscriptionStatus(userId);
+                const premiumData = mapSubscriptionAccessToUser(response);
+                if (!premiumData) return;
+                updateUserStorage(premiumData);
+                dispatch(updateUser(premiumData));
+                dispatch(setPremiumStatus(premiumData));
+
+                const isPartnerPurchase = event.reason === 'revenuecat_webhook'
+                    && ['INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE'].includes(event.eventType)
+                    && event.ownerUserId
+                    && String(event.ownerUserId) !== String(userId)
+                    && premiumData.isPremium;
+
+                if (isPartnerPurchase) {
+                    setPartnerPremiumAlertVisible(true);
+                }
+            } catch (error) {
+                // Keep the last known access and retry on the next foreground.
+            }
+        };
+
+        socket.on('subscription:updated', handleSubscriptionUpdated);
+        return () => socket.off('subscription:updated', handleSubscriptionUpdated);
+    }, [socket, userData?.id, userData?._id, dispatch]);
+
     // Sync local yourMood state with socket userMood when it loads
     useEffect(() => {
         if (userMood) {
@@ -712,9 +776,15 @@ export const AppNavigator = () => {
                         partnerIsPremium: statusData.partner.isPremium || false,
                         partnerPremiumPlan: statusData.partner.premiumPlan || null,
                         partnerPremiumExpiresAt: statusData.partner.premiumExpiresAt || null,
+                        partnerPremiumWillRenew: statusData.partner.premiumWillRenew ?? null,
+                        partnerPremiumCancelledAt: statusData.partner.premiumCancelledAt || null,
+                        partnerSubscriptionStatus: statusData.partner.subscriptionStatus || null,
+                        partnerSubscriptionBillingIssueAt: statusData.partner.subscriptionBillingIssueAt || null,
                     };
                     const isDateActive = (d) => d && new Date(d) > new Date();
-                    const userPremium = isDateActive(userData.premiumExpiresAt);
+                    // Pairing must never downgrade the purchaser. Local RevenueCat
+                    // access may already be active while the webhook/API sync is pending.
+                    const userPremium = hasActiveOwnPremium(userData);
                     const partnerPremium = statusData.partner.isPremium === true
                         || isDateActive(statusData.partner.premiumExpiresAt);
                     const effectivePremium = userPremium || partnerPremium;
@@ -738,6 +808,10 @@ export const AppNavigator = () => {
                     }));
                     cancelPartnerInviteReminders().catch(() => {});
                     requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
+                    setPartnerConnectedAlert({
+                        name: data?.partnerName || statusData.partner.name,
+                        avatar: data?.partnerAvatar || statusData.partner.avatar || null,
+                    });
 
                     // Continue onboarding after a short delay so PartnerCodeScreen can show the connected text.
                     if (currentScreen === 'partnerCode') {
@@ -761,7 +835,7 @@ export const AppNavigator = () => {
                                 }
                             } else {
                                 setSeenOnboardingPremium(userData.id, true);
-                                setCurrentScreen('onboardingPremium');
+                                setCurrentScreen('freeScreen');
                             }
                         }, 2500);
                     }
@@ -1275,11 +1349,16 @@ export const AppNavigator = () => {
                                 partnerIsPremium: statusData.partner.isPremium || false,
                                 partnerPremiumPlan: statusData.partner.premiumPlan || null,
                                 partnerPremiumExpiresAt: statusData.partner.premiumExpiresAt || null,
+                                partnerPremiumWillRenew: statusData.partner.premiumWillRenew ?? null,
+                                partnerPremiumCancelledAt: statusData.partner.premiumCancelledAt || null,
+                                partnerSubscriptionStatus: statusData.partner.subscriptionStatus || null,
+                                partnerSubscriptionBillingIssueAt: statusData.partner.subscriptionBillingIssueAt || null,
                             };
                             // Compute couple premium
                             const isDateActive = (d) => d && new Date(d) > new Date();
-                            const userPremium = isDateActive(storedUser.premiumExpiresAt);
-                            const partnerPremium = isDateActive(statusData.partner.premiumExpiresAt);
+                            const userPremium = hasActiveOwnPremium(storedUser);
+                            const partnerPremium = statusData.partner.isPremium === true
+                                || isDateActive(statusData.partner.premiumExpiresAt);
                             const effectivePremium = userPremium || partnerPremium;
                             const premiumSource = userPremium ? (storedUser.premiumSource || 'self') : (partnerPremium ? 'partner' : null);
                             updateUserStorage({ ...partnerData, isPremium: effectivePremium, premiumSource });
@@ -1288,6 +1367,10 @@ export const AppNavigator = () => {
 
                             if (!storedUser.partnerId) {
                                 // We were just paired by someone else!
+                                setPartnerConnectedAlert({
+                                    name: statusData.partner.name,
+                                    avatar: statusData.partner.avatar || null,
+                                });
                                 setOnboardedStorage(true);
                                 setCurrentScreen('home');
                                 fetchPendingPuzzle(storedUser.id);
@@ -1308,6 +1391,10 @@ export const AppNavigator = () => {
                                 partnerIsPremium: false,
                                 partnerPremiumPlan: null,
                                 partnerPremiumExpiresAt: null,
+                                partnerPremiumWillRenew: null,
+                                partnerPremiumCancelledAt: null,
+                                partnerSubscriptionStatus: null,
+                                partnerSubscriptionBillingIssueAt: null,
                             };
                             // If premium was from partner, revoke it
                             if (storedUser.premiumSource === 'partner') {
@@ -1672,7 +1759,7 @@ export const AppNavigator = () => {
 
     const showOnboardingPremiumOnce = () => {
         setSeenOnboardingPremium(userData?.id, true);
-        setCurrentScreen('onboardingPremium');
+        setCurrentScreen('freeScreen');
     };
 
 
@@ -1721,6 +1808,10 @@ export const AppNavigator = () => {
             partnerIsPremium,
             partnerPremiumPlan: resolvedPartner.premiumPlan || null,
             partnerPremiumExpiresAt,
+            partnerPremiumWillRenew: resolvedPartner.premiumWillRenew ?? null,
+            partnerPremiumCancelledAt: resolvedPartner.premiumCancelledAt || null,
+            partnerSubscriptionStatus: resolvedPartner.subscriptionStatus || null,
+            partnerSubscriptionBillingIssueAt: resolvedPartner.subscriptionBillingIssueAt || null,
         };
         const nextUser = { ...userData, ...partnerData };
         const coupleIsPremium = hasActiveCouplePremium(nextUser);
@@ -2036,6 +2127,13 @@ export const AppNavigator = () => {
                 return (
                     <OnboardingPremiumScreen
                         onBack={handleOnboardingPremiumComplete}
+                    />
+                );
+
+            case 'freeScreen':
+                return (
+                    <FreeScreen
+                        onContinue={() => setCurrentScreen('onboardingPremium')}
                     />
                 );
 
@@ -2366,6 +2464,19 @@ export const AppNavigator = () => {
                     onBack={() => setIsPremiumVisible(false)}
                 />
             </Modal>
+            <PartnerPremiumPurchaseModal
+                visible={partnerPremiumAlertVisible}
+                partnerName={userData.partnerUsername}
+                onClose={() => setPartnerPremiumAlertVisible(false)}
+            />
+            <PartnerConnectedModal
+                visible={!!partnerConnectedAlert}
+                userName={userData.nickname || userData.name}
+                userAvatar={userData.avatarThumbnail || userData.avatar}
+                partnerName={partnerConnectedAlert?.name}
+                partnerAvatar={partnerConnectedAlert?.avatar}
+                onClose={() => setPartnerConnectedAlert(null)}
+            />
         </View>
     );
 };

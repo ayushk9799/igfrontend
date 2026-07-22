@@ -22,7 +22,8 @@ import Purchases from 'react-native-purchases';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
-import { API_URL } from '../constants/Api';
+import { getPremiumEntitlement, mapSubscriptionAccessToUser, refreshSubscription } from '../api/subscriptionApi';
+import { updateUser as updateUserStorage } from '../utils/authStorage';
 
 // Close (cross) icon
 const CloseIcon = () => (
@@ -159,44 +160,14 @@ export default function PremiumScreen({ onBack }) {
 
     const syncServerPremium = async (customerInfo) => {
         try {
-            const active = customerInfo?.entitlements?.active || {};
-            const activeList = Object.values(active || {});
-            const hasActive = activeList.length > 0;
-            let premiumExpiresAt = null;
-            let premiumPlan = null;
-
-            if (hasActive) {
-                const maxDate = activeList.reduce((acc, e) => {
-                    const d = e?.expirationDate ? new Date(e.expirationDate) : null;
-                    if (!d) return acc;
-                    if (!acc) return d;
-                    return d > acc ? d : acc;
-                }, null);
-                premiumExpiresAt = maxDate ? maxDate.toISOString() : null;
-                premiumPlan = activeList[0]?.productIdentifier || selectedPlan || null;
-            }
-
             const uid = user?.id;
             if (!uid) return;
-
-            // Update backend
-            await fetch(`${API_URL}/api/user/premium`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: uid,
-                    isPremium: hasActive,
-                    premiumExpiresAt: hasActive ? premiumExpiresAt : null,
-                    premiumPlan: hasActive ? premiumPlan : null,
-                }),
-            });
-
-            // Update Redux state
-            dispatch(setPremiumStatus({
-                isPremium: hasActive,
-                premiumExpiresAt: hasActive ? premiumExpiresAt : null,
-                premiumPlan: hasActive ? premiumPlan : null,
-            }));
+            const response = await refreshSubscription(uid);
+            const premiumData = mapSubscriptionAccessToUser(response);
+            if (premiumData && (premiumData.isPremium || !getPremiumEntitlement(customerInfo))) {
+                updateUserStorage(premiumData);
+                dispatch(setPremiumStatus(premiumData));
+            }
         } catch (e) {
             console.error('Error syncing premium status:', e);
         }
@@ -223,20 +194,18 @@ export default function PremiumScreen({ onBack }) {
 
             // ── Optimistic update: show premium card instantly ──
             const active = customerInfo?.entitlements?.active || {};
-            const activeList = Object.values(active);
-            if (activeList.length > 0) {
-                const maxDate = activeList.reduce((acc, e) => {
-                    const d = e?.expirationDate ? new Date(e.expirationDate) : null;
-                    if (!d) return acc;
-                    if (!acc) return d;
-                    return d > acc ? d : acc;
-                }, null);
-                dispatch(setPremiumStatus({
+            const premiumEntitlement = getPremiumEntitlement(customerInfo);
+            if (premiumEntitlement) {
+                const optimisticPremium = {
                     isPremium: true,
-                    premiumExpiresAt: maxDate ? maxDate.toISOString() : null,
-                    premiumPlan: activeList[0]?.productIdentifier || selectedPlan || null,
+                    premiumExpiresAt: premiumEntitlement.expirationDate || null,
+                    premiumPlan: premiumEntitlement.productIdentifier || selectedPlan || null,
+                    premiumWillRenew: premiumEntitlement.willRenew ?? null,
+                    premiumCancelledAt: premiumEntitlement.unsubscribeDetectedAt || null,
                     premiumSource: 'self',
-                }));
+                };
+                updateUserStorage(optimisticPremium);
+                dispatch(setPremiumStatus(optimisticPremium));
                 setEntitlements(active);
             }
 
@@ -300,9 +269,18 @@ export default function PremiumScreen({ onBack }) {
     const annualPackage = offerings?.current?.annual || null;
     const monthlyPackage = offerings?.current?.monthly || null;
     const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'annual' ? annualPackage : null;
-    const isPremium = !!(user?.isPremium || (entitlements && Object.keys(entitlements || {}).length > 0));
-    const premiumPlan = user?.premiumPlan || null;
-    const premiumExpiresAt = user?.premiumExpiresAt || null;
+    const isPremium = !!(user?.isPremium || getPremiumEntitlement({ entitlements: { active: entitlements || {} } }));
+    const premiumFromPartner = user?.premiumSource === 'partner';
+    const premiumPlan = premiumFromPartner
+        ? (user?.partnerPremiumPlan || user?.premiumPlan)
+        : user?.premiumPlan;
+    const premiumExpiresAt = premiumFromPartner
+        ? (user?.partnerPremiumExpiresAt || user?.premiumExpiresAt)
+        : user?.premiumExpiresAt;
+    const premiumWillRenew = premiumFromPartner
+        ? (user?.partnerPremiumWillRenew ?? user?.premiumWillRenew)
+        : user?.premiumWillRenew;
+    const premiumIsCancelled = isPremium && premiumWillRenew === false && !!premiumExpiresAt;
 
     const planLabelFromId = (id) => {
         try {
@@ -451,12 +429,21 @@ export default function PremiumScreen({ onBack }) {
                                     </Text>
                                 </View>
                                 <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={styles.premiumStatusLabel}>Renews/Expires</Text>
+                                    <Text style={styles.premiumStatusLabel}>
+                                        {premiumIsCancelled ? 'Access until' : 'Renews/Expires'}
+                                    </Text>
                                     <Text style={styles.premiumStatusValue}>
                                         {formatDate(premiumExpiresAt)}
                                     </Text>
                                 </View>
                             </View>
+                            {premiumIsCancelled && (
+                                <View style={styles.premiumCancellationNotice}>
+                                    <Text style={styles.premiumCancellationText}>
+                                        Premium cancelled — access continues until {formatDate(premiumExpiresAt)}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                 )}
@@ -849,6 +836,20 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '800',
         marginTop: 2,
+    },
+    premiumCancellationNotice: {
+        marginTop: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: '#FFF2E2',
+    },
+    premiumCancellationText: {
+        color: '#9A5B13',
+        fontSize: 12.5,
+        lineHeight: 17,
+        fontWeight: '700',
+        textAlign: 'center',
     },
     // Loading overlay
     processingOverlay: {

@@ -21,7 +21,8 @@ import Purchases from 'react-native-purchases';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
-import { API_URL } from '../constants/Api';
+import { getPremiumEntitlement, mapSubscriptionAccessToUser, refreshSubscription } from '../api/subscriptionApi';
+import { updateUser as updateUserStorage } from '../utils/authStorage';
 
 const ONBOARDING_OFFERING_ID = 'onbording';
 
@@ -139,18 +140,31 @@ export default function OnboardingPremiumScreen({ onBack }) {
     const [entitlements, setEntitlements] = useState(null);
     const [loading, setLoading] = useState(false);
     const [purchasing, setPurchasing] = useState(false);
+    const [purchaseSucceeded, setPurchaseSucceeded] = useState(false);
     const [restoring, setRestoring] = useState(false);
     const insets = useSafeAreaInsets();
+    const screenEntrance = useRef(new Animated.Value(0)).current;
+    const successScale = useRef(new Animated.Value(0.7)).current;
 
     const features = useMemo(
         () => [
-            { label: 'Premium for you and your partner' },
+            { label: 'One premium covers both of you' },
             { label: '2000+ couple questions' },
-            { label: 'Unlimited games' },
+            { label: 'Unlimited Games' },
+            { label: 'Unlimited Memories' },
+            { label: 'Live drawing' },
             { label: 'Widgets' },
         ],
         [],
     );
+
+    useEffect(() => {
+        Animated.timing(screenEntrance, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+        }).start();
+    }, [screenEntrance]);
 
     useEffect(() => {
         const init = async () => {
@@ -163,44 +177,14 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
     const syncServerPremium = async (customerInfo) => {
         try {
-            const active = customerInfo?.entitlements?.active || {};
-            const activeList = Object.values(active || {});
-            const hasActive = activeList.length > 0;
-            let premiumExpiresAt = null;
-            let premiumPlan = null;
-
-            if (hasActive) {
-                const maxDate = activeList.reduce((acc, e) => {
-                    const d = e?.expirationDate ? new Date(e.expirationDate) : null;
-                    if (!d) return acc;
-                    if (!acc) return d;
-                    return d > acc ? d : acc;
-                }, null);
-                premiumExpiresAt = maxDate ? maxDate.toISOString() : null;
-                premiumPlan = activeList[0]?.productIdentifier || selectedPlan || null;
-            }
-
             const uid = user?.id;
             if (!uid) return;
-
-            // Update backend
-            await fetch(`${API_URL}/api/user/premium`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: uid,
-                    isPremium: hasActive,
-                    premiumExpiresAt: hasActive ? premiumExpiresAt : null,
-                    premiumPlan: hasActive ? premiumPlan : null,
-                }),
-            });
-
-            // Update Redux state
-            dispatch(setPremiumStatus({
-                isPremium: hasActive,
-                premiumExpiresAt: hasActive ? premiumExpiresAt : null,
-                premiumPlan: hasActive ? premiumPlan : null,
-            }));
+            const response = await refreshSubscription(uid);
+            const premiumData = mapSubscriptionAccessToUser(response);
+            if (premiumData && (premiumData.isPremium || !getPremiumEntitlement(customerInfo))) {
+                updateUserStorage(premiumData);
+                dispatch(setPremiumStatus(premiumData));
+            }
         } catch (e) {
             console.error('Error syncing premium status:', e);
         }
@@ -227,21 +211,27 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
             // ── Optimistic update: show premium card instantly ──
             const active = customerInfo?.entitlements?.active || {};
-            const activeList = Object.values(active);
-            if (activeList.length > 0) {
-                const maxDate = activeList.reduce((acc, e) => {
-                    const d = e?.expirationDate ? new Date(e.expirationDate) : null;
-                    if (!d) return acc;
-                    if (!acc) return d;
-                    return d > acc ? d : acc;
-                }, null);
-                dispatch(setPremiumStatus({
+            const premiumEntitlement = getPremiumEntitlement(customerInfo);
+            if (premiumEntitlement) {
+                const optimisticPremium = {
                     isPremium: true,
-                    premiumExpiresAt: maxDate ? maxDate.toISOString() : null,
-                    premiumPlan: activeList[0]?.productIdentifier || selectedPlan || null,
+                    premiumExpiresAt: premiumEntitlement.expirationDate || null,
+                    premiumPlan: premiumEntitlement.productIdentifier || selectedPlan || null,
+                    premiumWillRenew: premiumEntitlement.willRenew ?? null,
+                    premiumCancelledAt: premiumEntitlement.unsubscribeDetectedAt || null,
                     premiumSource: 'self',
-                }));
+                };
+                updateUserStorage(optimisticPremium);
+                dispatch(setPremiumStatus(optimisticPremium));
                 setEntitlements(active);
+                setPurchaseSucceeded(true);
+                successScale.setValue(0.7);
+                Animated.spring(successScale, {
+                    toValue: 1,
+                    friction: 5,
+                    tension: 90,
+                    useNativeDriver: true,
+                }).start();
             }
 
             // Sync with backend in the background
@@ -305,9 +295,18 @@ export default function OnboardingPremiumScreen({ onBack }) {
     const annualPackage = offering?.annual || null;
     const monthlyPackage = offering?.monthly || null;
     const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'annual' ? annualPackage : null;
-    const isPremium = !!(user?.isPremium || (entitlements && Object.keys(entitlements || {}).length > 0));
-    const premiumPlan = user?.premiumPlan || null;
-    const premiumExpiresAt = user?.premiumExpiresAt || null;
+    const isPremium = !!(user?.isPremium || getPremiumEntitlement({ entitlements: { active: entitlements || {} } }));
+    const premiumFromPartner = user?.premiumSource === 'partner';
+    const premiumPlan = premiumFromPartner
+        ? (user?.partnerPremiumPlan || user?.premiumPlan)
+        : user?.premiumPlan;
+    const premiumExpiresAt = premiumFromPartner
+        ? (user?.partnerPremiumExpiresAt || user?.premiumExpiresAt)
+        : user?.premiumExpiresAt;
+    const premiumWillRenew = premiumFromPartner
+        ? (user?.partnerPremiumWillRenew ?? user?.premiumWillRenew)
+        : user?.premiumWillRenew;
+    const premiumIsCancelled = isPremium && premiumWillRenew === false && !!premiumExpiresAt;
 
     const planLabelFromId = (id) => {
         try {
@@ -380,6 +379,20 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 style={StyleSheet.absoluteFill}
             />
 
+            <Animated.View
+                style={[
+                    styles.screenContent,
+                    {
+                        opacity: screenEntrance,
+                        transform: [{
+                            translateY: screenEntrance.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [12, 0],
+                            }),
+                        }],
+                    },
+                ]}
+            >
             {/* Back button (Left) */}
             <TouchableOpacity
                 onPress={onBack}
@@ -427,52 +440,100 @@ export default function OnboardingPremiumScreen({ onBack }) {
                     />
                 </View>
 
-                {/* Heading */}
-                <View style={styles.headerTextContainer}>
-                    <Text style={styles.headingTitle}>
-                        Go <Text style={styles.premiumText}>Premium</Text>
-                    </Text>
-                    <Text style={styles.headingSubtitle}>Your partner doesn&apos;t pay anything</Text>
-                </View>
+                <View style={styles.premiumContentSection}>
+                    <LinearGradient
+                        pointerEvents="none"
+                        colors={['rgba(255, 247, 250, 0)', '#FFF7FA']}
+                        style={styles.premiumContentFade}
+                    />
+                    {/* Heading */}
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headingTitle}>
+                            {purchaseSucceeded ? (
+                                <>You're <Text style={styles.premiumText}>Premium!</Text></>
+                            ) : (
+                                <>Go <Text style={styles.premiumText}>Premium</Text></>
+                            )}
+                        </Text>
+                        <Text style={styles.headingSubtitle}>
+                            {purchaseSucceeded
+                                ? 'Your partner is included'
+                                : 'Your partner doesn\'t pay anything'}
+                        </Text>
+                    </View>
 
-                {/* Premium Active Status */}
-                {isPremium && (
-                    <View style={styles.premiumStatusContainer}>
-                        <View style={styles.premiumStatusCard}>
-                            <View style={styles.premiumStatusHeader}>
-                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="#FFB500">
-                                    <Path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm0 3h14v2H5v-2z" />
+                    {/* Premium Active Status */}
+                    {purchaseSucceeded ? (
+                        <View style={styles.purchaseSuccessContainer}>
+                            <Animated.View
+                                style={[
+                                    styles.purchaseSuccessIcon,
+                                    { transform: [{ scale: successScale }] },
+                                ]}
+                            >
+                                <Svg width={34} height={34} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="m5 12 4.2 4.2L19 6.5"
+                                        stroke="#FFFFFF"
+                                        strokeWidth={2.8}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
                                 </Svg>
-                                <Text style={styles.premiumStatusTitle}>You're Premium</Text>
-                            </View>
-                            <View style={styles.premiumStatusDetails}>
-                                <View>
-                                    <Text style={styles.premiumStatusLabel}>Plan</Text>
-                                    <Text style={styles.premiumStatusValue}>
-                                        {planLabelFromId(premiumPlan)}
-                                    </Text>
+                            </Animated.View>
+                            <Text style={styles.purchaseSuccessText}>
+                                Premium is now active for both of you
+                            </Text>
+                        </View>
+                    ) : isPremium && (
+                        <View style={styles.premiumStatusContainer}>
+                            <View style={styles.premiumStatusCard}>
+                                <View style={styles.premiumStatusHeader}>
+                                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="#FFB500">
+                                        <Path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm0 3h14v2H5v-2z" />
+                                    </Svg>
+                                    <Text style={styles.premiumStatusTitle}>You're Premium</Text>
                                 </View>
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={styles.premiumStatusLabel}>Renews/Expires</Text>
-                                    <Text style={styles.premiumStatusValue}>
-                                        {formatDate(premiumExpiresAt)}
-                                    </Text>
+                                <View style={styles.premiumStatusDetails}>
+                                    <View>
+                                        <Text style={styles.premiumStatusLabel}>Plan</Text>
+                                        <Text style={styles.premiumStatusValue}>
+                                            {planLabelFromId(premiumPlan)}
+                                        </Text>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        <Text style={styles.premiumStatusLabel}>
+                                            {premiumIsCancelled ? 'Access until' : 'Renews/Expires'}
+                                        </Text>
+                                        <Text style={styles.premiumStatusValue}>
+                                            {formatDate(premiumExpiresAt)}
+                                        </Text>
+                                    </View>
                                 </View>
+                                {premiumIsCancelled && (
+                                    <View style={styles.premiumCancellationNotice}>
+                                        <Text style={styles.premiumCancellationText}>
+                                            Premium cancelled — access continues until {formatDate(premiumExpiresAt)}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
                         </View>
-                    </View>
-                )}
+                    )}
 
-                {/* Premium Benefits List */}
-                <View style={styles.benefitsContainer}>
-                    {features.map((f) => {
-                        return (
-                            <View key={f.label} style={styles.benefitsItem}>
-                                <PinkCheck />
-                                <Text style={styles.benefitsText}>{f.label}</Text>
-                            </View>
-                        );
-                    })}
+                    {/* Premium Benefits List */}
+                    {!purchaseSucceeded && (
+                        <View style={styles.benefitsContainer}>
+                            {features.map((f) => {
+                                return (
+                                    <View key={f.label} style={styles.benefitsItem}>
+                                        <PinkCheck />
+                                        <Text style={styles.benefitsText}>{f.label}</Text>
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    )}
                 </View>
             </ScrollView>
 
@@ -482,31 +543,20 @@ export default function OnboardingPremiumScreen({ onBack }) {
                     { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16 },
                 ]}
             >
+                <LinearGradient
+                    pointerEvents="none"
+                    colors={[
+                        'rgba(255, 247, 250, 0)',
+                        'rgba(255, 247, 250, 0.35)',
+                        '#FFF7FA',
+                    ]}
+                    locations={[0, 0.82, 1]}
+                    style={styles.bottomContentFade}
+                />
 
                 {/* Plan Selection Cards */}
                 {!isPremium && (monthlyPackage || annualPackage) && (
                     <View style={styles.planCardsContainer}>
-                        {/* Monthly Plan Option */}
-                        {monthlyPackage && (
-                            <Pressable
-                                onPress={() => setSelectedPlan('monthly')}
-                                style={[
-                                    styles.planCard,
-                                    selectedPlan === 'monthly' && styles.planCardSelected,
-                                ]}
-                            >
-                                <View style={styles.planDetailsCol}>
-                                    <Text style={styles.planTitleText}>Monthly</Text>
-                                    <Text style={styles.planPriceText}>
-                                        {formattedMonthlyPrice} / month <Text style={styles.planSubText}>per couple</Text>
-                                    </Text>
-                                </View>
-                                <View style={styles.planRadioCol}>
-                                    {selectedPlan === 'monthly' && <RadioCircleChecked />}
-                                </View>
-                            </Pressable>
-                        )}
-
                         {/* Yearly Plan Option */}
                         {annualPackage && (
                             <Pressable
@@ -536,6 +586,27 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 )}
                             </Pressable>
                         )}
+
+                        {/* Monthly Plan Option */}
+                        {monthlyPackage && (
+                            <Pressable
+                                onPress={() => setSelectedPlan('monthly')}
+                                style={[
+                                    styles.planCard,
+                                    selectedPlan === 'monthly' && styles.planCardSelected,
+                                ]}
+                            >
+                                <View style={styles.planDetailsCol}>
+                                    <Text style={styles.planTitleText}>Monthly</Text>
+                                    <Text style={styles.planPriceText}>
+                                        {formattedMonthlyPrice} / month <Text style={styles.planSubText}>per couple</Text>
+                                    </Text>
+                                </View>
+                                <View style={styles.planRadioCol}>
+                                    {selectedPlan === 'monthly' && <RadioCircleChecked />}
+                                </View>
+                            </Pressable>
+                        )}
                     </View>
                 )}
 
@@ -547,9 +618,9 @@ export default function OnboardingPremiumScreen({ onBack }) {
                             onPress={() => handlePurchase(selectedPackage)}
                             style={[
                                 styles.subscribeButtonWrapper,
-                                loading && styles.subscribeButtonDisabled,
+                                (loading || purchasing) && styles.subscribeButtonDisabled,
                             ]}
-                            disabled={loading}
+                            disabled={loading || purchasing}
                         >
                             <LinearGradient
                                 colors={['#FF5E97', '#FFA1C9']}
@@ -558,7 +629,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 style={styles.subscribeButton}
                             >
                                 <Text style={styles.subscribeButtonText}>
-                                    {loading
+                                    {purchasing
                                         ? 'Processing...'
                                         : selectedPlan === 'annual'
                                             ? 'Try free for 7 days'
@@ -572,6 +643,23 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 : 'Cancel anytime, no commitment'}
                         </Text>
                     </View>
+                )}
+
+                {purchaseSucceeded && (
+                    <TouchableOpacity
+                        activeOpacity={0.88}
+                        onPress={onBack}
+                        style={styles.subscribeButtonWrapper}
+                    >
+                        <LinearGradient
+                            colors={['#FF5E97', '#FFA1C9']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.subscribeButton}
+                        >
+                            <Text style={styles.subscribeButtonText}>Continue</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
                 )}
 
                 {/* Terms & Privacy links */}
@@ -593,6 +681,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                     </Text>
                 </View>
             </View>
+            </Animated.View>
 
             {/* Purchasing overlay loader */}
             {purchasing && (
@@ -612,6 +701,9 @@ const styles = StyleSheet.create({
     root: {
         flex: 1,
     },
+    screenContent: {
+        flex: 1,
+    },
     scrollView: {
         flex: 1,
     },
@@ -620,11 +712,18 @@ const styles = StyleSheet.create({
         paddingBottom: 12,
     },
     bottomContent: {
+        position: 'relative',
+        zIndex: 5,
         paddingTop: 12,
         paddingHorizontal: 20,
-        backgroundColor: 'rgba(255, 247, 250, 0.96)',
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: '#F0D3E1',
+        backgroundColor: '#FFF7FA',
+    },
+    bottomContentFade: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: -64,
+        height: 64,
     },
     backButton: {
         position: 'absolute',
@@ -659,15 +758,16 @@ const styles = StyleSheet.create({
     mascotContainer: {
         alignSelf: 'center',
         position: 'relative',
-        width: 300,
-        height: 230,
+        width: 350,
+        height: 280,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: -12,
+        zIndex: 2,
     },
     mascotImage: {
-        width: 270,
-        height: 222,
+        width: 335,
+        height: 276,
         zIndex: 2,
     },
     floatingHeart: {
@@ -675,9 +775,25 @@ const styles = StyleSheet.create({
         bottom: 30,
         alignSelf: 'center',
     },
+    premiumContentSection: {
+        position: 'relative',
+        zIndex: 3,
+        marginTop: -56,
+        marginHorizontal: -20,
+        paddingTop: 0,
+        paddingHorizontal: 28,
+        backgroundColor: '#FFF7FA',
+    },
+    premiumContentFade: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: -56,
+        height: 56,
+    },
     headerTextContainer: {
         alignItems: 'center',
-        marginTop: 2,
+        marginTop: 0,
         marginBottom: 16,
     },
     headingTitle: {
@@ -699,6 +815,31 @@ const styles = StyleSheet.create({
         marginTop: -4,
         textAlign: 'center',
     },
+    purchaseSuccessContainer: {
+        alignItems: 'center',
+        marginBottom: 22,
+        paddingHorizontal: 20,
+    },
+    purchaseSuccessIcon: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primary,
+        shadowColor: '#FF5E97',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 14,
+        elevation: 5,
+    },
+    purchaseSuccessText: {
+        color: colors.textSecondary,
+        fontSize: 15,
+        fontWeight: '700',
+        textAlign: 'center',
+        marginTop: 12,
+    },
     benefitsContainer: {
         marginBottom: 18,
         paddingHorizontal: 8,
@@ -717,8 +858,9 @@ const styles = StyleSheet.create({
         flexShrink: 1,
     },
     planCardsContainer: {
-        marginBottom: 16,
+        marginBottom: 8,
         alignSelf: 'stretch',
+        gap: 10,
     },
     planCard: {
         backgroundColor: colors.card,
@@ -727,7 +869,6 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         paddingHorizontal: 16,
         paddingVertical: 12,
-        marginBottom: 10,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -757,6 +898,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: colors.text,
+        letterSpacing: 0.4,
     },
     planSubText: {
         fontSize: 14,
@@ -775,7 +917,7 @@ const styles = StyleSheet.create({
     },
     saveBadge: {
         position: 'absolute',
-        bottom: -8,
+        top: -9,
         right: 16,
         backgroundColor: colors.primary,
         borderRadius: 8,
@@ -881,6 +1023,20 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '800',
         marginTop: 2,
+    },
+    premiumCancellationNotice: {
+        marginTop: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: '#FFF2E2',
+    },
+    premiumCancellationText: {
+        color: '#9A5B13',
+        fontSize: 12.5,
+        lineHeight: 17,
+        fontWeight: '700',
+        textAlign: 'center',
     },
     // Loading overlay
     processingOverlay: {

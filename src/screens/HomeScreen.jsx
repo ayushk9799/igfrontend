@@ -191,6 +191,7 @@ const HomeScreen = ({
     isLocationSetup = false,
     onDistanceSetupPress,
     onPremiumPress,
+    hasPremiumAccess = false,
 }) => {
     const { width } = useWindowDimensions();
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
@@ -597,57 +598,59 @@ const HomeScreen = ({
                         </View>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        onPress={onPremiumPress}
-                        activeOpacity={0.9}
-                        style={styles.premiumCardPressable}
-                        accessibilityRole="button"
-                        accessibilityLabel="Open Penguin Couple Premium"
-                    >
-                        <View style={styles.premiumCardShadow}>
-                            <View style={styles.premiumCard}>
-                                <LinearGradient
-                                    colors={['#FFF1A8', '#FFD66B', '#FF9EC4']}
-                                    locations={[0, 0.52, 1]}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={styles.premiumCardGradient}
-                                    pointerEvents="none"
-                                />
-                                <View style={styles.premiumCardGlowOne} />
-                                <View style={styles.premiumCardGlowTwo} />
-                                <View style={styles.premiumCardIcon}>
-                                    <Svg width={25} height={25} viewBox="0 0 24 24" fill="none">
-                                        <Path
-                                            d="M4 17L2.8 7.2L8.2 11L12 4L15.8 11L21.2 7.2L20 17H4Z"
-                                            fill="#FFF8D8"
-                                            stroke="#8A4E18"
-                                            strokeWidth={1.4}
-                                            strokeLinejoin="round"
-                                        />
-                                        <Path d="M5 20H19" stroke="#8A4E18" strokeWidth={1.8} strokeLinecap="round" />
-                                    </Svg>
-                                </View>
-                                <View style={styles.premiumCardCopy}>
-                                    <HomeText style={styles.premiumCardTitle}>Penguin Couple Premium</HomeText>
-                                    <HomeText style={styles.premiumCardSubtitle} numberOfLines={2}>
-                                        Unlock all games, widgets, live drawing
-                                    </HomeText>
-                                </View>
-                                <View style={styles.premiumCardArrow}>
-                                    <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
-                                        <Path
-                                            d="M5 12H18M13 7L18 12L13 17"
-                                            stroke="#FFFFFF"
-                                            strokeWidth={2.4}
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        />
-                                    </Svg>
+                    {!hasPremiumAccess && (
+                        <TouchableOpacity
+                            onPress={onPremiumPress}
+                            activeOpacity={0.9}
+                            style={styles.premiumCardPressable}
+                            accessibilityRole="button"
+                            accessibilityLabel="Open Penguin Couple Premium"
+                        >
+                            <View style={styles.premiumCardShadow}>
+                                <View style={styles.premiumCard}>
+                                    <LinearGradient
+                                        colors={['#FFF1A8', '#FFD66B', '#FF9EC4']}
+                                        locations={[0, 0.52, 1]}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.premiumCardGradient}
+                                        pointerEvents="none"
+                                    />
+                                    <View style={styles.premiumCardGlowOne} />
+                                    <View style={styles.premiumCardGlowTwo} />
+                                    <View style={styles.premiumCardIcon}>
+                                        <Svg width={25} height={25} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M4 17L2.8 7.2L8.2 11L12 4L15.8 11L21.2 7.2L20 17H4Z"
+                                                fill="#FFF8D8"
+                                                stroke="#8A4E18"
+                                                strokeWidth={1.4}
+                                                strokeLinejoin="round"
+                                            />
+                                            <Path d="M5 20H19" stroke="#8A4E18" strokeWidth={1.8} strokeLinecap="round" />
+                                        </Svg>
+                                    </View>
+                                    <View style={styles.premiumCardCopy}>
+                                        <HomeText style={styles.premiumCardTitle}>Penguin Couple Premium</HomeText>
+                                        <HomeText style={styles.premiumCardSubtitle} numberOfLines={2}>
+                                            Unlock all games, widgets, live drawing
+                                        </HomeText>
+                                    </View>
+                                    <View style={styles.premiumCardArrow}>
+                                        <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M5 12H18M13 7L18 12L13 17"
+                                                stroke="#FFFFFF"
+                                                strokeWidth={2.4}
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </Svg>
+                                    </View>
                                 </View>
                             </View>
-                        </View>
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+                    )}
 
                     <View style={styles.widgetsSectionHeader}>
                         <HomeText style={styles.sectionTitle}>Widgets</HomeText>

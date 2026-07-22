@@ -14,6 +14,7 @@ import ChatListScreen from '../screens/ChatListScreen';
 import NotificationCenterScreen from '../screens/NotificationCenterScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
+import FreeScreen from '../screens/FreeScreen';
 import MoodScreen from '../screens/MoodScreen';
 import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
 import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
@@ -72,6 +73,7 @@ export const MainTabNavigator = ({
     const [isAccountVisible, setIsAccountVisible] = useState(false);
     const [isPremiumOpenInAccount, setIsPremiumOpenInAccount] = useState(false);
     const [isHomePremiumVisible, setIsHomePremiumVisible] = useState(false);
+    const [homePremiumStep, setHomePremiumStep] = useState('free');
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
     const [isMoodVisible, setIsMoodVisible] = useState(false);
     const [isMoodRefreshPrompt, setIsMoodRefreshPrompt] = useState(false);
@@ -179,12 +181,20 @@ export const MainTabNavigator = ({
         (userData?.premiumExpiresAt && new Date(userData.premiumExpiresAt) > new Date() ? 'self' :
             (userData?.partnerPremiumExpiresAt && new Date(userData.partnerPremiumExpiresAt) > new Date() ? 'partner' : null));
     const effectivePremiumExpiresAt = effectivePremiumSource === 'partner'
-        ? userData?.partnerPremiumExpiresAt
+        ? (userData?.partnerPremiumExpiresAt || userData?.premiumExpiresAt)
         : userData?.premiumExpiresAt;
     const effectivePremiumPlan = effectivePremiumSource === 'partner'
-        ? userData?.partnerPremiumPlan
+        ? (userData?.partnerPremiumPlan || userData?.premiumPlan)
         : userData?.premiumPlan;
-    const hasPremiumAccess = isPremium || userData?.isPremium === true;
+    const effectivePremiumWillRenew = effectivePremiumSource === 'partner'
+        ? (userData?.partnerPremiumWillRenew ?? userData?.premiumWillRenew)
+        : userData?.premiumWillRenew;
+    const effectiveSubscriptionStatus = effectivePremiumSource === 'partner'
+        ? (userData?.partnerSubscriptionStatus || userData?.subscriptionStatus)
+        : userData?.subscriptionStatus;
+    const hasPremiumAccess = isPremium
+        || userData?.isPremium === true
+        || userData?.partnerIsPremium === true;
     const games = useSelector(selectGames);
     const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle } = games;
 
@@ -415,7 +425,11 @@ export const MainTabNavigator = ({
                             setOpenDistanceSetup(userData?.locationSharingEnabled !== true);
                             setCurrentTab('widgetsLibrary');
                         }}
-                        onPremiumPress={() => setIsHomePremiumVisible(true)}
+                        onPremiumPress={() => {
+                            setHomePremiumStep('free');
+                            setIsHomePremiumVisible(true);
+                        }}
+                        hasPremiumAccess={hasPremiumAccess}
                     />
                 );
             case 'partnerPhotoCapture':
@@ -575,10 +589,12 @@ export const MainTabNavigator = ({
                         userData={userData}
                         partnerName={partnerName}
                         hasPartner={hasPartner}
-                        isPremium={isPremium}
+                        isPremium={hasPremiumAccess}
                         premiumPlan={effectivePremiumPlan}
                         premiumExpiresAt={effectivePremiumExpiresAt}
+                        premiumWillRenew={effectivePremiumWillRenew}
                         premiumSource={effectivePremiumSource}
+                        subscriptionStatus={effectiveSubscriptionStatus}
                         daysTogether={daysTogether}
                         onLogout={() => {
                             setIsAccountVisible(false);
@@ -629,11 +645,23 @@ export const MainTabNavigator = ({
                 animationType="slide"
                 transparent={false}
                 statusBarTranslucent={true}
-                onRequestClose={() => setIsHomePremiumVisible(false)}
+                onRequestClose={() => {
+                    setIsHomePremiumVisible(false);
+                    setHomePremiumStep('free');
+                }}
             >
-                <OnboardingPremiumScreen
-                    onBack={() => setIsHomePremiumVisible(false)}
-                />
+                {homePremiumStep === 'free' ? (
+                    <FreeScreen
+                        onContinue={() => setHomePremiumStep('premium')}
+                    />
+                ) : (
+                    <OnboardingPremiumScreen
+                        onBack={() => {
+                            setIsHomePremiumVisible(false);
+                            setHomePremiumStep('free');
+                        }}
+                    />
+                )}
             </Modal>
 
             <Modal
