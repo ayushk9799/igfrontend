@@ -1,4 +1,4 @@
-// Premium Screen - Full-page premium subscription UI with RevenueCat integration
+// Onboarding Premium Screen - onboarding copy of the premium subscription UI
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     Pressable,
     Image,
-    Platform,
     Animated,
     StyleSheet,
     Linking,
@@ -24,6 +23,8 @@ import { fontFamily, fontWeight } from '../constants/fonts';
 import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
 import { getPremiumEntitlement, mapSubscriptionAccessToUser, refreshSubscription } from '../api/subscriptionApi';
 import { updateUser as updateUserStorage } from '../utils/authStorage';
+
+const ONBOARDING_OFFERING_ID = 'onbording';
 
 // Close (cross) icon
 const CloseIcon = () => (
@@ -131,31 +132,47 @@ const FloatingHeart = ({ delay = 0, startX = 0, size = 16, color = colors.primar
     );
 };
 
-export default function PremiumScreen({ onBack }) {
+export default function OnboardingPremiumScreen({ onBack }) {
     const dispatch = useDispatch();
     const user = useSelector(state => state.user);
     const [selectedPlan, setSelectedPlan] = useState('annual'); // Default to Yearly/Annual plan
-    const [offerings, setOfferings] = useState(null);
+    const [offering, setOffering] = useState(null);
     const [entitlements, setEntitlements] = useState(null);
     const [loading, setLoading] = useState(false);
     const [purchasing, setPurchasing] = useState(false);
+    const [purchaseSucceeded, setPurchaseSucceeded] = useState(false);
+    const [restoring, setRestoring] = useState(false);
     const insets = useSafeAreaInsets();
+    const screenEntrance = useRef(new Animated.Value(0)).current;
+    const successScale = useRef(new Animated.Value(0.7)).current;
 
     const features = useMemo(
         () => [
-            { label: 'Premium for you and your partner' },
+            { label: 'One premium covers both of you' },
             { label: '2000+ couple questions' },
-            { label: 'Unlimited games' },
+            { label: 'Unlimited Games' },
+            { label: 'Unlimited Memories' },
+            { label: 'Live drawing' },
             { label: 'Widgets' },
         ],
         [],
     );
 
     useEffect(() => {
+        Animated.timing(screenEntrance, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+        }).start();
+    }, [screenEntrance]);
+
+    useEffect(() => {
         const init = async () => {
             await getOfferingsAndEntitlements();
         };
         init();
+        // This screen intentionally mirrors PremiumScreen's one-time initialization.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const syncServerPremium = async (customerInfo) => {
@@ -207,6 +224,14 @@ export default function PremiumScreen({ onBack }) {
                 updateUserStorage(optimisticPremium);
                 dispatch(setPremiumStatus(optimisticPremium));
                 setEntitlements(active);
+                setPurchaseSucceeded(true);
+                successScale.setValue(0.7);
+                Animated.spring(successScale, {
+                    toValue: 1,
+                    friction: 5,
+                    tension: 90,
+                    useNativeDriver: true,
+                }).start();
             }
 
             // Sync with backend in the background
@@ -229,45 +254,46 @@ export default function PremiumScreen({ onBack }) {
 
     const handleRestore = async () => {
         try {
-            setLoading(true);
+            setRestoring(true);
             const customerInfo = await Purchases.restorePurchases();
             dispatch(setCustomerInfo(customerInfo));
             await checkEntitlements();
         } catch (e) {
             console.error('Error restoring purchases:', e);
         } finally {
-            setLoading(false);
+            setRestoring(false);
         }
     };
 
     const getOfferingsAndEntitlements = async () => {
         try {
             setLoading(true);
-            const o = await Purchases.getOfferings();
+            const allOfferings = await Purchases.getOfferings();
+            const onboardingOffering = allOfferings?.all?.[ONBOARDING_OFFERING_ID] || null;
 
-            if (o?.current && Array.isArray(o.current.availablePackages) && o.current.availablePackages.length > 0) {
-                setOfferings(o);
-                if (o.current.annual) {
+            if (onboardingOffering && Array.isArray(onboardingOffering.availablePackages) && onboardingOffering.availablePackages.length > 0) {
+                setOffering(onboardingOffering);
+                if (onboardingOffering.annual) {
                     setSelectedPlan('annual');
-                } else if (o.current.monthly) {
+                } else if (onboardingOffering.monthly) {
                     setSelectedPlan('monthly');
                 } else {
                     setSelectedPlan('annual');
                 }
             } else {
-                setOfferings(null);
+                setOffering(null);
             }
             await checkEntitlements();
         } catch (e) {
-            console.error('Error fetching offerings:', e);
-            setOfferings(null);
+            console.error(`Error fetching RevenueCat offering "${ONBOARDING_OFFERING_ID}":`, e);
+            setOffering(null);
         } finally {
             setLoading(false);
         }
     };
 
-    const annualPackage = offerings?.current?.annual || null;
-    const monthlyPackage = offerings?.current?.monthly || null;
+    const annualPackage = offering?.annual || null;
+    const monthlyPackage = offering?.monthly || null;
     const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'annual' ? annualPackage : null;
     const isPremium = !!(user?.isPremium || getPremiumEntitlement({ entitlements: { active: entitlements || {} } }));
     const premiumFromPartner = user?.premiumSource === 'partner';
@@ -330,19 +356,17 @@ export default function PremiumScreen({ onBack }) {
         }
     };
 
-    const monthlyPrice = monthlyPackage?.product?.price || 299;
-    const monthlyCurrency = monthlyPackage?.product?.currencyCode || 'INR';
-    const monthlyPerUser = monthlyPrice / 2;
-    const formattedMonthlyPrice = monthlyPackage?.product?.priceString || `${monthlyCurrency} 299.00`;
-    const formattedMonthlyPerUser = formatCurrencyPrice(monthlyPerUser, monthlyCurrency);
+    const formattedMonthlyPrice = monthlyPackage?.product?.priceString || '';
 
-    const annualPrice = annualPackage?.product?.price || 999;
-    const annualCurrency = annualPackage?.product?.currencyCode || 'INR';
-    const annualPerUser = annualPrice / 24;
-    const formattedAnnualPrice = annualPackage?.product?.priceString || `${annualCurrency} 999.00`;
-    const formattedAnnualPerUser = formatCurrencyPrice(annualPerUser, annualCurrency);
+    const annualPrice = annualPackage?.product?.price || 0;
+    const annualCurrency = annualPackage?.product?.currencyCode || null;
+    const annualMonthlyEquivalent = annualPrice / 12;
+    const formattedAnnualMonthlyEquivalent = formatCurrencyPrice(annualMonthlyEquivalent, annualCurrency);
+    const formattedAnnualPrice = annualPackage?.product?.priceString || '';
 
-    const savingsPercent = monthlyPackage && annualPackage ? Math.round(((monthlyPackage.product.price * 12) - annualPackage.product.price) / (monthlyPackage.product.price * 12) * 100) : 73;
+    const savingsPercent = monthlyPackage && annualPackage
+        ? Math.round(((monthlyPackage.product.price * 12) - annualPackage.product.price) / (monthlyPackage.product.price * 12) * 100)
+        : null;
 
     return (
         <View style={styles.root}>
@@ -355,6 +379,20 @@ export default function PremiumScreen({ onBack }) {
                 style={StyleSheet.absoluteFill}
             />
 
+            <Animated.View
+                style={[
+                    styles.screenContent,
+                    {
+                        opacity: screenEntrance,
+                        transform: [{
+                            translateY: screenEntrance.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [12, 0],
+                            }),
+                        }],
+                    },
+                ]}
+            >
             {/* Back button (Left) */}
             <TouchableOpacity
                 onPress={onBack}
@@ -367,12 +405,12 @@ export default function PremiumScreen({ onBack }) {
             {/* Restore button (Right) */}
             <TouchableOpacity
                 onPress={handleRestore}
-                disabled={loading}
+                disabled={loading || restoring}
                 style={[styles.restoreButton, { top: insets.top > 0 ? insets.top + 6 : 16 }]}
                 activeOpacity={0.8}
             >
                 <Text style={styles.restoreButtonText}>
-                    {loading ? 'Restoring...' : 'Restore'}
+                    {restoring ? 'Restoring...' : 'Restore'}
                 </Text>
             </TouchableOpacity>
 
@@ -382,7 +420,6 @@ export default function PremiumScreen({ onBack }) {
                     styles.scrollContent,
                     {
                         paddingTop: insets.top > 0 ? insets.top + 8 : 16,
-                        paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 16,
                     },
                 ]}
                 showsVerticalScrollIndicator={false}
@@ -403,134 +440,216 @@ export default function PremiumScreen({ onBack }) {
                     />
                 </View>
 
-                {/* Heading */}
-                <View style={styles.headerTextContainer}>
-                    <Text style={styles.headingTitle}>
-                        Go <Text style={styles.premiumText}>Premium</Text>
-                    </Text>
-                    <Text style={styles.headingSubtitle}>One subscription covers both of you</Text>
-                </View>
-
-                {/* Premium Active Status */}
-                {isPremium && (
-                    <View style={styles.premiumStatusContainer}>
-                        <View style={styles.premiumStatusCard}>
-                            <View style={styles.premiumStatusHeader}>
-                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="#FFB500">
-                                    <Path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm0 3h14v2H5v-2z" />
-                                </Svg>
-                                <Text style={styles.premiumStatusTitle}>You're Premium</Text>
-                            </View>
-                            <View style={styles.premiumStatusDetails}>
-                                <View>
-                                    <Text style={styles.premiumStatusLabel}>Plan</Text>
-                                    <Text style={styles.premiumStatusValue}>
-                                        {planLabelFromId(premiumPlan)}
-                                    </Text>
-                                </View>
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={styles.premiumStatusLabel}>
-                                        {premiumIsCancelled ? 'Access until' : 'Renews/Expires'}
-                                    </Text>
-                                    <Text style={styles.premiumStatusValue}>
-                                        {formatDate(premiumExpiresAt)}
-                                    </Text>
-                                </View>
-                            </View>
-                            {premiumIsCancelled && (
-                                <View style={styles.premiumCancellationNotice}>
-                                    <Text style={styles.premiumCancellationText}>
-                                        Premium cancelled — access continues until {formatDate(premiumExpiresAt)}
-                                    </Text>
-                                </View>
+                <View style={styles.premiumContentSection}>
+                    <LinearGradient
+                        pointerEvents="none"
+                        colors={['rgba(255, 247, 250, 0)', '#FFF7FA']}
+                        style={styles.premiumContentFade}
+                    />
+                    {/* Heading */}
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headingTitle}>
+                            {purchaseSucceeded ? (
+                                <>You're <Text style={styles.premiumText}>Premium!</Text></>
+                            ) : (
+                                <>Go <Text style={styles.premiumText}>Premium</Text></>
                             )}
-                        </View>
+                        </Text>
+                        <Text style={styles.headingSubtitle}>
+                            {purchaseSucceeded
+                                ? 'Your partner is included'
+                                : 'Your partner doesn\'t pay anything'}
+                        </Text>
                     </View>
-                )}
 
-                {/* Premium Benefits List */}
-                <View style={styles.benefitsContainer}>
-                    {features.map((f) => {
-                        return (
-                            <View key={f.label} style={styles.benefitsItem}>
-                                <PinkCheck />
-                                <Text style={styles.benefitsText}>{f.label}</Text>
+                    {/* Premium Active Status */}
+                    {purchaseSucceeded ? (
+                        <View style={styles.purchaseSuccessContainer}>
+                            <Animated.View
+                                style={[
+                                    styles.purchaseSuccessIcon,
+                                    { transform: [{ scale: successScale }] },
+                                ]}
+                            >
+                                <Svg width={34} height={34} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="m5 12 4.2 4.2L19 6.5"
+                                        stroke="#FFFFFF"
+                                        strokeWidth={2.8}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </Svg>
+                            </Animated.View>
+                            <Text style={styles.purchaseSuccessText}>
+                                Premium is now active for both of you
+                            </Text>
+                        </View>
+                    ) : isPremium && (
+                        <View style={styles.premiumStatusContainer}>
+                            <View style={styles.premiumStatusCard}>
+                                <View style={styles.premiumStatusHeader}>
+                                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="#FFB500">
+                                        <Path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm0 3h14v2H5v-2z" />
+                                    </Svg>
+                                    <Text style={styles.premiumStatusTitle}>You're Premium</Text>
+                                </View>
+                                <View style={styles.premiumStatusDetails}>
+                                    <View>
+                                        <Text style={styles.premiumStatusLabel}>Plan</Text>
+                                        <Text style={styles.premiumStatusValue}>
+                                            {planLabelFromId(premiumPlan)}
+                                        </Text>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        <Text style={styles.premiumStatusLabel}>
+                                            {premiumIsCancelled ? 'Access until' : 'Renews/Expires'}
+                                        </Text>
+                                        <Text style={styles.premiumStatusValue}>
+                                            {formatDate(premiumExpiresAt)}
+                                        </Text>
+                                    </View>
+                                </View>
+                                {premiumIsCancelled && (
+                                    <View style={styles.premiumCancellationNotice}>
+                                        <Text style={styles.premiumCancellationText}>
+                                            Premium cancelled — access continues until {formatDate(premiumExpiresAt)}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
-                        );
-                    })}
+                        </View>
+                    )}
+
+                    {/* Premium Benefits List */}
+                    {!purchaseSucceeded && (
+                        <View style={styles.benefitsContainer}>
+                            {features.map((f) => {
+                                return (
+                                    <View key={f.label} style={styles.benefitsItem}>
+                                        <PinkCheck />
+                                        <Text style={styles.benefitsText}>{f.label}</Text>
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    )}
                 </View>
+            </ScrollView>
+
+            <View
+                style={[
+                    styles.bottomContent,
+                    { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16 },
+                ]}
+            >
+                <LinearGradient
+                    pointerEvents="none"
+                    colors={[
+                        'rgba(255, 247, 250, 0)',
+                        'rgba(255, 247, 250, 0.35)',
+                        '#FFF7FA',
+                    ]}
+                    locations={[0, 0.82, 1]}
+                    style={styles.bottomContentFade}
+                />
 
                 {/* Plan Selection Cards */}
-                {!isPremium && (
+                {!isPremium && (monthlyPackage || annualPackage) && (
                     <View style={styles.planCardsContainer}>
-                        {/* Monthly Plan Option */}
-                        <Pressable
-                            onPress={() => monthlyPackage && setSelectedPlan('monthly')}
-                            style={[
-                                styles.planCard,
-                                selectedPlan === 'monthly' && styles.planCardSelected,
-                                !monthlyPackage && styles.planCardDisabled,
-                            ]}
-                        >
-                            <View style={styles.planDetailsCol}>
-                                <Text style={styles.planTitleText}>Monthly</Text>
-                                <Text style={styles.planPriceText}>
-                                    {formattedMonthlyPrice} / month <Text style={styles.planSubText}>for 2 users</Text>
-                                </Text>
-                                <Text style={styles.planPerUserText}>
-                                    {formattedMonthlyPerUser} / user / month
-                                </Text>
-                            </View>
-                            <View style={styles.planRadioCol}>
-                                {selectedPlan === 'monthly' && <RadioCircleChecked />}
-                            </View>
-                        </Pressable>
-
                         {/* Yearly Plan Option */}
-                        <Pressable
-                            onPress={() => annualPackage && setSelectedPlan('annual')}
-                            style={[
-                                styles.planCard,
-                                selectedPlan === 'annual' && styles.planCardSelected,
-                                !annualPackage && styles.planCardDisabled,
-                            ]}
-                        >
-                            <View style={styles.planDetailsCol}>
-                                <Text style={styles.planTitleText}>Yearly</Text>
-                                <Text style={styles.planPriceText}>
-                                    {formattedAnnualPrice} / year <Text style={styles.planSubText}>for 2 users</Text>
-                                </Text>
-                                <Text style={styles.planPerUserText}>
-                                    {formattedAnnualPerUser} / user / month
-                                </Text>
-                            </View>
-                            <View style={styles.planRadioCol}>
-                                {selectedPlan === 'annual' && <RadioCircleChecked />}
-                            </View>
+                        {annualPackage && (
+                            <Pressable
+                                onPress={() => setSelectedPlan('annual')}
+                                style={[
+                                    styles.planCard,
+                                    selectedPlan === 'annual' && styles.planCardSelected,
+                                ]}
+                            >
+                                <View style={styles.planDetailsCol}>
+                                    <Text style={styles.planTitleText}>Yearly</Text>
+                                    <Text style={styles.planPriceText}>
+                                        {formattedAnnualMonthlyEquivalent} / month <Text style={styles.planSubText}>per couple</Text>
+                                    </Text>
+                                    <Text style={styles.planTrialText}>
+                                        7 days free, then {formattedAnnualPrice} / year
+                                    </Text>
+                                </View>
+                                <View style={styles.planRadioCol}>
+                                    {selectedPlan === 'annual' && <RadioCircleChecked />}
+                                </View>
 
-                            <View style={styles.saveBadge}>
-                                <Text style={styles.saveBadgeText}>SAVE {savingsPercent}%</Text>
-                            </View>
-                        </Pressable>
+                                {savingsPercent !== null && (
+                                    <View style={styles.saveBadge}>
+                                        <Text style={styles.saveBadgeText}>SAVE {savingsPercent}%</Text>
+                                    </View>
+                                )}
+                            </Pressable>
+                        )}
 
-                        {!monthlyPackage && !annualPackage && (
-                            <View style={styles.noPackagesContainer}>
-                                <Text style={styles.noPackagesText}>No packages available</Text>
-                            </View>
+                        {/* Monthly Plan Option */}
+                        {monthlyPackage && (
+                            <Pressable
+                                onPress={() => setSelectedPlan('monthly')}
+                                style={[
+                                    styles.planCard,
+                                    selectedPlan === 'monthly' && styles.planCardSelected,
+                                ]}
+                            >
+                                <View style={styles.planDetailsCol}>
+                                    <Text style={styles.planTitleText}>Monthly</Text>
+                                    <Text style={styles.planPriceText}>
+                                        {formattedMonthlyPrice} / month <Text style={styles.planSubText}>per couple</Text>
+                                    </Text>
+                                </View>
+                                <View style={styles.planRadioCol}>
+                                    {selectedPlan === 'monthly' && <RadioCircleChecked />}
+                                </View>
+                            </Pressable>
                         )}
                     </View>
                 )}
 
                 {/* CTA Action Button */}
-                {!isPremium && (
+                {!isPremium && selectedPackage && (
+                    <View>
+                        <TouchableOpacity
+                            activeOpacity={0.88}
+                            onPress={() => handlePurchase(selectedPackage)}
+                            style={[
+                                styles.subscribeButtonWrapper,
+                                (loading || purchasing) && styles.subscribeButtonDisabled,
+                            ]}
+                            disabled={loading || purchasing}
+                        >
+                            <LinearGradient
+                                colors={['#FF5E97', '#FFA1C9']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.subscribeButton}
+                            >
+                                <Text style={styles.subscribeButtonText}>
+                                    {purchasing
+                                        ? 'Processing...'
+                                        : selectedPlan === 'annual'
+                                            ? 'Try free for 7 days'
+                                            : 'Start now'}
+                                </Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                        <Text style={styles.paymentNoteText}>
+                            {selectedPlan === 'annual'
+                                ? 'No payment due now'
+                                : 'Cancel anytime, no commitment'}
+                        </Text>
+                    </View>
+                )}
+
+                {purchaseSucceeded && (
                     <TouchableOpacity
                         activeOpacity={0.88}
-                        onPress={() => selectedPackage && handlePurchase(selectedPackage)}
-                        style={[
-                            styles.subscribeButtonWrapper,
-                            (!selectedPackage || loading) && styles.subscribeButtonDisabled,
-                        ]}
-                        disabled={!selectedPackage || loading}
+                        onPress={onBack}
+                        style={styles.subscribeButtonWrapper}
                     >
                         <LinearGradient
                             colors={['#FF5E97', '#FFA1C9']}
@@ -538,9 +657,7 @@ export default function PremiumScreen({ onBack }) {
                             end={{ x: 1, y: 0 }}
                             style={styles.subscribeButton}
                         >
-                            <Text style={styles.subscribeButtonText}>
-                                {loading ? 'Processing...' : 'Continue'}
-                            </Text>
+                            <Text style={styles.subscribeButtonText}>Continue</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 )}
@@ -563,7 +680,8 @@ export default function PremiumScreen({ onBack }) {
                         </Text>
                     </Text>
                 </View>
-            </ScrollView>
+            </View>
+            </Animated.View>
 
             {/* Purchasing overlay loader */}
             {purchasing && (
@@ -583,11 +701,29 @@ const styles = StyleSheet.create({
     root: {
         flex: 1,
     },
+    screenContent: {
+        flex: 1,
+    },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
         paddingHorizontal: 20,
+        paddingBottom: 12,
+    },
+    bottomContent: {
+        position: 'relative',
+        zIndex: 5,
+        paddingTop: 12,
+        paddingHorizontal: 20,
+        backgroundColor: '#FFF7FA',
+    },
+    bottomContentFade: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: -64,
+        height: 64,
     },
     backButton: {
         position: 'absolute',
@@ -622,15 +758,16 @@ const styles = StyleSheet.create({
     mascotContainer: {
         alignSelf: 'center',
         position: 'relative',
-        width: 300,
-        height: 230,
+        width: 350,
+        height: 280,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: -12,
+        zIndex: 2,
     },
     mascotImage: {
-        width: 270,
-        height: 222,
+        width: 335,
+        height: 276,
         zIndex: 2,
     },
     floatingHeart: {
@@ -638,9 +775,25 @@ const styles = StyleSheet.create({
         bottom: 30,
         alignSelf: 'center',
     },
+    premiumContentSection: {
+        position: 'relative',
+        zIndex: 3,
+        marginTop: -56,
+        marginHorizontal: -20,
+        paddingTop: 0,
+        paddingHorizontal: 28,
+        backgroundColor: '#FFF7FA',
+    },
+    premiumContentFade: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: -56,
+        height: 56,
+    },
     headerTextContainer: {
         alignItems: 'center',
-        marginTop: 2,
+        marginTop: 0,
         marginBottom: 16,
     },
     headingTitle: {
@@ -659,8 +812,33 @@ const styles = StyleSheet.create({
         color: colors.primary,
         fontSize: 14,
         fontWeight: '700',
-        marginTop: 4,
+        marginTop: -4,
         textAlign: 'center',
+    },
+    purchaseSuccessContainer: {
+        alignItems: 'center',
+        marginBottom: 22,
+        paddingHorizontal: 20,
+    },
+    purchaseSuccessIcon: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.primary,
+        shadowColor: '#FF5E97',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 14,
+        elevation: 5,
+    },
+    purchaseSuccessText: {
+        color: colors.textSecondary,
+        fontSize: 15,
+        fontWeight: '700',
+        textAlign: 'center',
+        marginTop: 12,
     },
     benefitsContainer: {
         marginBottom: 18,
@@ -680,8 +858,9 @@ const styles = StyleSheet.create({
         flexShrink: 1,
     },
     planCardsContainer: {
-        marginBottom: 16,
+        marginBottom: 8,
         alignSelf: 'stretch',
+        gap: 10,
     },
     planCard: {
         backgroundColor: colors.card,
@@ -690,7 +869,6 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         paddingHorizontal: 16,
         paddingVertical: 12,
-        marginBottom: 10,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -711,26 +889,27 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     planTitleText: {
-        fontSize: 15,
+        fontSize: 17,
         fontWeight: '800',
         color: colors.primary,
         marginBottom: 2,
     },
     planPriceText: {
-        fontSize: 14.5,
+        fontSize: 16,
         fontWeight: '700',
         color: colors.text,
+        letterSpacing: 0.4,
     },
     planSubText: {
-        fontSize: 12.5,
+        fontSize: 14,
         fontWeight: '500',
         color: colors.textSecondary,
     },
-    planPerUserText: {
-        fontSize: 12.5,
-        fontWeight: '600',
+    planTrialText: {
+        fontSize: 14,
+        fontWeight: '700',
         color: colors.textSecondary,
-        marginTop: 1,
+        marginTop: 2,
     },
     planRadioCol: {
         marginLeft: 12,
@@ -738,7 +917,7 @@ const styles = StyleSheet.create({
     },
     saveBadge: {
         position: 'absolute',
-        bottom: -8,
+        top: -9,
         right: 16,
         backgroundColor: colors.primary,
         borderRadius: 8,
@@ -748,7 +927,7 @@ const styles = StyleSheet.create({
     },
     saveBadgeText: {
         color: '#FFFFFF',
-        fontSize: 9.5,
+        fontSize: 11,
         fontWeight: '900',
         letterSpacing: 0.2,
     },
@@ -758,6 +937,14 @@ const styles = StyleSheet.create({
     },
     noPackagesText: {
         color: colors.textSecondary,
+    },
+    paymentNoteText: {
+        color: colors.textSecondary,
+        fontSize: 13,
+        fontWeight: '600',
+        textAlign: 'center',
+        marginTop: -4,
+        marginBottom: 8,
     },
     subscribeButtonWrapper: {
         marginBottom: 12,

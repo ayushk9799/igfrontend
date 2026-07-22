@@ -55,6 +55,18 @@ const formatRelationshipDuration = (startDate) => {
     return `${years} ${years === 1 ? 'year' : 'years'}, ${months} ${months === 1 ? 'month' : 'months'} together`;
 };
 
+const formatPremiumPlan = (productId) => {
+    if (!productId) return 'Active';
+
+    const normalizedId = String(productId).toLowerCase();
+    if (normalizedId.includes('year') || normalizedId.includes('annual')) return 'Yearly';
+    if (normalizedId.includes('six') || normalizedId.includes('6_month')) return '6 Months';
+    if (normalizedId.includes('month')) return 'Monthly';
+    if (normalizedId.includes('week')) return 'Weekly';
+    if (normalizedId.includes('lifetime')) return 'Lifetime';
+    return 'Active';
+};
+
 // --- SVG Icons ---
 const CrownIcon = ({ size = 20, color = '#FFB800' }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
@@ -156,7 +168,9 @@ export const AccountScreen = ({
     isPremium = false,
     premiumPlan = null,
     premiumExpiresAt = null,
+    premiumWillRenew = null,
     premiumSource = null,
+    subscriptionStatus = null,
     onLogout,
     onAvatarPress,
     onFindPartner,
@@ -173,6 +187,19 @@ export const AccountScreen = ({
     const [localAvatar, setLocalAvatar] = useState(userData.avatarThumbnail || userData.avatar || null);
     const { isUploading, uploadProgress, error, uploadAvatar, clearError } = useAvatarUpload();
     const relationshipDuration = formatRelationshipDuration(userData.relationshipStartDate || userData.connectionDate);
+    const premiumEndDate = premiumExpiresAt
+        ? new Date(premiumExpiresAt).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        })
+        : 'Active';
+    const premiumIsCancelled = isPremium
+        && premiumWillRenew === false
+        && !!premiumExpiresAt
+        && (!subscriptionStatus || subscriptionStatus === 'cancelled');
+    const premiumHasBillingIssue = isPremium && subscriptionStatus === 'billing_issue';
+    const premiumIsPaused = isPremium && subscriptionStatus === 'paused';
 
     useEffect(() => {
         // Prefer thumbnail for fast loading, fallback to full avatar URL
@@ -421,16 +448,41 @@ export const AccountScreen = ({
                                     <View>
                                         <Text style={styles.premiumCardLabel}>Plan</Text>
                                         <Text style={styles.premiumCardValue}>
-                                            {premiumPlan ? (premiumPlan.includes('month') ? 'Monthly' : premiumPlan.includes('six') ? '6 Month' : 'Active') : 'Active'}
+                                            {formatPremiumPlan(premiumPlan)}
                                         </Text>
                                     </View>
                                     <View style={{ alignItems: 'flex-end' }}>
-                                        <Text style={styles.premiumCardLabel}>Renews</Text>
+                                        <Text style={styles.premiumCardLabel}>
+                                            {premiumIsCancelled || premiumIsPaused ? 'Access until' : 'Renews'}
+                                        </Text>
                                         <Text style={styles.premiumCardValue}>
-                                            {premiumExpiresAt ? new Date(premiumExpiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Active'}
+                                            {premiumEndDate}
                                         </Text>
                                     </View>
                                 </View>
+                                {premiumIsCancelled && (
+                                    <View style={styles.premiumCancellationNotice}>
+                                        <Text style={styles.premiumCancellationText}>
+                                            Premium cancelled — access continues until {premiumEndDate}
+                                        </Text>
+                                    </View>
+                                )}
+                                {premiumHasBillingIssue && (
+                                    <View style={styles.premiumCancellationNotice}>
+                                        <Text style={styles.premiumCancellationText}>
+                                            {premiumSource === 'partner'
+                                                ? 'Your couple subscription needs attention. Access remains available for now.'
+                                                : 'Payment issue detected. Please check your subscription payment method.'}
+                                        </Text>
+                                    </View>
+                                )}
+                                {premiumIsPaused && (
+                                    <View style={styles.premiumCancellationNotice}>
+                                        <Text style={styles.premiumCancellationText}>
+                                            Subscription paused — access continues until {premiumEndDate}
+                                        </Text>
+                                    </View>
+                                )}
                                 {premiumSource === 'partner' && (
                                     <Text style={styles.premiumCoupleSubtext}>
                                         Premium through your partner's subscription
@@ -837,6 +889,20 @@ const styles = StyleSheet.create({
         color: '#7380A1',
         marginTop: 10,
         fontStyle: 'italic',
+    },
+    premiumCancellationNotice: {
+        marginTop: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: '#FFF2E2',
+    },
+    premiumCancellationText: {
+        color: '#9A5B13',
+        fontSize: 12.5,
+        lineHeight: 17,
+        fontWeight: '700',
+        textAlign: 'center',
     },
     upgradeBannerWrap: {
         borderRadius: 20,

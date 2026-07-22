@@ -190,6 +190,8 @@ const HomeScreen = ({
     onPartnerPhotoPress,
     isLocationSetup = false,
     onDistanceSetupPress,
+    onPremiumPress,
+    hasPremiumAccess = false,
 }) => {
     const { width } = useWindowDimensions();
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
@@ -596,6 +598,60 @@ const HomeScreen = ({
                         </View>
                     </TouchableOpacity>
 
+                    {!hasPremiumAccess && (
+                        <TouchableOpacity
+                            onPress={onPremiumPress}
+                            activeOpacity={0.9}
+                            style={styles.premiumCardPressable}
+                            accessibilityRole="button"
+                            accessibilityLabel="Open Penguin Couple Premium"
+                        >
+                            <View style={styles.premiumCardShadow}>
+                                <View style={styles.premiumCard}>
+                                    <LinearGradient
+                                        colors={['#FFF1A8', '#FFD66B', '#FF9EC4']}
+                                        locations={[0, 0.52, 1]}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.premiumCardGradient}
+                                        pointerEvents="none"
+                                    />
+                                    <View style={styles.premiumCardGlowOne} />
+                                    <View style={styles.premiumCardGlowTwo} />
+                                    <View style={styles.premiumCardIcon}>
+                                        <Svg width={25} height={25} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M4 17L2.8 7.2L8.2 11L12 4L15.8 11L21.2 7.2L20 17H4Z"
+                                                fill="#FFF8D8"
+                                                stroke="#8A4E18"
+                                                strokeWidth={1.4}
+                                                strokeLinejoin="round"
+                                            />
+                                            <Path d="M5 20H19" stroke="#8A4E18" strokeWidth={1.8} strokeLinecap="round" />
+                                        </Svg>
+                                    </View>
+                                    <View style={styles.premiumCardCopy}>
+                                        <HomeText style={styles.premiumCardTitle}>Penguin Couple Premium</HomeText>
+                                        <HomeText style={styles.premiumCardSubtitle} numberOfLines={2}>
+                                            Unlock all games, widgets, live drawing
+                                        </HomeText>
+                                    </View>
+                                    <View style={styles.premiumCardArrow}>
+                                        <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                                            <Path
+                                                d="M5 12H18M13 7L18 12L13 17"
+                                                stroke="#FFFFFF"
+                                                strokeWidth={2.4}
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </Svg>
+                                    </View>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                    )}
+
                     <View style={styles.widgetsSectionHeader}>
                         <HomeText style={styles.sectionTitle}>Widgets</HomeText>
                     </View>
@@ -923,6 +979,96 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255,122,183,0.94)',
+    },
+    premiumCardPressable: {
+        marginTop: 12,
+    },
+    premiumCardShadow: {
+        borderRadius: 22,
+        backgroundColor: '#FFD66B',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#B45C78',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.18,
+                shadowRadius: 14,
+            },
+            android: {
+                elevation: 5,
+            },
+        }),
+    },
+    premiumCard: {
+        height: 70,
+        borderRadius: 22,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.82)',
+        paddingHorizontal: 13,
+        paddingVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    premiumCardGradient: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 22,
+    },
+    premiumCardGlowOne: {
+        position: 'absolute',
+        width: 86,
+        height: 86,
+        borderRadius: 43,
+        right: -18,
+        top: -40,
+        backgroundColor: 'rgba(255,255,255,0.28)',
+    },
+    premiumCardGlowTwo: {
+        position: 'absolute',
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        left: 62,
+        bottom: -38,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    premiumCardIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 13,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 11,
+        backgroundColor: 'rgba(255,255,255,0.48)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.72)',
+    },
+    premiumCardCopy: {
+        flex: 1,
+        minWidth: 0,
+        paddingRight: 10,
+    },
+    premiumCardTitle: {
+        color: '#592A42',
+        fontSize: 15,
+        lineHeight: 19,
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.extraBold,
+    },
+    premiumCardSubtitle: {
+        color: '#79435B',
+        fontSize: 11,
+        lineHeight: 15,
+        fontWeight: fontWeight('700'),
+        fontFamily: fontFamily.bold,
+        marginTop: 3,
+    },
+    premiumCardArrow: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(116,58,84,0.82)',
     },
     featureCardHeader: {
         zIndex: 2,
