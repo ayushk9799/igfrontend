@@ -274,6 +274,36 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
         resolver(true)
     }
 
+    /// Read the current system permission for the distance widget setup UI.
+    @objc
+    func getLocationAuthorizationStatus(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        DispatchQueue.main.async {
+            let status = CLLocationManager().authorizationStatus
+            let statusName: String
+            switch status {
+            case .notDetermined:
+                statusName = "notDetermined"
+            case .restricted:
+                statusName = "restricted"
+            case .denied:
+                statusName = "denied"
+            case .authorizedWhenInUse:
+                statusName = "whenInUse"
+            case .authorizedAlways:
+                statusName = "always"
+            @unknown default:
+                statusName = "unknown"
+            }
+
+            resolver([
+                "status": statusName,
+                "foregroundGranted": status == .authorizedWhenInUse || status == .authorizedAlways,
+                "backgroundGranted": status == .authorizedAlways,
+                "servicesEnabled": CLLocationManager.locationServicesEnabled(),
+            ])
+        }
+    }
+
     /// Request current location for the distance widget setup flow
     @objc
     func requestCurrentLocation(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
@@ -315,12 +345,12 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
                 backgroundStartResolver?(true)
                 clearBackgroundStartPromise()
             case .authorizedWhenInUse:
-                backgroundStartRejecter?(
-                    "LOCATION_ALWAYS_REQUIRED",
-                    "Always location permission is required for background distance updates.",
-                    nil
-                )
-                clearBackgroundStartPromise()
+                // requestAlwaysAuthorization can report the existing When In Use
+                // state before the user finishes the upgrade prompt. Keep the
+                // promise alive so the later authorizedAlways callback can resolve
+                // it. rejectBackgroundStartIfPendingAfterDelay handles a user who
+                // leaves the permission unchanged.
+                break
             case .denied, .restricted:
                 UserDefaults(suiteName: appGroupIdentifier)?.set(false, forKey: trackingEnabledKey)
                 backgroundStartRejecter?("LOCATION_DENIED", "Location permission is not granted.", nil)

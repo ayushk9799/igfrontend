@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -48,7 +48,7 @@ const BackIcon = () => (
     </Svg>
 );
 
-const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSendPhoto }) => {
+const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSendPhoto, initialSource = 'camera' }) => {
     const cameraRef = useRef(null);
     const capturingRef = useRef(false);
     const [hasPermission, setHasPermission] = useState(null);
@@ -63,8 +63,9 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
     };
 
     useEffect(() => {
+        if (initialSource !== 'camera') return;
         requestCamera().catch(() => setHasPermission(false));
-    }, []);
+    }, [initialSource]);
 
     const capture = async () => {
         if (capturingRef.current || !hasPermission) return;
@@ -81,7 +82,7 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
         }
     };
 
-    const chooseFromGallery = async () => {
+    const chooseFromGallery = useCallback(async () => {
         try {
             const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!permission.granted) {
@@ -100,7 +101,13 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
         } catch (error) {
             Alert.alert('Couldn’t open photo', error?.message || 'Please try again.');
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (initialSource !== 'gallery') return;
+        setHasPermission(false);
+        chooseFromGallery();
+    }, [chooseFromGallery, initialSource]);
 
     const send = async () => {
         if (!previewAsset || isSending) return;

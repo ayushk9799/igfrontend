@@ -1,8 +1,8 @@
 // Main Tab Navigator - Home with Bottom Tabs
 // Now uses Redux for global state instead of prop drilling
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, PanResponder } from 'react-native';
-import { useSelector } from 'react-redux';
+import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, PanResponder, Alert, AppState, Linking } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
@@ -16,13 +16,14 @@ import PremiumScreen from '../screens/PremiumScreen';
 import MoodScreen from '../screens/MoodScreen';
 import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
 import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
+import WidgetSetupBottomSheet from '../components/WidgetSetupBottomSheet';
 import JournalOnboardingScreen from '../screens/JournalOnboardingScreen';
 import QuestionsOnboardingScreen from '../screens/QuestionsOnboardingScreen';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
-import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether, selectIsPremium } from '../store/slices/userSlice';
+import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether, selectIsPremium, updateUser } from '../store/slices/userSlice';
 import { selectGames } from '../store/slices/gamesSlice';
 import { selectDuelBadgeCount } from '../store/slices/notificationsSlice';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
@@ -31,6 +32,9 @@ import { getCoupleTodayChallenge } from '../utils/answerApi';
 import { useCall } from '../calling/CallContext';
 import { CALL_STATE } from '../calling/callConstants';
 import { sendCurrentCouplePhoto } from '../api/couplePhotoApi';
+import { getDistanceLocationPermissionStatus, isLocationSettingsError, refreshDistanceWidgetSnapshot, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import { reportWidgetIntent, syncNativeWidgetStatus } from '../api/widgetStatusApi';
+import * as ImagePicker from 'expo-image-picker';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -82,6 +86,14 @@ export const MainTabNavigator = ({
     const [tabBarRenderKey, setTabBarRenderKey] = useState(0);
     const [openScribbleLiveMode, setOpenScribbleLiveMode] = useState(false);
     const [openDistanceSetup, setOpenDistanceSetup] = useState(false);
+    const [widgetSheet, setWidgetSheet] = useState(null);
+    const [locationSyncing, setLocationSyncing] = useState(false);
+    const [locationMessage, setLocationMessage] = useState('');
+    const [distanceReason, setDistanceReason] = useState(null);
+    const [locationPermissionStatus, setLocationPermissionStatus] = useState(null);
+    const [photoCaptureSource, setPhotoCaptureSource] = useState('camera');
+    const [cameraPermissionMessage, setCameraPermissionMessage] = useState('');
+    const locationSettingsPendingRef = useRef(false);
     const lastAutoOpenedMoodRef = React.useRef(null);
     const currentTabRef = useRef(currentTab);
 
@@ -171,6 +183,7 @@ export const MainTabNavigator = ({
     }, []);
 
     // Redux state
+    const dispatch = useDispatch();
     const userData = useSelector(selectUser);
     const hasPartner = useSelector(selectHasPartner);
     const partnerName = useSelector(selectPartnerName);
@@ -213,6 +226,144 @@ export const MainTabNavigator = ({
         await sendCurrentCouplePhoto({ userId, asset });
         await refreshCurrentPhotos();
     }, [refreshCurrentPhotos, userData]);
+
+    const refreshLocationPermissionStatus = useCallback(() => {
+        getDistanceLocationPermissionStatus()
+            .then(status => {
+                if (!status) return;
+                setLocationPermissionStatus(status);
+                if (status.foregroundGranted || status.backgroundGranted) {
+                    setLocationMessage('');
+                }
+            })
+            .catch(() => {});
+    }, []);
+
+    const openWidgetSheet = useCallback((kind) => {
+        setLocationMessage('');
+        setCameraPermissionMessage('');
+        if (kind === 'distance') {
+            refreshLocationPermissionStatus();
+            setDistanceReason(hasPartner ? null : 'missing_partner');
+            if (hasPartner && hasPremiumAccess) {
+                refreshDistanceWidgetSnapshot(userData)
+                    .then(result => setDistanceReason(result?.distance?.reason || null))
+                    .catch(() => {});
+            }
+        }
+        setWidgetSheet(kind);
+    }, [hasPartner, hasPremiumAccess, refreshLocationPermissionStatus, userData]);
+
+    const handleEnableDistance = useCallback(async () => {
+        if (!hasPremiumAccess) {
+            setWidgetSheet(null);
+            onPremiumPress?.();
+            return;
+        }
+        if (locationSyncing) return;
+
+        setLocationSyncing(true);
+        setLocationMessage('');
+        reportWidgetIntent('distance', userData).catch(() => {});
+        syncNativeWidgetStatus(userData).catch(() => {});
+        try {
+            const result = await syncDistanceWidgetLocation({
+                user: userData,
+                enableSharing: true,
+                enableBackgroundUpdates: true,
+                onForegroundPermissionGranted: () => {
+                    setLocationPermissionStatus(previous => ({
+                        ...(previous || {}),
+                        status: previous?.backgroundGranted ? 'always' : 'whenInUse',
+                        foregroundGranted: true,
+                        backgroundGranted: previous?.backgroundGranted === true,
+                        servicesEnabled: true,
+                    }));
+                },
+            });
+            if (result?.user) {
+                dispatch(updateUser(result.user));
+            }
+            setDistanceReason(result?.distance?.reason || null);
+            if (result?.backgroundUpdatesError) {
+                setLocationMessage(result.backgroundUpdatesError.message || 'Allow background location in Settings so the widget can stay updated.');
+            } else {
+                setLocationPermissionStatus({
+                    status: 'always',
+                    foregroundGranted: true,
+                    backgroundGranted: true,
+                    servicesEnabled: true,
+                });
+            }
+        } catch (error) {
+            setLocationMessage(
+                isLocationSettingsError(error)
+                    ? (error?.message || 'Location access needs to be enabled in Settings.')
+                    : (error?.message || 'Could not enable location. Please try again.')
+            );
+        } finally {
+            refreshLocationPermissionStatus();
+            setLocationSyncing(false);
+        }
+    }, [dispatch, hasPremiumAccess, locationSyncing, onPremiumPress, refreshLocationPermissionStatus, userData]);
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', nextState => {
+            if (nextState === 'active' && widgetSheet === 'distance') {
+                refreshLocationPermissionStatus();
+                setTimeout(refreshLocationPermissionStatus, 350);
+                setTimeout(refreshLocationPermissionStatus, 1000);
+                if (locationSettingsPendingRef.current) {
+                    locationSettingsPendingRef.current = false;
+                    setTimeout(handleEnableDistance, 450);
+                }
+            }
+        });
+        return () => subscription.remove();
+    }, [handleEnableDistance, refreshLocationPermissionStatus, widgetSheet]);
+
+    useEffect(() => {
+        if (widgetSheet !== 'distance') return undefined;
+        const permissionPoll = setInterval(refreshLocationPermissionStatus, 1200);
+        return () => clearInterval(permissionPoll);
+    }, [refreshLocationPermissionStatus, widgetSheet]);
+
+    const openPhotoCapture = useCallback((source) => {
+        setPhotoCaptureSource(source);
+        setWidgetSheet(null);
+        setCurrentTab('partnerPhotoCapture');
+    }, []);
+
+    const handleTakePhoto = useCallback(async () => {
+        const permission = await ImagePicker.getCameraPermissionsAsync();
+        if (permission.granted) {
+            openPhotoCapture('camera');
+            return;
+        }
+        setCameraPermissionMessage(permission.canAskAgain === false ? 'Camera access is blocked. Enable it in Settings.' : '');
+        setWidgetSheet('cameraPermission');
+    }, [openPhotoCapture]);
+
+    const handleAllowCamera = useCallback(async () => {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (permission.granted) {
+            openPhotoCapture('camera');
+            return;
+        }
+        setCameraPermissionMessage('Camera access is blocked. Enable it in Settings.');
+    }, [openPhotoCapture]);
+
+    const showWidgetInstructions = useCallback(() => {
+        Alert.alert(
+            'Add to your home screen',
+            'Touch and hold your home screen, tap Add Widget, find Penguin, then choose this widget.'
+        );
+    }, []);
+
+    const handleOpenLocationSettings = useCallback(() => {
+        locationSettingsPendingRef.current = widgetSheet === 'distance';
+        Linking.openSettings();
+    }, [widgetSheet]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -411,16 +562,13 @@ export const MainTabNavigator = ({
                         onRefreshPuzzle={onRefreshPuzzle}
                         duelBadgeCount={duelBadgeCount}
                         onNotificationPress={() => setIsNotificationVisible(true)}
-                        onWidgetsPress={() => setCurrentTab('widgetsLibrary')}
+                        onWidgetsPress={() => openWidgetSheet('time')}
                         onVideoCallPress={handleCallPress}
                         partnerOnline={partnerOnline}
                         partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
-                        onPartnerPhotoPress={() => setCurrentTab('partnerPhotoCapture')}
+                        onPartnerPhotoPress={() => openWidgetSheet('photo')}
                         isLocationSetup={userData?.locationSharingEnabled === true}
-                        onDistanceSetupPress={() => {
-                            setOpenDistanceSetup(userData?.locationSharingEnabled !== true);
-                            setCurrentTab('widgetsLibrary');
-                        }}
+                        onDistanceSetupPress={() => openWidgetSheet('distance')}
                     />
                 );
             case 'partnerPhotoCapture':
@@ -429,6 +577,7 @@ export const MainTabNavigator = ({
                         partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
                         onSendPhoto={handleSendCouplePhoto}
                         onBack={() => setCurrentTab('home')}
+                        initialSource={photoCaptureSource}
                     />
                 );
             case 'memories':
@@ -682,6 +831,37 @@ export const MainTabNavigator = ({
                     />
                 )}
             </Modal>
+
+            <WidgetSetupBottomSheet
+                visible={!!widgetSheet}
+                kind={widgetSheet}
+                onClose={() => setWidgetSheet(null)}
+                isLocationLoading={locationSyncing}
+                locationMessage={locationMessage}
+                locationPermissionStatus={locationPermissionStatus}
+                distanceReason={distanceReason}
+                hasPartner={hasPartner}
+                partnerName={partnerName || userData?.partnerUsername || 'your partner'}
+                onEnableLocation={handleEnableDistance}
+                onOpenSettings={handleOpenLocationSettings}
+                onTakePhoto={handleTakePhoto}
+                onChoosePhoto={() => openPhotoCapture('gallery')}
+                onAllowCamera={handleAllowCamera}
+                cameraMessage={cameraPermissionMessage}
+                onHowToAdd={showWidgetInstructions}
+                onConnectPartner={() => {
+                    setWidgetSheet(null);
+                    onFindPartner?.();
+                }}
+                partnerPhoto={partnerCurrentPhoto}
+                myPhoto={myCurrentPhoto}
+                daysTogether={daysTogether}
+                relationshipStartDate={
+                    userData?.relationshipStartDate ||
+                    userData?.pendingRelationshipStartDate ||
+                    userData?.connectionDate
+                }
+            />
         </View>
     );
 };

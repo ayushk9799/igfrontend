@@ -65,6 +65,33 @@ export const isLocationSettingsError = (error) => (
     || error?.code === 'LOCATION_ALWAYS_REQUIRED'
 );
 
+export const getDistanceLocationPermissionStatus = async () => {
+    if (Platform.OS === 'ios') {
+        const { ScribbleWidgetBridge } = NativeModules;
+        if (!ScribbleWidgetBridge?.getLocationAuthorizationStatus) {
+            return null;
+        }
+        return ScribbleWidgetBridge.getLocationAuthorizationStatus();
+    }
+
+    if (Platform.OS === 'android') {
+        const hasFine = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        const hasCoarse = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION);
+        const foregroundGranted = hasFine || hasCoarse;
+        const backgroundGranted = Number(Platform.Version) < 29
+            ? foregroundGranted
+            : await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION);
+        return {
+            status: backgroundGranted ? 'always' : (foregroundGranted ? 'whenInUse' : 'denied'),
+            foregroundGranted,
+            backgroundGranted,
+            servicesEnabled: true,
+        };
+    }
+
+    return null;
+};
+
 const ensureAndroidLocationPermission = async () => {
     const finePermission = PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION;
     const coarsePermission = PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION;
@@ -257,6 +284,7 @@ export const syncDistanceWidgetLocation = async ({
     user,
     enableSharing = false,
     enableBackgroundUpdates = false,
+    onForegroundPermissionGranted,
 } = {}) => {
     if (!['ios', 'android'].includes(Platform.OS)) {
         return { skipped: true, reason: 'unsupported_platform' };
@@ -288,6 +316,7 @@ export const syncDistanceWidgetLocation = async ({
     let location;
     try {
         location = await ScribbleWidgetBridge.requestCurrentLocation();
+        onForegroundPermissionGranted?.();
     } catch (error) {
         throw normalizeLocationPermissionError(error);
     }
