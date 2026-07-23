@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
+    Easing,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -10,41 +11,61 @@ import {
     View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import LottieView from 'lottie-react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import CouplePhotoCard from '../components/CouplePhotoCard';
 import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_COMPACT = SCREEN_HEIGHT < 760;
-const REAL_WIDGET_SIZE = 160;
 const DISTANCE_WIDGET_WIDTH = Math.min(356, SCREEN_WIDTH - 18);
 const DISTANCE_WIDGET_HEIGHT = 250;
+const CANVAS_WIDGET_WIDTH = Math.min(IS_COMPACT ? 232 : 272, SCREEN_WIDTH - 72);
+const CANVAS_WIDGET_HEIGHT = CANVAS_WIDGET_WIDTH;
+const SHOWCASE_HEIGHT = IS_COMPACT ? 430 : 500;
+const PHONE_PREVIEW_HEIGHT = IS_COMPACT ? 410 : 480;
+const PHONE_PREVIEW_WIDTH = PHONE_PREVIEW_HEIGHT * (853 / 1844);
+const PHONE_PREVIEW_TOP = (SHOWCASE_HEIGHT - PHONE_PREVIEW_HEIGHT) / 2;
+const CANVAS_PLACED_SCALE = (PHONE_PREVIEW_WIDTH * 0.428) / CANVAS_WIDGET_WIDTH;
+const CANVAS_PLACED_X = PHONE_PREVIEW_WIDTH * (0.328 - 0.5);
+const CANVAS_PLACED_Y = PHONE_PREVIEW_TOP
+    + (PHONE_PREVIEW_HEIGHT * 0.245)
+    - (SHOWCASE_HEIGHT / 2);
+const PARTNER_PHOTO_SIZE = IS_COMPACT ? 240 : 260;
+
+const partnerPhotoPreviews = [
+    { image: require('../../assets/photo-crops-final/01-moon-sky.png'), caption: 'Good evening' },
+    { image: require('../../assets/photo-crops-final/02-watering-plants.png'), caption: 'Plant duty' },
+    { image: require('../../assets/photo-crops-final/03-coffee-portrait.png'), caption: 'Coffee time' },
+    { image: require('../../assets/photo-crops-final/04-couple-mugs.png'), caption: 'Our mugs' },
+];
 
 const slides = [
     {
         key: 'distance',
         label: 'Our Distance',
-        caption: 'Distance widget on Lock Screen',
+        caption: 'Distance widget on ',
+        captionStrong: 'Lock Screen',
     },
     {
         key: 'together',
         label: 'Together For',
-        caption: 'Together widget on Lock Screen',
+        caption: 'Together for on ',
+        captionStrong: 'Lock Screen',
     },
     {
         key: 'canvas',
         label: 'Shared Canvas',
-        caption: 'Shared Canvas widget on Home Screen',
+        caption: 'Share hand-drawn doodles on ',
+        captionStrong: 'Home Screen',
     },
     {
         key: 'photo',
         label: 'Partner Photo',
-        caption: 'Partner Photo widget on Home Screen',
+        caption: 'Partner photos on ',
+        captionStrong: 'Home Screen',
     },
 ];
-
-const placeholderHeart = 'M80 116 C58 100 32 79 32 52 C32 30 49 18 66 18 C77 18 87 24 94 35 C101 24 111 18 122 18 C139 18 156 30 156 52 C156 79 130 100 108 116 L94 127 Z';
 
 const DotConnector = ({ progress }) => (
     <Animated.View style={[
@@ -79,15 +100,24 @@ const LockStatusIcons = () => (
 
 const LockScreenSurface = ({ children }) => (
     <LinearGradient
-        colors={['#451730', '#982A62', '#E05B8D', '#6D3B88']}
-        locations={[0, 0.4, 0.72, 1]}
-        start={{ x: 0.05, y: 0 }}
-        end={{ x: 0.95, y: 1 }}
+        colors={['#11194F', '#272779', '#5149B2']}
+        locations={[0, 0.56, 1]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
         style={styles.distanceWidget}
     >
-        <View style={styles.wallpaperGlowOne} />
-        <View style={styles.wallpaperGlowTwo} />
+        <View style={styles.nightGlow} />
+        <View style={[styles.nightStar, styles.nightStarOne]} />
+        <View style={[styles.nightStar, styles.nightStarTwo]} />
+        <View style={[styles.nightStar, styles.nightStarThree]} />
+        <View style={[styles.nightStar, styles.nightStarFour]} />
+        <View style={[styles.nightStar, styles.nightStarFive]} />
+        <View style={styles.moon}><View style={styles.moonCutout} /></View>
+        <View style={styles.hillBack} />
+        <View style={styles.hillMiddle} />
+        <View style={styles.hillFront} />
         <View style={styles.wallpaperShade} />
+        <View pointerEvents="none" style={styles.lockInnerBorder} />
         <View style={styles.lockStatusRow}>
             <Text style={styles.lockStatusTime}>9:41</Text>
             <LockStatusIcons />
@@ -190,28 +220,138 @@ const TogetherWidget = ({ relationshipStartDate }) => {
     );
 };
 
-const CanvasWidget = ({ scribble }) => {
-    const paths = scribble?.paths || [];
-    const canvasWidth = scribble?.canvasWidth || 350;
-    const canvasHeight = scribble?.canvasHeight || 350;
+const CanvasWidget = ({ isActive }) => {
+    const animationRef = useRef(null);
+    const placement = useRef(new Animated.Value(0)).current;
+    const phoneOpacity = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (isActive) {
+            placement.stopAnimation();
+            phoneOpacity.stopAnimation();
+            placement.setValue(0);
+            phoneOpacity.setValue(0);
+            animationRef.current?.reset();
+            animationRef.current?.play();
+        }
+    }, [isActive, phoneOpacity, placement]);
+
+    const placeWidgetOnPhone = () => {
+        if (!isActive) return;
+
+        Animated.parallel([
+            Animated.timing(phoneOpacity, {
+                toValue: 1,
+                duration: 1350,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+            }),
+            Animated.timing(placement, {
+                toValue: 1,
+                duration: 1350,
+                easing: Easing.inOut(Easing.cubic),
+                useNativeDriver: true,
+            }),
+        ]).start();
+    };
+
+    const translateX = placement.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, CANVAS_PLACED_X],
+    });
+    const translateY = placement.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, CANVAS_PLACED_Y],
+    });
+    const scale = placement.interpolate({
+        inputRange: [0, 1],
+        outputRange: [1, CANVAS_PLACED_SCALE],
+    });
 
     return (
-        <View style={styles.canvasWidget}>
-            <Svg width="100%" height="100%" viewBox={`0 0 ${canvasWidth} ${canvasHeight}`} preserveAspectRatio="xMidYMid meet">
-                {paths.length > 0 ? paths.slice(0, 300).map((path, index) => (
-                    <Path
-                        key={`${path.d}-${index}`}
-                        d={path.d}
-                        stroke={path.color || '#2E1E3C'}
-                        strokeWidth={path.strokeWidth || 4}
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                )) : (
-                    <Path d={placeholderHeart} stroke="#FF7AA7" strokeWidth={8} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.6} />
-                )}
-            </Svg>
+        <View style={styles.canvasShowcase}>
+            <Animated.Image
+                source={require('../../assets/mobile_widget_home.png')}
+                resizeMode="contain"
+                style={[styles.canvasPhonePreview, { opacity: phoneOpacity }]}
+            />
+            <Animated.View style={[styles.canvasWidget, {
+                transform: [{ translateX }, { translateY }, { scale }],
+            }]}>
+                <LottieView
+                    ref={animationRef}
+                    source={require('../../assets/flower1.lottie')}
+                    autoPlay={false}
+                    loop={false}
+                    resizeMode="contain"
+                    onAnimationFinish={placeWidgetOnPhone}
+                    style={styles.canvasLottie}
+                />
+            </Animated.View>
+        </View>
+    );
+};
+
+const PartnerPhotoPreview = ({ isActive }) => {
+    const photoIndexRef = useRef(0);
+    const photoOpacities = useRef(
+        partnerPhotoPreviews.map((_, index) => new Animated.Value(index === 0 ? 1 : 0))
+    ).current;
+
+    useEffect(() => {
+        if (!isActive) return undefined;
+
+        photoIndexRef.current = 0;
+        photoOpacities.forEach((opacity, index) => {
+            opacity.stopAnimation();
+            opacity.setValue(index === 0 ? 1 : 0);
+        });
+
+        const interval = setInterval(() => {
+            const currentIndex = photoIndexRef.current;
+            const incomingIndex = (currentIndex + 1) % partnerPhotoPreviews.length;
+
+            Animated.parallel([
+                Animated.timing(photoOpacities[currentIndex], {
+                    toValue: 0,
+                    duration: 700,
+                    easing: Easing.inOut(Easing.quad),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(photoOpacities[incomingIndex], {
+                    toValue: 1,
+                    duration: 700,
+                    easing: Easing.inOut(Easing.quad),
+                    useNativeDriver: true,
+                }),
+            ]).start(({ finished }) => {
+                if (finished) {
+                    photoIndexRef.current = incomingIndex;
+                }
+            });
+        }, 3000);
+
+        return () => {
+            clearInterval(interval);
+            photoOpacities.forEach(opacity => opacity.stopAnimation());
+        };
+    }, [isActive, photoOpacities]);
+
+    return (
+        <View style={styles.partnerPhotoPreview}>
+            {partnerPhotoPreviews.map((preview, index) => (
+                <Animated.View
+                    key={preview.caption}
+                    renderToHardwareTextureAndroid
+                    shouldRasterizeIOS
+                    style={[styles.partnerPhotoLayer, { opacity: photoOpacities[index] }]}
+                >
+                    <Animated.Image source={preview.image} style={styles.partnerPhotoImage} resizeMode="cover" />
+                    <View style={styles.partnerPhotoCaption}>
+                        <Text style={styles.partnerPhotoCaptionText}>{preview.caption}</Text>
+                    </View>
+                </Animated.View>
+            ))}
         </View>
     );
 };
@@ -219,12 +359,7 @@ const CanvasWidget = ({ scribble }) => {
 const RealWidget = ({
     type,
     relationshipStartDate,
-    daysTogether,
-    partnerPhoto,
-    myPhoto,
-    partnerName,
-    hasPartner,
-    partnerScribble,
+    isActive,
 }) => {
     if (type === 'distance') {
         return <DistanceWidget />;
@@ -235,17 +370,10 @@ const RealWidget = ({
     }
 
     if (type === 'canvas') {
-        return <CanvasWidget scribble={partnerScribble} />;
+        return <CanvasWidget isActive={isActive} />;
     }
 
-    return (
-        <CouplePhotoCard
-            hasPartner={hasPartner}
-            partnerName={partnerName}
-            partnerPhoto={partnerPhoto}
-            myPhoto={myPhoto}
-        />
-    );
+    return <PartnerPhotoPreview isActive={isActive} />;
 };
 
 const WidgetOnboardingScreen = ({
@@ -256,7 +384,6 @@ const WidgetOnboardingScreen = ({
     myPhoto,
     partnerName,
     hasPartner = false,
-    partnerScribble,
 }) => {
     const insets = useSafeAreaInsets();
     const pagerRef = useRef(null);
@@ -283,7 +410,6 @@ const WidgetOnboardingScreen = ({
         myPhoto,
         partnerName,
         hasPartner,
-        partnerScribble,
     };
 
     return (
@@ -316,14 +442,17 @@ const WidgetOnboardingScreen = ({
                         >
                             {slides.map(slide => (
                                 <View key={slide.key} style={styles.slide}>
-                                    <RealWidget type={slide.key} {...widgetProps} />
+                                    <RealWidget type={slide.key} isActive={slide.key === activeSlide.key} {...widgetProps} />
                                 </View>
                             ))}
                         </ScrollView>
                     </View>
 
                     <View style={styles.showcaseCopy}>
-                        <Text style={styles.showcaseCaption}>{activeSlide.caption}</Text>
+                        <Text style={styles.showcaseCaption}>
+                            {activeSlide.caption}
+                            <Text style={styles.showcaseCaptionStrong}>{activeSlide.captionStrong}</Text>
+                        </Text>
                     </View>
                 </View>
 
@@ -350,13 +479,32 @@ const styles = StyleSheet.create({
     headlineMuted: { color: '#A88D9D', fontFamily: fontFamily.medium, fontWeight: fontWeight('500'), fontSize: IS_COMPACT ? 27 : 31, lineHeight: IS_COMPACT ? 31 : 36, textAlign: 'left' },
     headline: { color: '#2E1E3C', fontFamily: fontFamily.extraBold, fontWeight: fontWeight('800'), fontSize: IS_COMPACT ? 29 : 34, lineHeight: IS_COMPACT ? 34 : 39, textAlign: 'left' },
     middleContent: { flex: 1, minHeight: IS_COMPACT ? 245 : 285, justifyContent: 'center' },
-    showcaseArea: { height: IS_COMPACT ? 264 : 274, justifyContent: 'center' },
+    showcaseArea: { height: SHOWCASE_HEIGHT, justifyContent: 'center' },
     slide: { width: SCREEN_WIDTH, alignItems: 'center', justifyContent: 'center' },
-    canvasWidget: { width: REAL_WIDGET_SIZE, height: REAL_WIDGET_SIZE, borderRadius: 24, overflow: 'hidden', backgroundColor: '#FAFAFA' },
-    distanceWidget: { width: DISTANCE_WIDGET_WIDTH, height: DISTANCE_WIDGET_HEIGHT, borderRadius: 31, overflow: 'hidden', borderWidth: 3, borderColor: '#D95C86', shadowColor: '#9E4E76', shadowOpacity: 0.28, shadowRadius: 17, shadowOffset: { width: 0, height: 10 }, elevation: 7 },
-    wallpaperGlowOne: { position: 'absolute', width: 210, height: 210, borderRadius: 105, right: -72, top: -74, backgroundColor: 'rgba(255,183,213,0.22)' },
-    wallpaperGlowTwo: { position: 'absolute', width: 190, height: 190, borderRadius: 95, left: -78, bottom: -94, backgroundColor: 'rgba(165,136,235,0.2)' },
-    wallpaperShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(27,8,27,0.06)' },
+    canvasShowcase: { width: SCREEN_WIDTH, height: SHOWCASE_HEIGHT, alignItems: 'center', justifyContent: 'center' },
+    canvasPhonePreview: { position: 'absolute', top: PHONE_PREVIEW_TOP, width: PHONE_PREVIEW_WIDTH, height: PHONE_PREVIEW_HEIGHT },
+    canvasWidget: { width: CANVAS_WIDGET_WIDTH, height: CANVAS_WIDGET_HEIGHT, borderRadius: 28, overflow: 'hidden', backgroundColor: '#FFFDFB', borderWidth: 3, borderColor: '#E4A0BC', alignItems: 'center', justifyContent: 'center', shadowColor: '#A9587D', shadowOpacity: 0.22, shadowRadius: 16, shadowOffset: { width: 0, height: 9 }, elevation: 7 },
+    canvasLottie: { width: '116%', height: '116%' },
+    partnerPhotoPreview: { width: PARTNER_PHOTO_SIZE, height: PARTNER_PHOTO_SIZE, borderRadius: 28, overflow: 'hidden', backgroundColor: '#EBDDE6', borderWidth: 1.5, borderColor: '#FFFFFF', shadowColor: '#8D5270', shadowOpacity: 0.24, shadowRadius: 16, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
+    partnerPhotoLayer: { ...StyleSheet.absoluteFillObject },
+    partnerPhotoImage: { width: '100%', height: '100%' },
+    partnerPhotoCaption: { position: 'absolute', left: 12, bottom: 12, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.48)' },
+    partnerPhotoCaptionText: { color: '#FFFFFF', fontFamily: fontFamily.medium, fontWeight: fontWeight('500'), fontSize: 12, lineHeight: 15 },
+    distanceWidget: { width: DISTANCE_WIDGET_WIDTH, height: DISTANCE_WIDGET_HEIGHT, borderRadius: 31, overflow: 'hidden', borderWidth: 4, borderColor: '#7169E8', shadowColor: '#6759D6', shadowOpacity: 0.34, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+    lockInnerBorder: { position: 'absolute', left: 3, right: 3, top: 3, bottom: 3, borderRadius: 26, borderWidth: 1, borderColor: 'rgba(205,199,255,0.72)' },
+    nightGlow: { position: 'absolute', width: 220, height: 180, borderRadius: 110, right: -36, top: 5, backgroundColor: 'rgba(132,119,246,0.22)' },
+    nightStar: { position: 'absolute', width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF', shadowColor: '#FFFFFF', shadowOpacity: 0.9, shadowRadius: 3 },
+    nightStarOne: { left: 42, top: 59 },
+    nightStarTwo: { left: 76, top: 89, width: 2, height: 2 },
+    nightStarThree: { left: 146, top: 34, width: 2, height: 2 },
+    nightStarFour: { right: 34, top: 72 },
+    nightStarFive: { right: 76, top: 40, width: 2, height: 2 },
+    moon: { position: 'absolute', right: 34, top: 77, width: 27, height: 27, borderRadius: 14, backgroundColor: '#FFFFFF', shadowColor: '#FFFFFF', shadowOpacity: 0.8, shadowRadius: 7 },
+    moonCutout: { position: 'absolute', width: 26, height: 26, borderRadius: 13, left: 7, top: -4, backgroundColor: '#44409D' },
+    hillBack: { position: 'absolute', width: 260, height: 96, borderRadius: 130, left: -78, bottom: -49, backgroundColor: '#3B3B9A', transform: [{ rotate: '9deg' }] },
+    hillMiddle: { position: 'absolute', width: 285, height: 105, borderRadius: 143, right: -92, bottom: -57, backgroundColor: '#292B79', transform: [{ rotate: '-8deg' }] },
+    hillFront: { position: 'absolute', width: 340, height: 105, borderRadius: 170, left: -46, bottom: -78, backgroundColor: '#181E5B', transform: [{ rotate: '4deg' }] },
+    wallpaperShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(9,11,48,0.04)' },
     lockStatusRow: { position: 'absolute', top: 12, left: 21, right: 21, height: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     lockStatusTime: { color: '#FFFFFF', fontFamily: fontFamily.bold, fontWeight: fontWeight('700'), fontSize: 10 },
     lockDate: { position: 'absolute', top: 43, alignSelf: 'center', color: 'rgba(255,255,255,0.94)', fontFamily: fontFamily.medium, fontWeight: fontWeight('500'), fontSize: 13, lineHeight: 16, letterSpacing: 0.1 },
@@ -368,7 +516,7 @@ const styles = StyleSheet.create({
     distanceInitialText: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 16 },
     distanceDots: { height: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' },
     distanceDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF' },
-    distanceHearts: { width: 25, height: 26, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+    distanceHearts: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
     distanceHeartBack: { position: 'absolute', right: 0, top: 0, shadowColor: '#000000', shadowOpacity: 0.3, shadowRadius: 2.5, shadowOffset: { width: 0, height: 1.5 } },
     distanceHeartFront: { position: 'absolute', left: 0, bottom: 0, shadowColor: '#000000', shadowOpacity: 0.34, shadowRadius: 3, shadowOffset: { width: 0, height: 1.5 } },
     togetherAccessory: { position: 'absolute', left: 48, right: 48, bottom: 24, alignItems: 'center' },
@@ -380,6 +528,7 @@ const styles = StyleSheet.create({
     togetherLabel: { marginTop: 1, color: 'rgba(255,255,255,0.9)', fontFamily: fontFamily.bold, fontSize: 10, lineHeight: 12 },
     showcaseCopy: { alignItems: 'center', paddingHorizontal: 34, paddingTop: 9 },
     showcaseCaption: { color: '#8A7185', fontFamily: fontFamily.medium, fontSize: 13, lineHeight: 17, textAlign: 'center' },
+    showcaseCaptionStrong: { color: '#4A3047', fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },
     footer: { minHeight: 92, paddingHorizontal: 24, paddingTop: 10, justifyContent: 'flex-end', alignItems: 'center' },
     pagination: { flexDirection: 'row', gap: 7, marginBottom: 12 },
     dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#E4C9D9' },

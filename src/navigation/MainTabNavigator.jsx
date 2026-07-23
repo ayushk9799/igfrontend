@@ -818,7 +818,6 @@ export const MainTabNavigator = ({
                             partnerName={partnerName}
                             hasPartner={hasPartner}
                             daysTogether={daysTogether}
-                            partnerScribble={partnerScribble}
                         />
                     ) : (
                     <AccountScreen

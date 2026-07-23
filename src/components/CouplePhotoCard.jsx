@@ -30,6 +30,9 @@ const CouplePhotoCard = ({
     myPhoto,
     onFindPartner,
     onOpenCapture,
+    size = 160,
+    borderRadius = 24,
+    showCameraBadge = true,
 }) => {
     const displayPhoto = partnerPhoto;
 
@@ -42,7 +45,11 @@ const CouplePhotoCard = ({
     };
 
     return (
-        <TouchableOpacity activeOpacity={0.9} onPress={handlePress} style={styles.widgetShell}>
+        <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handlePress}
+            style={[styles.widgetShell, { width: size, height: size, borderRadius }]}
+        >
             <Image
                 source={displayPhoto?.imageUrl
                     ? { uri: displayPhoto.imageUrl }
@@ -53,9 +60,9 @@ const CouplePhotoCard = ({
             <LinearGradient colors={['rgba(20,8,26,0.02)', 'rgba(20,8,26,0.82)']} style={StyleSheet.absoluteFill} />
             {myPhoto?.imageUrl ? (
                 <Image source={{ uri: myPhoto.imageUrl }} style={styles.myPhotoOverlay} resizeMode="cover" />
-            ) : (
+            ) : showCameraBadge ? (
                 <View style={styles.cameraBadge}><CameraIcon /></View>
-            )}
+            ) : null}
             <View style={styles.widgetCopy}>
                 <Text style={styles.widgetTitle} numberOfLines={1}>
                     {displayPhoto ? `From ${partnerName}` : (myPhoto ? `Sent to ${partnerName}` : 'Partner Photo')}
@@ -72,9 +79,6 @@ const CouplePhotoCard = ({
 
 const styles = StyleSheet.create({
     widgetShell: {
-        width: 160,
-        height: 160,
-        borderRadius: 24,
         overflow: 'hidden',
         backgroundColor: '#F4EAF5',
         borderWidth: 1,
