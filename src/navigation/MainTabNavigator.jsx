@@ -21,6 +21,7 @@ import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
 import WidgetSetupBottomSheet from '../components/WidgetSetupBottomSheet';
 import JournalOnboardingScreen from '../screens/JournalOnboardingScreen';
 import QuestionsOnboardingScreen from '../screens/QuestionsOnboardingScreen';
+import WidgetOnboardingScreen from '../screens/WidgetOnboardingScreen';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
@@ -804,6 +805,21 @@ export const MainTabNavigator = ({
                         <QuestionsOnboardingScreen
                             onComplete={() => setAccountPreview(null)}
                         />
+                    ) : accountPreview === 'widgets' ? (
+                        <WidgetOnboardingScreen
+                            onComplete={() => setAccountPreview(null)}
+                            relationshipStartDate={
+                                userData?.relationshipStartDate
+                                || userData?.pendingRelationshipStartDate
+                                || userData?.connectionDate
+                            }
+                            partnerPhoto={partnerCurrentPhoto}
+                            myPhoto={myCurrentPhoto}
+                            partnerName={partnerName}
+                            hasPartner={hasPartner}
+                            daysTogether={daysTogether}
+                            partnerScribble={partnerScribble}
+                        />
                     ) : (
                     <AccountScreen
                         userData={userData}
@@ -837,6 +853,7 @@ export const MainTabNavigator = ({
                         }}
                         onJournalOnboardingPress={() => setAccountPreview('journal')}
                         onQuestionsOnboardingPress={() => setAccountPreview('questions')}
+                        onWidgetOnboardingPress={() => setAccountPreview('widgets')}
                         onEditRelationshipDate={() => {
                             setIsAccountVisible(false);
                             onEditRelationshipDate?.();

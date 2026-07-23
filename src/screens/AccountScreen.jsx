@@ -177,6 +177,7 @@ export const AccountScreen = ({
     onDeleteAccount,
     onNavigateToPremium,
     onWidgetsPress,
+    onWidgetOnboardingPress,
     onJournalOnboardingPress,
     onQuestionsOnboardingPress,
     onBack,
@@ -562,6 +563,11 @@ export const AccountScreen = ({
                             title="Questions Onboarding"
                             subtitle="Preview the couple questions introduction"
                             onPress={onQuestionsOnboardingPress}
+                        />
+                        <MenuItem
+                            title="Widget Onboarding"
+                            subtitle="Preview the Home Screen widgets introduction"
+                            onPress={onWidgetOnboardingPress}
                         />
                     </View>
 

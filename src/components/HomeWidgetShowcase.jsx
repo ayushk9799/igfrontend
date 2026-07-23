@@ -87,7 +87,7 @@ const getTogetherDuration = (startDate, now = Date.now()) => {
     ];
 };
 
-const DistanceShowcaseCard = ({ isLocationSetup = false }) => {
+export const DistanceShowcaseCard = ({ isLocationSetup = false }) => {
     const animationProgress = useMemo(() => new Animated.Value(0), []);
     const [distanceText, setDistanceText] = useState(DISTANCE_STEPS[0]);
 
@@ -184,7 +184,7 @@ const DistanceShowcaseCard = ({ isLocationSetup = false }) => {
     );
 };
 
-const TimeTogetherShowcaseCard = ({ relationshipStartDate, daysTogether = 0 }) => {
+export const TimeTogetherShowcaseCard = ({ relationshipStartDate, daysTogether = 0 }) => {
     const [now, setNow] = useState(Date.now());
 
     useEffect(() => {
