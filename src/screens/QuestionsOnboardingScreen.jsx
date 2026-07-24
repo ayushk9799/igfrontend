@@ -132,7 +132,12 @@ const QuestionsOnboardingScreen = ({ onComplete }) => {
                             <Text style={styles.continueArrow}>→</Text>
                         </LinearGradient>
                     </TouchableOpacity>
-                    <View style={styles.progress}><View style={styles.dot} /><View style={[styles.dot, styles.dotActive]} /></View>
+                    <View style={styles.progress}>
+                        <View style={styles.dot} />
+                        <View style={[styles.dot, styles.dotActive]} />
+                        <View style={styles.dot} />
+                        <View style={styles.dot} />
+                    </View>
                 </View>
             </View>
         </LinearGradient>

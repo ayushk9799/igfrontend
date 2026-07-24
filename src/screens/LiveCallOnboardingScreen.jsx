@@ -75,8 +75,8 @@ const LiveCallOnboardingScreen = ({ onComplete }) => {
 
                     <View style={styles.progress}>
                         <View style={styles.dot} />
-                        <View style={[styles.dot, styles.dotActive]} />
                         <View style={styles.dot} />
+                        <View style={[styles.dot, styles.dotActive]} />
                         <View style={styles.dot} />
                     </View>
                 </Animated.View>

@@ -23,6 +23,10 @@ import AnimatedSplashScreen from '../screens/AnimatedSplashScreen';
 import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
 import OnboardingFeaturesScreen from '../screens/OnboardingFeaturesScreen';
 import Onboarding3Screen from '../screens/Onboarding3Screen';
+import JournalOnboardingScreen from '../screens/JournalOnboardingScreen';
+import QuestionsOnboardingScreen from '../screens/QuestionsOnboardingScreen';
+import LiveCallOnboardingScreen from '../screens/LiveCallOnboardingScreen';
+import WidgetOnboardingScreen from '../screens/WidgetOnboardingScreen';
 import NotificationPermissionScreen from '../screens/NotificationPermissionScreen';
 
 import { TOPIC_CATEGORIES } from '../constants/Categories';
@@ -2153,6 +2157,34 @@ export const AppNavigator = () => {
             case 'onboarding3':
                 return (
                     <Onboarding3Screen
+                        onComplete={() => navigate('journalOnboarding')}
+                    />
+                );
+
+            case 'journalOnboarding':
+                return (
+                    <JournalOnboardingScreen
+                        onComplete={() => navigate('questionsOnboarding')}
+                    />
+                );
+
+            case 'questionsOnboarding':
+                return (
+                    <QuestionsOnboardingScreen
+                        onComplete={() => navigate('liveCallOnboarding')}
+                    />
+                );
+
+            case 'liveCallOnboarding':
+                return (
+                    <LiveCallOnboardingScreen
+                        onComplete={() => navigate('widgetOnboarding')}
+                    />
+                );
+
+            case 'widgetOnboarding':
+                return (
+                    <WidgetOnboardingScreen
                         onComplete={handleOnboardingComplete}
                     />
                 );
