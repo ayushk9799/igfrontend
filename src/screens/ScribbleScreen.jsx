@@ -15,6 +15,7 @@ import {
     Image,
     StatusBar,
     Alert,
+    AppState,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -63,6 +64,23 @@ const LIVE_GRADIENTS = [
 ];
 
 const LIVE_BACKGROUND_IMAGE_KEY = 'scribble_live_background_image_uri';
+const FREE_LIVE_DRAW_LIMIT_MS = 3 * 60 * 1000;
+const LIVE_DRAW_USAGE_KEY = 'scribble_live_free_usage_ms_v1';
+
+const getLiveDrawUsageKey = userId => `${LIVE_DRAW_USAGE_KEY}:${userId || 'device'}`;
+
+const readLiveDrawUsage = key => {
+    const usage = storage.getNumber(key);
+    return Number.isFinite(usage)
+        ? Math.max(0, Math.min(FREE_LIVE_DRAW_LIMIT_MS, usage))
+        : 0;
+};
+
+const formatFreeTime = totalSeconds => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+};
 const LIVE_BACKGROUND_IMAGE_DIR_NAME = 'scribble-live-backgrounds/';
 
 const noop = () => { };
@@ -671,8 +689,16 @@ export const ScribbleScreen = ({
     initialLiveMode = false,
     initialCanvasWidth,
     initialCanvasHeight,
+    userId,
+    hasPremiumAccess = false,
+    onRequestPremium,
+    onOpenFreeScreen,
 }) => {
+    const freeUsageStorageKey = getLiveDrawUsageKey(userId);
     const [paths, setPaths] = useState(() => normalizePaths(initialPaths, 'initial'));
+    const [lastSentSignature, setLastSentSignature] = useState(
+        () => getPathsSignature(paths),
+    );
     const initialDimensions = getScribbleDimensions({
         canvasWidth: initialCanvasWidth,
         canvasHeight: initialCanvasHeight,
@@ -690,6 +716,9 @@ export const ScribbleScreen = ({
     const [liveMode, setLiveMode] = useState(initialLiveMode);
     const [liveSaving, setLiveSaving] = useState(false);
     const [livePartnerAvailable, setLivePartnerAvailable] = useState(false);
+    const [freeUsageMs, setFreeUsageMs] = useState(
+        () => readLiveDrawUsage(freeUsageStorageKey),
+    );
     const [liveClock, setLiveClock] = useState(new Date());
     const [showLivePicker, setShowLivePicker] = useState(false);
     const [showLiveBrushPicker, setShowLiveBrushPicker] = useState(false);
@@ -700,7 +729,7 @@ export const ScribbleScreen = ({
     );
     const [liveBackgroundImageVersion, setLiveBackgroundImageVersion] = useState(0);
     const insets = useSafeAreaInsets();
-    const { socket, isConnected, partnerOnline } = useSocketContext();
+    const { socket, isConnected } = useSocketContext();
     const canvasOpacity = useRef(new Animated.Value(0)).current;
     const modalOpacity = useRef(new Animated.Value(0)).current;
     const modalScale = useRef(new Animated.Value(0.85)).current;
@@ -776,6 +805,24 @@ export const ScribbleScreen = ({
     const displayCanvasWidthRef = useRef(CANVAS_SIZE);
     const displayCanvasHeightRef = useRef(CANVAS_SIZE);
     const initialPathsSignatureRef = useRef(getPathsSignature(paths));
+    const freeUsageMsRef = useRef(freeUsageMs);
+    const freeLimitReachedRef = useRef(false);
+    const onRequestPremiumRef = useRef(onRequestPremium);
+    const limitSheetShownThisVisitRef = useRef(false);
+
+    onRequestPremiumRef.current = onRequestPremium;
+
+    const isFreeLimitReached = !hasPremiumAccess
+        && freeUsageMs >= FREE_LIVE_DRAW_LIMIT_MS;
+    const remainingFreeSeconds = Math.max(
+        0,
+        Math.ceil((FREE_LIVE_DRAW_LIMIT_MS - freeUsageMs) / 1000),
+    );
+    const showFreeTierCountdown = !hasPremiumAccess
+        && livePartnerAvailable
+        && remainingFreeSeconds > 0
+        && remainingFreeSeconds <= 60;
+    freeLimitReachedRef.current = isFreeLimitReached;
 
     displayCanvasWidthRef.current = activeDisplayCanvasWidth;
     displayCanvasHeightRef.current = activeDisplayCanvasHeight;
@@ -848,6 +895,12 @@ export const ScribbleScreen = ({
     }, [isConnected]);
 
     React.useEffect(() => {
+        const storedUsage = readLiveDrawUsage(freeUsageStorageKey);
+        freeUsageMsRef.current = storedUsage;
+        setFreeUsageMs(storedUsage);
+    }, [freeUsageStorageKey]);
+
+    React.useEffect(() => {
         const nextPaths = normalizePaths(initialPaths, 'shared');
         const nextSignature = getPathsSignature(nextPaths);
         const nextDimensions = getScribbleDimensions({
@@ -862,6 +915,7 @@ export const ScribbleScreen = ({
             initialPathsSignatureRef.current = nextSignature;
             pathsRef.current = nextPaths;
             setPaths(nextPaths);
+            setLastSentSignature(nextSignature);
             sourceCanvasWidthRef.current = nextDimensions.canvasWidth;
             sourceCanvasHeightRef.current = nextDimensions.canvasHeight;
             setSourceCanvasWidth(nextDimensions.canvasWidth);
@@ -871,12 +925,6 @@ export const ScribbleScreen = ({
             setSentScribble(null);
         }
     }, [initialPaths, initialCanvasWidth, initialCanvasHeight]);
-
-    React.useEffect(() => {
-        const available = Boolean(partnerOnline && isConnected);
-        setLivePartnerAvailable(available);
-        livePartnerAvailableRef.current = available;
-    }, [partnerOnline, isConnected]);
 
     React.useEffect(() => {
         Animated.timing(canvasOpacity, {
@@ -943,11 +991,23 @@ export const ScribbleScreen = ({
             setLiveSaving(false);
         };
 
+        const handleFreeLimitReached = () => {
+            if (hasPremiumAccess) return;
+            freeUsageMsRef.current = FREE_LIVE_DRAW_LIMIT_MS;
+            storage.set(freeUsageStorageKey, FREE_LIVE_DRAW_LIMIT_MS);
+            setFreeUsageMs(FREE_LIVE_DRAW_LIMIT_MS);
+            if (!limitSheetShownThisVisitRef.current) {
+                limitSheetShownThisVisitRef.current = true;
+                onRequestPremiumRef.current?.();
+            }
+        };
+
         socket.on('scribble:liveStrokeReceived', handleLiveStrokeReceived);
         socket.on('scribble:liveCleared', handleLiveCleared);
         socket.on('scribble:liveUndone', handleLiveUndone);
         socket.on('scribble:liveStatus', handleLiveStatus);
         socket.on('scribble:liveSaved', handleLiveSaved);
+        socket.on('scribble:freeLimitReached', handleFreeLimitReached);
 
         return () => {
             socket.off('scribble:liveStrokeReceived', handleLiveStrokeReceived);
@@ -955,11 +1015,81 @@ export const ScribbleScreen = ({
             socket.off('scribble:liveUndone', handleLiveUndone);
             socket.off('scribble:liveStatus', handleLiveStatus);
             socket.off('scribble:liveSaved', handleLiveSaved);
+            socket.off('scribble:freeLimitReached', handleFreeLimitReached);
         };
-    }, [socket]);
+    }, [freeUsageStorageKey, hasPremiumAccess, socket]);
+
+    React.useEffect(() => {
+        if (
+            hasPremiumAccess
+            || isFreeLimitReached
+            || !liveMode
+            || !livePartnerAvailable
+        ) {
+            return undefined;
+        }
+
+        let lastTickAt = Date.now();
+        const recordElapsedTime = () => {
+            const now = Date.now();
+            const elapsed = now - lastTickAt;
+            lastTickAt = now;
+            if (AppState.currentState !== 'active' || elapsed <= 0) return;
+
+            const previousUsage = freeUsageMsRef.current;
+            const nextUsage = Math.min(
+                FREE_LIVE_DRAW_LIMIT_MS,
+                previousUsage + elapsed,
+            );
+            freeUsageMsRef.current = nextUsage;
+            storage.set(freeUsageStorageKey, nextUsage);
+            setFreeUsageMs(nextUsage);
+
+            if (
+                previousUsage < FREE_LIVE_DRAW_LIMIT_MS
+                && nextUsage >= FREE_LIVE_DRAW_LIMIT_MS
+            ) {
+                socketRef.current?.emit('scribble:freeLimitReached');
+                if (!limitSheetShownThisVisitRef.current) {
+                    limitSheetShownThisVisitRef.current = true;
+                    onRequestPremiumRef.current?.();
+                }
+            }
+        };
+
+        const appStateSubscription = AppState.addEventListener('change', () => {
+            lastTickAt = Date.now();
+        });
+        const timer = setInterval(recordElapsedTime, 1000);
+        return () => {
+            clearInterval(timer);
+            recordElapsedTime();
+            appStateSubscription.remove();
+        };
+    }, [
+        freeUsageStorageKey,
+        hasPremiumAccess,
+        isFreeLimitReached,
+        liveMode,
+        livePartnerAvailable,
+    ]);
+
+    React.useEffect(() => {
+        if (
+            hasPremiumAccess
+            || !isFreeLimitReached
+            || (!initialLiveMode && !liveMode)
+        ) return;
+
+        if (!limitSheetShownThisVisitRef.current) {
+            limitSheetShownThisVisitRef.current = true;
+            onRequestPremiumRef.current?.();
+        }
+    }, [hasPremiumAccess, initialLiveMode, isFreeLimitReached, liveMode]);
 
     const canSendLiveStroke = () => (
         liveModeRef.current &&
+        !freeLimitReachedRef.current &&
         livePartnerAvailableRef.current &&
         isConnectedRef.current &&
         socketRef.current?.connected
@@ -996,6 +1126,10 @@ export const ScribbleScreen = ({
     });
 
     const finishCurrentStroke = () => {
+        if (liveModeRef.current && freeLimitReachedRef.current) {
+            cancelCurrentStroke();
+            return;
+        }
         if (currentPathRef.current) {
             const pathId = `live-${Date.now()}-${pathIdCounter.current++}`;
             const newPath = {
@@ -1033,8 +1167,12 @@ export const ScribbleScreen = ({
 
     const panResponder = useRef(
         PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: () => true,
+            onStartShouldSetPanResponder: () => (
+                !liveModeRef.current || !freeLimitReachedRef.current
+            ),
+            onMoveShouldSetPanResponder: () => (
+                !liveModeRef.current || !freeLimitReachedRef.current
+            ),
             onPanResponderGrant: (evt) => {
                 setShowLivePicker(false);
                 setShowLiveBrushPicker(false);
@@ -1088,6 +1226,10 @@ export const ScribbleScreen = ({
     ).current;
 
     const handleClear = () => {
+        if (liveModeRef.current && freeLimitReachedRef.current) {
+            onRequestPremiumRef.current?.();
+            return;
+        }
         pathsRef.current = [];
         setPaths([]);
         setCurrentPath('');
@@ -1102,6 +1244,10 @@ export const ScribbleScreen = ({
     };
 
     const handleUndo = () => {
+        if (liveModeRef.current && freeLimitReachedRef.current) {
+            onRequestPremiumRef.current?.();
+            return;
+        }
         const previousPaths = pathsRef.current;
         const removedPath = previousPaths[previousPaths.length - 1];
         const nextPaths = previousPaths.slice(0, -1);
@@ -1117,6 +1263,17 @@ export const ScribbleScreen = ({
 
     const handleLiveToggle = () => {
         const nextLiveMode = !liveMode;
+        if (nextLiveMode && isFreeLimitReached) {
+            resizeBoardToCanvas(liveCanvasWidth, liveCanvasHeight);
+            liveModeRef.current = true;
+            setLiveMode(true);
+            setConnectionError(false);
+            limitSheetShownThisVisitRef.current = true;
+            requestAnimationFrame(() => {
+                onRequestPremiumRef.current?.();
+            });
+            return;
+        }
         if (nextLiveMode) {
             resizeBoardToCanvas(liveCanvasWidth, liveCanvasHeight);
         }
@@ -1147,6 +1304,7 @@ export const ScribbleScreen = ({
 
             socket.emit('scribble:send', createScribblePayload(pathsToSend));
 
+            setLastSentSignature(getPathsSignature(paths));
             setCurrentPath('');
             setSentScribble(null);
             requestReviewForMoment(REVIEW_MOMENTS.SCRIBBLE_SENT);
@@ -1205,7 +1363,7 @@ export const ScribbleScreen = ({
     };
 
     const hasPendingScribbleChanges = paths.length > 0
-        && getPathsSignature(paths) !== initialPathsSignatureRef.current;
+        && getPathsSignature(paths) !== lastSentSignature;
     const hasOpenLivePanel = showLivePicker || showLiveBrushPicker || showLiveGradientPicker;
 
     if (liveMode) {
@@ -1349,6 +1507,15 @@ export const ScribbleScreen = ({
                                         </>
                                     )}
                                 </Svg>
+                                {isFreeLimitReached && (
+                                    <TouchableOpacity
+                                        style={styles.liveLockedCanvasOverlay}
+                                        onPress={() => onRequestPremiumRef.current?.()}
+                                        activeOpacity={1}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Unlock Draw Together"
+                                    />
+                                )}
                             </View>
                         </View>
                     </View>
@@ -1439,6 +1606,23 @@ export const ScribbleScreen = ({
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
+                    </View>
+                )}
+                {showFreeTierCountdown && (
+                    <View style={[styles.liveFreeTierCountdown, { bottom: insets.bottom + 92 }]}>
+                        <Text style={styles.liveFreeTierCountdownText}>
+                            Free tier left:{' '}
+                            <Text style={styles.liveFreeTierCountdownTime}>
+                                {formatFreeTime(remainingFreeSeconds)}
+                            </Text>
+                        </Text>
+                        <TouchableOpacity
+                            onPress={onOpenFreeScreen}
+                            activeOpacity={0.72}
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.liveFreeTierUpgrade}>Upgrade</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
                 <View style={[styles.liveFloatingToolbar, { bottom: insets.bottom + 18 }]}>
@@ -1582,8 +1766,12 @@ export const ScribbleScreen = ({
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerTopRow}>
-                        <View style={styles.headerContent}>
-                            <Text style={styles.title} numberOfLines={1}>Canvas</Text>
+                        <View style={styles.brandContainer}>
+                            <Image
+                                source={require('../../assets/images/penguin-text-logo.png')}
+                                style={styles.brandLogo}
+                                resizeMode="contain"
+                            />
                         </View>
                         <View style={styles.headerSecondaryActions}>
                             {/* Widget Button */}
@@ -1610,6 +1798,43 @@ export const ScribbleScreen = ({
                 </View>
 
                 {/* Canvas */}
+                <View style={styles.canvasTitleRow}>
+                    <Text style={styles.canvasHeaderTitle}>Canvas</Text>
+                    <View style={styles.canvasActions}>
+                        <TouchableOpacity
+                            style={styles.canvasActionButton}
+                            onPress={handleUndo}
+                            accessibilityRole="button"
+                            accessibilityLabel="Undo last stroke"
+                        >
+                            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5"
+                                    stroke={colors.text}
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.canvasActionButton}
+                            onPress={handleClear}
+                            accessibilityRole="button"
+                            accessibilityLabel="Delete drawing"
+                        >
+                            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                                    stroke={colors.text}
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
+                        </TouchableOpacity>
+                    </View>
+                </View>
                 <Animated.View
                     style={[
                         styles.canvasShadowContainer,
@@ -1771,31 +1996,6 @@ export const ScribbleScreen = ({
                     </View>
                 </Animated.View>
 
-                <View style={styles.canvasActions}>
-                    <TouchableOpacity style={styles.canvasActionButton} onPress={handleUndo}>
-                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                            <Path
-                                d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5"
-                                stroke={colors.text}
-                                strokeWidth={2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </Svg>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.canvasActionButton} onPress={handleClear}>
-                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                            <Path
-                                d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"
-                                stroke={colors.text}
-                                strokeWidth={2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </Svg>
-                    </TouchableOpacity>
-                </View>
-
                 {!liveMode && (
                     <>
                         {/* Color Picker */}
@@ -1839,25 +2039,29 @@ export const ScribbleScreen = ({
                     ) : hasPartner ? (
                         <TouchableOpacity
                             onPress={handleSend}
-                            disabled={paths.length === 0}
-                            activeOpacity={0.9}
+                            disabled={!hasPendingScribbleChanges}
+                            activeOpacity={0.86}
                             style={[
                                 styles.scribbleSendButton,
-                                !hasPendingScribbleChanges && styles.scribbleSendButtonIdle,
                                 hasPendingScribbleChanges && styles.scribbleSendButtonPending,
-                                paths.length === 0 && styles.scribbleSendButtonDisabled,
+                                !hasPendingScribbleChanges && styles.scribbleSendButtonDisabled,
                             ]}
+                            accessibilityRole="button"
+                            accessibilityLabel="Send drawing to your love"
+                            accessibilityState={{ disabled: !hasPendingScribbleChanges }}
                         >
+                            <LinearGradient
+                                pointerEvents="none"
+                                colors={
+                                    hasPendingScribbleChanges
+                                        ? ['#FF5F78', '#FF3F5C']
+                                        : ['#E5D9E0', '#D5C8D0']
+                                }
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.scribbleSendGradient}
+                            />
                             <View style={styles.scribbleSendContent}>
-                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                                    <Path
-                                        d="M21 4L10 15M21 4l-7 17-4-6-6-4 17-7z"
-                                        stroke={hasPendingScribbleChanges ? '#FFFFFF' : colors.textSecondary}
-                                        strokeWidth={2.1}
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                </Svg>
                                 <Text style={[
                                     styles.scribbleSendText,
                                     !hasPendingScribbleChanges && styles.scribbleSendTextIdle,
@@ -2183,8 +2387,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     header: {
-        marginTop: 8,
-        marginBottom: 10,
+        marginTop: 3,
+        marginBottom: 18,
     },
     headerTopRow: {
         flexDirection: 'row',
@@ -2211,22 +2415,27 @@ const styles = StyleSheet.create({
         fontSize: 22,
         color: colors.text,
     },
-    headerContent: {
+    brandContainer: {
         flex: 1,
-        marginLeft: 0,
         minWidth: 0,
+        alignItems: 'flex-start',
     },
-    title: {
-        fontSize: 20,
-        fontWeight: '600',
+    brandLogo: {
+        width: 128,
+        height: 38,
+        marginLeft: -12,
+    },
+    canvasHeaderTitle: {
         color: colors.text,
-        // letterSpacing: -0.5,
+        fontSize: 20,
+        fontWeight: '700',
     },
-    subtitle: {
-        fontSize: 14,
-        color: colors.textSecondary,
-        fontWeight: '500',
-        marginTop: 2,
+    canvasTitleRow: {
+        minHeight: 38,
+        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
     headerActions: {
         flexDirection: 'row',
@@ -2357,6 +2566,10 @@ const styles = StyleSheet.create({
     liveTransparentCanvas: {
         backgroundColor: 'transparent',
     },
+    liveLockedCanvasOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 2,
+    },
     liveFloatingToolbar: {
         position: 'absolute',
         left: 20,
@@ -2376,6 +2589,37 @@ const styles = StyleSheet.create({
         shadowRadius: 22,
         elevation: 8,
         zIndex: 15,
+    },
+    liveFreeTierCountdown: {
+        position: 'absolute',
+        left: 28,
+        right: 28,
+        minHeight: 42,
+        borderRadius: 21,
+        backgroundColor: 'rgba(7,17,68,0.72)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.28)',
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 16,
+        elevation: 16,
+    },
+    liveFreeTierCountdownText: {
+        color: 'rgba(255,255,255,0.88)',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    liveFreeTierCountdownTime: {
+        color: '#FFFFFF',
+        fontWeight: '900',
+    },
+    liveFreeTierUpgrade: {
+        color: '#FFD2E8',
+        fontSize: 14,
+        fontWeight: '900',
+        marginLeft: 0,
     },
     liveToolButton: {
         width: 44,
@@ -2581,11 +2825,8 @@ const styles = StyleSheet.create({
     },
     canvasActions: {
         flexDirection: 'row',
-        alignSelf: 'center',
         alignItems: 'center',
         gap: 10,
-        marginTop: -10,
-        marginBottom: spacing.sm,
     },
     canvasActionButton: {
         width: 34,
@@ -2837,58 +3078,51 @@ const styles = StyleSheet.create({
         maxWidth: 28,
     },
     sendContainer: {
-        marginTop: '0',
+        width: '100%',
+        alignSelf: 'stretch',
+        marginTop: 0,
         paddingBottom: spacing['2xl'],
     },
     scribbleSendButton: {
         width: '100%',
-        minHeight: 58,
-        borderRadius: 20,
-        backgroundColor: colors.primary,
-        borderWidth: 1.5,
-        borderColor: 'rgba(255, 255, 255, 0.88)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.16,
-        shadowRadius: 18,
-        elevation: 5,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#FF3F5C',
+        shadowColor: '#F45170',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 12,
+        elevation: 6,
     },
     scribbleSendButtonDisabled: {
-        backgroundColor: '#F1DDE8',
-        shadowOpacity: 0.08,
-        elevation: 2,
-    },
-    scribbleSendButtonIdle: {
-        backgroundColor: '#EEF0F3',
-        borderColor: '#D9DEE7',
-        shadowColor: '#94A3B8',
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 2,
+        backgroundColor: '#D5C8D0',
+        shadowOpacity: 0,
+        elevation: 0,
     },
     scribbleSendButtonPending: {
-        backgroundColor: colors.primary,
-        borderColor: '#FFFFFF',
-        shadowColor: '#EC4899',
-        shadowOpacity: 0.38,
-        shadowRadius: 24,
-        elevation: 10,
-        transform: [{ translateY: -1 }],
+        backgroundColor: '#FF3F5C',
+        shadowColor: '#EC4966',
+        shadowOpacity: 0.25,
+        elevation: 6,
+    },
+    scribbleSendGradient: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 25,
     },
     scribbleSendContent: {
-        flexDirection: 'row',
+        flex: 1,
+        width: '100%',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 10,
-        paddingHorizontal: spacing.lg,
     },
     scribbleSendText: {
         color: '#FFFFFF',
-        fontSize: 17,
+        fontSize: 18,
+        lineHeight: 22,
         fontWeight: '800',
         textAlign: 'center',
+        textAlignVertical: 'center',
+        includeFontPadding: false,
     },
     scribbleSendTextIdle: {
         color: colors.textSecondary,

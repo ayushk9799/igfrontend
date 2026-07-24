@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Animated,
+    ActivityIndicator,
     AppState,
     BackHandler,
     Dimensions,
@@ -20,7 +21,7 @@ import {
     useWindowDimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     MediaStream,
     mediaDevices,
@@ -32,7 +33,7 @@ import {
 } from 'react-native-webrtc';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { Video, VideoOff } from 'lucide-react-native';
+import { Camera, Settings, Video, VideoOff } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSocketContext } from '../context/SocketContext';
 import { useCall } from '../calling/CallContext';
@@ -43,12 +44,29 @@ import { clearLiveChatActive, markLiveChatActive, storage } from '../utils/authS
 
 const MAX_MESSAGE_LENGTH = 500;
 const VIDEO_NEGOTIATION_TIMEOUT_MS = 12_000;
+const FREE_LIVE_CHAT_LIMIT_MS = 5 * 60 * 1000;
+const LIVE_CHAT_USAGE_KEY = 'live_chat_free_usage_ms_v1';
 const LIVE_CHAT_INSTRUCTION_KEY = 'live_chat_instruction_seen_v1';
 const LIVE_CHAT_CARD_HEIGHT_KEY = 'live_chat_card_height_v2';
 const DEFAULT_CARD_HEIGHT = 136;
 const MIN_CARD_HEIGHT = 108;
 const MAX_CARD_HEIGHT = 280;
 const CARD_HEIGHT_BREATHING_ROOM = 16;
+
+const getLiveChatUsageKey = userId => `${LIVE_CHAT_USAGE_KEY}:${userId || 'device'}`;
+
+const readLiveChatUsage = key => {
+    const usage = storage.getNumber(key);
+    return Number.isFinite(usage)
+        ? Math.max(0, Math.min(FREE_LIVE_CHAT_LIMIT_MS, usage))
+        : 0;
+};
+
+const formatFreeTime = totalSeconds => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+};
 
 const readCachedCardHeight = (key) => {
     const height = storage.getNumber(key);
@@ -128,19 +146,27 @@ export default function LiveChatScreen({
     partnerName = 'Partner',
     partnerAvatar,
     onBack,
+    hasPremiumAccess = false,
+    onRequestPremium,
+    onOpenFreeScreen,
 }) {
     const { width } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
     const screenDimensions = Dimensions.get('screen');
     const { socket, isConnected } = useSocketContext();
     const { callState } = useCall();
     const compact = width < 370;
     const instructionStorageKey = `${LIVE_CHAT_INSTRUCTION_KEY}:${userId || 'device'}`;
     const cardHeightStorageKey = `${LIVE_CHAT_CARD_HEIGHT_KEY}:${Platform.OS}:${Math.round(screenDimensions.width)}x${Math.round(screenDimensions.height)}`;
+    const freeUsageStorageKey = getLiveChatUsageKey(userId);
 
     const [sessionId, setSessionId] = useState(null);
+    const [participantCount, setParticipantCount] = useState(0);
     const [error, setError] = useState(null);
     const [cameraEnabled, setCameraEnabled] = useState(false);
     const [cameraDenied, setCameraDenied] = useState(false);
+    const [cameraPermissionState, setCameraPermissionState] = useState('checking');
+    const [requestingCameraPermission, setRequestingCameraPermission] = useState(false);
     const [cameraFailureMessage, setCameraFailureMessage] = useState(null);
     const [partnerCameraEnabled, setPartnerCameraEnabled] = useState(false);
     const [localStream, setLocalStream] = useState(null);
@@ -161,6 +187,17 @@ export default function LiveChatScreen({
     );
     const [instructionVisible, setInstructionVisible] = useState(
         () => storage.getBoolean(instructionStorageKey) !== true,
+    );
+    const [showChatGuidance, setShowChatGuidance] = useState(
+        () => storage.getBoolean(instructionStorageKey) !== true,
+    );
+    const [freeUsageMs, setFreeUsageMs] = useState(
+        () => readLiveChatUsage(freeUsageStorageKey),
+    );
+    const isFreeLimitReached = !hasPremiumAccess && freeUsageMs >= FREE_LIVE_CHAT_LIMIT_MS;
+    const remainingFreeSeconds = Math.max(
+        0,
+        Math.ceil((FREE_LIVE_CHAT_LIMIT_MS - freeUsageMs) / 1000),
     );
 
     const sessionIdRef = useRef(null);
@@ -191,6 +228,16 @@ export default function LiveChatScreen({
     const keyboardVisibleRef = useRef(false);
     const stageViewportHeightRef = useRef(0);
     const measuredCardHeightRef = useRef(cardHeight);
+    const freeUsageMsRef = useRef(freeUsageMs);
+    const onRequestPremiumRef = useRef(onRequestPremium);
+    const limitSheetShownThisVisitRef = useRef(false);
+    onRequestPremiumRef.current = onRequestPremium;
+
+    useEffect(() => {
+        const storedUsage = readLiveChatUsage(freeUsageStorageKey);
+        freeUsageMsRef.current = storedUsage;
+        setFreeUsageMs(storedUsage);
+    }, [freeUsageStorageKey]);
 
     useEffect(() => {
         const cachedHeight = readCachedCardHeight(cardHeightStorageKey);
@@ -325,7 +372,7 @@ export default function LiveChatScreen({
         setPartnerCameraEnabled(false);
     }, []);
 
-    const ensureFrontCamera = useCallback(async () => {
+    const ensureFrontCamera = useCallback(async ({ requestPermission = true } = {}) => {
         const existingTrack = localStreamRef.current?.getVideoTracks?.()[0];
         if (existingTrack?.readyState === 'live') return localStreamRef.current;
         if (cameraStartPromiseRef.current) return cameraStartPromiseRef.current;
@@ -336,7 +383,16 @@ export default function LiveChatScreen({
             try {
                 let cameraStatus = await permissions.query({ name: 'camera' });
                 if (cameraStatus !== permissions.RESULT.GRANTED) {
+                    if (!requestPermission) {
+                        setCameraPermissionState(
+                            cameraPermissionAttemptedRef.current ? 'denied' : 'needed',
+                        );
+                        setCameraDenied(false);
+                        emitMediaState(false);
+                        return null;
+                    }
                     if (cameraPermissionAttemptedRef.current) {
+                        setCameraPermissionState('denied');
                         setCameraDenied(true);
                         setCameraFailureMessage(null);
                         emitMediaState(false);
@@ -346,7 +402,9 @@ export default function LiveChatScreen({
                     const granted = await permissions.request({ name: 'camera' });
                     if (!granted) {
                         cameraStatus = await permissions.query({ name: 'camera' });
-                        setCameraDenied(cameraStatus !== permissions.RESULT.GRANTED);
+                        const permissionGranted = cameraStatus === permissions.RESULT.GRANTED;
+                        setCameraPermissionState(permissionGranted ? 'granted' : 'denied');
+                        setCameraDenied(!permissionGranted);
                         setCameraFailureMessage(null);
                         emitMediaState(false);
                         return null;
@@ -382,6 +440,7 @@ export default function LiveChatScreen({
                 if (sender) await sender.replaceTrack(track);
 
                 setLocalStream(stream);
+                setCameraPermissionState('granted');
                 setCameraDenied(false);
                 setCameraFailureMessage(null);
                 setCameraEnabled(true);
@@ -411,6 +470,25 @@ export default function LiveChatScreen({
             }
         }
     }, [emitMediaState]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        permissions.query({ name: 'camera' })
+            .then((cameraStatus) => {
+                if (cancelled) return;
+                setCameraPermissionState(
+                    cameraStatus === permissions.RESULT.GRANTED ? 'granted' : 'needed',
+                );
+            })
+            .catch(() => {
+                if (!cancelled) setCameraPermissionState('needed');
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const flushCandidates = useCallback(async () => {
         const pc = peerConnectionRef.current;
@@ -490,7 +568,7 @@ export default function LiveChatScreen({
         ) return;
         offerInFlightRef.current = true;
         try {
-            await ensureFrontCamera();
+            await ensureFrontCamera({ requestPermission: false });
             if (
                 !mountedRef.current
                 || sessionIdRef.current !== id
@@ -523,6 +601,7 @@ export default function LiveChatScreen({
         if (id) socket?.emit('liveChat:leave', { sessionId: id });
         sessionIdRef.current = null;
         participantCountRef.current = 0;
+        setParticipantCount(0);
         shouldOfferRef.current = false;
         offerInFlightRef.current = false;
         setSessionId(null);
@@ -559,6 +638,11 @@ export default function LiveChatScreen({
     }, [handleBack]);
 
     useEffect(() => {
+        if (isFreeLimitReached) {
+            leaveSession();
+            setError(null);
+            return undefined;
+        }
         if (!socket || !isConnected) {
             leaveSession();
             setError('Reconnect to enter Live Chat.');
@@ -578,24 +662,35 @@ export default function LiveChatScreen({
         const onJoined = async data => {
             sessionIdRef.current = data.sessionId;
             participantCountRef.current = data.participantCount || 1;
+            setParticipantCount(data.participantCount || 1);
             shouldOfferRef.current = data.shouldOffer === true;
             setSessionId(data.sessionId);
             setMyMessage(data.myMessage || null);
             setPartnerMessage(data.partnerMessage || null);
             setPartnerTyping(false);
             setError(null);
-            await ensureFrontCamera();
+            if (data.freeLimitReached === true) {
+                freeUsageMsRef.current = FREE_LIVE_CHAT_LIMIT_MS;
+                storage.set(freeUsageStorageKey, FREE_LIVE_CHAT_LIMIT_MS);
+                setFreeUsageMs(FREE_LIVE_CHAT_LIMIT_MS);
+                limitSheetShownThisVisitRef.current = true;
+                onRequestPremiumRef.current?.();
+                return;
+            }
+            await ensureFrontCamera({ requestPermission: false });
             if ((data.participantCount || 1) > 1 && data.shouldOffer) startOffer();
         };
         const onPartnerJoined = async data => {
             if (data.sessionId !== sessionIdRef.current) return;
             participantCountRef.current = data.participantCount || 2;
+            setParticipantCount(data.participantCount || 2);
             if (data.shouldOffer) shouldOfferRef.current = true;
             if (shouldOfferRef.current) await startOffer();
         };
         const onPartnerLeft = data => {
             if (data.sessionId !== sessionIdRef.current) return;
             participantCountRef.current = data.participantCount || 1;
+            setParticipantCount(data.participantCount || 1);
             shouldOfferRef.current = data.shouldOffer === true;
             setPartnerMessage(null);
             setPartnerTyping(false);
@@ -608,7 +703,7 @@ export default function LiveChatScreen({
                 preservePendingCandidates: true,
             });
             try {
-                await ensureFrontCamera();
+                await ensureFrontCamera({ requestPermission: false });
                 if (
                     !mountedRef.current
                     || sessionIdRef.current !== data.sessionId
@@ -710,6 +805,14 @@ export default function LiveChatScreen({
                 stopCamera();
             }
         };
+        const onFreeLimitReached = data => {
+            if (data.sessionId !== sessionIdRef.current || hasPremiumAccess) return;
+            freeUsageMsRef.current = FREE_LIVE_CHAT_LIMIT_MS;
+            storage.set(freeUsageStorageKey, FREE_LIVE_CHAT_LIMIT_MS);
+            setFreeUsageMs(FREE_LIVE_CHAT_LIMIT_MS);
+            limitSheetShownThisVisitRef.current = true;
+            onRequestPremiumRef.current?.();
+        };
 
         socket.on('liveChat:joined', onJoined);
         socket.on('liveChat:partnerJoined', onPartnerJoined);
@@ -720,6 +823,7 @@ export default function LiveChatScreen({
         socket.on('liveChat:messageUpdated', onMessage);
         socket.on('liveChat:partnerTyping', onPartnerTyping);
         socket.on('liveChat:partnerMediaState', onPartnerMediaState);
+        socket.on('liveChat:freeLimitReached', onFreeLimitReached);
         socket.on('liveChat:error', onError);
         socket.emit('liveChat:join');
 
@@ -733,13 +837,18 @@ export default function LiveChatScreen({
             socket.off('liveChat:messageUpdated', onMessage);
             socket.off('liveChat:partnerTyping', onPartnerTyping);
             socket.off('liveChat:partnerMediaState', onPartnerMediaState);
+            socket.off('liveChat:freeLimitReached', onFreeLimitReached);
             socket.off('liveChat:error', onError);
         };
-    }, [callState, closePeerConnection, createPeerConnection, ensureFrontCamera, flushCandidates, isConnected, leaveSession, partnerId, playMessageSound, socket, startOffer, stopCamera, userId]);
+    }, [callState, closePeerConnection, createPeerConnection, ensureFrontCamera, flushCandidates, freeUsageStorageKey, hasPremiumAccess, isConnected, isFreeLimitReached, leaveSession, partnerId, playMessageSound, socket, startOffer, stopCamera, userId]);
 
     useEffect(() => {
         mountedRef.current = true;
-        markLiveChatActive(userId);
+        if (isFreeLimitReached) {
+            clearLiveChatActive();
+        } else {
+            markLiveChatActive(userId);
+        }
         return () => {
             mountedRef.current = false;
             if (pendingMessageTimeoutRef.current) {
@@ -748,7 +857,7 @@ export default function LiveChatScreen({
             }
             leaveSession();
         };
-    }, [leaveSession, userId]);
+    }, [isFreeLimitReached, leaveSession, userId]);
 
     useEffect(() => {
         let animationFrame = null;
@@ -778,13 +887,92 @@ export default function LiveChatScreen({
                 return;
             }
             const cameraStatus = await permissions.query({ name: 'camera' }).catch(() => permissions.RESULT.DENIED);
+            setCameraPermissionState(
+                cameraStatus === permissions.RESULT.GRANTED
+                    ? 'granted'
+                    : cameraPermissionAttemptedRef.current
+                        ? 'denied'
+                        : 'needed',
+            );
             if (cameraStatus === permissions.RESULT.GRANTED && sessionIdRef.current) {
-                await ensureFrontCamera();
+                await ensureFrontCamera({ requestPermission: false });
                 if (shouldOfferRef.current && participantCountRef.current > 1) startOffer();
             }
         });
         return () => subscription.remove();
     }, [ensureFrontCamera, startOffer, stopCamera]);
+
+    useEffect(() => {
+        if (
+            hasPremiumAccess
+            || isFreeLimitReached
+            || !sessionId
+            || participantCount < 2
+            || instructionVisible
+        ) {
+            return undefined;
+        }
+
+        let lastTickAt = Date.now();
+        const recordElapsedTime = () => {
+            const now = Date.now();
+            const elapsed = now - lastTickAt;
+            lastTickAt = now;
+
+            if (
+                AppState.currentState !== 'active'
+                || appStateRef.current !== 'active'
+                || elapsed <= 0
+            ) {
+                return;
+            }
+
+            const previousUsage = freeUsageMsRef.current;
+            const nextUsage = Math.min(
+                FREE_LIVE_CHAT_LIMIT_MS,
+                previousUsage + elapsed,
+            );
+            freeUsageMsRef.current = nextUsage;
+            storage.set(freeUsageStorageKey, nextUsage);
+            setFreeUsageMs(nextUsage);
+
+            if (
+                previousUsage < FREE_LIVE_CHAT_LIMIT_MS
+                && nextUsage >= FREE_LIVE_CHAT_LIMIT_MS
+            ) {
+                socket?.emit('liveChat:freeLimitReached', {
+                    sessionId: sessionIdRef.current,
+                });
+                limitSheetShownThisVisitRef.current = true;
+                onRequestPremiumRef.current?.();
+            }
+        };
+
+        const timer = setInterval(recordElapsedTime, 1000);
+        return () => {
+            clearInterval(timer);
+            recordElapsedTime();
+        };
+    }, [
+        freeUsageStorageKey,
+        hasPremiumAccess,
+        instructionVisible,
+        isFreeLimitReached,
+        participantCount,
+        sessionId,
+        socket,
+    ]);
+
+    useEffect(() => {
+        if (hasPremiumAccess) {
+            limitSheetShownThisVisitRef.current = false;
+            return;
+        }
+        if (!isFreeLimitReached || limitSheetShownThisVisitRef.current) return;
+
+        limitSheetShownThisVisitRef.current = true;
+        onRequestPremium?.();
+    }, [hasPremiumAccess, isFreeLimitReached, onRequestPremium]);
 
     useEffect(() => {
         if (!sessionId || !screenReadyForKeyboard) return undefined;
@@ -889,10 +1077,42 @@ export default function LiveChatScreen({
 
     const dismissInstruction = useCallback(() => {
         storage.set(instructionStorageKey, true);
+        setShowChatGuidance(false);
         setInstructionVisible(false);
     }, [instructionStorageKey]);
 
+    const handleInstructionCameraAction = useCallback(async () => {
+        if (cameraPermissionState === 'granted') {
+            dismissInstruction();
+            return;
+        }
+        if (cameraPermissionState === 'denied') {
+            await Linking.openSettings();
+            return;
+        }
+        if (requestingCameraPermission) return;
+
+        setRequestingCameraPermission(true);
+        try {
+            await ensureFrontCamera({ requestPermission: true });
+            const cameraStatus = await permissions.query({ name: 'camera' })
+                .catch(() => permissions.RESULT.DENIED);
+            const granted = cameraStatus === permissions.RESULT.GRANTED;
+            setCameraPermissionState(granted ? 'granted' : 'denied');
+            setCameraDenied(!granted);
+            if (granted) dismissInstruction();
+        } finally {
+            if (mountedRef.current) setRequestingCameraPermission(false);
+        }
+    }, [
+        cameraPermissionState,
+        dismissInstruction,
+        ensureFrontCamera,
+        requestingCameraPermission,
+    ]);
+
     const handleDraftChange = useCallback((text) => {
+        if (isFreeLimitReached) return;
         myDraftRef.current = text;
         setMyDraft(text);
         if (typingStopTimeoutRef.current) {
@@ -908,9 +1128,10 @@ export default function LiveChatScreen({
                 emitTypingState(false);
             }, 1200);
         }
-    }, [emitTypingState]);
+    }, [emitTypingState, isFreeLimitReached]);
 
     const handleSend = useCallback(() => {
+        if (isFreeLimitReached) return;
         const text = myDraft.trim();
         if (!text || !sessionIdRef.current || sendPending) return;
         if (!socket?.connected) {
@@ -943,16 +1164,44 @@ export default function LiveChatScreen({
             setMyMessage(previousMessage);
             setError('Message delivery was not confirmed. Your text is still available to retry.');
         }, 8000);
-    }, [emitTypingState, myDraft, myMessage, playMessageSound, sendPending, socket]);
+    }, [emitTypingState, isFreeLimitReached, myDraft, myMessage, playMessageSound, sendPending, socket]);
 
     const toggleFrontCamera = useCallback(async () => {
+        if (isFreeLimitReached) {
+            onRequestPremium?.();
+            return;
+        }
         if (cameraEnabled) {
             stopCamera();
             return;
         }
-        await ensureFrontCamera();
+        const cameraStatus = await permissions.query({ name: 'camera' })
+            .catch(() => permissions.RESULT.DENIED);
+        if (cameraStatus !== permissions.RESULT.GRANTED) {
+            setCameraPermissionState(
+                cameraPermissionAttemptedRef.current ? 'denied' : 'needed',
+            );
+            setInstructionVisible(true);
+            return;
+        }
+        setCameraPermissionState('granted');
+        await ensureFrontCamera({ requestPermission: false });
         if (shouldOfferRef.current && participantCountRef.current > 1) startOffer();
-    }, [cameraEnabled, ensureFrontCamera, startOffer, stopCamera]);
+    }, [cameraEnabled, ensureFrontCamera, isFreeLimitReached, onRequestPremium, startOffer, stopCamera]);
+
+    const handleRequestPremium = useCallback(() => {
+        Keyboard.dismiss();
+        onRequestPremium?.();
+    }, [onRequestPremium]);
+
+    const handleFreeTierUpgrade = useCallback(() => {
+        Keyboard.dismiss();
+        if (onOpenFreeScreen) {
+            onOpenFreeScreen();
+            return;
+        }
+        onRequestPremium?.();
+    }, [onOpenFreeScreen, onRequestPremium]);
 
     const partnerDisplayText = partnerMessage?.text || '';
     const myDisplayText = myMessage?.text || '';
@@ -964,7 +1213,20 @@ export default function LiveChatScreen({
         ? { width: 100 }
         : { width: 116 };
     const messageCardSize = { height: cardHeight };
-    const canSend = Boolean(myDraft.trim() && sessionId && socket?.connected && !sendPending);
+    const instructionCardInsetStyle = {
+        paddingBottom: Math.max(insets.bottom, 16) + 18,
+    };
+    const canSend = Boolean(
+        !isFreeLimitReached
+        && myDraft.trim()
+        && sessionId
+        && socket?.connected
+        && !sendPending,
+    );
+    const showFreeTierCountdown = !hasPremiumAccess
+        && !isFreeLimitReached
+        && remainingFreeSeconds > 0
+        && remainingFreeSeconds <= 60;
     const visibleError = error
         || (cameraDenied ? 'Front-camera permission is off. Messages still work.' : null)
         || cameraFailureMessage;
@@ -1126,18 +1388,39 @@ export default function LiveChatScreen({
                     )}
 
                     <View style={styles.composerArea}>
+                        {showFreeTierCountdown && (
+                            <View style={styles.freeTierCountdown}>
+                                <Text style={styles.freeTierCountdownText}>
+                                    Free tier left:{' '}
+                                    <Text style={styles.freeTierCountdownTime}>
+                                        {formatFreeTime(remainingFreeSeconds)}
+                                    </Text>
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={handleFreeTierUpgrade}
+                                    activeOpacity={0.7}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Upgrade Live Chat"
+                                >
+                                    <Text style={styles.freeTierUpgradeText}>Upgrade</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                         <View style={styles.composer}>
                             <TextInput
                                 ref={messageInputRef}
                                 value={myDraft}
                                 onChangeText={handleDraftChange}
+                                onPressIn={isFreeLimitReached ? handleRequestPremium : undefined}
                                 style={styles.input}
-                                placeholder="Type a message…"
+                                placeholder={isFreeLimitReached ? 'Tap to unlock Live Chat' : 'Type a message…'}
                                 placeholderTextColor="#A99CA9"
                                 maxLength={MAX_MESSAGE_LENGTH}
                                 multiline
-                                editable={Boolean(sessionId)}
-                                accessibilityLabel="Live Chat message"
+                                editable={Boolean(sessionId) && !isFreeLimitReached}
+                                accessibilityLabel={isFreeLimitReached
+                                    ? 'Unlock Live Chat'
+                                    : 'Live Chat message'}
                             />
                             <TouchableOpacity
                                 style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
@@ -1154,7 +1437,7 @@ export default function LiveChatScreen({
                 </KeyboardAvoidingView>
 
                 <Modal
-                    visible={instructionVisible}
+                    visible={instructionVisible && !isFreeLimitReached}
                     transparent
                     animationType="fade"
                     statusBarTranslucent
@@ -1164,23 +1447,93 @@ export default function LiveChatScreen({
                         style={styles.instructionBackdrop}
                         accessibilityViewIsModal
                     >
-                        <View style={styles.instructionCard}>
-                            <View style={styles.instructionIcon}>
-                                <Text style={styles.instructionIconText}>1</Text>
-                            </View>
-                            <Text style={styles.instructionTitle}>One message at a time</Text>
-                            <Text style={styles.instructionText}>
-                                Each of you has one message on screen. Sending a new message replaces your previous one.
-                            </Text>
+                        <View style={[styles.instructionCard, instructionCardInsetStyle]}>
+                            <View style={styles.instructionHandle} />
+                            {showChatGuidance && (
+                                <>
+                                    <View style={styles.instructionIcon}>
+                                        <Text style={styles.instructionIconText}>1</Text>
+                                    </View>
+                                    <Text style={styles.instructionTitle}>One message at a time</Text>
+                                    <Text style={styles.instructionText}>
+                                        Each of you has one message on screen. Sending a new message replaces your previous one.
+                                    </Text>
+                                </>
+                            )}
+                            {cameraPermissionState !== 'granted' && (
+                                <View style={[
+                                    styles.cameraPermissionCard,
+                                    cameraPermissionState === 'denied'
+                                        && styles.cameraPermissionCardDenied,
+                                ]}>
+                                    <View style={styles.cameraPermissionIcon}>
+                                        {cameraPermissionState === 'denied' ? (
+                                            <Settings color="#D84F86" size={25} strokeWidth={2.2} />
+                                        ) : (
+                                            <Camera color="#D84F86" size={27} strokeWidth={2.2} />
+                                        )}
+                                    </View>
+                                    <View style={styles.cameraPermissionCopy}>
+                                        <Text style={styles.cameraPermissionTitle}>
+                                            {cameraPermissionState === 'checking'
+                                                ? 'Checking camera access…'
+                                                : cameraPermissionState === 'denied'
+                                                    ? 'Camera permission is off'
+                                                    : 'Camera permission required'}
+                                        </Text>
+                                        <Text style={styles.cameraPermissionText}>
+                                            {cameraPermissionState === 'denied'
+                                                ? 'Open Settings to enable live video. Messages still work without it.'
+                                                : 'Camera permission is required for video chat with your partner.'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
                             <TouchableOpacity
-                                style={styles.instructionButton}
-                                onPress={dismissInstruction}
+                                style={[
+                                    styles.instructionButton,
+                                    (cameraPermissionState === 'checking' || requestingCameraPermission)
+                                        && styles.instructionButtonDisabled,
+                                ]}
+                                onPress={handleInstructionCameraAction}
+                                disabled={cameraPermissionState === 'checking' || requestingCameraPermission}
                                 activeOpacity={0.84}
                                 accessibilityRole="button"
-                                accessibilityLabel="Dismiss Live Chat instructions"
+                                accessibilityLabel={
+                                    cameraPermissionState === 'granted'
+                                            ? 'Continue to Live Chat'
+                                            : cameraPermissionState === 'denied'
+                                                ? 'Open settings for camera permission'
+                                                : 'Continue with camera permission'
+                                }
                             >
-                                <Text style={styles.instructionButtonText}>Got it</Text>
+                                {requestingCameraPermission || cameraPermissionState === 'checking' ? (
+                                    <ActivityIndicator color="#FFFFFF" />
+                                ) : (
+                                    <Text style={styles.instructionButtonText}>
+                                        {cameraPermissionState === 'granted'
+                                            ? 'Got it'
+                                            : cameraPermissionState === 'denied'
+                                                ? 'Open Settings'
+                                                : 'Continue Camera'}
+                                    </Text>
+                                )}
                             </TouchableOpacity>
+                            {cameraPermissionState !== 'granted'
+                                && cameraPermissionState !== 'checking'
+                                && (
+                                    <TouchableOpacity
+                                        style={styles.continueWithoutCameraButton}
+                                        onPress={dismissInstruction}
+                                        activeOpacity={0.75}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Not now"
+                                    >
+                                        <Text style={styles.continueWithoutCameraText}>
+                                            Not Now
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                         </View>
                     </View>
                 </Modal>
@@ -1228,26 +1581,31 @@ const styles = StyleSheet.create({
     instructionBackdrop: {
         flex: 1,
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 28,
+        justifyContent: 'flex-end',
         backgroundColor: 'rgba(36, 20, 46, 0.42)',
     },
     instructionCard: {
         width: '100%',
-        maxWidth: 340,
         alignItems: 'center',
         paddingHorizontal: 24,
-        paddingTop: 24,
-        paddingBottom: 20,
-        borderRadius: 24,
+        paddingTop: 10,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
         backgroundColor: '#FFFFFF',
-        borderWidth: 1.5,
+        borderWidth: 1,
         borderColor: '#F2C5D9',
         shadowColor: '#4D243F',
-        shadowOffset: { width: 0, height: 12 },
+        shadowOffset: { width: 0, height: -8 },
         shadowOpacity: 0.22,
         shadowRadius: 24,
         elevation: 14,
+    },
+    instructionHandle: {
+        width: 44,
+        height: 5,
+        marginBottom: 18,
+        borderRadius: 3,
+        backgroundColor: '#E7C6D5',
     },
     instructionIcon: {
         width: 48,
@@ -1279,6 +1637,46 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontFamily: fontFamily.medium,
     },
+    cameraPermissionCard: {
+        width: '100%',
+        marginTop: 18,
+        paddingHorizontal: 14,
+        paddingVertical: 13,
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF3F8',
+        borderWidth: 1,
+        borderColor: '#F2C5D9',
+    },
+    cameraPermissionCardDenied: {
+        backgroundColor: '#FFF8ED',
+        borderColor: '#F3D6A6',
+    },
+    cameraPermissionIcon: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFE1EC',
+        borderWidth: 1,
+        borderColor: '#F5C5D9',
+    },
+    cameraPermissionCopy: { flex: 1, marginLeft: 11 },
+    cameraPermissionTitle: {
+        color: '#3E2738',
+        fontSize: 13,
+        lineHeight: 18,
+        fontFamily: fontFamily.bold,
+    },
+    cameraPermissionText: {
+        marginTop: 2,
+        color: '#7A6875',
+        fontSize: 11,
+        lineHeight: 16,
+        fontFamily: fontFamily.medium,
+    },
     instructionButton: {
         alignSelf: 'stretch',
         alignItems: 'center',
@@ -1288,9 +1686,21 @@ const styles = StyleSheet.create({
         borderRadius: 23,
         backgroundColor: '#D84F86',
     },
+    instructionButtonDisabled: { opacity: 0.65 },
     instructionButtonText: {
         color: '#FFFFFF',
         fontSize: 15,
+        fontFamily: fontFamily.bold,
+    },
+    continueWithoutCameraButton: {
+        minHeight: 38,
+        paddingHorizontal: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    continueWithoutCameraText: {
+        color: '#8A6E80',
+        fontSize: 13,
         fontFamily: fontFamily.bold,
     },
     body: { flex: 1 },
@@ -1341,14 +1751,37 @@ const styles = StyleSheet.create({
     liveDotOff: { backgroundColor: '#B8ADB7' },
     messageContent: { flex: 1, justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 9 },
     nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
-    personName: { color: '#D84F86', fontSize: 10, fontFamily: fontFamily.bold },
-    messageText: { color: '#1B1237', fontSize: 15, lineHeight: 20, fontFamily: fontFamily.medium },
+    personName: { color: '#D84F86', fontSize: 13, fontFamily: fontFamily.bold },
+    messageText: { color: '#1B1237', fontSize: 17, lineHeight: 24, fontFamily: fontFamily.medium },
     typingText: {
         color: '#42B883', fontSize: 11, lineHeight: 16,
         fontFamily: fontFamily.medium, marginLeft: 6,
     },
     emptyMessageText: { color: '#B1A3AD' },
     composerArea: { paddingHorizontal: 16, paddingBottom: Platform.OS === 'android' ? 14 : 6 },
+    freeTierCountdown: {
+        minHeight: 28,
+        marginBottom: 7,
+        paddingHorizontal: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    freeTierCountdownText: {
+        color: '#765F6E',
+        fontSize: 12,
+        fontFamily: fontFamily.medium,
+    },
+    freeTierCountdownTime: {
+        color: '#C24573',
+        fontFamily: fontFamily.bold,
+    },
+    freeTierUpgradeText: {
+        color: '#D84F86',
+        fontSize: 13,
+        textDecorationLine: 'underline',
+        fontFamily: fontFamily.bold,
+    },
     composer: {
         minHeight: 54, maxHeight: 104, borderRadius: 27, borderWidth: 1.5,
         borderColor: '#F0B9D0', backgroundColor: 'rgba(255,255,255,0.92)',

@@ -72,6 +72,8 @@ export const MainTabNavigator = ({
     onTabChange,
     onEditRelationshipDate,
     onLiveChatPress,
+    onRequestDrawPremium,
+    onOpenDrawFreeScreen,
     canAutoOpenMoodPrompt = true,
 }) => {
     const [currentTab, setCurrentTab] = useState(initialTab || 'home');
@@ -619,6 +621,10 @@ export const MainTabNavigator = ({
                         onLiveModeChange={setIsScribbleLiveFullscreen}
                         userName={userData?.nickname || userData?.name || 'You'}
                         partnerName={partnerName || 'Your Love'}
+                        userId={userData?._id || userData?.id}
+                        hasPremiumAccess={hasPremiumAccess}
+                        onRequestPremium={onRequestDrawPremium}
+                        onOpenFreeScreen={onOpenDrawFreeScreen}
                         initialPaths={partnerScribble?.paths}
                         initialLiveMode={openScribbleLiveMode}
                         initialCanvasWidth={partnerScribble?.canvasWidth}

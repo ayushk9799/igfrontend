@@ -29,7 +29,7 @@ import { getUser } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
-
+const FREE_WORDLE_GAME_LIMIT = 3;
 
 const AnimatedWordleTile = ({
     letter,
@@ -186,7 +186,13 @@ const AnimatedWordleTile = ({
     );
 };
 
-const WordleScreen = ({ navigation, route, onLinkPartner }) => {
+const WordleScreen = ({
+    navigation,
+    route,
+    onLinkPartner,
+    onRequestPremium,
+    hasPremiumAccess = false,
+}) => {
     const { gameId: initialGameId, gameData: initialGameData } = route?.params || {};
     const user = getUser();
     const currentUserId = user?.id || user?._id;
@@ -194,7 +200,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Game state
     const [gameId, setGameId] = useState(initialGameId || null);
-    const [mode, setMode] = useState('loading'); // 'loading', 'create', 'guess', 'complete', 'error'
+    const [mode, setMode] = useState('loading');
     const [secretWord, setSecretWord] = useState('');
     const [currentGuess, setCurrentGuess] = useState('');
     const [guesses, setGuesses] = useState([]);
@@ -211,6 +217,11 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     const [notifyMessage, setNotifyMessage] = useState('');
     const [showLinkPartner, setShowLinkPartner] = useState(false);
     const [loadError, setLoadError] = useState('');
+    const [checkingPremium, setCheckingPremium] = useState(false);
+    const [, setFreeLimitReached] = useState(false);
+    const [playAgainReady, setPlayAgainReady] = useState(false);
+    const [limitCheckError, setLimitCheckError] = useState('');
+    const [showConfetti, setShowConfetti] = useState(false);
 
     // Partner info
     const partnerId = route?.params?.partnerId;
@@ -223,13 +234,19 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     const errorScaleAnim = useRef(new Animated.Value(0)).current;
     const errorShakeAnim = useRef(new Animated.Value(0)).current;
     const hasRequestedGameReviewRef = useRef(false);
+    const liveCompletionFeedbackRef = useRef(false);
+    const statusRef = useRef(status);
     const mountedRef = useRef(true);
     const submittingRef = useRef(false);
+    const checkingPremiumRef = useRef(false);
     const autoSubmitTimerRef = useRef(null);
     const focusTimerRef = useRef(null);
     const messageTimerRef = useRef(null);
     const socketRefreshTimerRef = useRef(null);
+    const playAgainTimerRef = useRef(null);
     const loadRequestRef = useRef(0);
+    const limitSheetGameRef = useRef(null);
+    statusRef.current = status;
 
     useEffect(() => {
         mountedRef.current = true;
@@ -240,6 +257,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                 focusTimerRef,
                 messageTimerRef,
                 socketRefreshTimerRef,
+                playAgainTimerRef,
             ].forEach(timerRef => {
                 if (timerRef.current) clearTimeout(timerRef.current);
             });
@@ -325,18 +343,40 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Haptic/audio feedback on game resolution (win/loss)
     useEffect(() => {
+        const shouldCelebrate = liveCompletionFeedbackRef.current;
+        liveCompletionFeedbackRef.current = false;
+
         if (status === 'won') {
-            playResultSound();
-            ReactNativeHapticFeedback.trigger("notificationSuccess", {
-                enableVibrateFallback: false,
-                ignoreAndroidSystemSettings: false,
-            });
+            if (shouldCelebrate) {
+                playResultSound();
+                setShowConfetti(true);
+                ReactNativeHapticFeedback.trigger("notificationSuccess", {
+                    enableVibrateFallback: false,
+                    ignoreAndroidSystemSettings: false,
+                });
+            }
         } else if (status === 'lost') {
-            ReactNativeHapticFeedback.trigger("notificationError", {
-                enableVibrateFallback: false,
-                ignoreAndroidSystemSettings: false,
-            });
+            if (shouldCelebrate) {
+                ReactNativeHapticFeedback.trigger("notificationError", {
+                    enableVibrateFallback: false,
+                    ignoreAndroidSystemSettings: false,
+                });
+            }
         }
+
+        if (status === 'won' || status === 'lost') {
+            setPlayAgainReady(false);
+            if (playAgainTimerRef.current) clearTimeout(playAgainTimerRef.current);
+            playAgainTimerRef.current = setTimeout(() => {
+                if (mountedRef.current) setPlayAgainReady(true);
+            }, 800);
+        } else {
+            setPlayAgainReady(false);
+        }
+
+        return () => {
+            if (playAgainTimerRef.current) clearTimeout(playAgainTimerRef.current);
+        };
     }, [status, playResultSound]);
 
     // Auto-focus input when in create or guess mode
@@ -373,6 +413,12 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         const handleGameUpdate = (data = {}) => {
             if (isCurrentGameEvent(data)) {
                 if (data.status) {
+                    if (
+                        ['won', 'lost'].includes(data.status)
+                        && !['won', 'lost'].includes(statusRef.current)
+                    ) {
+                        liveCompletionFeedbackRef.current = true;
+                    }
                     setStatus(data.status);
                     if (['won', 'lost'].includes(data.status)) {
                         requestGameReviewOnce();
@@ -453,12 +499,86 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             if (['won', 'lost'].includes(data.status)) {
                 setRevealedWord(data.secretWord || '');
                 setMode('complete');
-                requestGameReviewOnce();
             } else {
                 setMode('guess');
             }
         }
         setLoading(false);
+    };
+
+    const fetchCompletedGames = async () => {
+        const response = await fetch(
+            `${API_BASE}/api/wordle/history/${currentUserId}?limit=${FREE_WORDLE_GAME_LIMIT}`
+        );
+        const data = await response.json();
+
+        if (!response.ok || !data.success || !Array.isArray(data.data)) {
+            throw new Error(data.message || 'Failed to check completed games');
+        }
+
+        return data.data;
+    };
+
+    const fetchCompletedGameCount = async () => {
+        const completedGames = await fetchCompletedGames();
+        return completedGames.length;
+    };
+
+    const refreshFreeLimitStatus = async ({ showLimitSheet = false } = {}) => {
+        setLimitCheckError('');
+        const completedGames = await fetchCompletedGameCount();
+        const limitReached = completedGames >= FREE_WORDLE_GAME_LIMIT;
+        if (mountedRef.current) {
+            setFreeLimitReached(limitReached);
+            const limitKey = String(gameId || 'wordle-limit');
+            if (
+                showLimitSheet
+                && limitReached
+                && limitSheetGameRef.current !== limitKey
+            ) {
+                limitSheetGameRef.current = limitKey;
+                onRequestPremium?.();
+            }
+        }
+        return completedGames;
+    };
+
+    const loadGameWithAccessCheck = async (data, requestId) => {
+        const isActiveGame = ['pending', 'in_progress'].includes(data?.status);
+
+        if (
+            isActiveGame
+            && !hasPremiumAccess
+            && onRequestPremium
+            && currentUserId
+        ) {
+            const completedGames = await fetchCompletedGames();
+            if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+
+            if (completedGames.length >= FREE_WORDLE_GAME_LIMIT) {
+                setFreeLimitReached(true);
+                setLimitCheckError('');
+                loadGameFromData(completedGames[0]);
+                return;
+            }
+        }
+
+        loadGameFromData(data);
+
+        if (!isActiveGame && !hasPremiumAccess && currentUserId) {
+            try {
+                const completedGames = await fetchCompletedGameCount();
+                if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+                setFreeLimitReached(completedGames >= FREE_WORDLE_GAME_LIMIT);
+                setLimitCheckError('');
+            } catch (historyError) {
+                if (mountedRef.current) {
+                    setLimitCheckError('Couldn’t verify your free-game limit.');
+                }
+            }
+        } else {
+            setFreeLimitReached(false);
+        }
     };
 
     const fetchActiveGame = async () => {
@@ -470,9 +590,28 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             if (!mountedRef.current || requestId !== loadRequestRef.current) return;
 
             if (response.ok && data.success && data.data) {
-                loadGameFromData(data.data);
+                await loadGameWithAccessCheck(data.data, requestId);
             } else if (response.ok && data.success) {
-                // No active game - create mode
+                if (!hasPremiumAccess && onRequestPremium && currentUserId) {
+                    try {
+                        const completedGames = await fetchCompletedGames();
+                        if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+
+                        if (completedGames.length >= FREE_WORDLE_GAME_LIMIT) {
+                            setFreeLimitReached(true);
+                            setLimitCheckError('');
+                            loadGameFromData(completedGames[0]);
+                            return;
+                        }
+                    } catch (historyError) {
+                        if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+                        setLoadError('Unable to check your free games. Please try again.');
+                        setMode('error');
+                        setLoading(false);
+                        return;
+                    }
+                }
+
                 setMode('create');
                 setLoading(false);
             } else {
@@ -499,7 +638,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             if (!mountedRef.current || requestId !== loadRequestRef.current) return;
 
             if (response.ok && data.success) {
-                loadGameFromData(data.data);
+                await loadGameWithAccessCheck(data.data, requestId);
             } else {
                 setLoadError(data.message || 'Failed to load your game');
                 setMode('error');
@@ -520,8 +659,13 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         setLoadError('');
 
         if (initialGameData) {
-            loadRequestRef.current += 1;
-            loadGameFromData(initialGameData);
+            const requestId = ++loadRequestRef.current;
+            loadGameWithAccessCheck(initialGameData, requestId).catch(() => {
+                if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+                setLoadError('Unable to check your free games. Please try again.');
+                setMode('error');
+                setLoading(false);
+            });
         } else if (initialGameId) {
             fetchGame(initialGameId);
         } else {
@@ -592,6 +736,14 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     socket.emit('wordle:invite', { gameId: data.data.gameId });
                 }
             } else {
+                if (data.code === 'WORDLE_FREE_LIMIT_REACHED') {
+                    setFreeLimitReached(true);
+                    setLimitCheckError('');
+                    onRequestPremium?.();
+                    setLoading(true);
+                    fetchActiveGame();
+                    return;
+                }
                 setErrorMessage(data.message || 'Invalid word');
                 shakeRow();
             }
@@ -632,6 +784,9 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             if (!mountedRef.current) return;
 
             if (response.ok && data.success) {
+                if (data.data.gameComplete) {
+                    liveCompletionFeedbackRef.current = true;
+                }
                 setLastSubmittedRowIndex(guesses.length);
                 const newGuess = {
                     word: guess.toLowerCase(),
@@ -657,8 +812,26 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     setMode('complete');
                     requestGameReviewOnce();
 
+                    if (!hasPremiumAccess && currentUserId) {
+                        try {
+                            await refreshFreeLimitStatus({ showLimitSheet: true });
+                        } catch (historyError) {
+                            if (mountedRef.current) {
+                                setLimitCheckError('Couldn’t verify your free-game limit.');
+                            }
+                        }
+                    }
+
                 }
             } else {
+                if (data.code === 'WORDLE_FREE_LIMIT_REACHED') {
+                    setFreeLimitReached(true);
+                    setLimitCheckError('');
+                    onRequestPremium?.();
+                    setLoading(true);
+                    fetchActiveGame();
+                    return;
+                }
                 setErrorMessage(data.message || 'Invalid guess');
                 shakeRow();
             }
@@ -672,6 +845,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     };
 
     const startNewGame = () => {
+        if (!mountedRef.current) return;
         if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
         setGuesses([]);
         setCurrentGuess('');
@@ -683,9 +857,69 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         setLastSubmittedRowIndex(-1);
         setIsCreator(true);
         setLoadError('');
+        setFreeLimitReached(false);
+        setLimitCheckError('');
+        setShowConfetti(false);
+        liveCompletionFeedbackRef.current = false;
         hasRequestedGameReviewRef.current = false;
         setMode('create');
     };
+
+    const handlePlayAgain = async () => {
+        if (!playAgainReady || checkingPremiumRef.current) return;
+
+        if (hasPremiumAccess || !onRequestPremium || !currentUserId) {
+            startNewGame();
+            return;
+        }
+
+        checkingPremiumRef.current = true;
+        setCheckingPremium(true);
+
+        try {
+            const completedGames = await refreshFreeLimitStatus();
+            if (!mountedRef.current) return;
+
+            if (completedGames >= FREE_WORDLE_GAME_LIMIT) {
+                setFreeLimitReached(true);
+                onRequestPremium();
+                return;
+            }
+
+            startNewGame();
+        } catch (error) {
+            if (mountedRef.current) {
+                setLimitCheckError('Unable to check your free games. Please try again.');
+            }
+        } finally {
+            checkingPremiumRef.current = false;
+            if (mountedRef.current) setCheckingPremium(false);
+        }
+    };
+
+    const retryFreeLimitCheck = async () => {
+        if (checkingPremiumRef.current) return;
+        checkingPremiumRef.current = true;
+        setCheckingPremium(true);
+
+        try {
+            await refreshFreeLimitStatus();
+        } catch (error) {
+            if (mountedRef.current) {
+                setLimitCheckError('Unable to check your free games. Please try again.');
+            }
+        } finally {
+            checkingPremiumRef.current = false;
+            if (mountedRef.current) setCheckingPremium(false);
+        }
+    };
+
+    useEffect(() => {
+        if (hasPremiumAccess) {
+            setFreeLimitReached(false);
+            setLimitCheckError('');
+        }
+    }, [hasPremiumAccess]);
 
     const notifyPartner = async () => {
         const now = Date.now();
@@ -1037,6 +1271,21 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                 </Text>
                             )}
                         </View>
+
+                        {limitCheckError && mode === 'complete' && (
+                            <TouchableOpacity
+                                style={styles.limitCheckError}
+                                onPress={retryFreeLimitCheck}
+                                activeOpacity={0.8}
+                                disabled={checkingPremium || !playAgainReady}
+                                accessibilityRole="button"
+                                accessibilityLabel="Retry free-game limit check"
+                            >
+                                <Text style={styles.limitCheckErrorText}>
+                                    {limitCheckError} Tap to retry.
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                     </ScrollView>
 
                     {/* Hidden TextInput for native keyboard */}
@@ -1060,13 +1309,21 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     {mode === 'complete' && (status === 'won' || status === 'lost') && (
                         <View style={styles.actionButtons}>
                             <TouchableOpacity
-                                onPress={startNewGame}
+                                onPress={handlePlayAgain}
                                 activeOpacity={0.8}
                                 style={styles.playAgainButton}
+                                disabled={checkingPremium || !playAgainReady}
                                 accessibilityRole="button"
                                 accessibilityLabel="Play Wordle again"
+                                accessibilityState={{ disabled: checkingPremium || !playAgainReady }}
                             >
-                                <Text style={styles.playAgainText}>Play Again</Text>
+                                {checkingPremium ? (
+                                    <ActivityIndicator color="#FFFFFF" />
+                                ) : (
+                                    <Text style={styles.playAgainText}>
+                                        Play Again
+                                    </Text>
+                                )}
                             </TouchableOpacity>
                         </View>
                     )}
@@ -1094,12 +1351,13 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                         </View>
                     )}
 
-                    {status === 'won' && (
+                    {showConfetti && (
                         <ConfettiCannon
                             count={150}
                             origin={{ x: Dimensions.get('window').width / 2, y: -20 }}
                             autoStart={true}
                             fadeOut={true}
+                            onAnimationEnd={() => setShowConfetti(false)}
                         />
                     )}
 
@@ -1442,6 +1700,24 @@ const styles = StyleSheet.create({
         lineHeight: 21,
         textAlign: 'center',
         marginBottom: 20,
+    },
+    limitCheckError: {
+        width: '88%',
+        paddingHorizontal: 16,
+        paddingVertical: 11,
+        borderRadius: 14,
+        backgroundColor: '#FFF7ED',
+        borderWidth: 1,
+        borderColor: '#FED7AA',
+        marginTop: 8,
+        marginBottom: 8,
+    },
+    limitCheckErrorText: {
+        color: '#9A3412',
+        fontFamily: fontFamily.bold,
+        fontSize: 13,
+        lineHeight: 18,
+        textAlign: 'center',
     },
     actionButtons: {
         alignItems: 'center',
