@@ -11,6 +11,7 @@ const KEYS = {
     IS_ONBOARDED: 'auth_is_onboarded',
     HAS_SEEN_ONBOARDING: 'has_seen_onboarding', // First-launch intro screens
     HAS_SEEN_ONBOARDING_PREMIUM: 'has_seen_onboarding_premium',
+    ACTIVE_LIVE_CHAT_USER: 'active_live_chat_user',
 };
 
 const getOnboardingPremiumKey = (userId) => (
@@ -32,6 +33,20 @@ export const getUser = () => {
         return null;
     }
 };
+
+export const markLiveChatActive = (userId) => {
+    if (!userId) return;
+    storage.set(KEYS.ACTIVE_LIVE_CHAT_USER, String(userId));
+};
+
+export const clearLiveChatActive = () => {
+    storage.delete(KEYS.ACTIVE_LIVE_CHAT_USER);
+};
+
+export const shouldResumeLiveChat = (userId) => (
+    Boolean(userId)
+    && storage.getString(KEYS.ACTIVE_LIVE_CHAT_USER) === String(userId)
+);
 
 /**
  * Save user to storage and mark as authenticated
@@ -105,6 +120,7 @@ export const updateUser = (updates) => {
  */
 export const clearAuth = () => {
     try {
+        clearLiveChatActive();
         storage.delete(KEYS.USER);
         storage.delete(KEYS.IS_AUTHENTICATED);
         storage.delete(KEYS.IS_ONBOARDED);
@@ -179,6 +195,9 @@ export const setSeenOnboardingPremium = (userId, value = true) => {
 export default {
     storage,
     getUser,
+    markLiveChatActive,
+    clearLiveChatActive,
+    shouldResumeLiveChat,
     saveUser,
     isAuthenticated,
     isOnboarded,

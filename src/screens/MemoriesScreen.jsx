@@ -460,7 +460,7 @@ const TimelineFab = ({ isOpen, progress, onToggle, onSelect, bottomInset, pulse 
                     <Animated.View style={[styles.fabBackdrop, { opacity: backdropOpacity }]} />
                 </Pressable>
             )}
-            <View pointerEvents="box-none" style={[styles.fabLayer, { bottom: bottomInset + 58 }]}>
+            <View pointerEvents="box-none" style={[styles.fabLayer, { bottom: bottomInset + 94 }]}>
                 <AddActionButton
                     label="Memory"
                     icon={<Heart color="#FFFFFF" size={17} strokeWidth={2.2} />}
@@ -964,7 +964,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     }, [caption, capturedAt, capturedAtSource, draft, entryType, iconKey, phase, resetDraft, title, userId]);
 
     const contentPadding = useMemo(() => ({
-        paddingTop: insets.top + 58,
+        paddingTop: insets.top + 76,
         paddingBottom: insets.bottom + 94,
     }), [insets.bottom, insets.top]);
 
@@ -977,10 +977,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             style={styles.screen}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <Animated.View style={[styles.headerBlur, { opacity: headerOpacity, height: insets.top + 46 }]}>
+            <Animated.View style={[styles.headerBlur, { opacity: headerOpacity, height: insets.top + 66 }]}>
                 <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
             </Animated.View>
-            <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+            <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
                 <View style={styles.headerCopy}>
                     <Text style={styles.title}>Our Timeline</Text>
                 </View>
@@ -1098,10 +1098,11 @@ const styles = StyleSheet.create({
     },
     title: {
         fontFamily: fontFamily.extraBold,
+        fontSize: 32,
         fontWeight: fontWeight('800'),
-        color: '#2F2630',
-        fontSize: 20,
-        lineHeight: 24,
+        color: '#202B5E',
+        letterSpacing: -0.5,
+        marginBottom: 6,
     },
     listContent: {
         paddingLeft: 6,

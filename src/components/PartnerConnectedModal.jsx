@@ -46,11 +46,13 @@ const PartnerConnectedModal = ({
         >
             <View style={styles.backdrop}>
                 <View style={styles.card}>
-                    <LinearGradient
-                        colors={['#FFE1EE', '#FFF6FA', '#FFFFFF']}
-                        locations={[0, 0.54, 1]}
-                        style={styles.cardGradient}
-                    >
+                    <View style={styles.cardSurface}>
+                        <LinearGradient
+                            pointerEvents="none"
+                            colors={['#FFE1EE', '#FFF6FA', '#FFFFFF']}
+                            locations={[0, 0.54, 1]}
+                            style={StyleSheet.absoluteFillObject}
+                        />
                         <View style={[styles.glow, styles.glowLeft]} />
                         <View style={[styles.glow, styles.glowRight]} />
                         <Text style={[styles.decorativeHeart, styles.heartOne]}>♥</Text>
@@ -109,7 +111,7 @@ const PartnerConnectedModal = ({
                                 <Text style={styles.buttonArrow}>→</Text>
                             </LinearGradient>
                         </Pressable>
-                    </LinearGradient>
+                    </View>
                 </View>
             </View>
         </Modal>
@@ -128,14 +130,16 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 390,
         borderRadius: 32,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FFE1EE',
         shadowColor: '#3C1C31',
         shadowOffset: { width: 0, height: 16 },
         shadowOpacity: 0.28,
         shadowRadius: 28,
         elevation: 18,
     },
-    cardGradient: {
+    cardSurface: {
+        width: '100%',
+        alignSelf: 'stretch',
         alignItems: 'center',
         overflow: 'hidden',
         borderRadius: 32,
@@ -262,9 +266,10 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
         textAlign: 'center',
+        alignSelf: 'stretch',
     },
     message: {
-        maxWidth: 300,
+        alignSelf: 'stretch',
         color: '#746573',
         fontSize: 14.5,
         lineHeight: 21,
@@ -294,10 +299,12 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     journeyText: {
+        flexShrink: 1,
         color: '#4A3343',
         fontSize: 13,
         fontFamily: fontFamily.bold,
         fontWeight: fontWeight('700'),
+        textAlign: 'center',
     },
     buttonWrap: {
         alignSelf: 'stretch',

@@ -25,6 +25,7 @@
 		AA1111112EF9000000000003 /* ScribbleWidgetBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = AA1111112EF9000000000004 /* ScribbleWidgetBridge.m */; };
 		BFB424267EEDBFEF3234254E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		F0AA00012F0A000000000001 /* Nunito.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F0AA00022F0A000000000001 /* Nunito.ttf */; };
+		F0AA00032F0A000000000002 /* incallmanager_ringtone.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = F0AA00042F0A000000000002 /* incallmanager_ringtone.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +87,7 @@
 		C52A718E38E3436B83499749 /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = frontend/BootSplash.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F0AA00022F0A000000000001 /* Nunito.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Nunito.ttf; path = frontend/Nunito.ttf; sourceTree = "<group>"; };
+		F0AA00042F0A000000000002 /* incallmanager_ringtone.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; name = incallmanager_ringtone.mp3; path = frontend/incallmanager_ringtone.mp3; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -177,6 +179,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				F0AA00022F0A000000000001 /* Nunito.ttf */,
+				F0AA00042F0A000000000002 /* incallmanager_ringtone.mp3 */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				AA1111112EF9000000000002 /* ScribbleWidgetBridge.swift */,
 				AA1111112EF9000000000004 /* ScribbleWidgetBridge.m */,
@@ -379,6 +382,7 @@
 				79DE0ED82EF2D2410075C877 /* GoogleService-Info.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				F0AA00012F0A000000000001 /* Nunito.ttf in Resources */,
+				F0AA00032F0A000000000002 /* incallmanager_ringtone.mp3 in Resources */,
 				BFB424267EEDBFEF3234254E /* PrivacyInfo.xcprivacy in Resources */,
 				A764CB4441D641DD8D37D3BD /* BootSplash.storyboard in Resources */,
 				99612FE47B2546708C810F5C /* Colors.xcassets in Resources */,

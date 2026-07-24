@@ -172,6 +172,7 @@ const SetStatusAvatar = ({ avatar, name, complete, variant = 'user' }) => {
 export default function TopicQuestionsV2Screen({
     topic,
     topicTitle,
+    topicEmoji = '',
     partnerName = 'Your Love',
     userName = 'You',
     userAvatar = null,
@@ -516,11 +517,15 @@ export default function TopicQuestionsV2Screen({
     const renderHeader = () => (
         <View style={styles.header}>
             <TouchableOpacity onPress={handleBack} style={styles.headerBackBtn}>
-                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                    <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                    <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
             </TouchableOpacity>
-           
+            <View style={styles.headerTextBlock}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                    {topicEmoji ? `${topicEmoji} ${topicTitle}` : topicTitle}
+                </Text>
+            </View>
             <View style={styles.headerSpacer} />
         </View>
     );
@@ -615,7 +620,7 @@ export default function TopicQuestionsV2Screen({
                                         <View style={styles.premiumBadge}>
                                             <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
                                                 <Path
-                                                    d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2c0-1.1-.9-2-2-2Z"
+                                                    d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2z"
                                                     fill="#D97706"
                                                 />
                                                 <Path
@@ -774,19 +779,19 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.xl,
     },
     headerBackBtn: {
-        width: 54,
-        height: 54,
-        borderRadius: 27,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
         backgroundColor: 'rgba(255,255,255,0.94)',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.98)',
         shadowColor: '#9A5578',
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 15,
-        elevation: 4,
+        shadowRadius: 10,
+        elevation: 3,
     },
     headerTextBlock: {
         flex: 1,
@@ -794,10 +799,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     headerSpacer: {
-        width: 54,
+        width: 42,
     },
     headerTitle: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: '900',
         color: colors.text,
         textAlign: 'center',

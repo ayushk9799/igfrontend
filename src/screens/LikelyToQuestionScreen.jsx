@@ -438,9 +438,9 @@ const styles = StyleSheet.create({
         marginTop: 'auto',
     },
     backButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
         backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',

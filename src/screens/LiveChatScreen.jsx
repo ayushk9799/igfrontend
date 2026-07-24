@@ -1,10 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+    Animated,
     AppState,
+    BackHandler,
+    Dimensions,
     Image,
-    KeyboardAvoidingView,
+    InteractionManager,
+    Keyboard,
     Linking,
+    Modal,
     Platform,
+    ScrollView,
     StyleSheet,
     StatusBar,
     Text,
@@ -24,14 +30,97 @@ import {
     RTCSessionDescription,
     RTCView,
 } from 'react-native-webrtc';
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { Video, VideoOff } from 'lucide-react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useSocketContext } from '../context/SocketContext';
 import { useCall } from '../calling/CallContext';
 import { CALL_STATE, STUN_URLS } from '../calling/callConstants';
+import { API_BASE } from '../constants/Api';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { clearLiveChatActive, markLiveChatActive, storage } from '../utils/authStorage';
 
 const MAX_MESSAGE_LENGTH = 500;
+const VIDEO_NEGOTIATION_TIMEOUT_MS = 12_000;
+const LIVE_CHAT_INSTRUCTION_KEY = 'live_chat_instruction_seen_v1';
+const LIVE_CHAT_CARD_HEIGHT_KEY = 'live_chat_card_height_v2';
+const DEFAULT_CARD_HEIGHT = 136;
+const MIN_CARD_HEIGHT = 108;
+const MAX_CARD_HEIGHT = 280;
+const CARD_HEIGHT_BREATHING_ROOM = 16;
+
+const readCachedCardHeight = (key) => {
+    const height = storage.getNumber(key);
+    return Number.isFinite(height) && height >= MIN_CARD_HEIGHT && height <= MAX_CARD_HEIGHT
+        ? height
+        : DEFAULT_CARD_HEIGHT;
+};
 
 const makeId = prefix => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+function SmoothMessageText({ text }) {
+    const [displayedText, setDisplayedText] = useState(text);
+    const displayedTextRef = useRef(text);
+    const opacity = useRef(new Animated.Value(1)).current;
+    const translateY = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (text === displayedTextRef.current) return undefined;
+
+        const fadeOut = Animated.parallel([
+            Animated.timing(opacity, {
+                toValue: 0,
+                duration: 110,
+                useNativeDriver: true,
+            }),
+            Animated.timing(translateY, {
+                toValue: -4,
+                duration: 110,
+                useNativeDriver: true,
+            }),
+        ]);
+        let fadeIn = null;
+
+        fadeOut.start(({ finished }) => {
+            if (!finished) return;
+            displayedTextRef.current = text;
+            setDisplayedText(text);
+            translateY.setValue(5);
+            fadeIn = Animated.parallel([
+                Animated.timing(opacity, {
+                    toValue: 1,
+                    duration: 170,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(translateY, {
+                    toValue: 0,
+                    duration: 170,
+                    useNativeDriver: true,
+                }),
+            ]);
+            fadeIn.start();
+        });
+
+        return () => {
+            fadeOut.stop();
+            fadeIn?.stop();
+        };
+    }, [opacity, text, translateY]);
+
+    const visibleText = displayedText || '';
+    return (
+        <Animated.Text
+            style={[
+                styles.messageText,
+                !visibleText && styles.emptyMessageText,
+                { opacity, transform: [{ translateY }] },
+            ]}
+        >
+            {visibleText || '...'}
+        </Animated.Text>
+    );
+}
 
 export default function LiveChatScreen({
     userId,
@@ -41,14 +130,18 @@ export default function LiveChatScreen({
     onBack,
 }) {
     const { width } = useWindowDimensions();
+    const screenDimensions = Dimensions.get('screen');
     const { socket, isConnected } = useSocketContext();
     const { callState } = useCall();
     const compact = width < 370;
+    const instructionStorageKey = `${LIVE_CHAT_INSTRUCTION_KEY}:${userId || 'device'}`;
+    const cardHeightStorageKey = `${LIVE_CHAT_CARD_HEIGHT_KEY}:${Platform.OS}:${Math.round(screenDimensions.width)}x${Math.round(screenDimensions.height)}`;
 
     const [sessionId, setSessionId] = useState(null);
     const [error, setError] = useState(null);
     const [cameraEnabled, setCameraEnabled] = useState(false);
     const [cameraDenied, setCameraDenied] = useState(false);
+    const [cameraFailureMessage, setCameraFailureMessage] = useState(null);
     const [partnerCameraEnabled, setPartnerCameraEnabled] = useState(false);
     const [localStream, setLocalStream] = useState(null);
     const [remoteStream, setRemoteStream] = useState(null);
@@ -56,7 +149,19 @@ export default function LiveChatScreen({
     // Live Chat deliberately owns two scalar slots. There is no message array.
     const [myMessage, setMyMessage] = useState(null);
     const [partnerMessage, setPartnerMessage] = useState(null);
+    const [partnerTyping, setPartnerTyping] = useState(false);
+    const [partnerNickname, setPartnerNickname] = useState(null);
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const [toastVisible, setToastVisible] = useState(false);
     const [myDraft, setMyDraft] = useState('');
+    const [sendPending, setSendPending] = useState(false);
+    const [screenReadyForKeyboard, setScreenReadyForKeyboard] = useState(false);
+    const [cardHeight, setCardHeight] = useState(
+        () => readCachedCardHeight(cardHeightStorageKey),
+    );
+    const [instructionVisible, setInstructionVisible] = useState(
+        () => storage.getBoolean(instructionStorageKey) !== true,
+    );
 
     const sessionIdRef = useRef(null);
     const participantCountRef = useRef(0);
@@ -65,9 +170,116 @@ export default function LiveChatScreen({
     const localStreamRef = useRef(null);
     const remoteStreamRef = useRef(null);
     const pendingCandidatesRef = useRef([]);
+    const negotiationTimeoutRef = useRef(null);
     const mountedRef = useRef(true);
     const cameraPermissionAttemptedRef = useRef(false);
+    const cameraStartPromiseRef = useRef(null);
+    const cameraRequestGenerationRef = useRef(0);
     const offerInFlightRef = useRef(false);
+    const myDraftRef = useRef('');
+    const pendingMessageRef = useRef(null);
+    const pendingMessageTimeoutRef = useRef(null);
+    const typingStopTimeoutRef = useRef(null);
+    const typingActiveRef = useRef(false);
+    const messageInputRef = useRef(null);
+    const messageSoundPlayerRef = useRef(null);
+    const messageSoundUrisRef = useRef({ send: null, receive: null });
+    const messageSoundSequenceRef = useRef(Promise.resolve());
+    const messageSoundDisposedRef = useRef(false);
+    const appStateRef = useRef(AppState.currentState);
+    const pendingKeyboardBackTimerRef = useRef(null);
+    const keyboardVisibleRef = useRef(false);
+    const stageViewportHeightRef = useRef(0);
+    const measuredCardHeightRef = useRef(cardHeight);
+
+    useEffect(() => {
+        const cachedHeight = readCachedCardHeight(cardHeightStorageKey);
+        measuredCardHeightRef.current = cachedHeight;
+        setCardHeight(cachedHeight);
+    }, [cardHeightStorageKey]);
+
+    const calculateAndCacheCardHeight = useCallback((viewportHeight) => {
+        if (!keyboardVisibleRef.current || viewportHeight <= 0) return;
+
+        // Keep additional breathing room instead of filling the stage exactly.
+        // The stage already uses 12px total padding and an 8px card gap.
+        const availableHeight = viewportHeight - 20 - CARD_HEIGHT_BREATHING_ROOM;
+        const nextHeight = Math.max(
+            MIN_CARD_HEIGHT,
+            Math.min(MAX_CARD_HEIGHT, Math.floor(availableHeight / 2)),
+        );
+        const storedHeight = storage.getNumber(cardHeightStorageKey);
+        if (Math.abs(nextHeight - measuredCardHeightRef.current) < 2) {
+            if (!Number.isFinite(storedHeight)) storage.set(cardHeightStorageKey, nextHeight);
+            return;
+        }
+
+        measuredCardHeightRef.current = nextHeight;
+        setCardHeight(nextHeight);
+        storage.set(cardHeightStorageKey, nextHeight);
+    }, [cardHeightStorageKey]);
+
+    const handleStageLayout = useCallback((event) => {
+        const viewportHeight = event.nativeEvent.layout.height;
+        stageViewportHeightRef.current = viewportHeight;
+        calculateAndCacheCardHeight(viewportHeight);
+    }, [calculateAndCacheCardHeight]);
+
+    useEffect(() => {
+        if (!userId || !partnerId) {
+            setPartnerNickname(null);
+            return undefined;
+        }
+
+        let cancelled = false;
+        const loadPartnerNickname = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/partner/status/${userId}`);
+                const json = await response.json();
+                const nickname = json?.partner?.nickname?.trim();
+                if (!cancelled) setPartnerNickname(nickname || null);
+            } catch {
+                if (!cancelled) setPartnerNickname(null);
+            }
+        };
+
+        loadPartnerNickname();
+        return () => {
+            cancelled = true;
+        };
+    }, [partnerId, userId]);
+
+    useEffect(() => {
+        messageSoundDisposedRef.current = false;
+        messageSoundPlayerRef.current = new AudioRecorderPlayer();
+        messageSoundUrisRef.current = {
+            send: Image.resolveAssetSource(require('../../assets/sounds/send.mp3')).uri,
+            receive: Image.resolveAssetSource(require('../../assets/sounds/recieve.mp3')).uri,
+        };
+
+        return () => {
+            messageSoundDisposedRef.current = true;
+            messageSoundPlayerRef.current?.stopPlayer().catch(() => {});
+            messageSoundPlayerRef.current = null;
+        };
+    }, []);
+
+    const playMessageSound = useCallback((type) => {
+        const soundUri = messageSoundUrisRef.current[type];
+        if (!soundUri || messageSoundDisposedRef.current) return;
+
+        messageSoundSequenceRef.current = messageSoundSequenceRef.current
+            .catch(() => {})
+            .then(async () => {
+                const player = messageSoundPlayerRef.current;
+                if (!player || messageSoundDisposedRef.current) return;
+                await player.stopPlayer().catch(() => {});
+                if (messageSoundDisposedRef.current) return;
+                await player.startPlayer(soundUri);
+                await player.setVolume(1);
+            })
+            .catch(() => {});
+    }, []);
 
     const emitMediaState = useCallback((enabled) => {
         if (!sessionIdRef.current) return;
@@ -77,7 +289,22 @@ export default function LiveChatScreen({
         });
     }, [socket]);
 
+    const emitTypingState = useCallback((isTyping) => {
+        const id = sessionIdRef.current;
+        if (!id || !socket?.connected) {
+            if (!isTyping) typingActiveRef.current = false;
+            return;
+        }
+        if (typingActiveRef.current === isTyping) return;
+        typingActiveRef.current = isTyping;
+        socket.emit('liveChat:typing', {
+            sessionId: id,
+            isTyping,
+        });
+    }, [socket]);
+
     const stopCamera = useCallback(() => {
+        cameraRequestGenerationRef.current += 1;
         localStreamRef.current?.getTracks?.().forEach(track => track.stop());
         localStreamRef.current = null;
         setLocalStream(null);
@@ -85,10 +312,14 @@ export default function LiveChatScreen({
         emitMediaState(false);
     }, [emitMediaState]);
 
-    const closePeerConnection = useCallback(() => {
+    const closePeerConnection = useCallback(({ preservePendingCandidates = false } = {}) => {
+        if (negotiationTimeoutRef.current) {
+            clearTimeout(negotiationTimeoutRef.current);
+            negotiationTimeoutRef.current = null;
+        }
         peerConnectionRef.current?.close?.();
         peerConnectionRef.current = null;
-        pendingCandidatesRef.current = [];
+        if (!preservePendingCandidates) pendingCandidatesRef.current = [];
         remoteStreamRef.current = null;
         setRemoteStream(null);
         setPartnerCameraEnabled(false);
@@ -97,57 +328,87 @@ export default function LiveChatScreen({
     const ensureFrontCamera = useCallback(async () => {
         const existingTrack = localStreamRef.current?.getVideoTracks?.()[0];
         if (existingTrack?.readyState === 'live') return localStreamRef.current;
+        if (cameraStartPromiseRef.current) return cameraStartPromiseRef.current;
 
-        try {
-            let cameraStatus = await permissions.query({ name: 'camera' });
-            if (cameraStatus !== permissions.RESULT.GRANTED) {
-                if (cameraPermissionAttemptedRef.current) {
-                    setCameraDenied(true);
-                    emitMediaState(false);
+        const requestGeneration = cameraRequestGenerationRef.current;
+        const cameraStartPromise = (async () => {
+            let capturedStream = null;
+            try {
+                let cameraStatus = await permissions.query({ name: 'camera' });
+                if (cameraStatus !== permissions.RESULT.GRANTED) {
+                    if (cameraPermissionAttemptedRef.current) {
+                        setCameraDenied(true);
+                        setCameraFailureMessage(null);
+                        emitMediaState(false);
+                        return null;
+                    }
+                    cameraPermissionAttemptedRef.current = true;
+                    const granted = await permissions.request({ name: 'camera' });
+                    if (!granted) {
+                        cameraStatus = await permissions.query({ name: 'camera' });
+                        setCameraDenied(cameraStatus !== permissions.RESULT.GRANTED);
+                        setCameraFailureMessage(null);
+                        emitMediaState(false);
+                        return null;
+                    }
+                }
+
+                const stream = await mediaDevices.getUserMedia({
+                    audio: false,
+                    video: {
+                        facingMode: 'user',
+                        frameRate: 24,
+                        width: { ideal: 480 },
+                        height: { ideal: 640 },
+                    },
+                });
+                capturedStream = stream;
+                const track = stream.getVideoTracks()[0];
+                if (!track) throw new Error('Front camera did not provide a video track.');
+
+                if (
+                    !mountedRef.current
+                    || requestGeneration !== cameraRequestGenerationRef.current
+                    || !sessionIdRef.current
+                ) {
+                    stream.getTracks().forEach(item => item.stop());
                     return null;
                 }
-                cameraPermissionAttemptedRef.current = true;
-                const granted = await permissions.request({ name: 'camera' });
-                if (!granted) {
-                    cameraStatus = await permissions.query({ name: 'camera' });
-                    setCameraDenied(cameraStatus !== permissions.RESULT.GRANTED);
-                    emitMediaState(false);
-                    return null;
+
+                localStreamRef.current = stream;
+                const sender = peerConnectionRef.current
+                    ?.getSenders?.()
+                    .find(item => item.track?.kind === 'video' || item.track == null);
+                if (sender) await sender.replaceTrack(track);
+
+                setLocalStream(stream);
+                setCameraDenied(false);
+                setCameraFailureMessage(null);
+                setCameraEnabled(true);
+                emitMediaState(true);
+                return stream;
+            } catch {
+                capturedStream?.getTracks?.().forEach(item => item.stop());
+                if (localStreamRef.current === capturedStream) {
+                    localStreamRef.current = null;
                 }
-            }
-
-            const stream = await mediaDevices.getUserMedia({
-                audio: false,
-                video: {
-                    facingMode: 'user',
-                    frameRate: 24,
-                    width: { ideal: 480 },
-                    height: { ideal: 640 },
-                },
-            });
-            const track = stream.getVideoTracks()[0];
-            if (!track) throw new Error('Front camera did not provide a video track.');
-
-            localStreamRef.current = stream;
-            const sender = peerConnectionRef.current
-                ?.getSenders?.()
-                .find(item => item.track?.kind === 'video' || item.track == null);
-            if (sender) await sender.replaceTrack(track);
-            if (!mountedRef.current) {
-                stream.getTracks().forEach(item => item.stop());
-                localStreamRef.current = null;
+                if (requestGeneration === cameraRequestGenerationRef.current) {
+                    setCameraEnabled(false);
+                    setCameraDenied(false);
+                    setCameraFailureMessage('Front camera is unavailable. Messages still work.');
+                    emitMediaState(false);
+                }
                 return null;
             }
-            setLocalStream(stream);
-            setCameraDenied(false);
-            setCameraEnabled(true);
-            emitMediaState(true);
-            return stream;
-        } catch (cameraError) {
-            setCameraEnabled(false);
-            setCameraDenied(true);
-            emitMediaState(false);
-            return null;
+        })();
+
+        cameraStartPromiseRef.current = cameraStartPromise;
+        try {
+            return await cameraStartPromise;
+        } finally {
+            if (cameraStartPromiseRef.current === cameraStartPromise) {
+                cameraStartPromiseRef.current = null;
+            }
         }
     }, [emitMediaState]);
 
@@ -164,8 +425,11 @@ export default function LiveChatScreen({
         }
     }, []);
 
-    const createPeerConnection = useCallback((id, { attachLocal = true } = {}) => {
-        closePeerConnection();
+    const createPeerConnection = useCallback((
+        id,
+        { attachLocal = true, preservePendingCandidates = false } = {},
+    ) => {
+        closePeerConnection({ preservePendingCandidates });
         const pc = new RTCPeerConnection({
             iceServers: [{ urls: STUN_URLS }],
             iceCandidatePoolSize: 4,
@@ -179,6 +443,7 @@ export default function LiveChatScreen({
         }
 
         pc.addEventListener('track', event => {
+            if (peerConnectionRef.current !== pc) return;
             const received = event.streams?.[0];
             if (received) {
                 remoteStreamRef.current = received;
@@ -194,7 +459,7 @@ export default function LiveChatScreen({
         });
 
         pc.addEventListener('icecandidate', event => {
-            if (!event.candidate) return;
+            if (peerConnectionRef.current !== pc || !event.candidate) return;
             socket?.emit('liveChat:webrtc:iceCandidate', {
                 sessionId: id,
                 candidate: event.candidate.toJSON ? event.candidate.toJSON() : event.candidate,
@@ -202,6 +467,7 @@ export default function LiveChatScreen({
         });
 
         pc.addEventListener('connectionstatechange', () => {
+            if (peerConnectionRef.current !== pc) return;
             if (pc.connectionState === 'connected') {
                 setError(null);
             } else if (pc.connectionState === 'failed') {
@@ -215,48 +481,96 @@ export default function LiveChatScreen({
     const startOffer = useCallback(async () => {
         const id = sessionIdRef.current;
         if (!id || participantCountRef.current < 2 || offerInFlightRef.current) return;
+        const existingPc = peerConnectionRef.current;
+        if (
+            existingPc
+            && existingPc.signalingState !== 'closed'
+            && existingPc.connectionState !== 'failed'
+            && existingPc.connectionState !== 'closed'
+        ) return;
         offerInFlightRef.current = true;
-        await ensureFrontCamera();
         try {
+            await ensureFrontCamera();
+            if (
+                !mountedRef.current
+                || sessionIdRef.current !== id
+                || participantCountRef.current < 2
+            ) return;
             const pc = createPeerConnection(id, { attachLocal: true });
             const offer = await pc.createOffer();
+            if (peerConnectionRef.current !== pc || sessionIdRef.current !== id) return;
             await pc.setLocalDescription(offer);
             socket?.emit('liveChat:webrtc:offer', { sessionId: id, description: offer });
+            negotiationTimeoutRef.current = setTimeout(() => {
+                if (
+                    peerConnectionRef.current !== pc
+                    || pc.remoteDescription
+                    || pc.connectionState === 'connected'
+                ) return;
+                closePeerConnection();
+                setError('Live video negotiation timed out. Tap the video button to retry.');
+            }, VIDEO_NEGOTIATION_TIMEOUT_MS);
         } catch (offerError) {
             setError('Unable to start live video. Messages still work.');
         } finally {
             offerInFlightRef.current = false;
         }
-    }, [createPeerConnection, ensureFrontCamera, socket]);
+    }, [closePeerConnection, createPeerConnection, ensureFrontCamera, socket]);
 
     const leaveSession = useCallback(() => {
         const id = sessionIdRef.current;
+        emitTypingState(false);
         if (id) socket?.emit('liveChat:leave', { sessionId: id });
         sessionIdRef.current = null;
+        participantCountRef.current = 0;
+        shouldOfferRef.current = false;
+        offerInFlightRef.current = false;
+        setSessionId(null);
+        setMyMessage(null);
+        setPartnerMessage(null);
+        setPartnerTyping(false);
+        if (typingStopTimeoutRef.current) {
+            clearTimeout(typingStopTimeoutRef.current);
+            typingStopTimeoutRef.current = null;
+        }
+        if (pendingMessageTimeoutRef.current) {
+            clearTimeout(pendingMessageTimeoutRef.current);
+            pendingMessageTimeoutRef.current = null;
+        }
+        pendingMessageRef.current = null;
+        setSendPending(false);
         closePeerConnection();
         stopCamera();
-    }, [closePeerConnection, socket, stopCamera]);
+    }, [closePeerConnection, emitTypingState, socket, stopCamera]);
+
+    const handleBack = useCallback(() => {
+        clearLiveChatActive();
+        leaveSession();
+        onBack?.();
+    }, [leaveSession, onBack]);
+
+    useEffect(() => {
+        if (Platform.OS !== 'android') return undefined;
+        const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+            handleBack();
+            return true;
+        });
+        return () => subscription.remove();
+    }, [handleBack]);
 
     useEffect(() => {
         if (!socket || !isConnected) {
-            sessionIdRef.current = null;
-            participantCountRef.current = 0;
-            setSessionId(null);
-            closePeerConnection();
+            leaveSession();
             setError('Reconnect to enter Live Chat.');
             return undefined;
         }
         if (!partnerId) {
+            leaveSession();
             setError('Pair with a partner before starting Live Chat.');
             return undefined;
         }
         if (callState !== CALL_STATE.IDLE) {
-            const activeSessionId = sessionIdRef.current;
-            if (activeSessionId) socket.emit('liveChat:leave', { sessionId: activeSessionId });
-            sessionIdRef.current = null;
-            setSessionId(null);
-            closePeerConnection();
-            stopCamera();
+            leaveSession();
             setError('End your video call before starting Live Chat.');
             return undefined;
         }
@@ -268,6 +582,8 @@ export default function LiveChatScreen({
             setSessionId(data.sessionId);
             setMyMessage(data.myMessage || null);
             setPartnerMessage(data.partnerMessage || null);
+            setPartnerTyping(false);
+            setError(null);
             await ensureFrontCamera();
             if ((data.participantCount || 1) > 1 && data.shouldOffer) startOffer();
         };
@@ -282,13 +598,22 @@ export default function LiveChatScreen({
             participantCountRef.current = data.participantCount || 1;
             shouldOfferRef.current = data.shouldOffer === true;
             setPartnerMessage(null);
+            setPartnerTyping(false);
             closePeerConnection();
         };
         const onOffer = async data => {
             if (data.sessionId !== sessionIdRef.current) return;
+            const pc = createPeerConnection(data.sessionId, {
+                attachLocal: false,
+                preservePendingCandidates: true,
+            });
             try {
                 await ensureFrontCamera();
-                const pc = createPeerConnection(data.sessionId, { attachLocal: false });
+                if (
+                    !mountedRef.current
+                    || sessionIdRef.current !== data.sessionId
+                    || peerConnectionRef.current !== pc
+                ) return;
                 await pc.setRemoteDescription(new RTCSessionDescription(data.description));
                 const localTrack = localStreamRef.current?.getVideoTracks?.()[0];
                 if (localTrack) pc.addTrack(localTrack, localStreamRef.current);
@@ -297,6 +622,7 @@ export default function LiveChatScreen({
                 await pc.setLocalDescription(answer);
                 socket.emit('liveChat:webrtc:answer', { sessionId: data.sessionId, description: answer });
             } catch (answerError) {
+                if (peerConnectionRef.current === pc) closePeerConnection();
                 setError('Unable to answer live video. Messages still work.');
             }
         };
@@ -304,6 +630,10 @@ export default function LiveChatScreen({
             if (data.sessionId !== sessionIdRef.current || !peerConnectionRef.current) return;
             try {
                 await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.description));
+                if (negotiationTimeoutRef.current) {
+                    clearTimeout(negotiationTimeoutRef.current);
+                    negotiationTimeoutRef.current = null;
+                }
                 await flushCandidates();
             } catch (answerError) {
                 setError('Live video negotiation failed. Messages still work.');
@@ -324,8 +654,37 @@ export default function LiveChatScreen({
         };
         const onMessage = data => {
             if (data.sessionId !== sessionIdRef.current) return;
-            if (String(data.senderId) === String(userId)) setMyMessage(data.message);
-            else setPartnerMessage(data.message);
+            if (String(data.senderId) === String(userId)) {
+                setMyMessage(data.message);
+                const pending = pendingMessageRef.current;
+                const confirmed = pending && (
+                    data.message?.clientMessageId === pending.clientMessageId
+                    || data.message?.text === pending.text
+                );
+                if (confirmed) {
+                    if (pendingMessageTimeoutRef.current) {
+                        clearTimeout(pendingMessageTimeoutRef.current);
+                        pendingMessageTimeoutRef.current = null;
+                    }
+                    pendingMessageRef.current = null;
+                    setSendPending(false);
+                    if (myDraftRef.current === pending.text) {
+                        myDraftRef.current = '';
+                        setMyDraft('');
+                    }
+                }
+            } else {
+                setPartnerMessage(data.message);
+                setPartnerTyping(false);
+                playMessageSound('receive');
+            }
+        };
+        const onPartnerTyping = data => {
+            if (
+                data.sessionId !== sessionIdRef.current
+                || String(data.senderId) === String(userId)
+            ) return;
+            setPartnerTyping(data.isTyping === true);
         };
         const onPartnerMediaState = data => {
             if (data.sessionId !== sessionIdRef.current || String(data.senderId) === String(userId)) return;
@@ -336,6 +695,16 @@ export default function LiveChatScreen({
         };
         const onError = data => {
             setError(data.message || 'Live Chat could not start.');
+            if (pendingMessageRef.current) {
+                const previousMessage = pendingMessageRef.current.previousMessage;
+                if (pendingMessageTimeoutRef.current) {
+                    clearTimeout(pendingMessageTimeoutRef.current);
+                    pendingMessageTimeoutRef.current = null;
+                }
+                pendingMessageRef.current = null;
+                setSendPending(false);
+                setMyMessage(previousMessage || null);
+            }
             if (data.code === 'NORMAL_CALL_ACTIVE') {
                 closePeerConnection();
                 stopCamera();
@@ -349,6 +718,7 @@ export default function LiveChatScreen({
         socket.on('liveChat:webrtc:answer', onAnswer);
         socket.on('liveChat:webrtc:iceCandidate', onCandidate);
         socket.on('liveChat:messageUpdated', onMessage);
+        socket.on('liveChat:partnerTyping', onPartnerTyping);
         socket.on('liveChat:partnerMediaState', onPartnerMediaState);
         socket.on('liveChat:error', onError);
         socket.emit('liveChat:join');
@@ -361,22 +731,49 @@ export default function LiveChatScreen({
             socket.off('liveChat:webrtc:answer', onAnswer);
             socket.off('liveChat:webrtc:iceCandidate', onCandidate);
             socket.off('liveChat:messageUpdated', onMessage);
+            socket.off('liveChat:partnerTyping', onPartnerTyping);
             socket.off('liveChat:partnerMediaState', onPartnerMediaState);
             socket.off('liveChat:error', onError);
         };
-    }, [callState, closePeerConnection, createPeerConnection, ensureFrontCamera, flushCandidates, isConnected, partnerId, socket, startOffer, stopCamera, userId]);
+    }, [callState, closePeerConnection, createPeerConnection, ensureFrontCamera, flushCandidates, isConnected, leaveSession, partnerId, playMessageSound, socket, startOffer, stopCamera, userId]);
 
     useEffect(() => {
         mountedRef.current = true;
+        markLiveChatActive(userId);
         return () => {
             mountedRef.current = false;
+            if (pendingMessageTimeoutRef.current) {
+                clearTimeout(pendingMessageTimeoutRef.current);
+                pendingMessageTimeoutRef.current = null;
+            }
             leaveSession();
         };
-    }, [leaveSession]);
+    }, [leaveSession, userId]);
+
+    useEffect(() => {
+        let animationFrame = null;
+        let cancelled = false;
+        const interactionTask = InteractionManager.runAfterInteractions(() => {
+            animationFrame = requestAnimationFrame(() => {
+                if (!cancelled) setScreenReadyForKeyboard(true);
+            });
+        });
+
+        return () => {
+            cancelled = true;
+            interactionTask.cancel();
+            if (animationFrame !== null) cancelAnimationFrame(animationFrame);
+        };
+    }, []);
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', async nextState => {
+            appStateRef.current = nextState;
             if (nextState !== 'active') {
+                if (pendingKeyboardBackTimerRef.current) {
+                    clearTimeout(pendingKeyboardBackTimerRef.current);
+                    pendingKeyboardBackTimerRef.current = null;
+                }
                 stopCamera();
                 return;
             }
@@ -389,20 +786,164 @@ export default function LiveChatScreen({
         return () => subscription.remove();
     }, [ensureFrontCamera, startOffer, stopCamera]);
 
+    useEffect(() => {
+        if (!sessionId || !screenReadyForKeyboard) return undefined;
+        let focusTimer = null;
+
+        const focusInput = (resetFocus = false) => {
+            if (
+                !mountedRef.current
+                || !sessionIdRef.current
+                || instructionVisible
+                || AppState.currentState !== 'active'
+            ) return;
+
+            if (focusTimer) clearTimeout(focusTimer);
+            focusTimer = setTimeout(() => {
+                const input = messageInputRef.current;
+                if (!input || !sessionIdRef.current) return;
+                if (resetFocus) input.blur();
+                input.focus();
+            }, 100);
+        };
+
+        focusInput();
+        const keyboardShowSubscription = Keyboard.addListener('keyboardDidShow', event => {
+            Keyboard.scheduleLayoutAnimation?.(event);
+            if (pendingKeyboardBackTimerRef.current) {
+                clearTimeout(pendingKeyboardBackTimerRef.current);
+                pendingKeyboardBackTimerRef.current = null;
+            }
+            keyboardVisibleRef.current = true;
+            setKeyboardVisible(true);
+            requestAnimationFrame(() => {
+                calculateAndCacheCardHeight(stageViewportHeightRef.current);
+            });
+        });
+        const keyboardSubscription = Keyboard.addListener('keyboardDidHide', event => {
+            Keyboard.scheduleLayoutAnimation?.(event);
+            keyboardVisibleRef.current = false;
+            setKeyboardVisible(false);
+
+            if (Platform.OS === 'android' && sessionIdRef.current) {
+                if (pendingKeyboardBackTimerRef.current) {
+                    clearTimeout(pendingKeyboardBackTimerRef.current);
+                }
+
+                // Some Android devices hide the keyboard just before reporting
+                // that the app moved to the background. Wait briefly so that
+                // lifecycle change cannot be mistaken for a hardware Back press.
+                pendingKeyboardBackTimerRef.current = setTimeout(() => {
+                    pendingKeyboardBackTimerRef.current = null;
+                    if (
+                        appStateRef.current === 'active'
+                        && sessionIdRef.current
+                        && !instructionVisible
+                    ) {
+                        handleBack();
+                    }
+                }, 1000);
+                return;
+            }
+
+            focusInput(true);
+        });
+        const appStateSubscription = AppState.addEventListener('change', nextState => {
+            appStateRef.current = nextState;
+            if (nextState !== 'active' && pendingKeyboardBackTimerRef.current) {
+                clearTimeout(pendingKeyboardBackTimerRef.current);
+                pendingKeyboardBackTimerRef.current = null;
+            }
+            if (nextState === 'active') focusInput(true);
+        });
+        const appBlurSubscription = Platform.OS === 'android'
+            ? AppState.addEventListener('blur', () => {
+                appStateRef.current = 'blurred';
+                if (pendingKeyboardBackTimerRef.current) {
+                    clearTimeout(pendingKeyboardBackTimerRef.current);
+                    pendingKeyboardBackTimerRef.current = null;
+                }
+            })
+            : null;
+        const appFocusSubscription = Platform.OS === 'android'
+            ? AppState.addEventListener('focus', () => {
+                appStateRef.current = AppState.currentState;
+            })
+            : null;
+
+        return () => {
+            keyboardShowSubscription.remove();
+            keyboardSubscription.remove();
+            appStateSubscription.remove();
+            appBlurSubscription?.remove();
+            appFocusSubscription?.remove();
+            if (focusTimer) clearTimeout(focusTimer);
+            if (pendingKeyboardBackTimerRef.current) {
+                clearTimeout(pendingKeyboardBackTimerRef.current);
+                pendingKeyboardBackTimerRef.current = null;
+            }
+            keyboardVisibleRef.current = false;
+            setKeyboardVisible(false);
+        };
+    }, [calculateAndCacheCardHeight, handleBack, instructionVisible, screenReadyForKeyboard, sessionId]);
+
+    const dismissInstruction = useCallback(() => {
+        storage.set(instructionStorageKey, true);
+        setInstructionVisible(false);
+    }, [instructionStorageKey]);
+
     const handleDraftChange = useCallback((text) => {
+        myDraftRef.current = text;
         setMyDraft(text);
-    }, []);
+        if (typingStopTimeoutRef.current) {
+            clearTimeout(typingStopTimeoutRef.current);
+            typingStopTimeoutRef.current = null;
+        }
+
+        const hasText = Boolean(text.trim());
+        emitTypingState(hasText);
+        if (hasText) {
+            typingStopTimeoutRef.current = setTimeout(() => {
+                typingStopTimeoutRef.current = null;
+                emitTypingState(false);
+            }, 1200);
+        }
+    }, [emitTypingState]);
 
     const handleSend = useCallback(() => {
         const text = myDraft.trim();
-        if (!text || !sessionIdRef.current) return;
+        if (!text || !sessionIdRef.current || sendPending) return;
+        if (!socket?.connected) {
+            setError('Message was not sent because Live Chat is reconnecting.');
+            return;
+        }
+        const clientMessageId = makeId('message');
+        if (typingStopTimeoutRef.current) {
+            clearTimeout(typingStopTimeoutRef.current);
+            typingStopTimeoutRef.current = null;
+        }
+        emitTypingState(false);
+        pendingMessageRef.current = { clientMessageId, text, previousMessage: myMessage };
+        setSendPending(true);
+        setMyMessage({ clientMessageId, text });
+        setError(null);
         socket?.emit('liveChat:message:set', {
             sessionId: sessionIdRef.current,
             text,
-            clientMessageId: makeId('message'),
+            clientMessageId,
         });
-        setMyDraft('');
-    }, [myDraft, socket]);
+        playMessageSound('send');
+        messageInputRef.current?.focus();
+        pendingMessageTimeoutRef.current = setTimeout(() => {
+            if (pendingMessageRef.current?.clientMessageId !== clientMessageId) return;
+            const previousMessage = pendingMessageRef.current.previousMessage;
+            pendingMessageRef.current = null;
+            pendingMessageTimeoutRef.current = null;
+            setSendPending(false);
+            setMyMessage(previousMessage);
+            setError('Message delivery was not confirmed. Your text is still available to retry.');
+        }, 8000);
+    }, [emitTypingState, myDraft, myMessage, playMessageSound, sendPending, socket]);
 
     const toggleFrontCamera = useCallback(async () => {
         if (cameraEnabled) {
@@ -413,15 +954,33 @@ export default function LiveChatScreen({
         if (shouldOfferRef.current && participantCountRef.current > 1) startOffer();
     }, [cameraEnabled, ensureFrontCamera, startOffer, stopCamera]);
 
-    const handleBack = useCallback(() => {
-        leaveSession();
-        onBack?.();
-    }, [leaveSession, onBack]);
-
     const partnerDisplayText = partnerMessage?.text || '';
-    const myDisplayText = myDraft || myMessage?.text || '';
-    const videoSize = compact ? { width: 62, height: 72 } : { width: 72, height: 84 };
-    const canSend = Boolean(myDraft.trim() && sessionId);
+    const myDisplayText = myMessage?.text || '';
+    const fallbackPartnerName = typeof partnerName === 'string' && partnerName.trim()
+        ? partnerName
+        : 'Partner';
+    const partnerDisplayName = partnerNickname || fallbackPartnerName;
+    const videoSize = compact
+        ? { width: 100 }
+        : { width: 116 };
+    const messageCardSize = { height: cardHeight };
+    const canSend = Boolean(myDraft.trim() && sessionId && socket?.connected && !sendPending);
+    const visibleError = error
+        || (cameraDenied ? 'Front-camera permission is off. Messages still work.' : null)
+        || cameraFailureMessage;
+
+    useEffect(() => {
+        if (!visibleError) {
+            setToastVisible(false);
+            return undefined;
+        }
+
+        setToastVisible(true);
+        const hideTimer = setTimeout(() => {
+            setToastVisible(false);
+        }, 4000);
+        return () => clearTimeout(hideTimer);
+    }, [visibleError]);
 
     return (
         <LinearGradient
@@ -434,35 +993,57 @@ export default function LiveChatScreen({
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
                 <View style={styles.header}>
-                    <TouchableOpacity style={styles.headerButton} onPress={handleBack} accessibilityLabel="Back to chats">
-                        <Text style={styles.backIcon}>‹</Text>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={handleBack}
+                        accessibilityRole="button"
+                        accessibilityLabel="Back to chats"
+                    >
+                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                            <Path
+                                d="M15 18l-6-6 6-6"
+                                stroke="#1B1237"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </Svg>
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Live Chat</Text>
-                    <TouchableOpacity style={styles.headerButton} onPress={toggleFrontCamera} accessibilityLabel="Toggle front camera">
-                        <Text style={styles.cameraButtonText}>{cameraEnabled ? '●' : '○'}</Text>
+                    <TouchableOpacity
+                        style={styles.headerButton}
+                        onPress={toggleFrontCamera}
+                        accessibilityRole="button"
+                        accessibilityLabel={cameraEnabled ? 'Turn off front camera' : 'Turn on front camera'}
+                        accessibilityState={{ checked: cameraEnabled }}
+                    >
+                        {cameraEnabled ? (
+                            <Video color="#D84F86" size={23} strokeWidth={2.2} />
+                        ) : (
+                            <VideoOff color="#A99CA9" size={23} strokeWidth={2.2} />
+                        )}
                     </TouchableOpacity>
                 </View>
 
-                {(error || cameraDenied) && (
-                    <View style={styles.errorCard}>
-                        <Text style={styles.errorText}>
-                            {error || 'Front-camera permission is off. Messages still work.'}
-                        </Text>
-                        {cameraDenied && (
-                            <TouchableOpacity onPress={() => Linking.openSettings()}>
-                                <Text style={styles.settingsText}>Open Settings</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                )}
-
                 <KeyboardAvoidingView
                     style={styles.body}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={0}
                 >
-                    <View style={styles.stage}>
-                        <View style={styles.messageRow}>
+                    <ScrollView
+                        style={styles.stageScroll}
+                        onLayout={handleStageLayout}
+                        contentContainerStyle={[
+                            styles.stage,
+                            keyboardVisible && styles.stageKeyboardOpen,
+                        ]}
+                        keyboardDismissMode="none"
+                        keyboardShouldPersistTaps="always"
+                    >
+                        <View style={[
+                            styles.messageRow,
+                            messageCardSize,
+                        ]}>
                             <View style={[styles.videoTile, videoSize]}>
                                 <View style={styles.videoClip}>
                                     {remoteStream && partnerCameraEnabled ? (
@@ -476,22 +1057,32 @@ export default function LiveChatScreen({
                                             {partnerAvatar ? (
                                                 <Image source={{ uri: partnerAvatar }} style={styles.partnerAvatar} />
                                             ) : (
-                                                <Text style={styles.partnerInitial}>{partnerName.charAt(0).toUpperCase()}</Text>
+                                                <Text style={styles.partnerInitial}>
+                                                    {partnerDisplayName.charAt(0).toUpperCase()}
+                                                </Text>
                                             )}
+                                            <Text style={styles.videoOffLabel}>Video is turned off</Text>
                                         </LinearGradient>
                                     )}
                                 </View>
                                 <View style={[styles.liveDot, !(remoteStream && partnerCameraEnabled) && styles.liveDotOff]} />
                             </View>
                             <View style={styles.messageContent}>
-                                <Text style={styles.personName}>{partnerName}</Text>
-                                <Text style={[styles.messageText, !partnerDisplayText && styles.emptyMessageText]}>
-                                    {partnerDisplayText || '...'}
-                                </Text>
+                                <View style={styles.nameRow}>
+                                    <Text style={styles.personName}>{partnerDisplayName}</Text>
+                                    {partnerTyping && (
+                                        <Text style={styles.typingText}>typing…</Text>
+                                    )}
+                                </View>
+                                <SmoothMessageText text={partnerDisplayText} />
                             </View>
                         </View>
 
-                        <View style={[styles.messageRow, styles.myMessageRow]}>
+                        <View style={[
+                            styles.messageRow,
+                            styles.myMessageRow,
+                            messageCardSize,
+                        ]}>
                             <View style={[styles.videoTile, videoSize]}>
                                 <View style={styles.videoClip}>
                                     {localStream && cameraEnabled ? (
@@ -504,23 +1095,40 @@ export default function LiveChatScreen({
                                     ) : (
                                         <LinearGradient colors={['#FFDCE8', '#F2DFF5']} style={styles.videoPlaceholder}>
                                             <Text style={styles.partnerInitial}>Y</Text>
+                                            <Text style={styles.videoOffLabel}>Video is turned off</Text>
                                         </LinearGradient>
                                     )}
                                 </View>
                                 <View style={[styles.liveDot, styles.myLiveDot, !(localStream && cameraEnabled) && styles.liveDotOff]} />
                             </View>
                             <View style={styles.messageContent}>
-                                <Text style={styles.personName}>You</Text>
-                                <Text style={[styles.messageText, !myDisplayText && styles.emptyMessageText]}>
-                                    {myDisplayText || '...'}
-                                </Text>
+                                <View style={styles.nameRow}>
+                                    <Text style={styles.personName}>You</Text>
+                                </View>
+                                <SmoothMessageText text={myDisplayText} />
                             </View>
                         </View>
-                    </View>
+                    </ScrollView>
+
+                    {toastVisible && visibleError && (
+                        <View style={styles.errorCard}>
+                            <Text style={styles.errorText}>{visibleError}</Text>
+                            {cameraDenied && !error && (
+                                <TouchableOpacity
+                                    onPress={() => Linking.openSettings()}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Open app settings"
+                                >
+                                    <Text style={styles.settingsText}>Open Settings</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
 
                     <View style={styles.composerArea}>
                         <View style={styles.composer}>
                             <TextInput
+                                ref={messageInputRef}
                                 value={myDraft}
                                 onChangeText={handleDraftChange}
                                 style={styles.input}
@@ -529,17 +1137,53 @@ export default function LiveChatScreen({
                                 maxLength={MAX_MESSAGE_LENGTH}
                                 multiline
                                 editable={Boolean(sessionId)}
+                                accessibilityLabel="Live Chat message"
                             />
                             <TouchableOpacity
                                 style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
                                 onPress={handleSend}
                                 disabled={!canSend}
+                                accessibilityRole="button"
+                                accessibilityLabel={sendPending ? 'Sending message' : 'Send message'}
+                                accessibilityState={{ disabled: !canSend, busy: sendPending }}
                             >
                                 <Text style={styles.sendIcon}>➤</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </KeyboardAvoidingView>
+
+                <Modal
+                    visible={instructionVisible}
+                    transparent
+                    animationType="fade"
+                    statusBarTranslucent
+                    onRequestClose={dismissInstruction}
+                >
+                    <View
+                        style={styles.instructionBackdrop}
+                        accessibilityViewIsModal
+                    >
+                        <View style={styles.instructionCard}>
+                            <View style={styles.instructionIcon}>
+                                <Text style={styles.instructionIconText}>1</Text>
+                            </View>
+                            <Text style={styles.instructionTitle}>One message at a time</Text>
+                            <Text style={styles.instructionText}>
+                                Each of you has one message on screen. Sending a new message replaces your previous one.
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.instructionButton}
+                                onPress={dismissInstruction}
+                                activeOpacity={0.84}
+                                accessibilityRole="button"
+                                accessibilityLabel="Dismiss Live Chat instructions"
+                            >
+                                <Text style={styles.instructionButtonText}>Got it</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
             </SafeAreaView>
         </LinearGradient>
     );
@@ -559,23 +1203,105 @@ const styles = StyleSheet.create({
         shadowColor: '#C25A86', shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 0.1, shadowRadius: 10, elevation: 2,
     },
-    backIcon: { color: '#1B1237', fontSize: 38, lineHeight: 39, marginTop: -3 },
-    cameraButtonText: { color: '#D84F86', fontSize: 23 },
+    backButton: {
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#FAE8FF',
+        justifyContent: 'center', alignItems: 'center',
+        shadowColor: '#C084FC', shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
+    },
     headerTitle: {
-        color: '#1B1237', fontSize: 20, fontFamily: fontFamily.extraBold,
+        color: '#1B1237', fontSize: 26, fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
     },
     errorCard: {
-        marginHorizontal: 18, marginTop: 4, borderRadius: 14, padding: 11,
-        backgroundColor: 'rgba(255,255,255,0.78)', borderWidth: 1, borderColor: '#F2BFD3',
+        position: 'absolute', bottom: Platform.OS === 'android' ? 76 : 68,
+        left: 18, right: 18, zIndex: 50,
+        borderRadius: 16, padding: 12,
+        backgroundColor: 'rgba(255,255,255,0.96)', borderWidth: 1, borderColor: '#F2BFD3',
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+        shadowColor: '#9A4168', shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.16, shadowRadius: 16, elevation: 8,
     },
     errorText: { color: '#7A3655', fontSize: 12, flex: 1, fontFamily: fontFamily.medium },
     settingsText: { color: '#D84F86', fontSize: 12, fontFamily: fontFamily.bold },
+    instructionBackdrop: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 28,
+        backgroundColor: 'rgba(36, 20, 46, 0.42)',
+    },
+    instructionCard: {
+        width: '100%',
+        maxWidth: 340,
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingTop: 24,
+        paddingBottom: 20,
+        borderRadius: 24,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#F2C5D9',
+        shadowColor: '#4D243F',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.22,
+        shadowRadius: 24,
+        elevation: 14,
+    },
+    instructionIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
+        backgroundColor: '#FFE1EC',
+    },
+    instructionIconText: {
+        color: '#D84F86',
+        fontSize: 23,
+        fontFamily: fontFamily.extraBold,
+        fontWeight: fontWeight('800'),
+    },
+    instructionTitle: {
+        color: '#1B1237',
+        fontSize: 20,
+        textAlign: 'center',
+        fontFamily: fontFamily.extraBold,
+        fontWeight: fontWeight('800'),
+    },
+    instructionText: {
+        marginTop: 8,
+        color: '#6F6070',
+        fontSize: 14,
+        lineHeight: 21,
+        textAlign: 'center',
+        fontFamily: fontFamily.medium,
+    },
+    instructionButton: {
+        alignSelf: 'stretch',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 46,
+        marginTop: 20,
+        borderRadius: 23,
+        backgroundColor: '#D84F86',
+    },
+    instructionButtonText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: fontFamily.bold,
+    },
     body: { flex: 1 },
-    stage: { flex: 1, justifyContent: 'center', paddingHorizontal: 16, paddingBottom: 10, gap: 12 },
+    stageScroll: { flex: 1 },
+    stage: {
+        flexGrow: 1, justifyContent: 'center', paddingHorizontal: 16,
+        paddingVertical: 12, gap: 12,
+    },
+    stageKeyboardOpen: { paddingVertical: 6, gap: 8 },
     messageRow: {
-        width: '92%', minHeight: 84, flexDirection: 'row', alignItems: 'stretch',
+        width: '98%', minHeight: MIN_CARD_HEIGHT, flexDirection: 'row', alignItems: 'stretch',
         borderRadius: 18, overflow: 'visible', backgroundColor: 'rgba(255,255,255,0.9)',
         borderWidth: 1.5, borderColor: '#F1C9DA',
         shadowColor: '#C15E89', shadowOffset: { width: 0, height: 7 },
@@ -600,6 +1326,13 @@ const styles = StyleSheet.create({
     },
     partnerAvatar: { width: 38, height: 38, borderRadius: 19 },
     partnerInitial: { color: '#8A4C70', fontSize: 25, fontFamily: fontFamily.extraBold },
+    videoOffLabel: {
+        position: 'absolute', left: 6, right: 6, bottom: 9,
+        paddingHorizontal: 5, paddingVertical: 3, borderRadius: 8,
+        overflow: 'hidden', textAlign: 'center',
+        color: '#FFFFFF', backgroundColor: 'rgba(47,38,48,0.66)',
+        fontSize: 9, lineHeight: 12, fontFamily: fontFamily.bold,
+    },
     liveDot: {
         position: 'absolute', width: 10, height: 10, borderRadius: 5,
         right: 7, bottom: 7, backgroundColor: '#42B883', borderWidth: 2, borderColor: '#FFFFFF',
@@ -607,25 +1340,30 @@ const styles = StyleSheet.create({
     myLiveDot: { backgroundColor: '#FF758F' },
     liveDotOff: { backgroundColor: '#B8ADB7' },
     messageContent: { flex: 1, justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 9 },
-    personName: { color: '#D84F86', fontSize: 10, fontFamily: fontFamily.bold, marginBottom: 3 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
+    personName: { color: '#D84F86', fontSize: 10, fontFamily: fontFamily.bold },
     messageText: { color: '#1B1237', fontSize: 15, lineHeight: 20, fontFamily: fontFamily.medium },
+    typingText: {
+        color: '#42B883', fontSize: 11, lineHeight: 16,
+        fontFamily: fontFamily.medium, marginLeft: 6,
+    },
     emptyMessageText: { color: '#B1A3AD' },
     composerArea: { paddingHorizontal: 16, paddingBottom: Platform.OS === 'android' ? 14 : 6 },
     composer: {
-        minHeight: 62, maxHeight: 116, borderRadius: 31, borderWidth: 1.5,
+        minHeight: 54, maxHeight: 104, borderRadius: 27, borderWidth: 1.5,
         borderColor: '#F0B9D0', backgroundColor: 'rgba(255,255,255,0.92)',
-        flexDirection: 'row', alignItems: 'flex-end', padding: 7,
+        flexDirection: 'row', alignItems: 'flex-end', padding: 6,
         shadowColor: '#C15E89', shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.1, shadowRadius: 12, elevation: 3,
     },
     input: {
-        flex: 1, minHeight: 46, maxHeight: 98, color: '#1B1237', fontSize: 16,
-        paddingHorizontal: 14, paddingVertical: 12, fontFamily: fontFamily.medium,
+        flex: 1, minHeight: 42, maxHeight: 90, color: '#1B1237', fontSize: 16,
+        paddingHorizontal: 14, paddingVertical: 9, fontFamily: fontFamily.medium,
     },
     sendButton: {
-        width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center',
+        width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center',
         backgroundColor: '#FF758F',
     },
     sendButtonDisabled: { backgroundColor: '#E5D6DE' },
-    sendIcon: { color: '#FFFFFF', fontSize: 23, transform: [{ rotate: '-45deg' }], marginLeft: 3 },
+    sendIcon: { color: '#FFFFFF', fontSize: 23, marginLeft: 3 },
 });

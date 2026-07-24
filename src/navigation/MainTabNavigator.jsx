@@ -577,73 +577,7 @@ export const MainTabNavigator = ({
     const renderScreen = () => {
         switch (currentTab) {
             case 'home':
-                return (
-                    <HomeScreen
-                        hasPartner={hasPartner}
-                        yourMood={moodPreview || yourMood}
-                        partnerMood={partnerMood}
-                        partnerScribble={partnerScribble}
-                        partnerCurrentPhoto={partnerCurrentPhoto}
-                        myCurrentPhoto={myCurrentPhoto}
-                        todayChallenge={todayChallenge}
-                        relationshipStartDate={
-                            userData?.relationshipStartDate
-                            || userData?.pendingRelationshipStartDate
-                            || userData?.connectionDate
-                        }
-                        daysTogether={daysTogether}
-                        onMoodPress={openMoodPicker}
-                        onScribblePress={() => {
-                            setOpenScribbleLiveMode(false);
-                            setCurrentTab('canvas');
-                        }}
-                        onScribbleLivePress={() => {
-                            if (!hasPartner) {
-                                onFindPartner();
-                                return;
-                            }
-                            setOpenScribbleLiveMode(true);
-                            setCurrentTab('canvas');
-                        }}
-                        onQuestionPress={(category) => {
-                            if (!hasPartner) {
-                                onFindPartner?.();
-                                return;
-                            }
-                            if (category) {
-                                // Check if it's a V2 topic-based category
-                                const topicConfig = TOPIC_CATEGORIES[category.id || category];
-                                if (topicConfig) {
-                                    // Handle topic categories within MainTabNavigator
-                                    setSelectedTopic(category.id || category);
-                                    setCurrentTab('topicQuestions');
-                                } else {
-                                    // For other categories (likelyto, neverhaveiever), use AppNavigator
-                                    onQuestionPress(category);
-                                }
-                            } else {
-                                setCurrentTab('dailyChallenge');
-                            }
-                        }}
-                        onFindPartner={onFindPartner}
-                        onSettingsPress={() => setIsAccountVisible(true)}
-                        onRefreshPuzzle={onRefreshPuzzle}
-                        duelBadgeCount={duelBadgeCount}
-                        onNotificationPress={() => setIsNotificationVisible(true)}
-                        onWidgetsPress={() => openWidgetSheet('time')}
-                        onVideoCallPress={handleCallPress}
-                        partnerOnline={partnerOnline}
-                        partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
-                        onPartnerPhotoPress={handleTakePhoto}
-                        isLocationSetup={userData?.locationSharingEnabled === true}
-                        onDistanceSetupPress={() => openWidgetSheet('distance')}
-                        onPremiumPress={() => {
-                            setHomePremiumStep('free');
-                            setIsHomePremiumVisible(true);
-                        }}
-                        hasPremiumAccess={hasPremiumAccess}
-                    />
-                );
+                return null;
             case 'partnerPhotoCapture':
                 return (
                     <CouplePhotoCaptureScreen
@@ -776,6 +710,70 @@ export const MainTabNavigator = ({
 
     return (
         <View style={styles.container}>
+            <View style={[styles.screenContainer, currentTab !== 'home' && styles.hiddenScreen]}>
+                <HomeScreen
+                    hasPartner={hasPartner}
+                    yourMood={moodPreview || yourMood}
+                    partnerMood={partnerMood}
+                    partnerScribble={partnerScribble}
+                    partnerCurrentPhoto={partnerCurrentPhoto}
+                    myCurrentPhoto={myCurrentPhoto}
+                    todayChallenge={todayChallenge}
+                    relationshipStartDate={
+                        userData?.relationshipStartDate
+                        || userData?.pendingRelationshipStartDate
+                        || userData?.connectionDate
+                    }
+                    daysTogether={daysTogether}
+                    onMoodPress={openMoodPicker}
+                    onScribblePress={() => {
+                        setOpenScribbleLiveMode(false);
+                        setCurrentTab('canvas');
+                    }}
+                    onScribbleLivePress={() => {
+                        if (!hasPartner) {
+                            onFindPartner();
+                            return;
+                        }
+                        setOpenScribbleLiveMode(true);
+                        setCurrentTab('canvas');
+                    }}
+                    onQuestionPress={(category) => {
+                        if (!hasPartner) {
+                            onFindPartner?.();
+                            return;
+                        }
+                        if (category) {
+                            const topicConfig = TOPIC_CATEGORIES[category.id || category];
+                            if (topicConfig) {
+                                setSelectedTopic(category.id || category);
+                                setCurrentTab('topicQuestions');
+                            } else {
+                                onQuestionPress(category);
+                            }
+                        } else {
+                            setCurrentTab('dailyChallenge');
+                        }
+                    }}
+                    onFindPartner={onFindPartner}
+                    onSettingsPress={() => setIsAccountVisible(true)}
+                    onRefreshPuzzle={onRefreshPuzzle}
+                    duelBadgeCount={duelBadgeCount}
+                    onNotificationPress={() => setIsNotificationVisible(true)}
+                    onWidgetsPress={() => openWidgetSheet('time')}
+                    onVideoCallPress={handleCallPress}
+                    partnerOnline={partnerOnline}
+                    partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
+                    onPartnerPhotoPress={handleTakePhoto}
+                    isLocationSetup={userData?.locationSharingEnabled === true}
+                    onDistanceSetupPress={() => openWidgetSheet('distance')}
+                    onPremiumPress={() => {
+                        setHomePremiumStep('free');
+                        setIsHomePremiumVisible(true);
+                    }}
+                    hasPremiumAccess={hasPremiumAccess}
+                />
+            </View>
             {renderScreen()}
             {!isScribbleLiveFullscreen && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab) && (
                 <BottomTabBar
@@ -849,7 +847,11 @@ export const MainTabNavigator = ({
                         onEditProfile={onEditProfile}
                         onAvatarPress={onAvatarPress}
                         onFindPartner={onFindPartner}
-                        onNavigateToPremium={() => setIsPremiumOpenInAccount(true)}
+                        onNavigateToPremium={() => {
+                            setIsPremiumOpenInAccount(false);
+                            setHomePremiumStep('free');
+                            setIsHomePremiumVisible(true);
+                        }}
                         onWidgetsPress={() => {
                             setIsAccountVisible(false);
                             setIsPremiumOpenInAccount(false);
@@ -992,6 +994,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
+    },
+    screenContainer: {
+        flex: 1,
+    },
+    hiddenScreen: {
+        display: 'none',
     },
 });
 

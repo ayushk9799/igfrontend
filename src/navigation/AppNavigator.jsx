@@ -40,7 +40,7 @@ import PartnerConnectedModal from '../components/PartnerConnectedModal';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
-import { getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, isOnboarded as isOnboardedStorage, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding, hasSeenOnboardingPremium, setSeenOnboardingPremium } from '../utils/authStorage';
+import { clearLiveChatActive, getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, isOnboarded as isOnboardedStorage, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding, hasSeenOnboardingPremium, setSeenOnboardingPremium, shouldResumeLiveChat } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
 import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener, checkNotificationPermission } from '../utils/pushNotifications';
@@ -300,6 +300,7 @@ export const AppNavigator = () => {
 
     const pendingNotificationRef = React.useRef(null); // Store notification that launched the app from quit state
     const recentLocalNotificationKeysRef = React.useRef(new Map());
+    const currentScreenRef = React.useRef(currentScreen);
     const purchasesConfiguredRef = React.useRef(false);
     const hasHiddenBootSplashRef = React.useRef(false);
     const userDataRef = React.useRef(userData);
@@ -311,6 +312,10 @@ export const AppNavigator = () => {
     useEffect(() => {
         userDataRef.current = userData;
     }, [userData]);
+
+    useEffect(() => {
+        currentScreenRef.current = currentScreen;
+    }, [currentScreen]);
 
     const auditDistanceLocationPermission = useCallback(async () => {
         if (!['ios', 'android'].includes(Platform.OS) || distanceRevocationSyncInFlightRef.current) return;
@@ -1035,6 +1040,10 @@ export const AppNavigator = () => {
                     openHomeTab('memories');
                     break;
 
+                case 'live_chat':
+                    setCurrentScreen('liveChat');
+                    break;
+
                 case 'mood_update':
                 case 'couple_photo':
                 case 'partner_paired':
@@ -1055,7 +1064,14 @@ export const AppNavigator = () => {
     };
 
     const getNotificationKey = useCallback((data = {}) => {
-        const targetId = data.chatId || data.gameId || data.puzzleId || data.challengeId || data.memoryId || '';
+        const targetId = data.messageId
+            || data.chatId
+            || data.gameId
+            || data.puzzleId
+            || data.challengeId
+            || data.memoryId
+            || data.sessionId
+            || '';
         return `${data.type || 'unknown'}:${targetId}`;
     }, []);
 
@@ -1108,6 +1124,18 @@ export const AppNavigator = () => {
             }
 
             if (remoteMessage?.data?.type === 'scribble_update') return;
+            if (
+                remoteMessage?.data?.type === 'live_chat'
+                && currentScreenRef.current === 'liveChat'
+            ) return;
+            if (
+                remoteMessage?.data?.type === 'tictactoe'
+                && currentScreenRef.current === 'ticTacToe'
+            ) return;
+            if (
+                remoteMessage?.data?.type === 'wordle'
+                && currentScreenRef.current === 'wordle'
+            ) return;
 
             const title = remoteMessage?.notification?.title || 'New notification';
             const body = remoteMessage?.notification?.body || 'Open this update?';
@@ -1175,8 +1203,6 @@ export const AppNavigator = () => {
 
         const sameId = (a, b) => a && b && String(a) === String(b);
         const selectedChatId = selectedChat?._id;
-        const selectedTicTacToeId = selectedTicTacToe?._id || selectedTicTacToe?.gameId;
-        const selectedWordleId = selectedWordle?._id || selectedWordle?.gameId;
         const partnerName = userData?.partnerUsername || 'Your partner';
 
         const handleChatNotification = (data = {}) => {
@@ -1214,6 +1240,21 @@ export const AppNavigator = () => {
             });
         };
 
+        const handleLiveChatNotification = (data = {}) => {
+            if (!data.sessionId || currentScreen === 'liveChat') return;
+
+            showRoutedLocalNotification({
+                title: 'live chat message',
+                body: data.preview || 'Sent you a Live Chat message',
+                data: {
+                    type: 'live_chat',
+                    sessionId: data.sessionId,
+                    messageId: data.messageId || '',
+                    senderId: data.senderId || '',
+                },
+            });
+        };
+
         const handleScribbleReceived = (data = {}) => {
             showRoutedLocalNotification({
                 title: 'New Scribble',
@@ -1241,7 +1282,7 @@ export const AppNavigator = () => {
 
         const handleTicTacToeUpdate = (data = {}) => {
             if (!data.gameId) return;
-            if (currentScreen === 'ticTacToe' && sameId(selectedTicTacToeId, data.gameId)) return;
+            if (currentScreenRef.current === 'ticTacToe') return;
 
             showRoutedLocalNotification({
                 title: 'Tic Tac Toe',
@@ -1255,6 +1296,7 @@ export const AppNavigator = () => {
 
         const handleTicTacToeInvite = (data = {}) => {
             if (!data.gameId) return;
+            if (currentScreenRef.current === 'ticTacToe') return;
 
             showRoutedLocalNotification({
                 title: 'Tic Tac Toe Challenge',
@@ -1268,7 +1310,7 @@ export const AppNavigator = () => {
 
         const handleWordleUpdate = (data = {}) => {
             if (!data.gameId) return;
-            if (currentScreen === 'wordle' && sameId(selectedWordleId, data.gameId)) return;
+            if (currentScreenRef.current === 'wordle') return;
 
             showRoutedLocalNotification({
                 title: 'Wordle Update',
@@ -1282,6 +1324,7 @@ export const AppNavigator = () => {
 
         const handleWordleInvite = (data = {}) => {
             if (!data.gameId) return;
+            if (currentScreenRef.current === 'wordle') return;
 
             showRoutedLocalNotification({
                 title: 'Wordle Challenge',
@@ -1305,6 +1348,7 @@ export const AppNavigator = () => {
 
         socket.on('chat:notification', handleChatNotification);
         socket.on('questionChatV2:notification', handleQuestionChatV2Notification);
+        socket.on('liveChat:notification', handleLiveChatNotification);
         socket.on('scribble:received', handleScribbleReceived);
         socket.on('mood:changed', handleMoodChanged);
         socket.on('tictactoe:invited', handleTicTacToeInvite);
@@ -1319,6 +1363,7 @@ export const AppNavigator = () => {
         return () => {
             socket.off('chat:notification', handleChatNotification);
             socket.off('questionChatV2:notification', handleQuestionChatV2Notification);
+            socket.off('liveChat:notification', handleLiveChatNotification);
             socket.off('scribble:received', handleScribbleReceived);
             socket.off('mood:changed', handleMoodChanged);
             socket.off('tictactoe:invited', handleTicTacToeInvite);
@@ -1338,8 +1383,6 @@ export const AppNavigator = () => {
         currentScreen,
         selectedChat?._id,
         selectedQuestionV2Chat?._id,
-        selectedTicTacToe?._id,
-        selectedTicTacToe?.gameId,
         selectedWordle?._id,
         selectedWordle?.gameId,
         showRoutedLocalNotification,
@@ -1465,6 +1508,8 @@ export const AppNavigator = () => {
                             pendingNotificationRef.current = null;
                             // Navigate to notification target instead of home
                             handleNotificationNavigation(pending);
+                        } else if (shouldResumeLiveChat(storedUser.id || storedUser._id)) {
+                            setCurrentScreen('liveChat');
                         } else {
                             setCurrentScreen('home');
                         }
@@ -1475,6 +1520,7 @@ export const AppNavigator = () => {
                         fetchPendingWordle(storedUser.id);
                     } else {
                         // Has nickname but not paired - show partner code screen
+                        clearLiveChatActive();
                         setCurrentScreen('partnerCode');
                     }
                 } else {
@@ -1516,6 +1562,10 @@ export const AppNavigator = () => {
         if (screen === 'premium') {
             setIsPremiumVisible(true);
             return;
+        }
+
+        if (currentScreen === 'liveChat' && screen !== 'liveChat') {
+            clearLiveChatActive();
         }
 
         startTransition(() => {
@@ -2035,6 +2085,7 @@ export const AppNavigator = () => {
             ];
 
             if (currentScreen === 'chat' || currentScreen === 'liveChat') {
+                if (currentScreen === 'liveChat') clearLiveChatActive();
                 setHomeInitialTab('chats');
                 navigate('home');
                 return true;
@@ -2439,6 +2490,7 @@ export const AppNavigator = () => {
                         partnerName={userData?.partnerUsername || 'Partner'}
                         partnerAvatar={userData?.partnerAvatarThumbnail || userData?.partnerAvatar}
                         onBack={() => {
+                            clearLiveChatActive();
                             setHomeInitialTab('chats');
                             navigate('home');
                         }}

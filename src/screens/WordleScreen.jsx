@@ -189,11 +189,12 @@ const AnimatedWordleTile = ({
 const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     const { gameId: initialGameId, gameData: initialGameData } = route?.params || {};
     const user = getUser();
+    const currentUserId = user?.id || user?._id;
     const { socket, partnerOnline } = useSocketContext();
 
     // Game state
     const [gameId, setGameId] = useState(initialGameId || null);
-    const [mode, setMode] = useState('loading'); // 'loading', 'create', 'guess', 'complete'
+    const [mode, setMode] = useState('loading'); // 'loading', 'create', 'guess', 'complete', 'error'
     const [secretWord, setSecretWord] = useState('');
     const [currentGuess, setCurrentGuess] = useState('');
     const [guesses, setGuesses] = useState([]);
@@ -209,9 +210,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     const [successMessage, setSuccessMessage] = useState('');
     const [notifyMessage, setNotifyMessage] = useState('');
     const [showLinkPartner, setShowLinkPartner] = useState(false);
-
-    // Keyboard state (for coloring used letters)
-    const [keyboardState, setKeyboardState] = useState({});
+    const [loadError, setLoadError] = useState('');
 
     // Partner info
     const partnerId = route?.params?.partnerId;
@@ -224,6 +223,28 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     const errorScaleAnim = useRef(new Animated.Value(0)).current;
     const errorShakeAnim = useRef(new Animated.Value(0)).current;
     const hasRequestedGameReviewRef = useRef(false);
+    const mountedRef = useRef(true);
+    const submittingRef = useRef(false);
+    const autoSubmitTimerRef = useRef(null);
+    const focusTimerRef = useRef(null);
+    const messageTimerRef = useRef(null);
+    const socketRefreshTimerRef = useRef(null);
+    const loadRequestRef = useRef(0);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            [
+                autoSubmitTimerRef,
+                focusTimerRef,
+                messageTimerRef,
+                socketRefreshTimerRef,
+            ].forEach(timerRef => {
+                if (timerRef.current) clearTimeout(timerRef.current);
+            });
+        };
+    }, []);
 
     const requestGameReviewOnce = useCallback(() => {
         if (hasRequestedGameReviewRef.current) return;
@@ -267,7 +288,8 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         if (!inputRef.current) return;
 
         inputRef.current.blur();
-        setTimeout(() => {
+        if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = setTimeout(() => {
             inputRef.current?.focus();
         }, 50);
     };
@@ -317,23 +339,16 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         }
     }, [status, playResultSound]);
 
-    // Load or check for active game
-    useEffect(() => {
-        if (initialGameData) {
-            loadGameFromData(initialGameData);
-        } else if (initialGameId) {
-            fetchGame(initialGameId);
-        } else {
-            fetchActiveGame();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     // Auto-focus input when in create or guess mode
     useEffect(() => {
         if ((mode === 'create' || mode === 'guess') && inputRef.current) {
-            setTimeout(() => inputRef.current?.focus(), 100);
+            if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+            focusTimerRef.current = setTimeout(() => inputRef.current?.focus(), 100);
         }
+
+        return () => {
+            if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+        };
     }, [mode]);
 
     // Socket listeners for real-time updates
@@ -345,7 +360,13 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             socket.emit('wordle:join', { gameId });
         }
 
-        const isCurrentGameEvent = (data = {}) => data.gameId === gameId;
+        const isCurrentGameEvent = (data = {}) => String(data.gameId) === String(gameId);
+        const refreshCurrentGame = () => {
+            if (socketRefreshTimerRef.current) clearTimeout(socketRefreshTimerRef.current);
+            socketRefreshTimerRef.current = setTimeout(() => {
+                fetchGame(gameId);
+            }, 80);
+        };
 
         // Listen for guess/game updates from partner. The backend may emit either
         // a specific event or the generic wordle:update used by AppNavigator.
@@ -357,16 +378,14 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                         requestGameReviewOnce();
                     }
                 }
-                // Refresh game state to get the latest guesses/secret word.
-                fetchGame(gameId);
+                refreshCurrentGame();
             }
         };
 
         // Listen for guess updates from partner
         const handleGuessReceived = (data) => {
-            if (data.gameId === gameId) {
-                // Refresh game state to get the latest guesses
-                fetchGame(gameId);
+            if (String(data.gameId) === String(gameId)) {
+                refreshCurrentGame();
             }
         };
 
@@ -375,17 +394,18 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
         // Listen for new game created by partner
         const handleNewGame = (data = {}) => {
-            if (data.gameId && data.gameId === gameId) return;
+            if (data.gameId && String(data.gameId) === String(gameId)) return;
 
             // Reset state and fetch the new game
+            if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
             setGuesses([]);
             setCurrentGuess('');
-            setKeyboardState({});
             setStatus('pending');
             setRevealedWord('');
             setSuccessMessage('');
             setErrorMessage('');
             setLastSubmittedRowIndex(-1);
+            setLoading(true);
             hasRequestedGameReviewRef.current = false;
             // Fetch the new active game
             fetchActiveGame();
@@ -394,6 +414,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         socket.on('wordle:guessReceived', handleGuessReceived);
         socket.on('wordle:gameComplete', handleGameComplete);
         socket.on('wordle:update', handleGameUpdate);
+        socket.on('wordle:invite', handleNewGame);
         socket.on('wordle:newGame', handleNewGame);
 
         return () => {
@@ -403,17 +424,24 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             socket.off('wordle:guessReceived', handleGuessReceived);
             socket.off('wordle:gameComplete', handleGameComplete);
             socket.off('wordle:update', handleGameUpdate);
+            socket.off('wordle:invite', handleNewGame);
             socket.off('wordle:newGame', handleNewGame);
+            if (socketRefreshTimerRef.current) clearTimeout(socketRefreshTimerRef.current);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket, gameId]);
 
     const loadGameFromData = (data) => {
-        setGameId(data._id);
+        if (!data) return;
+        if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
+        setGameId(data._id || data.gameId);
         setGuesses(data.guesses || []);
         setStatus(data.status || 'pending');
         setMaxAttempts(data.maxAttempts || 6);
-        const creatorCheck = data.creatorId?._id === user?.id || data.creatorId === user?.id;
+        setLoadError('');
+        const creatorId = data.creatorId?._id || data.creatorId;
+        const creatorCheck = Boolean(currentUserId)
+            && String(creatorId) === String(currentUserId);
         setIsCreator(creatorCheck);
 
         if (creatorCheck) {
@@ -422,7 +450,6 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             setMode('complete');
         } else {
             // Guesser mode
-            updateKeyboardState(data.guesses || []);
             if (['won', 'lost'].includes(data.status)) {
                 setRevealedWord(data.secretWord || '');
                 setMode('complete');
@@ -435,57 +462,82 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
     };
 
     const fetchActiveGame = async () => {
+        const requestId = ++loadRequestRef.current;
+        setLoadError('');
         try {
-            const response = await fetch(`${API_BASE}/api/wordle/active/${user?.id}`);
+            const response = await fetch(`${API_BASE}/api/wordle/active/${currentUserId}`);
             const data = await response.json();
+            if (!mountedRef.current || requestId !== loadRequestRef.current) return;
 
-            if (data.success && data.data) {
+            if (response.ok && data.success && data.data) {
                 loadGameFromData(data.data);
-            } else {
+            } else if (response.ok && data.success) {
                 // No active game - create mode
                 setMode('create');
+                setLoading(false);
+            } else {
+                setLoadError(data.message || 'Failed to load your game');
+                setMode('error');
                 setLoading(false);
             }
         } catch (error) {
             console.error('Error fetching active Wordle:', error);
-            setMode('create');
+            if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+            setLoadError('Unable to load your game. Check your connection and try again.');
+            setMode('error');
             setLoading(false);
         }
     };
 
     const fetchGame = async (id) => {
+        if (!id) return;
+        const requestId = ++loadRequestRef.current;
+        setLoadError('');
         try {
-            const response = await fetch(`${API_BASE}/api/wordle/${id}?userId=${user?.id}`);
+            const response = await fetch(`${API_BASE}/api/wordle/${id}?userId=${currentUserId}`);
             const data = await response.json();
-            if (data.success) {
+            if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+
+            if (response.ok && data.success) {
                 loadGameFromData(data.data);
             } else {
-                setErrorMessage('Failed to load game');
-                setTimeout(() => navigation?.goBack?.(), 2000);
+                setLoadError(data.message || 'Failed to load your game');
+                setMode('error');
+                setLoading(false);
             }
         } catch (error) {
             console.error('Fetch game error:', error);
-            setErrorMessage('Failed to load game');
-            setTimeout(() => navigation?.goBack?.(), 2000);
+            if (!mountedRef.current || requestId !== loadRequestRef.current) return;
+            setLoadError('Unable to load your game. Check your connection and try again.');
+            setMode('error');
+            setLoading(false);
         }
     };
 
-    const updateKeyboardState = (allGuesses) => {
-        const newState = {};
-        allGuesses.forEach(guess => {
-            guess.result.forEach(({ letter, status }) => {
-                const upperLetter = letter.toUpperCase();
-                // Priority: correct > present > absent
-                if (status === 'correct') {
-                    newState[upperLetter] = 'correct';
-                } else if (status === 'present' && newState[upperLetter] !== 'correct') {
-                    newState[upperLetter] = 'present';
-                } else if (status === 'absent' && !newState[upperLetter]) {
-                    newState[upperLetter] = 'absent';
-                }
-            });
-        });
-        setKeyboardState(newState);
+    // Reload when navigation selects a different Wordle game while this screen stays mounted.
+    useEffect(() => {
+        setLoading(true);
+        setLoadError('');
+
+        if (initialGameData) {
+            loadRequestRef.current += 1;
+            loadGameFromData(initialGameData);
+        } else if (initialGameId) {
+            fetchGame(initialGameId);
+        } else {
+            fetchActiveGame();
+        }
+        // initialGameData is intentionally included so an updated route payload is applied.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialGameId, initialGameData]);
+
+    const retryLoadGame = () => {
+        setLoading(true);
+        if (gameId || initialGameId) {
+            fetchGame(gameId || initialGameId);
+        } else {
+            fetchActiveGame();
+        }
     };
 
     const shakeRow = () => {
@@ -504,7 +556,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
     // Create game with secret word
     const createGame = async (wordOverride) => {
-        if (submitting) return;
+        if (submittingRef.current) return;
 
         const word = wordOverride || secretWord;
         if (word.length !== 5) {
@@ -513,6 +565,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             return;
         }
 
+        submittingRef.current = true;
         setSubmitting(true);
         setErrorMessage('');
 
@@ -521,28 +574,22 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    creatorId: user?.id,
+                    creatorId: currentUserId,
                     partnerId: partnerId,
                     secretWord: word.toLowerCase(),
                 }),
             });
             const data = await response.json();
+            if (!mountedRef.current) return;
 
-            if (data.success) {
+            if (response.ok && data.success) {
                 setGameId(data.data.gameId);
                 setSuccessMessage(`Word set! ${partnerName} has been notified.`);
                 setMode('complete');
 
-                // Emit socket events to notify partner in real-time
+                // One event is enough to update the partner's screen and pending-game state.
                 if (socket) {
                     socket.emit('wordle:invite', { gameId: data.data.gameId });
-                    // Emit newGame event so partner's screen refreshes
-                    socket.emit('wordle:newGame', {
-                        gameId: data.data.gameId,
-                        status: 'pending',
-                        creatorId: user?.id,
-                        partnerId,
-                    });
                 }
             } else {
                 setErrorMessage(data.message || 'Invalid word');
@@ -550,15 +597,16 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             }
         } catch (error) {
             console.error('Create game error:', error);
-            setErrorMessage('Failed to create game');
+            if (mountedRef.current) setErrorMessage('Failed to create game');
         } finally {
-            setSubmitting(false);
+            submittingRef.current = false;
+            if (mountedRef.current) setSubmitting(false);
         }
     };
 
     // Submit a guess
     const submitGuess = async (guessOverride) => {
-        if (submitting) return;
+        if (submittingRef.current) return;
 
         const guess = guessOverride || currentGuess;
         if (guess.length !== 5) {
@@ -567,6 +615,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             return;
         }
 
+        submittingRef.current = true;
         setSubmitting(true);
         setErrorMessage('');
 
@@ -575,13 +624,14 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user?.id,
+                    userId: currentUserId,
                     guess: guess.toLowerCase(),
                 }),
             });
             const data = await response.json();
+            if (!mountedRef.current) return;
 
-            if (data.success) {
+            if (response.ok && data.success) {
                 setLastSubmittedRowIndex(guesses.length);
                 const newGuess = {
                     word: guess.toLowerCase(),
@@ -589,19 +639,12 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                 };
                 const updatedGuesses = [...guesses, newGuess];
                 setGuesses(updatedGuesses);
-                updateKeyboardState(updatedGuesses);
                 setCurrentGuess('');
                 setStatus(data.data.status);
 
                 // Emit socket event for real-time partner update
                 if (socket) {
                     socket.emit('wordle:guess', {
-                        gameId,
-                        guessResult: data.data.guessResult,
-                        status: data.data.status,
-                        gameComplete: data.data.gameComplete
-                    });
-                    socket.emit('wordle:update', {
                         gameId,
                         guessResult: data.data.guessResult,
                         status: data.data.status,
@@ -614,20 +657,6 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                     setMode('complete');
                     requestGameReviewOnce();
 
-                    // Emit completion event
-                    if (socket) {
-                        socket.emit('wordle:complete', {
-                            gameId,
-                            status: data.data.status,
-                            winnerId: data.data.isCorrect ? user?.id : null
-                        });
-                        socket.emit('wordle:update', {
-                            gameId,
-                            status: data.data.status,
-                            winnerId: data.data.isCorrect ? user?.id : null,
-                            gameComplete: true
-                        });
-                    }
                 }
             } else {
                 setErrorMessage(data.message || 'Invalid guess');
@@ -635,23 +664,25 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             }
         } catch (error) {
             console.error('Guess error:', error);
-            setErrorMessage('Failed to submit guess');
+            if (mountedRef.current) setErrorMessage('Failed to submit guess');
         } finally {
-            setSubmitting(false);
+            submittingRef.current = false;
+            if (mountedRef.current) setSubmitting(false);
         }
     };
 
     const startNewGame = () => {
+        if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
         setGuesses([]);
         setCurrentGuess('');
         setSecretWord('');
-        setKeyboardState({});
         setStatus('pending');
         setRevealedWord('');
         setSuccessMessage('');
         setErrorMessage('');
         setLastSubmittedRowIndex(-1);
         setIsCreator(true);
+        setLoadError('');
         hasRequestedGameReviewRef.current = false;
         setMode('create');
     };
@@ -661,7 +692,8 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         if (now - lastNotifyTime < 5 * 60 * 1000) {
             const remaining = Math.ceil((5 * 60 * 1000 - (now - lastNotifyTime)) / 60000);
             setNotifyMessage(`Wait ${remaining} min to notify again`);
-            setTimeout(() => setNotifyMessage(''), 3000);
+            if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+            messageTimerRef.current = setTimeout(() => setNotifyMessage(''), 3000);
             return;
         }
 
@@ -670,25 +702,36 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             const response = await fetch(`${API_BASE}/api/wordle/${gameId}/notify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user?.id }),
+                body: JSON.stringify({ userId: currentUserId }),
             });
             const data = await response.json();
-            if (data.success) {
+            if (!mountedRef.current) return;
+
+            if (response.ok && data.success) {
                 setLastNotifyTime(now);
                 setNotifyMessage(`${partnerName} notified!`);
-                setTimeout(() => setNotifyMessage(''), 3000);
+            } else {
+                setNotifyMessage(data.message || 'Failed to notify');
             }
+            if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+            messageTimerRef.current = setTimeout(() => setNotifyMessage(''), 3000);
         } catch (error) {
+            if (!mountedRef.current) return;
             setNotifyMessage('Failed to notify');
-            setTimeout(() => setNotifyMessage(''), 3000);
+            if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+            messageTimerRef.current = setTimeout(() => setNotifyMessage(''), 3000);
         } finally {
-            setNotifying(false);
+            if (mountedRef.current) setNotifying(false);
         }
     };
 
     // Handle text input change - only allow letters
     const handleTextChange = (text) => {
         if (submitting) return;
+        if (autoSubmitTimerRef.current) {
+            clearTimeout(autoSubmitTimerRef.current);
+            autoSubmitTimerRef.current = null;
+        }
 
         ReactNativeHapticFeedback.trigger("selection", {
             enableVibrateFallback: false,
@@ -705,12 +748,12 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             setSecretWord(limitedText);
             // Auto-submit when 5 letters entered - pass word directly
             if (limitedText.length === 5) {
-                if (!user?.partnerId) {
+                if (!partnerId) {
                     // Show link partner prompt if no partner
                     setShowLinkPartner(true);
                     Keyboard.dismiss();
                 } else {
-                    setTimeout(() => createGame(limitedText), 100);
+                    autoSubmitTimerRef.current = setTimeout(() => createGame(limitedText), 100);
                 }
             } else {
                 setShowLinkPartner(false);
@@ -719,18 +762,10 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             setCurrentGuess(limitedText);
             // Auto-submit when 5 letters entered - pass word directly
             if (limitedText.length === 5) {
-                setTimeout(() => submitGuess(limitedText), 100);
+                autoSubmitTimerRef.current = setTimeout(() => submitGuess(limitedText), 100);
             }
         }
         setErrorMessage('');
-    };
-
-    const handleSubmit = () => {
-        if (mode === 'create') {
-            createGame();
-        } else if (mode === 'guess') {
-            submitGuess();
-        }
     };
 
     // Render a guess row
@@ -739,12 +774,12 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         const isNewRow = rowIndex === lastSubmittedRowIndex;
         for (let i = 0; i < 5; i++) {
             const letter = guess?.word?.[i] || '';
-            const status = guess?.result?.[i]?.status || null;
+            const tileStatus = guess?.result?.[i]?.status || null;
             tiles.push(
                 <AnimatedWordleTile
                     key={i}
                     letter={letter}
-                    status={status}
+                    status={tileStatus}
                     index={i}
                     isCurrent={false}
                     shouldAnimateFlip={isNewRow}
@@ -778,6 +813,8 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
             <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={openKeyboard}
+                accessibilityRole="button"
+                accessibilityLabel={mode === 'create' ? 'Enter a five letter word' : 'Enter your five letter guess'}
             >
                 <Animated.View style={[styles.guessRow, { transform: [{ translateX: shakeAnim }] }]}>
                     {tiles}
@@ -816,14 +853,19 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
         <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             <SafeAreaView style={styles.container} edges={['top']}>
                 <KeyboardAvoidingView
-                    style={{ flex: 1 }}
+                    style={styles.flex}
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
                 >
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                            <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
+                            <TouchableOpacity
+                                style={styles.backButton}
+                                onPress={() => navigation?.goBack?.()}
+                                accessibilityRole="button"
+                                accessibilityLabel="Go back"
+                            >
                                 <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                     <Path
                                         d="M19 12H5M12 19l-7-7 7-7"
@@ -862,7 +904,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 
                     {/* Game Grid */}
                     <ScrollView
-                        style={{ flex: 1 }}
+                        style={styles.flex}
                         contentContainerStyle={styles.gridContainer}
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
@@ -888,6 +930,22 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                     </View>
                                 )}
                             </>
+                        )}
+
+                        {mode === 'error' && (
+                            <View style={styles.loadErrorCard}>
+                                <Text style={styles.loadErrorTitle}>Couldn’t load Wordle</Text>
+                                <Text style={styles.loadErrorText}>{loadError}</Text>
+                                <TouchableOpacity
+                                    onPress={retryLoadGame}
+                                    activeOpacity={0.8}
+                                    style={styles.playAgainButton}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Retry loading Wordle"
+                                >
+                                    <Text style={styles.playAgainText}>Try Again</Text>
+                                </TouchableOpacity>
+                            </View>
                         )}
 
                         {mode === 'guess' && (
@@ -934,7 +992,7 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                         )}
 
                         {/* Status Text Rendered at the Bottom of the Grid */}
-                        <View style={[styles.statusContainer, { marginTop: 16 }]}>
+                        <View style={[styles.statusContainer, styles.statusContainerSpacing]}>
                             {mode === 'create' && (
                                 <Text style={styles.statusText}>Set a word for {partnerName} to guess</Text>
                             )}
@@ -1005,6 +1063,8 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                 onPress={startNewGame}
                                 activeOpacity={0.8}
                                 style={styles.playAgainButton}
+                                accessibilityRole="button"
+                                accessibilityLabel="Play Wordle again"
                             >
                                 <Text style={styles.playAgainText}>Play Again</Text>
                             </TouchableOpacity>
@@ -1020,8 +1080,10 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
                                 disabled={notifying}
                                 style={[
                                     styles.playAgainButton,
-                                    notifying && { opacity: 0.5 },
+                                    notifying && styles.buttonDisabled,
                                 ]}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Nudge ${partnerName}`}
                             >
                                 {notifying ? (
                                     <ActivityIndicator color="#FFFFFF" />
@@ -1063,6 +1125,9 @@ const WordleScreen = ({ navigation, route, onLinkPartner }) => {
 };
 
 const styles = StyleSheet.create({
+    flex: {
+        flex: 1,
+    },
     container: {
         flex: 1,
     },
@@ -1163,6 +1228,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 8,
         paddingHorizontal: 20,
+    },
+    statusContainerSpacing: {
+        marginTop: 16,
     },
     statusText: {
         fontSize: 16,
@@ -1350,6 +1418,31 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         lineHeight: 24,
     },
+    loadErrorCard: {
+        width: '88%',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 24,
+        paddingVertical: 24,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: '#FAE8FF',
+        marginTop: 28,
+    },
+    loadErrorTitle: {
+        color: colors.text,
+        fontFamily: fontFamily.extraBold,
+        fontSize: 20,
+        marginBottom: 8,
+    },
+    loadErrorText: {
+        color: colors.textSecondary,
+        fontFamily: fontFamily.medium,
+        fontSize: 14,
+        lineHeight: 21,
+        textAlign: 'center',
+        marginBottom: 20,
+    },
     actionButtons: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -1393,6 +1486,9 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 15,
         fontFamily: fontFamily.bold,
+    },
+    buttonDisabled: {
+        opacity: 0.5,
     },
 });
 
