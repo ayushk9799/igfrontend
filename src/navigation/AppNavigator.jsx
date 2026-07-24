@@ -22,7 +22,6 @@ import LiveChatScreen from '../screens/LiveChatScreen';
 import AnimatedSplashScreen from '../screens/AnimatedSplashScreen';
 import AnimatedOnboardingScreen from '../screens/AnimatedOnboardingScreen';
 import OnboardingFeaturesScreen from '../screens/OnboardingFeaturesScreen';
-import Onboarding3Screen from '../screens/Onboarding3Screen';
 import JournalOnboardingScreen from '../screens/JournalOnboardingScreen';
 import QuestionsOnboardingScreen from '../screens/QuestionsOnboardingScreen';
 import LiveCallOnboardingScreen from '../screens/LiveCallOnboardingScreen';
@@ -2150,13 +2149,6 @@ export const AppNavigator = () => {
             case 'onboardingFeatures':
                 return (
                     <OnboardingFeaturesScreen
-                        onComplete={() => navigate('onboarding3')}
-                    />
-                );
-
-            case 'onboarding3':
-                return (
-                    <Onboarding3Screen
                         onComplete={() => navigate('journalOnboarding')}
                     />
                 );

@@ -181,7 +181,6 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         <View style={styles.progressRow}>
                             <View style={[styles.progressSegment, styles.progressSegmentActive]} />
                             <View style={styles.progressSegment} />
-                            <View style={styles.progressSegment} />
                         </View>
                     </View>
                 </View>

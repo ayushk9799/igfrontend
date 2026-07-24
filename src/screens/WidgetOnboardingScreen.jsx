@@ -314,13 +314,13 @@ const PartnerPhotoPreview = ({ isActive }) => {
             Animated.parallel([
                 Animated.timing(photoOpacities[currentIndex], {
                     toValue: 0,
-                    duration: 700,
+                    duration: 450,
                     easing: Easing.inOut(Easing.quad),
                     useNativeDriver: true,
                 }),
                 Animated.timing(photoOpacities[incomingIndex], {
                     toValue: 1,
-                    duration: 700,
+                    duration: 450,
                     easing: Easing.inOut(Easing.quad),
                     useNativeDriver: true,
                 }),
@@ -329,7 +329,7 @@ const PartnerPhotoPreview = ({ isActive }) => {
                     photoIndexRef.current = incomingIndex;
                 }
             });
-        }, 3000);
+        }, 1800);
 
         return () => {
             clearInterval(interval);

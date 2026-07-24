@@ -319,7 +319,7 @@ const MemoryCard = ({ item }) => {
     );
 };
 
-const EmptyState = ({ onAdd }) => {
+const EmptyState = ({ hasPartner, onAddPartner }) => {
     const spreadAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -367,6 +367,24 @@ const EmptyState = ({ onAdd }) => {
             </View>
             <Text style={styles.emptyTitle}>Your timeline is empty</Text>
             <Text style={styles.emptyText}>Add when you met, first kisses, special dates, and the photos that belong to them.</Text>
+            {!hasPartner && (
+                <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Add Partner"
+                    activeOpacity={0.88}
+                    onPress={onAddPartner}
+                    style={styles.emptyButton}
+                >
+                    <LinearGradient
+                        colors={['#FF5E97', '#FFA1C9']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.emptyButtonGradient}
+                    >
+                        <Text style={styles.emptyButtonText}>Add Partner</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
+            )}
         </View>
     );
 };
@@ -753,7 +771,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const fabProgress = useRef(new Animated.Value(0)).current;
     const loadedUserRef = useRef(null);
 
-    const [memories, setMemories] = useState(() => userId ? readCachedMemories(userId) : []);
+    const [memories, setMemories] = useState(() => userId && hasPartner ? readCachedMemories(userId) : []);
     const [cursor, setCursor] = useState(null);
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
@@ -790,7 +808,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     }, []);
 
     const loadMemories = useCallback(async ({ refresh = false } = {}) => {
-        if (!userId || isLoading) return;
+        if (!userId || !hasPartner || isLoading) return;
 
         if (!refresh && !hasMore) return;
 
@@ -822,9 +840,19 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             setIsLoading(false);
             setIsRefreshing(false);
         }
-    }, [cursor, hasMore, isLoading, userId]);
+    }, [cursor, hasMore, hasPartner, isLoading, userId]);
 
     useEffect(() => {
+        if (!hasPartner) {
+            loadedUserRef.current = null;
+            setMemories([]);
+            setCursor(null);
+            setHasMore(true);
+            setIsLoading(false);
+            setIsRefreshing(false);
+            return;
+        }
+
         if (!userId || loadedUserRef.current === userId) return;
 
         loadedUserRef.current = userId;
@@ -832,7 +860,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         setCursor(null);
         setHasMore(true);
         loadMemories({ refresh: true });
-    }, [loadMemories, userId]);
+    }, [hasPartner, loadMemories, userId]);
 
     const resetDraft = useCallback(() => {
         setDraft(null);
@@ -846,10 +874,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
 
     const openAdd = useCallback((type = 'memory') => {
         if (!hasPartner) {
-            Alert.alert('Link partner first', 'Your timeline is shared with your partner.', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Link partner', onPress: onLinkPartner },
-            ]);
+            onLinkPartner?.();
             return;
         }
 
@@ -1001,7 +1026,12 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                         tintColor="#FF758F"
                     />
                 }
-                ListEmptyComponent={!isLoading ? <EmptyState onAdd={() => openAdd('memory')} /> : null}
+                ListEmptyComponent={!isLoading ? (
+                    <EmptyState
+                        hasPartner={hasPartner}
+                        onAddPartner={onLinkPartner}
+                    />
+                ) : null}
                 ListFooterComponent={isLoading && memories.length > 0 ? (
                     <View style={styles.footerLoader}>
                         <ActivityIndicator color="#C96F81" />
@@ -1385,13 +1415,20 @@ const styles = StyleSheet.create({
         marginBottom: 18,
     },
     emptyButton: {
+        width: 190,
         height: 48,
         borderRadius: 24,
-        paddingHorizontal: 18,
-        flexDirection: 'row',
+        overflow: 'hidden',
+        shadowColor: '#FF5E97',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 5,
+    },
+    emptyButtonGradient: {
+        flex: 1,
         alignItems: 'center',
-        gap: 8,
-        backgroundColor: colors.primary,
+        justifyContent: 'center',
     },
     emptyButtonText: {
         fontFamily: fontFamily.bold,
