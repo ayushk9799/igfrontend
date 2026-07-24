@@ -1,6 +1,5 @@
 import React from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
 
@@ -33,6 +32,7 @@ const CouplePhotoCard = ({
     size = 160,
     borderRadius = 24,
     showCameraBadge = true,
+    showCopy = true,
 }) => {
     const displayPhoto = partnerPhoto;
 
@@ -53,26 +53,27 @@ const CouplePhotoCard = ({
             <Image
                 source={displayPhoto?.imageUrl
                     ? { uri: displayPhoto.imageUrl }
-                    : require('../../assets/images/1_timeline.png')}
+                    : require('../../assets/photo-crops-final/01-moon-sky.png')}
                 style={styles.photo}
                 resizeMode="cover"
             />
-            <LinearGradient colors={['rgba(20,8,26,0.02)', 'rgba(20,8,26,0.82)']} style={StyleSheet.absoluteFill} />
             {myPhoto?.imageUrl ? (
                 <Image source={{ uri: myPhoto.imageUrl }} style={styles.myPhotoOverlay} resizeMode="cover" />
             ) : showCameraBadge ? (
                 <View style={styles.cameraBadge}><CameraIcon /></View>
             ) : null}
-            <View style={styles.widgetCopy}>
-                <Text style={styles.widgetTitle} numberOfLines={1}>
-                    {displayPhoto ? `From ${partnerName}` : (myPhoto ? `Sent to ${partnerName}` : 'Partner Photo')}
-                </Text>
-                <Text style={styles.widgetSubtitle} numberOfLines={1}>
-                    {(displayPhoto || myPhoto)
-                        ? timeLabel((displayPhoto || myPhoto).updatedAt)
-                        : (hasPartner ? 'Tap to send' : 'Connect partner')}
-                </Text>
-            </View>
+            {showCopy && (
+                <View style={styles.widgetCopy}>
+                    <Text style={styles.widgetTitle} numberOfLines={1}>
+                        {displayPhoto ? `From ${partnerName}` : (myPhoto ? `Sent to ${partnerName}` : 'Partner Photo')}
+                    </Text>
+                    <Text style={styles.widgetSubtitle} numberOfLines={1}>
+                        {(displayPhoto || myPhoto)
+                            ? timeLabel((displayPhoto || myPhoto).updatedAt)
+                            : (hasPartner ? 'Tap to send' : 'Connect partner')}
+                    </Text>
+                </View>
+            )}
         </TouchableOpacity>
     );
 };

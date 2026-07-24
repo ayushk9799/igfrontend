@@ -254,6 +254,8 @@ const HomeWidgetShowcase = ({
                 myPhoto={myPhoto}
                 onFindPartner={onFindPartner}
                 onOpenCapture={onOpenPhotoCapture}
+                showCameraBadge={false}
+                showCopy={false}
             />
             <TouchableOpacity
                 activeOpacity={0.92}
