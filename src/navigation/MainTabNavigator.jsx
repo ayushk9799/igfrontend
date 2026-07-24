@@ -22,6 +22,7 @@ import WidgetSetupBottomSheet from '../components/WidgetSetupBottomSheet';
 import JournalOnboardingScreen from '../screens/JournalOnboardingScreen';
 import QuestionsOnboardingScreen from '../screens/QuestionsOnboardingScreen';
 import WidgetOnboardingScreen from '../screens/WidgetOnboardingScreen';
+import LiveCallOnboardingScreen from '../screens/LiveCallOnboardingScreen';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
@@ -801,6 +802,10 @@ export const MainTabNavigator = ({
                         <JournalOnboardingScreen
                             onComplete={() => setAccountPreview(null)}
                         />
+                    ) : accountPreview === 'liveCall' ? (
+                        <LiveCallOnboardingScreen
+                            onComplete={() => setAccountPreview(null)}
+                        />
                     ) : accountPreview === 'questions' ? (
                         <QuestionsOnboardingScreen
                             onComplete={() => setAccountPreview(null)}
@@ -853,6 +858,7 @@ export const MainTabNavigator = ({
                         onJournalOnboardingPress={() => setAccountPreview('journal')}
                         onQuestionsOnboardingPress={() => setAccountPreview('questions')}
                         onWidgetOnboardingPress={() => setAccountPreview('widgets')}
+                        onLiveCallOnboardingPress={() => setAccountPreview('liveCall')}
                         onEditRelationshipDate={() => {
                             setIsAccountVisible(false);
                             onEditRelationshipDate?.();

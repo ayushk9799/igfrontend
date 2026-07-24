@@ -180,6 +180,7 @@ export const AccountScreen = ({
     onWidgetOnboardingPress,
     onJournalOnboardingPress,
     onQuestionsOnboardingPress,
+    onLiveCallOnboardingPress,
     onBack,
     onEditRelationshipDate,
 }) => {
@@ -568,6 +569,11 @@ export const AccountScreen = ({
                             title="Widget Onboarding"
                             subtitle="Preview the Home Screen widgets introduction"
                             onPress={onWidgetOnboardingPress}
+                        />
+                        <MenuItem
+                            title="Live Call Onboarding"
+                            subtitle="Preview the live video call introduction"
+                            onPress={onLiveCallOnboardingPress}
                         />
                     </View>
 
