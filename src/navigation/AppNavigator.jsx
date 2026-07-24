@@ -1,5 +1,5 @@
 // Updated Navigator with premium theme and auth persistence
-import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, startTransition, useCallback, useMemo, useRef } from 'react';
 import { View, StyleSheet, Alert, Platform, BackHandler, Modal, AppState, NativeModules, Linking } from 'react-native';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import BootSplash from 'react-native-bootsplash';
@@ -40,6 +40,7 @@ import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
 import FreeScreen from '../screens/FreeScreen';
 import PartnerPremiumPurchaseModal from '../components/PartnerPremiumPurchaseModal';
 import PartnerConnectedModal from '../components/PartnerConnectedModal';
+import PremiumLimitBottomSheet from '../components/PremiumLimitBottomSheet';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
@@ -168,6 +169,10 @@ export const AppNavigator = () => {
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
     const [hasPlayedSplashAnimation, setHasPlayedSplashAnimation] = useState(false);
     const [isPremiumVisible, setIsPremiumVisible] = useState(false);
+    const [isGamePremiumVisible, setIsGamePremiumVisible] = useState(false);
+    const [gamePremiumStep, setGamePremiumStep] = useState('free');
+    const gamePremiumDismissRef = useRef(null);
+    const [premiumLimitFeature, setPremiumLimitFeature] = useState(null);
     const [yourMood, setYourMood] = useState(null);
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
@@ -185,6 +190,45 @@ export const AppNavigator = () => {
     const needsRelationshipStartDate = (user) => !!user?.partnerId
         && !user?.relationshipStartDate
         && user?.shouldAskRelationshipStartDate === true;
+
+    const closeGamePremium = useCallback(() => {
+        setIsGamePremiumVisible(false);
+        setGamePremiumStep('free');
+        const onDismiss = gamePremiumDismissRef.current;
+        gamePremiumDismissRef.current = null;
+        onDismiss?.();
+    }, []);
+
+    const showPremiumLimitSheet = useCallback((feature) => {
+        setPremiumLimitFeature(feature);
+    }, []);
+
+    const closePremiumLimitSheet = useCallback(() => {
+        setPremiumLimitFeature(null);
+    }, []);
+
+    const handlePremiumLimitUpgrade = useCallback(() => {
+        setPremiumLimitFeature(null);
+        gamePremiumDismissRef.current = null;
+        setGamePremiumStep('free');
+        setIsGamePremiumVisible(true);
+    }, []);
+
+    useEffect(() => {
+        if (
+            currentScreen === 'wordle'
+            || currentScreen === 'ticTacToe'
+            || currentScreen === 'liveChat'
+            || currentScreen === 'home'
+        ) return;
+
+        gamePremiumDismissRef.current = null;
+        setPremiumLimitFeature(null);
+        if (isGamePremiumVisible) {
+            setIsGamePremiumVisible(false);
+            setGamePremiumStep('free');
+        }
+    }, [currentScreen, isGamePremiumVisible]);
 
 
     // In-app update instance (debug flag mirrors __DEV__)
@@ -2076,6 +2120,11 @@ export const AppNavigator = () => {
     // Handle Android back button/gesture - prevent app from closing on sub-screens
     useEffect(() => {
         const backAction = () => {
+            if (isGamePremiumVisible) {
+                closeGamePremium();
+                return true;
+            }
+
             if (isPremiumVisible) {
                 setIsPremiumVisible(false);
                 return true;
@@ -2116,7 +2165,7 @@ export const AppNavigator = () => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentScreen, isPremiumVisible]);
+    }, [closeGamePremium, currentScreen, isGamePremiumVisible, isPremiumVisible]);
 
     // Handle onboarding completion
     const handleOnboardingComplete = () => {
@@ -2282,6 +2331,8 @@ export const AppNavigator = () => {
                             }
                         }}
                         onLiveChatPress={() => navigate('liveChat')}
+                        onRequestDrawPremium={() => showPremiumLimitSheet('drawTogether')}
+                        onOpenDrawFreeScreen={handlePremiumLimitUpgrade}
                         onAvatarPress={() => navigate('avatarSelection')}
                         onFindPartner={() => navigate('partnerCode')}
                         onEditRelationshipDate={() => navigate('relationshipStartDate')}
@@ -2330,6 +2381,10 @@ export const AppNavigator = () => {
                         onLinkPartner={() => navigate('partnerCode')}
                         userName={userData?.nickname || userData?.name || 'You'}
                         partnerName={userData?.partnerUsername || 'Your Love'}
+                        userId={userData?._id || userData?.id}
+                        hasPremiumAccess={hasActiveCouplePremium(userData)}
+                        onRequestPremium={() => showPremiumLimitSheet('drawTogether')}
+                        onOpenFreeScreen={handlePremiumLimitUpgrade}
                         initialPaths={partnerScribble?.paths}
                         initialCanvasWidth={partnerScribble?.canvasWidth}
                         initialCanvasHeight={partnerScribble?.canvasHeight}
@@ -2472,6 +2527,8 @@ export const AppNavigator = () => {
                                 partnerName: userData.partnerUsername || 'Partner',
                             }
                         }}
+                        hasPremiumAccess={hasActiveCouplePremium(userData)}
+                        onRequestPremium={() => showPremiumLimitSheet('ticTacToe')}
                     />
                 );
 
@@ -2488,6 +2545,8 @@ export const AppNavigator = () => {
                             }
                         }}
                         onLinkPartner={() => navigate('partnerCode')}
+                        hasPremiumAccess={hasActiveCouplePremium(userData)}
+                        onRequestPremium={() => showPremiumLimitSheet('wordle')}
                     />
                 );
 
@@ -2513,6 +2572,9 @@ export const AppNavigator = () => {
                         partnerId={userData?.partnerId}
                         partnerName={userData?.partnerUsername || 'Partner'}
                         partnerAvatar={userData?.partnerAvatarThumbnail || userData?.partnerAvatar}
+                        hasPremiumAccess={hasActiveCouplePremium(userData)}
+                        onRequestPremium={() => showPremiumLimitSheet('liveChat')}
+                        onOpenFreeScreen={handlePremiumLimitUpgrade}
                         onBack={() => {
                             clearLiveChatActive();
                             setHomeInitialTab('chats');
@@ -2575,6 +2637,30 @@ export const AppNavigator = () => {
                     onBack={() => setIsPremiumVisible(false)}
                 />
             </Modal>
+            <Modal
+                visible={isGamePremiumVisible}
+                animationType="slide"
+                transparent={false}
+                statusBarTranslucent={true}
+                onRequestClose={closeGamePremium}
+            >
+                {gamePremiumStep === 'free' ? (
+                    <FreeScreen
+                        onContinue={() => setGamePremiumStep('premium')}
+                        onClose={closeGamePremium}
+                    />
+                ) : (
+                    <OnboardingPremiumScreen
+                        onBack={closeGamePremium}
+                    />
+                )}
+            </Modal>
+            <PremiumLimitBottomSheet
+                visible={Boolean(premiumLimitFeature)}
+                feature={premiumLimitFeature || 'liveChat'}
+                onClose={closePremiumLimitSheet}
+                onUpgrade={handlePremiumLimitUpgrade}
+            />
             <PartnerPremiumPurchaseModal
                 visible={partnerPremiumAlertVisible}
                 partnerName={userData.partnerUsername}

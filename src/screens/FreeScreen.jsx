@@ -21,7 +21,18 @@ const ArrowRightIcon = () => (
     </Svg>
 );
 
-const FreeScreen = ({ onContinue }) => {
+const CloseIcon = () => (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M6 6l12 12M18 6L6 18"
+            stroke={colors.text}
+            strokeWidth={2.4}
+            strokeLinecap="round"
+        />
+    </Svg>
+);
+
+const FreeScreen = ({ onContinue, onClose }) => {
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
     const isCompactHeight = height < 760;
@@ -31,6 +42,17 @@ const FreeScreen = ({ onContinue }) => {
     return (
         <View style={styles.root}>
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+            {onClose && (
+                <TouchableOpacity
+                    style={[styles.closeButton, { top: insets.top + 8 }]}
+                    onPress={onClose}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close premium offer"
+                >
+                    <CloseIcon />
+                </TouchableOpacity>
+            )}
             <LinearGradient
                 colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
                 locations={[0, 0.34, 0.72, 1]}
@@ -146,6 +168,19 @@ const FreeScreen = ({ onContinue }) => {
 const styles = StyleSheet.create({
     root: {
         flex: 1,
+    },
+    closeButton: {
+        position: 'absolute',
+        right: 16,
+        zIndex: 10,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderWidth: 1,
+        borderColor: '#F4CCDD',
     },
     scrollView: {
         flex: 1,

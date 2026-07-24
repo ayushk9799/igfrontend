@@ -653,7 +653,7 @@ const HomeScreen = ({
                                 </Svg>
                             </View>
                             <View style={styles.liveDrawCopy}>
-                                <HomeText style={styles.liveDrawTitle}>Draw Live</HomeText>
+                                <HomeText style={styles.liveDrawTitle}>Draw Together</HomeText>
                                 <HomeText style={styles.liveDrawSubtitle}>
                                     Open the shared live canvas
                                 </HomeText>

@@ -28,6 +28,7 @@ import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
+const FREE_TICTACTOE_GAME_LIMIT = 5;
 const SparkleStar = ({ size = 20, color = '#EC4899', style }) => (
     <Animated.View style={style}>
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -112,11 +113,16 @@ const AnimatedSymbol = ({ value }) => {
     );
 };
 
-const TicTacToeScreen = ({ navigation, route }) => {
+const TicTacToeScreen = ({
+    navigation,
+    route,
+    onRequestPremium,
+    hasPremiumAccess = false,
+}) => {
     const { gameId: initialGameId, gameData: initialGameData } = route?.params || {};
     const { socket, partnerOnline } = useSocketContext();
     const user = getUser();
-    const userId = user?.id;
+    const userId = user?.id || user?._id;
     const { width: screenWidth } = useWindowDimensions();
     const boardSize = Math.min(306, screenWidth - 32);
     const cellSize = (boardSize - BOARD_BORDER_WIDTH * 2) / 3;
@@ -139,14 +145,29 @@ const TicTacToeScreen = ({ navigation, route }) => {
     const [notifying, setNotifying] = useState(false);
     const [lastNotifyTime, setLastNotifyTime] = useState(0);
     const [statusMessage, setStatusMessage] = useState(null);
+    const [freeLimitReached, setFreeLimitReached] = useState(false);
+    const [limitCheckError, setLimitCheckError] = useState('');
+    const [checkingPremium, setCheckingPremium] = useState(false);
+    const [playAgainReady, setPlayAgainReady] = useState(false);
+    const [showConfetti, setShowConfetti] = useState(false);
     const statusTimerRef = useRef(null);
+    const playAgainTimerRef = useRef(null);
     const countdownIntervalRef = useRef(null);
     const gameActionPendingRef = useRef(false);
     const gameStartingRef = useRef(false);
     const audioPlayerRef = useRef(null);
     const hasRequestedGameReviewRef = useRef(false);
+    const mountedRef = useRef(true);
+    const checkingPremiumRef = useRef(false);
+    const liveCompletionFeedbackRef = useRef(false);
+    const statusRef = useRef(status);
+    const isCreatorRef = useRef(isCreator);
+    const refreshLimitRef = useRef(null);
+    const limitSheetGameRef = useRef(null);
     const navigationRef = useRef(navigation);
     const startGameAnimationRef = useRef(null);
+    statusRef.current = status;
+    isCreatorRef.current = isCreator;
 
     const requestGameReviewOnce = useCallback(() => {
         if (hasRequestedGameReviewRef.current) return;
@@ -172,10 +193,15 @@ const TicTacToeScreen = ({ navigation, route }) => {
         boardRef.current = board;
     }, [board]);
 
-    useEffect(() => () => {
-        if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
-        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-        gameStartingRef.current = false;
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+            if (playAgainTimerRef.current) clearTimeout(playAgainTimerRef.current);
+            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+            gameStartingRef.current = false;
+        };
     }, []);
 
     // Show inline status message that auto-clears after 3 seconds
@@ -225,6 +251,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 boardRef.current = data.board;
                 setBoard(data.board);
                 setCurrentTurn(data.currentTurn);
+                if (
+                    ['won_creator', 'won_partner', 'draw'].includes(data.status)
+                    && !['won_creator', 'won_partner', 'draw'].includes(statusRef.current)
+                ) {
+                    liveCompletionFeedbackRef.current = true;
+                }
                 setStatus(data.status);
                 if (Number.isInteger(data.round)) setGameRound(data.round);
                 if (hasNewMove) {
@@ -243,8 +275,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
         // Listen for game complete
         const handleGameComplete = (data) => {
             if (!data.gameId || String(data.gameId) !== String(gameId)) return;
+            if (!['won_creator', 'won_partner', 'draw'].includes(statusRef.current)) {
+                liveCompletionFeedbackRef.current = true;
+            }
             setStatus(data.status);
             requestGameReviewOnce();
+            refreshLimitRef.current?.();
         };
 
         // Listen for new game (Play Again from partner)
@@ -256,8 +292,10 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 .map(String);
             if (participantIds.length > 0 && !participantIds.includes(String(userId))) return;
             // Reset to the new game state
+            const nextBoard = data.board || Array(9).fill(null);
             setGameId(data.gameId);
-            setBoard(data.board || Array(9).fill(null));
+            boardRef.current = nextBoard;
+            setBoard(nextBoard);
             setCurrentTurn(data.currentTurn || 'creator');
             setStatus(data.status || 'active');
             setGameRound(data.round || 0);
@@ -267,6 +305,10 @@ const TicTacToeScreen = ({ navigation, route }) => {
             setIsCreator(String(data.creatorId?._id || data.creatorId) === String(userId));
             hasRequestedGameReviewRef.current = false;
             setRevealGameOverText(false);
+            setFreeLimitReached(false);
+            setLimitCheckError('');
+            setShowConfetti(false);
+            liveCompletionFeedbackRef.current = false;
             gameActionPendingRef.current = false;
             setIsGameActionPending(false);
             // Join the new game room
@@ -403,6 +445,88 @@ const TicTacToeScreen = ({ navigation, route }) => {
         setLoading(false);
     }, [userId]);
 
+    const fetchCompletedGames = useCallback(async () => {
+        const response = await fetch(
+            `${API_BASE}/api/tictactoe/history/${userId}?limit=${FREE_TICTACTOE_GAME_LIMIT}`
+        );
+        const data = await response.json();
+
+        if (!response.ok || !data.success || !Array.isArray(data.data)) {
+            throw new Error(data.message || 'Failed to check completed games');
+        }
+
+        return {
+            games: data.data,
+            completedGames: Number.isFinite(data.completedGames)
+                ? data.completedGames
+                : data.data.length,
+        };
+    }, [userId]);
+
+    const refreshFreeLimitStatus = useCallback(async ({ showLimitSheet = false } = {}) => {
+        setLimitCheckError('');
+        const history = await fetchCompletedGames();
+        const limitReached = history.completedGames >= FREE_TICTACTOE_GAME_LIMIT;
+        if (mountedRef.current) {
+            setFreeLimitReached(limitReached);
+            const limitKey = String(gameId || 'tictactoe-limit');
+            if (
+                showLimitSheet
+                && limitReached
+                && limitSheetGameRef.current !== limitKey
+            ) {
+                limitSheetGameRef.current = limitKey;
+                onRequestPremium?.();
+            }
+        }
+        return history;
+    }, [fetchCompletedGames, gameId, onRequestPremium]);
+
+    useEffect(() => {
+        refreshLimitRef.current = () => {
+            refreshFreeLimitStatus({ showLimitSheet: true }).catch(() => {
+                if (mountedRef.current) {
+                    setLimitCheckError('Couldn’t verify your free-game limit.');
+                }
+            });
+        };
+    }, [refreshFreeLimitStatus]);
+
+    const loadGameWithAccessCheck = useCallback(async (data) => {
+        if (hasPremiumAccess || !userId) {
+            setFreeLimitReached(false);
+            setLimitCheckError('');
+            loadGameFromData(data);
+            return;
+        }
+
+        try {
+            const history = await fetchCompletedGames();
+            if (!mountedRef.current) return;
+
+            if (
+                ['pending', 'in_progress'].includes(data?.status)
+                && history.completedGames >= FREE_TICTACTOE_GAME_LIMIT
+                && history.games[0]
+            ) {
+                setFreeLimitReached(true);
+                setLimitCheckError('');
+                loadGameFromData(history.games[0]);
+                return;
+            }
+
+            setFreeLimitReached(
+                history.completedGames >= FREE_TICTACTOE_GAME_LIMIT
+            );
+            setLimitCheckError('');
+            loadGameFromData(data);
+        } catch (error) {
+            if (!mountedRef.current) return;
+            setLimitCheckError('Couldn’t verify your free-game limit.');
+            loadGameFromData(data);
+        }
+    }, [fetchCompletedGames, hasPremiumAccess, loadGameFromData, userId]);
+
     const fetchActiveGame = useCallback(async () => {
         if (!userId) {
             setLoading(false);
@@ -414,10 +538,29 @@ const TicTacToeScreen = ({ navigation, route }) => {
             const data = await response.json();
 
             if (data.success && data.data) {
-                // Active game exists - load it
-                loadGameFromData(data.data);
+                await loadGameWithAccessCheck(data.data);
             } else {
-                // No active game - show empty board, ready to create on first move
+                if (!hasPremiumAccess) {
+                    try {
+                        const history = await fetchCompletedGames();
+                        if (!mountedRef.current) return;
+
+                        if (
+                            history.completedGames >= FREE_TICTACTOE_GAME_LIMIT
+                            && history.games[0]
+                        ) {
+                            setFreeLimitReached(true);
+                            setLimitCheckError('');
+                            loadGameFromData(history.games[0]);
+                            return;
+                        }
+                    } catch (historyError) {
+                        if (!mountedRef.current) return;
+                        setLimitCheckError('Unable to check your free games. Tap below to retry.');
+                        setFreeLimitReached(false);
+                    }
+                }
+
                 setLoading(false);
                 setGameId(null);
                 setBoard(Array(9).fill(null));
@@ -431,14 +574,20 @@ const TicTacToeScreen = ({ navigation, route }) => {
             setBoard(Array(9).fill(null));
             setStatus('new');
         }
-    }, [loadGameFromData, userId]);
+    }, [
+        fetchCompletedGames,
+        hasPremiumAccess,
+        loadGameFromData,
+        loadGameWithAccessCheck,
+        userId,
+    ]);
 
     const fetchGame = useCallback(async (id) => {
         try {
             const response = await fetch(`${API_BASE}/api/tictactoe/${id}`);
             const data = await response.json();
             if (data.success) {
-                loadGameFromData(data.data);
+                await loadGameWithAccessCheck(data.data);
             } else {
                 showStatus('Failed to load game');
                 navigationRef.current?.goBack?.();
@@ -448,17 +597,40 @@ const TicTacToeScreen = ({ navigation, route }) => {
             showStatus('Failed to load game');
             navigationRef.current?.goBack?.();
         }
-    }, [loadGameFromData, showStatus]);
+    }, [loadGameWithAccessCheck, showStatus]);
 
     useEffect(() => {
         if (initialGameData) {
-            loadGameFromData(initialGameData);
+            loadGameWithAccessCheck(initialGameData);
         } else if (initialGameId) {
             fetchGame(initialGameId);
         } else {
             fetchActiveGame();
         }
-    }, [fetchActiveGame, fetchGame, initialGameData, initialGameId, loadGameFromData]);
+    }, [fetchActiveGame, fetchGame, initialGameData, initialGameId, loadGameWithAccessCheck]);
+
+    useEffect(() => {
+        const gameOver = ['won_creator', 'won_partner', 'draw'].includes(status);
+        setPlayAgainReady(false);
+        if (playAgainTimerRef.current) clearTimeout(playAgainTimerRef.current);
+
+        if (gameOver) {
+            playAgainTimerRef.current = setTimeout(() => {
+                if (mountedRef.current) setPlayAgainReady(true);
+            }, 800);
+        }
+
+        return () => {
+            if (playAgainTimerRef.current) clearTimeout(playAgainTimerRef.current);
+        };
+    }, [status]);
+
+    useEffect(() => {
+        if (hasPremiumAccess) {
+            setFreeLimitReached(false);
+            setLimitCheckError('');
+        }
+    }, [hasPremiumAccess]);
 
     // Create game with first move (called when tapping first cell)
     const createGameWithFirstMove = async (position) => {
@@ -521,18 +693,35 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 }
             } else {
                 // Revert optimistic update
-                setBoard(Array(9).fill(null));
+                const emptyBoard = Array(9).fill(null);
+                boardRef.current = emptyBoard;
+                setBoard(emptyBoard);
+                if (data.code === 'TICTACTOE_FREE_LIMIT_REACHED') {
+                    setFreeLimitReached(true);
+                    onRequestPremium?.();
+                    setLoading(true);
+                    fetchActiveGame();
+                    return;
+                }
                 showStatus(data.message || 'Failed to create game');
             }
         } catch (error) {
-            setBoard(Array(9).fill(null));
+            const emptyBoard = Array(9).fill(null);
+            boardRef.current = emptyBoard;
+            setBoard(emptyBoard);
             console.error('Create game error:', error);
             showStatus('Failed to create game');
         }
     };
 
     const restartCurrentGame = async () => {
-        if (!userId || !gameId || gameStartingRef.current || gameActionPendingRef.current) return;
+        if (
+            !mountedRef.current
+            || !userId
+            || !gameId
+            || gameStartingRef.current
+            || gameActionPendingRef.current
+        ) return;
 
         gameActionPendingRef.current = true;
         setIsGameActionPending(true);
@@ -544,8 +733,15 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 body: JSON.stringify({ userId }),
             });
             const data = await response.json();
+            if (!mountedRef.current) return;
 
             if (!response.ok || !data.success) {
+                if (data.code === 'TICTACTOE_FREE_LIMIT_REACHED') {
+                    setFreeLimitReached(true);
+                    setLimitCheckError('');
+                    onRequestPremium?.();
+                    return;
+                }
                 showStatus(data.message || 'Failed to restart game');
                 return;
             }
@@ -560,6 +756,10 @@ const TicTacToeScreen = ({ navigation, route }) => {
             setPartnerSymbol(restartedGame.partnerSymbol);
             setIsCreator(String(restartedGame.creatorId) === String(userId));
             setRevealGameOverText(false);
+            setFreeLimitReached(false);
+            setLimitCheckError('');
+            setShowConfetti(false);
+            liveCompletionFeedbackRef.current = false;
             hasRequestedGameReviewRef.current = false;
 
             if (socket) {
@@ -588,10 +788,63 @@ const TicTacToeScreen = ({ navigation, route }) => {
         }
     };
 
+    const handlePlayAgain = async () => {
+        if (
+            !playAgainReady
+            || checkingPremiumRef.current
+            || gameActionPendingRef.current
+        ) return;
+
+        if (hasPremiumAccess || !onRequestPremium || !userId) {
+            restartCurrentGame();
+            return;
+        }
+
+        checkingPremiumRef.current = true;
+        setCheckingPremium(true);
+
+        try {
+            const history = await refreshFreeLimitStatus();
+            if (!mountedRef.current) return;
+
+            if (history.completedGames >= FREE_TICTACTOE_GAME_LIMIT) {
+                setFreeLimitReached(true);
+                onRequestPremium();
+                return;
+            }
+
+            restartCurrentGame();
+        } catch (error) {
+            if (mountedRef.current) {
+                setLimitCheckError('Unable to check your free games. Please try again.');
+            }
+        } finally {
+            checkingPremiumRef.current = false;
+            if (mountedRef.current) setCheckingPremium(false);
+        }
+    };
+
+    const retryFreeLimitCheck = async () => {
+        if (checkingPremiumRef.current) return;
+        checkingPremiumRef.current = true;
+        setCheckingPremium(true);
+
+        try {
+            await refreshFreeLimitStatus();
+        } catch (error) {
+            if (mountedRef.current) {
+                setLimitCheckError('Unable to check your free games. Please try again.');
+            }
+        } finally {
+            checkingPremiumRef.current = false;
+            if (mountedRef.current) setCheckingPremium(false);
+        }
+    };
+
     const handleRestartPress = () => {
         if (gameStartingRef.current || isGameActionPending) return;
         if (isGameOver) {
-            restartCurrentGame();
+            handlePlayAgain();
             return;
         }
 
@@ -652,6 +905,9 @@ const TicTacToeScreen = ({ navigation, route }) => {
             });
             const data = await response.json();
             if (data.success) {
+                if (data.data.gameComplete) {
+                    liveCompletionFeedbackRef.current = true;
+                }
                 setBoard(data.data.board);
                 setCurrentTurn(data.data.currentTurn);
                 setStatus(data.data.status);
@@ -679,7 +935,27 @@ const TicTacToeScreen = ({ navigation, route }) => {
                         });
                     }
                 }
+
+                if (data.data.gameComplete && !hasPremiumAccess) {
+                    try {
+                        await refreshFreeLimitStatus({ showLimitSheet: true });
+                    } catch (historyError) {
+                        if (mountedRef.current) {
+                            setLimitCheckError('Couldn’t verify your free-game limit.');
+                        }
+                    }
+                }
             } else {
+                if (data.code === 'TICTACTOE_FREE_LIMIT_REACHED') {
+                    setBoard(board);
+                    boardRef.current = board;
+                    setFreeLimitReached(true);
+                    setLimitCheckError('');
+                    onRequestPremium?.();
+                    setLoading(true);
+                    fetchActiveGame();
+                    return;
+                }
                 if (response.status === 409) {
                     await fetchGame(gameId);
                     showStatus('The game was restarted. The board has been refreshed.', 'info');
@@ -819,11 +1095,20 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
     useEffect(() => {
         if (winningLine.length > 0) {
+            const shouldCelebrate = liveCompletionFeedbackRef.current;
+            liveCompletionFeedbackRef.current = false;
             lineAnim.setValue(0);
             setRevealGameOverText(false);
-            
-            // Play game over result sound effect!
-            playResultSound();
+
+            if (shouldCelebrate) {
+                playResultSound();
+                const localPlayerWon = (
+                    isCreatorRef.current && statusRef.current === 'won_creator'
+                ) || (
+                    !isCreatorRef.current && statusRef.current === 'won_partner'
+                );
+                setShowConfetti(localPlayerWon);
+            }
 
             Animated.timing(lineAnim, {
                 toValue: 1,
@@ -922,6 +1207,8 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
         // Allow tapping if: new game OR (my turn AND cell empty AND game not over)
         const canTap = !isGameActionPending
+            && !freeLimitReached
+            && !limitCheckError
             && (isNewGame || (isMyTurn && value === null && !isGameOver));
 
         const cellOpacity = 1;
@@ -1210,27 +1497,47 @@ const TicTacToeScreen = ({ navigation, route }) => {
                     {isGameOver && (revealGameOverText || status === 'draw') && (
                         <View style={styles.boardGameOverButtons}>
                             <TouchableOpacity
-                                onPress={handleRestartPress}
+                                onPress={handlePlayAgain}
                                 activeOpacity={0.8}
                                 style={[
                                     styles.restartGameButton,
-                                    isGameActionPending && styles.restartGameButtonDisabled,
+                                    (isGameActionPending || checkingPremium || !playAgainReady)
+                                        && styles.restartGameButtonDisabled,
                                 ]}
-                                disabled={isGameActionPending}
+                                disabled={isGameActionPending || checkingPremium || !playAgainReady}
                                 accessibilityRole="button"
-                                accessibilityLabel="Restart game"
-                                accessibilityState={{ disabled: isGameActionPending }}
+                                accessibilityLabel="Play again"
+                                accessibilityState={{
+                                    disabled: isGameActionPending || checkingPremium || !playAgainReady,
+                                }}
                             >
-                                {isGameActionPending ? (
+                                {isGameActionPending || checkingPremium ? (
                                     <ActivityIndicator color="#D84F86" />
                                 ) : (
-                                    <Text style={styles.restartGameButtonText}>Restart Game</Text>
+                                    <Text style={styles.restartGameButtonText}>
+                                        Play Again
+                                    </Text>
                                 )}
                             </TouchableOpacity>
                         </View>
                     )}
 
                 </View>
+
+                {limitCheckError && (
+                    <TouchableOpacity
+                        style={styles.limitCheckError}
+                        onPress={retryFreeLimitCheck}
+                        activeOpacity={0.8}
+                        disabled={checkingPremium}
+                        accessibilityRole="button"
+                        accessibilityLabel="Retry free-game limit check"
+                    >
+                        <Text style={styles.limitCheckErrorText}>
+                            {limitCheckError} Tap to retry.
+                        </Text>
+                    </TouchableOpacity>
+                )}
 
                 {/* Bottom Actions Container - fixed height to prevent layout shift */}
                 <View style={styles.bottomActionsContainer}>
@@ -1274,12 +1581,13 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 )}
                 </ScrollView>
 
-                {didIWin && revealGameOverText && (
+                {showConfetti && (
                     <ConfettiCannon
                         count={150}
                         origin={{ x: screenWidth / 2, y: -20 }}
                         autoStart={true}
                         fadeOut={true}
+                        onAnimationEnd={() => setShowConfetti(false)}
                     />
                 )}
             </SafeAreaView>
@@ -1735,6 +2043,25 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
         fontSize: 15,
         letterSpacing: 0.2,
+    },
+    limitCheckError: {
+        alignSelf: 'center',
+        width: '88%',
+        paddingHorizontal: 16,
+        paddingVertical: 11,
+        borderRadius: 14,
+        backgroundColor: '#FFF7ED',
+        borderWidth: 1,
+        borderColor: '#FED7AA',
+        marginTop: 8,
+        marginBottom: 8,
+    },
+    limitCheckErrorText: {
+        color: '#9A3412',
+        fontFamily: fontFamily.bold,
+        fontSize: 13,
+        lineHeight: 18,
+        textAlign: 'center',
     },
     linkPartnerContainer: {
         paddingHorizontal: 40,
