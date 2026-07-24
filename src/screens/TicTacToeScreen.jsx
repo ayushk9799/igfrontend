@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
+    Alert,
     StyleSheet,
     TouchableOpacity,
     ActivityIndicator,
@@ -10,14 +11,15 @@ import {
     Easing,
     Platform,
     Image,
-    Dimensions,
+    ScrollView,
+    useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Circle, Line } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import { colors, spacing, borderRadius } from '../theme';
+import { colors } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import GradientBackground from '../components/GradientBackground';
 import Button from '../components/Button';
@@ -25,10 +27,6 @@ import { useSocketContext } from '../context/SocketContext';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
-
-const AnimatedLine = Animated.createAnimatedComponent(Line);
-
-
 
 const SparkleStar = ({ size = 20, color = '#EC4899', style }) => (
     <Animated.View style={style}>
@@ -52,11 +50,13 @@ const WIN_PATTERNS = [
     [2, 4, 6], // anti-diagonal
 ];
 
-const getCellCenter = (index) => {
+const BOARD_BORDER_WIDTH = 4;
+
+const getCellCenter = (index, cellSize) => {
     const row = Math.floor(index / 3);
     const col = index % 3;
-    const x = col * 102 + 50;
-    const y = row * 102 + 50;
+    const x = BOARD_BORDER_WIDTH + col * cellSize + cellSize / 2;
+    const y = BOARD_BORDER_WIDTH + row * cellSize + cellSize / 2;
     return { x, y };
 };
 
@@ -65,12 +65,6 @@ const AnimatedSymbol = ({ value }) => {
     const opacityAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Trigger haptic click exactly when showing the mark!
-        ReactNativeHapticFeedback.trigger("selection", {
-            enableVibrateFallback: false,
-            ignoreAndroidSystemSettings: false,
-        });
-
         Animated.parallel([
             Animated.spring(scaleAnim, {
                 toValue: 1,
@@ -84,17 +78,13 @@ const AnimatedSymbol = ({ value }) => {
                 useNativeDriver: true,
             })
         ]).start();
-    }, []);
+    }, [opacityAnim, scaleAnim]);
 
     return (
-        <Animated.View style={{
-            opacity: opacityAnim,
-            transform: [{ scale: scaleAnim }],
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: '100%',
-            height: '100%',
-        }}>
+        <Animated.View style={[
+            styles.animatedSymbol,
+            { opacity: opacityAnim, transform: [{ scale: scaleAnim }] },
+        ]}>
             {value === 'X' ? (
                 <Svg width={56} height={56} viewBox="0 0 60 60">
                     <Path
@@ -126,25 +116,37 @@ const TicTacToeScreen = ({ navigation, route }) => {
     const { gameId: initialGameId, gameData: initialGameData } = route?.params || {};
     const { socket, partnerOnline } = useSocketContext();
     const user = getUser();
-    const { width: SCREEN_WIDTH } = Dimensions.get('window');
+    const userId = user?.id;
+    const { width: screenWidth } = useWindowDimensions();
+    const boardSize = Math.min(306, screenWidth - 32);
+    const cellSize = (boardSize - BOARD_BORDER_WIDTH * 2) / 3;
+    const boardLayoutStyle = React.useMemo(() => ({ width: boardSize, height: boardSize }), [boardSize]);
+    const cellLayoutStyle = React.useMemo(() => ({ width: cellSize, height: cellSize }), [cellSize]);
 
     // Game state
     const [gameId, setGameId] = useState(initialGameId || null);
     const [board, setBoard] = useState(Array(9).fill(null));
+    const boardRef = useRef(board);
     const [currentTurn, setCurrentTurn] = useState('creator');
+    const [gameRound, setGameRound] = useState(initialGameData?.round || 0);
     const [status, setStatus] = useState('pending');
     const [revealGameOverText, setRevealGameOverText] = useState(false);
     const [creatorSymbol, setCreatorSymbol] = useState('X');
     const [partnerSymbol, setPartnerSymbol] = useState('O');
     const [isCreator, setIsCreator] = useState(true);
-    const [winner, setWinner] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isGameActionPending, setIsGameActionPending] = useState(false);
     const [notifying, setNotifying] = useState(false);
     const [lastNotifyTime, setLastNotifyTime] = useState(0);
     const [statusMessage, setStatusMessage] = useState(null);
     const statusTimerRef = useRef(null);
+    const countdownIntervalRef = useRef(null);
+    const gameActionPendingRef = useRef(false);
+    const gameStartingRef = useRef(false);
     const audioPlayerRef = useRef(null);
     const hasRequestedGameReviewRef = useRef(false);
+    const navigationRef = useRef(navigation);
+    const startGameAnimationRef = useRef(null);
 
     const requestGameReviewOnce = useCallback(() => {
         if (hasRequestedGameReviewRef.current) return;
@@ -162,6 +164,20 @@ const TicTacToeScreen = ({ navigation, route }) => {
         };
     }, []);
 
+    useEffect(() => {
+        navigationRef.current = navigation;
+    }, [navigation]);
+
+    useEffect(() => {
+        boardRef.current = board;
+    }, [board]);
+
+    useEffect(() => () => {
+        if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        gameStartingRef.current = false;
+    }, []);
+
     // Show inline status message that auto-clears after 3 seconds
     const showStatus = useCallback((message, type = 'error') => {
         if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
@@ -177,6 +193,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
+    useEffect(() => () => {
+        shakeAnim.stopAnimation();
+        scaleAnim.stopAnimation();
+        fadeAnim.stopAnimation();
+    }, [fadeAnim, scaleAnim, shakeAnim]);
+
     // Partner info
     const partnerId = route?.params?.partnerId;
     const partnerName = route?.params?.partnerName || 'Partner';
@@ -185,20 +207,6 @@ const TicTacToeScreen = ({ navigation, route }) => {
     const mySymbol = isCreator ? creatorSymbol : partnerSymbol;
     const theirSymbol = isCreator ? partnerSymbol : creatorSymbol;
     const isMyTurn = (isCreator && currentTurn === 'creator') || (!isCreator && currentTurn === 'partner');
-
-    // Load or create game
-    useEffect(() => {
-        if (initialGameData) {
-            // Existing game from pending
-            loadGameFromData(initialGameData);
-        } else if (initialGameId) {
-            // Load existing game by ID
-            fetchGame(initialGameId);
-        } else {
-            // Check for existing active game first
-            fetchActiveGame();
-        }
-    }, []);
 
     // Socket event listeners
     useEffect(() => {
@@ -209,11 +217,22 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
         // Listen for moves
         const handleMoveReceived = (data) => {
-            if (data.gameId === gameId) {
+            if (data.gameId && String(data.gameId) === String(gameId)) {
+                if (!Array.isArray(data.board)) return;
+                const hasNewMove = data.board.some(
+                    (value, index) => value && value !== boardRef.current[index]
+                );
+                boardRef.current = data.board;
                 setBoard(data.board);
                 setCurrentTurn(data.currentTurn);
                 setStatus(data.status);
-                if (data.winner) setWinner(data.winner);
+                if (Number.isInteger(data.round)) setGameRound(data.round);
+                if (hasNewMove) {
+                    ReactNativeHapticFeedback.trigger('selection', {
+                        enableVibrateFallback: false,
+                        ignoreAndroidSystemSettings: false,
+                    });
+                }
             }
         };
 
@@ -223,29 +242,37 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
         // Listen for game complete
         const handleGameComplete = (data) => {
+            if (!data.gameId || String(data.gameId) !== String(gameId)) return;
             setStatus(data.status);
-            if (data.winnerId) setWinner(data.winnerId);
             requestGameReviewOnce();
         };
 
         // Listen for new game (Play Again from partner)
         const handleNewGame = (data) => {
+            if (data.previousGameId && String(data.previousGameId) !== String(gameId)) return;
+            if (!data.gameId) return;
+            const participantIds = [data.creatorId?._id || data.creatorId, data.partnerId?._id || data.partnerId]
+                .filter(Boolean)
+                .map(String);
+            if (participantIds.length > 0 && !participantIds.includes(String(userId))) return;
             // Reset to the new game state
             setGameId(data.gameId);
             setBoard(data.board || Array(9).fill(null));
             setCurrentTurn(data.currentTurn || 'creator');
             setStatus(data.status || 'active');
+            setGameRound(data.round || 0);
             setCreatorSymbol(data.creatorSymbol || 'X');
             setPartnerSymbol(data.partnerSymbol || 'O');
             // Partner is NOT the creator of this new game
-            setIsCreator(data.creatorId === user?.id);
-            setWinner(null);
+            setIsCreator(String(data.creatorId?._id || data.creatorId) === String(userId));
             hasRequestedGameReviewRef.current = false;
             setRevealGameOverText(false);
+            gameActionPendingRef.current = false;
+            setIsGameActionPending(false);
             // Join the new game room
             socket.emit('tictactoe:join', { gameId: data.gameId });
             // Trigger game start animation
-            startGameAnimation('Game Started Again! 🎮');
+            startGameAnimationRef.current?.('Game Started Again! 🎮');
         };
 
         socket.on('tictactoe:moveReceived', handleMoveReceived);
@@ -262,11 +289,15 @@ const TicTacToeScreen = ({ navigation, route }) => {
             socket.off('tictactoe:newGame', handleNewGame);
             socket.emit('tictactoe:leave', { gameId });
         };
-    }, [socket, gameId, requestGameReviewOnce]);
+    }, [socket, gameId, requestGameReviewOnce, userId]);
 
     // Game start animation function
     const startGameAnimation = useCallback((message) => {
+        if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+        }
         setGameStartMessage(message);
+        gameStartingRef.current = true;
         setIsGameStarting(true);
         setCountdown(3);
 
@@ -327,16 +358,18 @@ const TicTacToeScreen = ({ navigation, route }) => {
         shake();
         pulse();
 
-        const countdownInterval = setInterval(() => {
+        countdownIntervalRef.current = setInterval(() => {
             setCountdown((prev) => {
                 if (prev <= 1) {
-                    clearInterval(countdownInterval);
+                    clearInterval(countdownIntervalRef.current);
+                    countdownIntervalRef.current = null;
                     // Fade out and end animation
                     Animated.timing(fadeAnim, {
                         toValue: 0,
                         duration: 300,
                         useNativeDriver: true,
                     }).start(() => {
+                        gameStartingRef.current = false;
                         setIsGameStarting(false);
                         setGameStartMessage('');
                     });
@@ -347,26 +380,37 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 return prev - 1;
             });
         }, 1000);
-
-        return () => clearInterval(countdownInterval);
     }, [fadeAnim, shakeAnim, scaleAnim]);
 
-    const loadGameFromData = (data) => {
-        setGameId(data._id);
-        setBoard(data.board || Array(9).fill(null));
+    useEffect(() => {
+        startGameAnimationRef.current = startGameAnimation;
+    }, [startGameAnimation]);
+
+    const loadGameFromData = useCallback((data) => {
+        setGameId(data._id || data.gameId);
+        const nextBoard = data.board || Array(9).fill(null);
+        boardRef.current = nextBoard;
+        setBoard(nextBoard);
         setCurrentTurn(data.currentTurn || 'creator');
         setStatus(data.status || 'pending');
+        setGameRound(data.round || 0);
         setCreatorSymbol(data.creatorSymbol || 'X');
         setPartnerSymbol(data.partnerSymbol || 'O');
-        setIsCreator(data.creatorId?._id === user?.id || data.creatorId === user?.id);
-        setWinner(data.winner);
+        setIsCreator(
+            String(data.creatorId?._id || data.creatorId) === String(userId)
+        );
         setRevealGameOverText(['won_creator', 'won_partner', 'draw'].includes(data.status));
         setLoading(false);
-    };
+    }, [userId]);
 
-    const fetchActiveGame = async () => {
+    const fetchActiveGame = useCallback(async () => {
+        if (!userId) {
+            setLoading(false);
+            setStatus('new');
+            return;
+        }
         try {
-            const response = await fetch(`${API_BASE}/api/tictactoe/active/${user?.id}`);
+            const response = await fetch(`${API_BASE}/api/tictactoe/active/${userId}`);
             const data = await response.json();
 
             if (data.success && data.data) {
@@ -387,9 +431,9 @@ const TicTacToeScreen = ({ navigation, route }) => {
             setBoard(Array(9).fill(null));
             setStatus('new');
         }
-    };
+    }, [loadGameFromData, userId]);
 
-    const fetchGame = async (id) => {
+    const fetchGame = useCallback(async (id) => {
         try {
             const response = await fetch(`${API_BASE}/api/tictactoe/${id}`);
             const data = await response.json();
@@ -397,18 +441,28 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 loadGameFromData(data.data);
             } else {
                 showStatus('Failed to load game');
-                navigation?.goBack?.();
+                navigationRef.current?.goBack?.();
             }
         } catch (error) {
             console.error('Fetch game error:', error);
             showStatus('Failed to load game');
-            navigation?.goBack?.();
+            navigationRef.current?.goBack?.();
         }
-    };
+    }, [loadGameFromData, showStatus]);
+
+    useEffect(() => {
+        if (initialGameData) {
+            loadGameFromData(initialGameData);
+        } else if (initialGameId) {
+            fetchGame(initialGameId);
+        } else {
+            fetchActiveGame();
+        }
+    }, [fetchActiveGame, fetchGame, initialGameData, initialGameId, loadGameFromData]);
 
     // Create game with first move (called when tapping first cell)
     const createGameWithFirstMove = async (position) => {
-        if (!user?.id || !partnerId) {
+        if (!userId || !partnerId) {
             // Partner not linked - button will show below
             return;
         }
@@ -416,14 +470,19 @@ const TicTacToeScreen = ({ navigation, route }) => {
         // Optimistic update
         const newBoard = [...board];
         newBoard[position] = 'X'; // Creator is always X
+        boardRef.current = newBoard;
         setBoard(newBoard);
+        ReactNativeHapticFeedback.trigger('selection', {
+            enableVibrateFallback: false,
+            ignoreAndroidSystemSettings: false,
+        });
 
         try {
             const response = await fetch(`${API_BASE}/api/tictactoe/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    creatorId: user.id,
+                    creatorId: userId,
                     partnerId: partnerId,
                     creatorSymbol: 'X',
                     firstMove: position, // Include first move position
@@ -436,6 +495,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 setBoard(data.data.board);
                 setCurrentTurn(data.data.currentTurn);
                 setStatus(data.data.status);
+                setGameRound(data.data.round || 0);
                 setCreatorSymbol(data.data.creatorSymbol);
                 setPartnerSymbol(data.data.partnerSymbol);
                 setIsCreator(data.data.isCreator !== undefined ? data.data.isCreator : true);
@@ -471,71 +531,98 @@ const TicTacToeScreen = ({ navigation, route }) => {
         }
     };
 
-    // Create new game (for Play Again functionality)
-    const createNewGame = async () => {
-        if (!user?.id || !partnerId) {
-            // Partner not linked - button will show below
+    const restartCurrentGame = async () => {
+        if (!userId || !gameId || gameStartingRef.current || gameActionPendingRef.current) return;
+
+        gameActionPendingRef.current = true;
+        setIsGameActionPending(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/api/tictactoe/${gameId}/restart`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId }),
+            });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                showStatus(data.message || 'Failed to restart game');
+                return;
+            }
+
+            const restartedGame = data.data;
+            boardRef.current = restartedGame.board;
+            setBoard(restartedGame.board);
+            setCurrentTurn(restartedGame.currentTurn);
+            setStatus(restartedGame.status);
+            setGameRound(restartedGame.round);
+            setCreatorSymbol(restartedGame.creatorSymbol);
+            setPartnerSymbol(restartedGame.partnerSymbol);
+            setIsCreator(String(restartedGame.creatorId) === String(userId));
+            setRevealGameOverText(false);
+            hasRequestedGameReviewRef.current = false;
+
+            if (socket) {
+                socket.emit('tictactoe:newGame', {
+                    gameId: restartedGame.gameId,
+                    previousGameId: gameId,
+                    creatorId: restartedGame.creatorId,
+                    partnerId: restartedGame.partnerId,
+                    board: restartedGame.board,
+                    currentTurn: restartedGame.currentTurn,
+                    status: restartedGame.status,
+                    round: restartedGame.round,
+                    creatorSymbol: restartedGame.creatorSymbol,
+                    partnerSymbol: restartedGame.partnerSymbol,
+                });
+            }
+
+            startGameAnimation('Game restarted! 🎮');
+            showStatus('Game restarted', 'success');
+        } catch (error) {
+            console.error('Restart game error:', error);
+            showStatus('Failed to restart game');
+        } finally {
+            gameActionPendingRef.current = false;
+            setIsGameActionPending(false);
+        }
+    };
+
+    const handleRestartPress = () => {
+        if (gameStartingRef.current || isGameActionPending) return;
+        if (isGameOver) {
+            restartCurrentGame();
             return;
         }
 
-        try {
-            const response = await fetch(`${API_BASE}/api/tictactoe/create`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    creatorId: user.id,
-                    partnerId: partnerId,
-                    creatorSymbol: 'X',
-                }),
-            });
-            const data = await response.json();
-            if (data.success) {
-                setGameId(data.data.gameId);
-                setBoard(data.data.board);
-                setCurrentTurn(data.data.currentTurn);
-                setStatus(data.data.status);
-                setCreatorSymbol(data.data.creatorSymbol);
-                setPartnerSymbol(data.data.partnerSymbol);
-                setIsCreator(true);
-                setLoading(false);
-
-                // Join socket room and notify partner of new game
-                if (socket) {
-                    socket.emit('tictactoe:join', { gameId: data.data.gameId });
-                    socket.emit('tictactoe:invite', { gameId: data.data.gameId });
-                    // Emit new game event so partner's board resets
-                    socket.emit('tictactoe:newGame', {
-                        gameId: data.data.gameId,
-                        board: data.data.board,
-                        currentTurn: data.data.currentTurn,
-                        status: data.data.status,
-                        creatorSymbol: data.data.creatorSymbol,
-                        partnerSymbol: data.data.partnerSymbol,
-                    });
-                }
-                // Reset winner state for new game
-                setWinner(null);
-                setRevealGameOverText(false);
-                // Trigger game start animation for creator
-                startGameAnimation('Game Started Again! 🎮');
-            } else {
-                showStatus(data.message || 'Failed to create game');
-                navigation?.goBack?.();
-            }
-        } catch (error) {
-            console.error('Create game error:', error);
-            showStatus('Failed to create game');
-            navigation?.goBack?.();
-        }
+        Alert.alert(
+            'Restart this game?',
+            'This will clear the current board for both you and your partner.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Restart',
+                    style: 'destructive',
+                    onPress: restartCurrentGame,
+                },
+            ]
+        );
     };
 
     const makeMove = async (position) => {
         // Block moves during game start animation
-        if (isGameStarting) return;
+        if (!userId || isGameStarting || gameActionPendingRef.current) return;
 
         // If no game exists yet (status is 'new'), create game with first move
         if (!gameId && status === 'new') {
-            await createGameWithFirstMove(position);
+            gameActionPendingRef.current = true;
+            setIsGameActionPending(true);
+            try {
+                await createGameWithFirstMove(position);
+            } finally {
+                gameActionPendingRef.current = false;
+                setIsGameActionPending(false);
+            }
             return;
         }
 
@@ -544,15 +631,23 @@ const TicTacToeScreen = ({ navigation, route }) => {
         // Optimistic update
         const newBoard = [...board];
         newBoard[position] = mySymbol;
+        boardRef.current = newBoard;
         setBoard(newBoard);
+        gameActionPendingRef.current = true;
+        setIsGameActionPending(true);
+        ReactNativeHapticFeedback.trigger('selection', {
+            enableVibrateFallback: false,
+            ignoreAndroidSystemSettings: false,
+        });
 
         try {
             const response = await fetch(`${API_BASE}/api/tictactoe/${gameId}/move`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user.id,
+                    userId,
                     position,
+                    round: gameRound,
                 }),
             });
             const data = await response.json();
@@ -560,7 +655,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 setBoard(data.data.board);
                 setCurrentTurn(data.data.currentTurn);
                 setStatus(data.data.status);
-                if (data.data.winner) setWinner(data.data.winner);
+                setGameRound(data.data.round);
 
                 // Broadcast move via socket
                 if (socket) {
@@ -570,6 +665,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                         board: data.data.board,
                         currentTurn: data.data.currentTurn,
                         status: data.data.status,
+                        round: data.data.round,
                         winner: data.data.winner,
                         gameComplete: data.data.gameComplete,
                     });
@@ -584,17 +680,27 @@ const TicTacToeScreen = ({ navigation, route }) => {
                     }
                 }
             } else {
+                if (response.status === 409) {
+                    await fetchGame(gameId);
+                    showStatus('The game was restarted. The board has been refreshed.', 'info');
+                    return;
+                }
                 // Revert optimistic update
-                setBoard(board);
+                setBoard((currentBoard) => currentBoard === newBoard ? board : currentBoard);
                 showStatus(data.message || 'Invalid move');
             }
         } catch (error) {
-            setBoard(board);
+            setBoard((currentBoard) => currentBoard === newBoard ? board : currentBoard);
             console.error('Move error:', error);
+            showStatus('Could not make that move. Please try again.');
+        } finally {
+            gameActionPendingRef.current = false;
+            setIsGameActionPending(false);
         }
     };
 
     const notifyPartner = async () => {
+        if (!userId || !gameId) return;
         // Cooldown check (5 minutes)
         const now = Date.now();
         if (now - lastNotifyTime < 5 * 60 * 1000) {
@@ -608,7 +714,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
             const response = await fetch(`${API_BASE}/api/tictactoe/${gameId}/notify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id }),
+                body: JSON.stringify({ userId }),
             });
             const data = await response.json();
             if (data.success) {
@@ -645,7 +751,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
         if (status === 'draw') return "It's a draw! 🤝";
         if (didIWin) return `🎉 You won! 💜`;
         if (didTheyWin) return `🎉 ${partnerName} won! 💜`;
-        return '';
+        return isMyTurn ? 'Your turn' : `${partnerName}'s turn`;
     };
 
     const winningLine = React.useMemo(() => {
@@ -660,7 +766,6 @@ const TicTacToeScreen = ({ navigation, route }) => {
     }, [board, status]);
 
     const lineAnim = useRef(new Animated.Value(0)).current;
-    const highlightAnim = useRef(new Animated.Value(0)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const gameOverTextAnim = useRef(new Animated.Value(0)).current;
 
@@ -715,7 +820,6 @@ const TicTacToeScreen = ({ navigation, route }) => {
     useEffect(() => {
         if (winningLine.length > 0) {
             lineAnim.setValue(0);
-            highlightAnim.setValue(0);
             setRevealGameOverText(false);
             
             // Play game over result sound effect!
@@ -733,18 +837,17 @@ const TicTacToeScreen = ({ navigation, route }) => {
             });
         } else {
             lineAnim.setValue(0);
-            highlightAnim.setValue(0);
             setRevealGameOverText(false);
             if (audioPlayerRef.current) {
                 audioPlayerRef.current.stopPlayer().catch(() => {});
             }
         }
-    }, [winningLine, playResultSound]);
+    }, [lineAnim, winningLine, playResultSound]);
 
     const lineData = React.useMemo(() => {
         if (winningLine.length === 0) return { startX: 0, startY: 0, length: 0, angle: '0rad', originalLength: 0, padding: 0 };
-        const startCenter = getCellCenter(winningLine[0]);
-        const endCenter = getCellCenter(winningLine[2]);
+        const startCenter = getCellCenter(winningLine[0], cellSize);
+        const endCenter = getCellCenter(winningLine[2], cellSize);
         const dx = endCenter.x - startCenter.x;
         const dy = endCenter.y - startCenter.y;
         const originalLength = Math.sqrt(dx * dx + dy * dy);
@@ -760,13 +863,66 @@ const TicTacToeScreen = ({ navigation, route }) => {
             originalLength,
             padding
         };
-    }, [winningLine]);
+    }, [cellSize, winningLine]);
+
+    const winningLineAnchorStyle = React.useMemo(() => ({
+        left: lineData.startX,
+        top: lineData.startY,
+        transform: [{ rotate: lineData.angle }],
+    }), [lineData.angle, lineData.startX, lineData.startY]);
+
+    const winningLineBarStyle = React.useMemo(() => ({
+        left: -lineData.padding,
+        width: lineData.length,
+        transform: [
+            {
+                translateX: lineAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-lineData.length / 2, 0],
+                }),
+            },
+            { scaleX: lineAnim },
+        ],
+    }), [lineAnim, lineData.length, lineData.padding]);
+
+    const winningLineStartSparkleStyle = React.useMemo(() => ({
+        left: -lineData.padding - 11,
+        opacity: lineAnim.interpolate({
+            inputRange: [0, 0.8, 1],
+            outputRange: [0, 0, 1],
+            extrapolate: 'clamp',
+        }),
+        transform: [{
+            scale: lineAnim.interpolate({
+                inputRange: [0, 0.8, 1],
+                outputRange: [0, 0, 1],
+                extrapolate: 'clamp',
+            }),
+        }],
+    }), [lineAnim, lineData.padding]);
+
+    const winningLineEndSparkleStyle = React.useMemo(() => ({
+        left: lineData.length - lineData.padding - 11,
+        opacity: lineAnim.interpolate({
+            inputRange: [0, 0.8, 1],
+            outputRange: [0, 0, 1],
+            extrapolate: 'clamp',
+        }),
+        transform: [{
+            scale: lineAnim.interpolate({
+                inputRange: [0, 0.8, 1],
+                outputRange: [0, 0, 1],
+                extrapolate: 'clamp',
+            }),
+        }],
+    }), [lineAnim, lineData.length, lineData.padding]);
 
     const renderCell = (index) => {
         const value = board[index];
 
         // Allow tapping if: new game OR (my turn AND cell empty AND game not over)
-        const canTap = isNewGame || (isMyTurn && value === null && !isGameOver);
+        const canTap = !isGameActionPending
+            && (isNewGame || (isMyTurn && value === null && !isGameOver));
 
         const cellOpacity = 1;
 
@@ -775,6 +931,8 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 key={index}
                 style={[
                     styles.cell,
+                    cellLayoutStyle,
+                    index % 2 === 0 && styles.cellAlternate,
                     index % 3 !== 2 && styles.cellBorderRight,
                     index < 6 && styles.cellBorderBottom,
                     { opacity: cellOpacity }
@@ -784,13 +942,10 @@ const TicTacToeScreen = ({ navigation, route }) => {
                     onPress={() => makeMove(index)}
                     disabled={!canTap}
                     activeOpacity={0.7}
-                    style={{
-                        flex: 1,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        width: '100%',
-                        height: '100%'
-                    }}
+                    style={styles.cellButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Row ${Math.floor(index / 3) + 1}, column ${(index % 3) + 1}${value ? `, ${value}` : ', empty'}`}
+                    accessibilityState={{ disabled: !canTap }}
                 >
                     {value !== null && (
                         <AnimatedSymbol value={value} />
@@ -815,22 +970,33 @@ const TicTacToeScreen = ({ navigation, route }) => {
 
     return (
         <GradientBackground variant="light" showOrbs={true} showParticles={true}>
-            <SafeAreaView style={styles.container} edges={['top']}>
+            <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                >
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
-                        <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
-                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={() => navigationRef.current?.goBack?.()}
+                            accessibilityRole="button"
+                            accessibilityLabel="Back to games"
+                        >
+                            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                                 <Path
-                                    d="M19 12H5M12 19l-7-7 7-7"
-                                    stroke={colors.text}
+                                    d="M15 18l-6-6 6-6"
+                                    stroke="#1B1237"
                                     strokeWidth={2}
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                 />
                             </Svg>
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>Tic Tac Toe</Text>
+                        <View style={styles.headerCopy}>
+                            <Text style={styles.headerTitle} numberOfLines={1}>Tic Tac Toe</Text>
+                        </View>
                     </View>
                     <View style={styles.headerRight}>
                         {partnerOnline ? (
@@ -844,6 +1010,36 @@ const TicTacToeScreen = ({ navigation, route }) => {
                                 <Text style={styles.offlineText}>Offline</Text>
                             </View>
                         )}
+                        {gameId && !isGameOver && (
+                            <TouchableOpacity
+                                style={[
+                                    styles.restartButton,
+                                    (!partnerId || isGameStarting || isGameActionPending) && styles.restartButtonDisabled,
+                                ]}
+                                onPress={handleRestartPress}
+                                disabled={!partnerId || isGameStarting || isGameActionPending}
+                                activeOpacity={0.8}
+                                accessibilityRole="button"
+                                accessibilityLabel="Restart game"
+                                accessibilityState={{
+                                    disabled: !partnerId || isGameStarting || isGameActionPending,
+                                }}
+                            >
+                                {isGameActionPending ? (
+                                    <ActivityIndicator size="small" color="#7C3AED" />
+                                ) : (
+                                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                        <Path
+                                            d="M20 7V3m0 0h-4m4 0-3.1 3.1A8 8 0 1 0 20 12"
+                                            stroke="#7C3AED"
+                                            strokeWidth={2}
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    </Svg>
+                                )}
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
 
@@ -853,8 +1049,8 @@ const TicTacToeScreen = ({ navigation, route }) => {
                     <View style={[styles.playerCard, leftActive && styles.activePlayer]}>
                         {leftActive && (
                             <>
-                                <SparkleStar size={11} color="#C084FC" style={{ position: 'absolute', left: 10, top: 10 }} />
-                                <SparkleStar size={9} color="#C084FC" style={{ position: 'absolute', right: 10, top: 8 }} />
+                                <SparkleStar size={11} color="#C084FC" style={styles.playerSparkleLeft} />
+                                <SparkleStar size={9} color="#C084FC" style={styles.playerSparkleRight} />
                             </>
                         )}
                         <Animated.View style={[styles.cardSymbolContainer, { opacity: leftSymbolOpacity, transform: leftActive ? [{ scale: pulseAnim }] : [{ scale: 1.0 }] }]}>
@@ -868,8 +1064,10 @@ const TicTacToeScreen = ({ navigation, route }) => {
                                 </Svg>
                             )}
                         </Animated.View>
-                        <View style={styles.youBadge}>
-                            <Text style={styles.youBadgeText}>YOU</Text>
+                        <View style={[styles.playerLabel, leftActive && styles.activePlayerLabel]}>
+                            <Text style={[styles.playerLabelText, leftActive && styles.activePlayerLabelText]}>
+                                {leftActive ? 'YOUR TURN' : 'YOU'}
+                            </Text>
                         </View>
                     </View>
 
@@ -881,8 +1079,8 @@ const TicTacToeScreen = ({ navigation, route }) => {
                     <View style={[styles.playerCard, rightActive && styles.activePlayer]}>
                         {rightActive && (
                             <>
-                                <SparkleStar size={11} color="#C084FC" style={{ position: 'absolute', left: 10, top: 10 }} />
-                                <SparkleStar size={9} color="#C084FC" style={{ position: 'absolute', right: 10, top: 8 }} />
+                                <SparkleStar size={11} color="#C084FC" style={styles.playerSparkleLeft} />
+                                <SparkleStar size={9} color="#C084FC" style={styles.playerSparkleRight} />
                             </>
                         )}
                         <Animated.View style={[styles.cardSymbolContainer, { opacity: rightSymbolOpacity, transform: rightActive ? [{ scale: pulseAnim }] : [{ scale: 1.0 }] }]}>
@@ -897,11 +1095,31 @@ const TicTacToeScreen = ({ navigation, route }) => {
                             )}
                         </Animated.View>
                         <Text style={styles.partnerNameText} numberOfLines={1}>{partnerName}</Text>
+                        {rightActive && (
+                            <View style={[styles.playerLabel, styles.activePlayerLabel]}>
+                                <Text style={[styles.playerLabelText, styles.activePlayerLabelText]}>THEIR TURN</Text>
+                            </View>
+                        )}
                     </View>
                 </View>
 
                 {/* Status */}
                 <View style={styles.statusContainer}>
+                    <View style={[
+                        styles.statusEyebrow,
+                        isMyTurn && !isGameOver && styles.statusEyebrowActive,
+                    ]}>
+                        <View style={[
+                            styles.statusDot,
+                            isMyTurn && !isGameOver && styles.statusDotActive,
+                        ]} />
+                        <Text style={[
+                            styles.statusEyebrowText,
+                            isMyTurn && !isGameOver && styles.statusEyebrowTextActive,
+                        ]}>
+                            {isGameOver ? 'MATCH COMPLETE' : isMyTurn ? 'MAKE YOUR MOVE' : 'WAITING FOR PARTNER'}
+                        </Text>
+                    </View>
                     {isGameOver && (revealGameOverText || status === 'draw') ? (
                         <Animated.View
                             style={{
@@ -952,6 +1170,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                 <View style={styles.boardContainer}>
                     <Animated.View style={[
                         styles.board,
+                        boardLayoutStyle,
                         {
                             transform: [
                                 { translateX: shakeAnim },
@@ -964,130 +1183,53 @@ const TicTacToeScreen = ({ navigation, route }) => {
                         {winningLine.length > 0 && (
                             <Animated.View
                                 pointerEvents="none"
-                                style={{
-                                    position: 'absolute',
-                                    left: lineData.startX,
-                                    top: lineData.startY,
-                                    width: 0,
-                                    height: 0,
-                                    transform: [
-                                        { rotate: lineData.angle }
-                                    ],
-                                }}
+                                style={[styles.winningLineAnchor, winningLineAnchorStyle]}
                             >
                                 <Animated.View
-                                    style={{
-                                        position: 'absolute',
-                                        left: -lineData.padding,
-                                        top: -9,
-                                        width: lineData.length,
-                                        height: 18,
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        transform: [
-                                            { translateX: lineAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [-lineData.length / 2, 0]
-                                            }) },
-                                            { scaleX: lineAnim }
-                                        ],
-                                    }}
+                                    style={[styles.winningLineBar, winningLineBarStyle]}
                                 >
                                     {/* Neon Outer Halo Glow */}
-                                    <View
-                                        style={{
-                                            position: 'absolute',
-                                            left: 0,
-                                            right: 0,
-                                            height: 16,
-                                            borderRadius: 8,
-                                            backgroundColor: '#EC4899',
-                                            opacity: 0.65,
-                                            shadowColor: '#EC4899',
-                                            shadowOffset: { width: 0, height: 0 },
-                                            shadowOpacity: 0.9,
-                                            shadowRadius: 12,
-                                            elevation: 4,
-                                        }}
-                                    />
+                                    <View style={styles.winningLineGlow} />
                                     {/* Bright White Core */}
-                                    <View
-                                        style={{
-                                            position: 'absolute',
-                                            left: 3,
-                                            right: 3,
-                                            height: 6,
-                                            borderRadius: 3,
-                                            backgroundColor: '#FFFFFF',
-                                            shadowColor: '#FFFFFF',
-                                            shadowOffset: { width: 0, height: 0 },
-                                            shadowOpacity: 0.8,
-                                            shadowRadius: 4,
-                                        }}
-                                    />
+                                    <View style={styles.winningLineCore} />
                                 </Animated.View>
                                 <SparkleStar
                                     size={22}
                                     color="#F472B6"
-                                    style={{
-                                        position: 'absolute',
-                                        left: -lineData.padding - 11,
-                                        top: -11,
-                                        width: 22,
-                                        height: 22,
-                                        opacity: lineAnim.interpolate({
-                                            inputRange: [0, 0.8, 1],
-                                            outputRange: [0, 0, 1],
-                                            extrapolate: 'clamp'
-                                        }),
-                                        transform: [{
-                                            scale: lineAnim.interpolate({
-                                                inputRange: [0, 0.8, 1],
-                                                outputRange: [0, 0, 1],
-                                                extrapolate: 'clamp'
-                                            })
-                                        }]
-                                    }}
+                                    style={[styles.winningLineSparkle, winningLineStartSparkleStyle]}
                                 />
                                 <SparkleStar
                                     size={22}
                                     color="#F472B6"
-                                    style={{
-                                        position: 'absolute',
-                                        left: lineData.length - lineData.padding - 11,
-                                        top: -11,
-                                        width: 22,
-                                        height: 22,
-                                        opacity: lineAnim.interpolate({
-                                            inputRange: [0, 0.8, 1],
-                                            outputRange: [0, 0, 1],
-                                            extrapolate: 'clamp'
-                                        }),
-                                        transform: [{
-                                            scale: lineAnim.interpolate({
-                                                inputRange: [0, 0.8, 1],
-                                                outputRange: [0, 0, 1],
-                                                extrapolate: 'clamp'
-                                            })
-                                        }]
-                                    }}
+                                    style={[styles.winningLineSparkle, winningLineEndSparkleStyle]}
                                 />
                             </Animated.View>
                         )}
                     </Animated.View>
 
-                    {/* Play Again Button Just Below the Board */}
                     {isGameOver && (revealGameOverText || status === 'draw') && (
                         <View style={styles.boardGameOverButtons}>
                             <TouchableOpacity
-                                onPress={createNewGame}
+                                onPress={handleRestartPress}
                                 activeOpacity={0.8}
-                                style={styles.premiumPlayAgainButton}
+                                style={[
+                                    styles.restartGameButton,
+                                    isGameActionPending && styles.restartGameButtonDisabled,
+                                ]}
+                                disabled={isGameActionPending}
+                                accessibilityRole="button"
+                                accessibilityLabel="Restart game"
+                                accessibilityState={{ disabled: isGameActionPending }}
                             >
-                                <Text style={styles.premiumPlayAgainText}>Play Again</Text>
+                                {isGameActionPending ? (
+                                    <ActivityIndicator color="#D84F86" />
+                                ) : (
+                                    <Text style={styles.restartGameButtonText}>Restart Game</Text>
+                                )}
                             </TouchableOpacity>
                         </View>
                     )}
+
                 </View>
 
                 {/* Bottom Actions Container - fixed height to prevent layout shift */}
@@ -1112,7 +1254,7 @@ const TicTacToeScreen = ({ navigation, route }) => {
                                         />
                                     </Svg>
                                 }
-                                style={{ marginHorizontal: 40 }}
+                                style={styles.nudgeButton}
                             />
                         </View>
                     ) : null}
@@ -1130,11 +1272,12 @@ const TicTacToeScreen = ({ navigation, route }) => {
                         />
                     </View>
                 )}
+                </ScrollView>
 
                 {didIWin && revealGameOverText && (
                     <ConfettiCannon
                         count={150}
-                        origin={{ x: SCREEN_WIDTH / 2, y: -20 }}
+                        origin={{ x: screenWidth / 2, y: -20 }}
                         autoStart={true}
                         fadeOut={true}
                     />
@@ -1147,6 +1290,17 @@ const TicTacToeScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    animatedSymbol: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%',
+        height: '100%',
+    },
+    scrollContent: {
+        flexGrow: 1,
+        paddingTop: 8,
+        paddingBottom: 12,
     },
     loadingContainer: {
         flex: 1,
@@ -1162,51 +1316,74 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
+        paddingHorizontal: 18,
+        paddingTop: 8,
+        paddingBottom: 10,
     },
     headerLeft: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
-    backButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#FAE8FF',
-        alignItems: 'center',
+    headerCopy: {
+        flexShrink: 1,
         justifyContent: 'center',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.08,
-                shadowRadius: 6,
-            },
-            android: {
-                elevation: 3,
-            },
-        }),
+    },
+    backButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 3,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: colors.text,
+        fontSize: 24,
+        fontFamily: fontFamily.extraBold,
+        color: '#1B1237',
+        letterSpacing: -0.4,
     },
     headerRight: {
-        width: 80,
-        alignItems: 'flex-end',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginLeft: 8,
+    },
+    restartButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderWidth: 1.5,
+        borderColor: '#E9D5FF',
+        shadowColor: '#A855F7',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 3,
+    },
+    restartButtonDisabled: {
+        opacity: 0.5,
     },
     onlineIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(74, 222, 128, 0.12)',
+        backgroundColor: 'rgba(255,255,255,0.88)',
         paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingVertical: 7,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(74,222,128,0.22)',
     },
     onlineDot: {
         width: 8,
@@ -1223,10 +1400,12 @@ const styles = StyleSheet.create({
     offlineIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(156, 163, 175, 0.12)',
+        backgroundColor: 'rgba(255,255,255,0.78)',
         paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingVertical: 7,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(156,163,175,0.18)',
     },
     offlineDot: {
         width: 8,
@@ -1244,38 +1423,40 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: 24,
-        gap: 16,
+        paddingTop: 14,
+        paddingBottom: 10,
+        gap: 12,
     },
     playerCard: {
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        width: 110,
-        height: 125,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: '#F3E8FF',
+        backgroundColor: 'rgba(255,255,255,0.82)',
+        width: 122,
+        height: 116,
+        borderRadius: 26,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.95)',
         position: 'relative',
         ...Platform.select({
             ios: {
-                shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.04,
-                shadowRadius: 10,
+                shadowColor: '#B76A98',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.1,
+                shadowRadius: 18,
             },
             android: {
-                elevation: 2,
+                elevation: 4,
             },
         }),
     },
     activePlayer: {
-        borderWidth: 2,
-        borderColor: '#E9D5FF',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2.5,
+        borderColor: '#D8B4FE',
         shadowColor: '#A855F7',
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 4,
+        shadowOpacity: 0.18,
+        shadowRadius: 18,
+        elevation: 7,
     },
     cardSymbolContainer: {
         width: 48,
@@ -1283,36 +1464,57 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    youBadge: {
-        backgroundColor: 'rgba(168, 85, 247, 0.08)',
+    playerSparkleLeft: {
+        position: 'absolute',
+        left: 10,
+        top: 10,
+    },
+    playerSparkleRight: {
+        position: 'absolute',
+        right: 10,
+        top: 8,
+    },
+    playerLabel: {
+        backgroundColor: 'rgba(168,85,247,0.08)',
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 12,
-        marginTop: 8,
+        borderRadius: 10,
+        marginTop: 7,
     },
-    youBadgeText: {
-        fontSize: 10,
-        fontWeight: '700',
+    activePlayerLabel: {
+        backgroundColor: '#7C3AED',
+    },
+    playerLabelText: {
+        fontSize: 9,
+        fontFamily: fontFamily.extraBold,
         color: '#A855F7',
-        letterSpacing: 0.5,
+        letterSpacing: 0.8,
+    },
+    activePlayerLabelText: {
+        color: '#FFFFFF',
     },
     partnerNameText: {
         fontSize: 13,
         fontWeight: '600',
         color: '#4B5563',
-        marginTop: 8,
+        marginTop: 5,
         textAlign: 'center',
         width: '90%',
     },
     vsBadge: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#FAF5FF',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1.5,
-        borderColor: '#F3E8FF',
+        borderWidth: 2,
+        borderColor: '#F3DDF0',
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
     },
     vsBadgeText: {
         fontSize: 12,
@@ -1321,13 +1523,47 @@ const styles = StyleSheet.create({
     },
     statusContainer: {
         alignItems: 'center',
-        paddingVertical: 12,
+        minHeight: 76,
+        paddingTop: 7,
+        paddingBottom: 8,
+    },
+    statusEyebrow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.65)',
+        marginBottom: 5,
+    },
+    statusEyebrowActive: {
+        backgroundColor: 'rgba(236,72,153,0.1)',
+    },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#B7ACBA',
+    },
+    statusDotActive: {
+        backgroundColor: '#EC4899',
+    },
+    statusEyebrowText: {
+        color: '#9A8EA6',
+        fontFamily: fontFamily.extraBold,
+        fontSize: 9,
+        letterSpacing: 0.9,
+    },
+    statusEyebrowTextActive: {
+        color: '#D83D88',
     },
     statusText: {
-        fontSize: 22,
+        fontSize: 24,
         fontFamily: fontFamily.extraBold,
-        color: '#EC4899',
+        color: '#251744',
         textAlign: 'center',
+        letterSpacing: -0.3,
     },
     statusWin: {
         color: '#EC4899',
@@ -1362,49 +1598,100 @@ const styles = StyleSheet.create({
         color: colors.accent,
     },
     boardContainer: {
-        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 20,
+        paddingVertical: 10,
     },
     board: {
-        width: 306,
-        height: 306,
         flexDirection: 'row',
         flexWrap: 'wrap',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24,
+        backgroundColor: '#FFFDFE',
+        borderRadius: 30,
         overflow: 'hidden',
-        borderWidth: 1.5,
-        borderColor: '#F3E8FF',
+        borderWidth: BOARD_BORDER_WIDTH,
+        borderColor: 'rgba(255,255,255,0.96)',
         ...Platform.select({
             ios: {
-                shadowColor: '#C084FC',
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.05,
-                shadowRadius: 20,
+                shadowColor: '#A855F7',
+                shadowOffset: { width: 0, height: 16 },
+                shadowOpacity: 0.14,
+                shadowRadius: 24,
             },
             android: {
-                elevation: 4,
+                elevation: 8,
             },
         }),
     },
     cell: {
-        width: 101,
-        height: 101,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.72)',
+    },
+    cellAlternate: {
+        backgroundColor: 'rgba(250,245,255,0.72)',
+    },
+    cellButton: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%',
+        height: '100%',
     },
     cellBorderRight: {
-        borderRightWidth: 1.5,
-        borderRightColor: '#F3E8FF',
+        borderRightWidth: 2,
+        borderRightColor: '#F0DFF3',
     },
     cellBorderBottom: {
-        borderBottomWidth: 1.5,
-        borderBottomColor: '#F3E8FF',
+        borderBottomWidth: 2,
+        borderBottomColor: '#F0DFF3',
     },
     cellWinning: {
         backgroundColor: 'transparent',
+    },
+    winningLineAnchor: {
+        position: 'absolute',
+        width: 0,
+        height: 0,
+    },
+    winningLineBar: {
+        position: 'absolute',
+        top: -9,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    winningLineGlow: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#EC4899',
+        opacity: 0.65,
+        shadowColor: '#EC4899',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.9,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    winningLineCore: {
+        position: 'absolute',
+        left: 3,
+        right: 3,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#FFFFFF',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+    },
+    winningLineSparkle: {
+        position: 'absolute',
+        top: -11,
+        width: 22,
+        height: 22,
     },
     bottomActionsContainer: {
         height: 90,
@@ -1417,72 +1704,41 @@ const styles = StyleSheet.create({
         paddingHorizontal: 40,
         justifyContent: 'center',
     },
-    gameOverButtons: {
-        width: '100%',
-        paddingHorizontal: 40,
-        justifyContent: 'center',
+    nudgeButton: {
+        marginHorizontal: 40,
     },
-    premiumPlayAgainButton: {
-        backgroundColor: colors.primary,
-        minHeight: 40,
-        paddingVertical: spacing.xs,
-        paddingHorizontal: spacing['2xl'],
-        borderRadius: borderRadius.xl,
+    boardGameOverButtons: {
+        width: '100%',
+        maxWidth: 306,
+        marginTop: 20,
+    },
+    restartGameButton: {
+        minHeight: 48,
+        paddingHorizontal: 24,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
-        width: '100%',
-        ...Platform.select({
-            ios: {
-                shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
-    },
-    premiumPlayAgainGradient: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    premiumPlayAgainText: {
-        color: '#FFFFFF',
-        fontSize: 15,
-        fontWeight: '700',
-    },
-    premiumShareButton: {
-        width: '100%',
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F8D9E8',
         borderWidth: 1.5,
-        borderColor: 'rgba(168, 85, 247, 0.15)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        borderColor: '#F2BFD5',
+        shadowColor: '#D84F86',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.14,
+        shadowRadius: 12,
+        elevation: 4,
     },
-    premiumShareText: {
-        color: '#A855F7',
-        fontSize: 16,
-        fontWeight: '700',
+    restartGameButtonDisabled: {
+        opacity: 0.65,
     },
-    premiumButtonContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
+    restartGameButtonText: {
+        color: '#D84F86',
+        fontFamily: fontFamily.extraBold,
+        fontSize: 15,
+        letterSpacing: 0.2,
     },
     linkPartnerContainer: {
         paddingHorizontal: 40,
         paddingBottom: 30,
-    },
-    boardGameOverButtons: {
-        width: 306,
-        marginTop: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
 });
 

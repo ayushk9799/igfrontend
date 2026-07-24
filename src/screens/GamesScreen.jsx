@@ -1,22 +1,22 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
-    Dimensions,
     Image,
     ScrollView,
     StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { getUser, storage } from '../utils/authStorage';
 
-const { width } = Dimensions.get('window');
-const CARD_HEIGHT = Math.max(136, Math.min(146, width * 0.38));
+const VIDEO_CALL_GUIDANCE_KEY = 'games_video_call_guidance_v1';
 
 const gameAssets = {
     puzzle: require('../../assets/images/games/puzzle.png'),
@@ -32,6 +32,24 @@ const ArrowIcon = ({ color, size = 12 }) => (
             strokeWidth={3}
             strokeLinecap="round"
             strokeLinejoin="round"
+        />
+    </Svg>
+);
+
+const VideoCallIcon = ({ color = '#FFFFFF', size = 18 }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Rect
+            x="3.5"
+            y="6.5"
+            width="11.5"
+            height="11"
+            rx="3"
+            stroke={color}
+            strokeWidth={2}
+        />
+        <Path
+            d="M15 10.2L19.1 7.8C19.7 7.45 20.5 7.88 20.5 8.58V15.42C20.5 16.12 19.7 16.55 19.1 16.2L15 13.8V10.2Z"
+            fill={color}
         />
     </Svg>
 );
@@ -88,11 +106,51 @@ const GamesScreen = ({
     partnerOnline = false,
 }) => {
     const insets = useSafeAreaInsets();
+    const { width } = useWindowDimensions();
     const blinkAnim = useRef(new Animated.Value(1)).current;
+    const refreshPuzzleRef = useRef(onRefreshPuzzle);
+    const cardMinHeight = Math.max(152, Math.min(168, width * 0.42));
+    const [showVideoCallGuide, setShowVideoCallGuide] = useState(false);
+    const videoCallGuideStorageKey = useMemo(() => {
+        const currentUser = getUser();
+        const currentUserId = currentUser?.id || currentUser?._id || 'device';
+        return `${VIDEO_CALL_GUIDANCE_KEY}:${currentUserId}`;
+    }, []);
 
     useEffect(() => {
-        onRefreshPuzzle?.();
+        refreshPuzzleRef.current = onRefreshPuzzle;
     }, [onRefreshPuzzle]);
+
+    useEffect(() => {
+        refreshPuzzleRef.current?.();
+    }, []);
+
+    useEffect(() => {
+        if (
+            callActive
+            || !onVideoCallPress
+            || storage.getBoolean(videoCallGuideStorageKey) === true
+        ) {
+            return undefined;
+        }
+
+        const timer = setTimeout(() => {
+            storage.set(videoCallGuideStorageKey, true);
+            setShowVideoCallGuide(true);
+        }, 650);
+
+        return () => clearTimeout(timer);
+    }, [callActive, onVideoCallPress, videoCallGuideStorageKey]);
+
+    const dismissVideoCallGuide = useCallback(() => {
+        setShowVideoCallGuide(false);
+        storage.set(videoCallGuideStorageKey, true);
+    }, [videoCallGuideStorageKey]);
+
+    const handleVideoCallPress = useCallback(() => {
+        dismissVideoCallGuide();
+        onVideoCallPress?.();
+    }, [dismissVideoCallGuide, onVideoCallPress]);
 
     useEffect(() => {
         if (!pendingTicTacToe && !pendingWordle) {
@@ -164,7 +222,7 @@ const GamesScreen = ({
             style={styles.gradient}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
+            <View style={[styles.container, { paddingTop: insets.top + 4 }]}>
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 104 }]}
@@ -174,14 +232,72 @@ const GamesScreen = ({
                             <Text style={styles.headerTitle}>Play Games</Text>
                             <Text style={styles.headerSubtitle}>Challenge your partner to a friendly duel!</Text>
                         </View>
-                        <TouchableOpacity
-                            style={[styles.callPill, !partnerOnline && !callActive && styles.callPillOffline]}
-                            onPress={onVideoCallPress}
-                            activeOpacity={0.82}
-                        >
-                            <Text style={styles.callPillIcon}>▣</Text>
-                            <Text style={styles.callPillText}>{callActive ? 'In call' : 'Call'}</Text>
-                        </TouchableOpacity>
+                        <View style={styles.videoCallGuideAnchor}>
+                            {showVideoCallGuide && (
+                                <View style={styles.videoCallGuideRing} pointerEvents="none" />
+                            )}
+                            <TouchableOpacity
+                                style={[
+                                    styles.callCard,
+                                    callActive && styles.callCardActive,
+                                    !onVideoCallPress && styles.callCardDisabled,
+                                ]}
+                                onPress={handleVideoCallPress}
+                                activeOpacity={0.82}
+                                accessibilityRole="button"
+                                accessibilityLabel={callActive ? 'Return to active call' : `Call ${partnerName}`}
+                                accessibilityHint={!callActive && !partnerOnline ? `${partnerName} is currently offline` : undefined}
+                                accessibilityState={{ disabled: !onVideoCallPress }}
+                                disabled={!onVideoCallPress}
+                            >
+                                <LinearGradient
+                                    colors={callActive ? ['#A982FF', '#7655ED'] : ['#F27CAC', '#D84F86']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.callIconBubble}
+                                >
+                                    <VideoCallIcon />
+                                </LinearGradient>
+                                <View style={styles.callCopy}>
+                                    <Text style={styles.callTitle}>{callActive ? 'In call' : 'Call'}</Text>
+                                    <View style={styles.callStatusRow}>
+                                        <View
+                                            style={[
+                                                styles.callStatusDot,
+                                                partnerOnline && styles.callStatusDotOnline,
+                                                callActive && styles.callStatusDotActive,
+                                            ]}
+                                        />
+                                        <Text
+                                            style={[
+                                                styles.callStatusText,
+                                                callActive && styles.callStatusTextActive,
+                                            ]}
+                                        >
+                                            {callActive ? 'Active' : partnerOnline ? 'Online' : 'Offline'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                            {showVideoCallGuide && (
+                                <View style={styles.videoCallGuide} accessibilityRole="alert">
+                                    <View style={styles.videoCallGuideArrow} />
+                                    <Text style={styles.videoCallGuideTitle}>Play together on a call</Text>
+                                    <Text style={styles.videoCallGuideText}>
+                                        Start a call with {partnerName} and keep talking while you play.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.videoCallGuideButton}
+                                        onPress={dismissVideoCallGuide}
+                                        activeOpacity={0.8}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Dismiss video call guidance"
+                                    >
+                                        <Text style={styles.videoCallGuideButtonText}>Got it</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
                         <Sparkle style={styles.heroSparkleOne} color="#FF9833" />
                         <Sparkle style={styles.heroSparkleTwo} color="#7C61F8" />
                     </View>
@@ -190,25 +306,32 @@ const GamesScreen = ({
                         {games.map((game) => (
                         <TouchableOpacity
                             key={game.key}
-                            style={[styles.gameCard, game.cardStyle]}
+                            style={[styles.gameCard, { minHeight: cardMinHeight }, game.cardStyle]}
                             onPress={game.onPress}
                             activeOpacity={0.9}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${game.title}. ${game.subtitle}. ${game.buttonLabel}`}
                         >
                             <Sparkle style={styles.cardSparkleOne} />
                             <Sparkle style={styles.cardSparkleTwo} color="#FFE6C7" />
+                            {game.active && (
+                                <Animated.View
+                                    style={[
+                                        styles.activeBadge,
+                                        { backgroundColor: game.accent, opacity: blinkAnim },
+                                    ]}
+                                >
+                                    <Text style={styles.activeText}>YOUR TURN</Text>
+                                </Animated.View>
+                            )}
                             <View style={styles.cardCopy}>
                                 <View style={styles.headerRow}>
                                     <View style={[styles.iconChip, { backgroundColor: `${game.accent}24` }]}>
                                         <GameIcon type={game.icon} color={game.accent} size={18} />
                                     </View>
-                                    {game.active && (
-                                        <Animated.View style={[styles.activeBadge, { backgroundColor: game.accent, opacity: blinkAnim }]}>
-                                            <Text style={styles.activeText}>YOUR TURN</Text>
-                                        </Animated.View>
-                                    )}
                                 </View>
-                                <Text style={styles.gameTitle}>{game.title}</Text>
-                                <Text style={styles.gameSubtitle}>{game.subtitle}</Text>
+                                <Text style={styles.gameTitle} numberOfLines={2}>{game.title}</Text>
+                                <Text style={styles.gameSubtitle} numberOfLines={2}>{game.subtitle}</Text>
                                 <LinearGradient
                                     colors={game.gradient}
                                     start={{ x: 0, y: 0 }}
@@ -221,7 +344,12 @@ const GamesScreen = ({
                                     </View>
                                 </LinearGradient>
                             </View>
-                            <Image source={game.image} style={[styles.gameImage, game.imageStyle]} resizeMode="contain" />
+                            <Image
+                                source={game.image}
+                                style={[styles.gameImage, game.imageStyle]}
+                                resizeMode="contain"
+                                accessible={false}
+                            />
                         </TouchableOpacity>
                         ))}
                     </View>
@@ -248,35 +376,155 @@ const styles = StyleSheet.create({
         paddingTop: 8,
         paddingBottom: 4,
         marginBottom: 14,
+        zIndex: 20,
     },
     heroCopy: {
         width: '72%',
         zIndex: 2,
     },
-    callPill: {
+    videoCallGuideAnchor: {
         position: 'absolute',
         right: 0,
         top: 8,
-        zIndex: 4,
+        width: 112,
+        height: 48,
+        zIndex: 30,
+    },
+    videoCallGuideRing: {
+        position: 'absolute',
+        top: -5,
+        left: -5,
+        width: 122,
+        height: 58,
+        borderRadius: 29,
+        borderWidth: 3,
+        borderColor: 'rgba(216,79,134,0.38)',
+        backgroundColor: 'rgba(255,255,255,0.42)',
+    },
+    callCard: {
+        width: 112,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 13,
+        gap: 8,
+        minWidth: 108,
+        minHeight: 48,
+        paddingLeft: 5,
+        paddingRight: 11,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderWidth: 1.5,
+        borderColor: '#F4CCDD',
+        shadowColor: '#B84C7D',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    callCardActive: {
+        borderColor: '#D8CAFF',
+        backgroundColor: '#FBF9FF',
+    },
+    callCardDisabled: {
+        opacity: 0.5,
+    },
+    callIconBubble: {
+        width: 38,
         height: 38,
         borderRadius: 19,
-        backgroundColor: '#D84F86',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#D84F86',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.22,
+        shadowRadius: 7,
+        elevation: 3,
     },
-    callPillOffline: {
-        backgroundColor: '#B9AAB7',
+    callCopy: {
+        justifyContent: 'center',
+        minWidth: 42,
     },
-    callPillIcon: {
-        color: '#FFFFFF',
-        fontSize: 14,
-    },
-    callPillText: {
-        color: '#FFFFFF',
+    callTitle: {
+        color: '#34244D',
         fontFamily: fontFamily.extraBold,
         fontSize: 13,
+        lineHeight: 15,
+    },
+    callStatusRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 2,
+    },
+    callStatusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#B5A9B4',
+    },
+    callStatusDotOnline: {
+        backgroundColor: '#45BE82',
+    },
+    callStatusDotActive: {
+        backgroundColor: '#8062EE',
+    },
+    callStatusText: {
+        color: '#9A8E9A',
+        fontFamily: fontFamily.bold,
+        fontSize: 9,
+        lineHeight: 11,
+    },
+    callStatusTextActive: {
+        color: '#8062EE',
+    },
+    videoCallGuide: {
+        position: 'absolute',
+        top: 62,
+        right: 0,
+        width: 240,
+        paddingHorizontal: 16,
+        paddingTop: 15,
+        paddingBottom: 13,
+        borderRadius: 18,
+        backgroundColor: '#4B2947',
+        shadowColor: '#321B33',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+        elevation: 16,
+    },
+    videoCallGuideArrow: {
+        position: 'absolute',
+        top: -7,
+        right: 48,
+        width: 14,
+        height: 14,
+        backgroundColor: '#4B2947',
+        transform: [{ rotate: '45deg' }],
+    },
+    videoCallGuideTitle: {
+        color: '#FFFFFF',
+        fontFamily: fontFamily.bold,
+        fontSize: 15,
+        marginBottom: 4,
+    },
+    videoCallGuideText: {
+        color: '#F3E7F0',
+        fontFamily: fontFamily.medium,
+        fontSize: 12.5,
+        lineHeight: 18,
+    },
+    videoCallGuideButton: {
+        alignSelf: 'flex-end',
+        marginTop: 10,
+        paddingHorizontal: 13,
+        paddingVertical: 7,
+        borderRadius: 12,
+        backgroundColor: '#F7D8E8',
+    },
+    videoCallGuideButtonText: {
+        color: '#8D315F',
+        fontFamily: fontFamily.bold,
+        fontSize: 12,
     },
     headerTitle: {
         fontFamily: fontFamily.extraBold,
@@ -293,16 +541,8 @@ const styles = StyleSheet.create({
         color: '#7F7AA5',
         fontWeight: fontWeight('500'),
     },
-    heroImage: {
-        position: 'absolute',
-        right: -58,
-        bottom: -10,
-        width: width * 0.8,
-        height: 210,
-        opacity: 0.98,
-    },
     heroSparkleOne: {
-        right: width * 0.28,
+        right: '28%',
         top: 14,
     },
     heroSparkleTwo: {
@@ -311,10 +551,10 @@ const styles = StyleSheet.create({
     },
     listContainer: {
         gap: 16,
+        zIndex: 1,
     },
     gameCard: {
         width: '100%',
-        height: CARD_HEIGHT,
         borderRadius: 20,
         borderWidth: 3,
         borderColor: 'rgba(255,255,255,0.8)',
@@ -338,7 +578,6 @@ const styles = StyleSheet.create({
     },
     cardCopy: {
         width: '52%',
-        height: '100%',
         justifyContent: 'center',
         zIndex: 2,
     },
@@ -355,10 +594,13 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     activeBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        zIndex: 4,
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 8,
-        marginLeft: 8,
     },
     activeText: {
         color: '#FFFFFF',
@@ -463,97 +705,6 @@ const styles = StyleSheet.create({
         right: 12,
         top: 10,
         transform: [{ scale: 0.6 }],
-    },
-    footerBanner: {
-        minHeight: 86,
-        borderRadius: 24,
-        backgroundColor: '#F7E4FF',
-        marginTop: 12,
-        paddingHorizontal: 26,
-        flexDirection: 'row',
-        alignItems: 'center',
-        overflow: 'hidden',
-    },
-    giftBox: {
-        width: 58,
-        height: 58,
-        marginRight: 18,
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-    },
-    giftLid: {
-        width: 48,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: '#D083FF',
-    },
-    giftBody: {
-        width: 44,
-        height: 38,
-        borderRadius: 8,
-        backgroundColor: '#9A66EE',
-    },
-    giftRibbonVertical: {
-        position: 'absolute',
-        bottom: 0,
-        width: 10,
-        height: 48,
-        backgroundColor: '#FF7BB4',
-    },
-    giftRibbonHorizontal: {
-        position: 'absolute',
-        bottom: 20,
-        width: 48,
-        height: 8,
-        backgroundColor: '#FF7BB4',
-    },
-    footerCopy: {
-        flex: 1,
-    },
-    footerTitle: {
-        color: '#6F56D9',
-        fontFamily: fontFamily.extraBold,
-        fontSize: 19,
-        fontWeight: fontWeight('800'),
-    },
-    footerText: {
-        color: '#8C78BE',
-        fontFamily: fontFamily.bold,
-        fontSize: 16,
-        fontWeight: fontWeight('600'),
-        marginTop: 4,
-    },
-    footerHeart: {
-        width: 42,
-        height: 38,
-        transform: [{ rotate: '-45deg' }],
-    },
-    footerHeartLeft: {
-        position: 'absolute',
-        left: 0,
-        top: 8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#FF6D9C',
-    },
-    footerHeartRight: {
-        position: 'absolute',
-        right: 0,
-        top: 8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#FF6D9C',
-    },
-    footerHeartBottom: {
-        position: 'absolute',
-        left: 9,
-        top: 14,
-        width: 24,
-        height: 24,
-        borderRadius: 5,
-        backgroundColor: '#FF6D9C',
     },
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
     Image,
@@ -12,7 +12,7 @@ import {
     StatusBar,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { getPenguinMoodImage } from '../constants/PenguinMoods';
@@ -20,10 +20,12 @@ import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import HomeWidgetShowcase from '../components/HomeWidgetShowcase';
+import { getUser, storage } from '../utils/authStorage';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const SCRIBBLE_PREVIEW_PADDING = 26;
 const SCRIBBLE_PREVIEW_MIN_SIZE = 132;
+const VIDEO_CALL_GUIDANCE_KEY = 'home_video_call_guidance_v1';
 
 const getScribblePreviewBox = (paths = []) => {
     const points = [];
@@ -194,12 +196,19 @@ const HomeScreen = ({
     hasPremiumAccess = false,
 }) => {
     const { width } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
     const badgeWiggleAnim = useRef(new Animated.Value(0)).current;
     const badgePulseAnim = useRef(new Animated.Value(1)).current;
     const playedNudgeKeyRef = useRef(null);
     const onRefreshPuzzleRef = useRef(onRefreshPuzzle);
     const [now, setNow] = useState(Date.now());
+    const [showVideoCallGuide, setShowVideoCallGuide] = useState(false);
+    const videoCallGuideStorageKey = useMemo(() => {
+        const currentUser = getUser();
+        const currentUserId = currentUser?.id || currentUser?._id || 'device';
+        return `${VIDEO_CALL_GUIDANCE_KEY}:${currentUserId}`;
+    }, []);
 
     const penguinMoodImage = getPenguinMoodImage(partnerMood?.id, yourMood?.id);
     const scribblePreviewBox = useMemo(
@@ -237,6 +246,31 @@ const HomeScreen = ({
     useEffect(() => {
         onRefreshPuzzleRef.current?.();
     }, []);
+
+    useEffect(() => {
+        if (!hasPartner || storage.getBoolean(videoCallGuideStorageKey) === true) {
+            return undefined;
+        }
+
+        const timer = setTimeout(() => {
+            // Mark it immediately when presented so leaving Home without
+            // pressing "Got it" cannot cause the one-time guide to reappear.
+            storage.set(videoCallGuideStorageKey, true);
+            setShowVideoCallGuide(true);
+        }, 650);
+
+        return () => clearTimeout(timer);
+    }, [hasPartner, videoCallGuideStorageKey]);
+
+    const dismissVideoCallGuide = useCallback(() => {
+        setShowVideoCallGuide(false);
+        storage.set(videoCallGuideStorageKey, true);
+    }, [videoCallGuideStorageKey]);
+
+    const handleVideoCallPress = useCallback(() => {
+        dismissVideoCallGuide();
+        onVideoCallPress?.();
+    }, [dismissVideoCallGuide, onVideoCallPress]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -328,6 +362,13 @@ const HomeScreen = ({
     });
 
     const fullWidthImageStyle = { width };
+    const androidStatusBarHeight = StatusBar.currentHeight || 0;
+    const topPadding = Platform.OS === 'android'
+        ? Math.max(insets.top, androidStatusBarHeight) + 14
+        : Math.max(insets.top + 4, 16);
+    const fadeOverlayHeight = Platform.OS === 'android'
+        ? Math.max(insets.top, androidStatusBarHeight) + 40
+        : Math.max(insets.top + 28, 64);
 
     return (
         <LinearGradient
@@ -338,10 +379,22 @@ const HomeScreen = ({
             style={styles.screenGradient}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <SafeAreaView style={styles.container} edges={['top']}>
+            <View style={styles.container}>
+                <LinearGradient
+                    colors={['#F8D9EC', 'rgba(248, 217, 236, 0.88)', 'rgba(248, 217, 236, 0.45)', 'rgba(248, 217, 236, 0)']}
+                    locations={[0, 0.4, 0.72, 1]}
+                    style={[
+                        styles.topFadeGradient,
+                        { height: fadeOverlayHeight }
+                    ]}
+                    pointerEvents="none"
+                />
                 <ScrollView
                     style={styles.scrollView}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        { paddingTop: topPadding },
+                    ]}
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.header}>
@@ -355,15 +408,36 @@ const HomeScreen = ({
 
                         <View style={styles.headerActions}>
                             {hasPartner && (
-                                <TouchableOpacity
-                                    style={[styles.headerButton, !partnerOnline && styles.offlineHeaderButton]}
-                                    onPress={onVideoCallPress}
-                                    activeOpacity={0.82}
-                                    accessibilityLabel="Start video call"
-                                >
-                                    <IconSvg type="video" color={partnerOnline ? '#D84F86' : '#A99CA9'} size={20} />
-                                    <View style={[styles.presenceDot, partnerOnline ? styles.onlineDot : styles.offlineDot]} />
-                                </TouchableOpacity>
+                                <View style={styles.videoCallGuideAnchor}>
+                                    {showVideoCallGuide && <View style={styles.videoCallGuideRing} pointerEvents="none" />}
+                                    <TouchableOpacity
+                                        style={[styles.headerButton, !partnerOnline && styles.offlineHeaderButton]}
+                                        onPress={handleVideoCallPress}
+                                        activeOpacity={0.82}
+                                        accessibilityLabel="Start video call"
+                                    >
+                                        <IconSvg type="video" color={partnerOnline ? '#D84F86' : '#A99CA9'} size={20} />
+                                        <View style={[styles.presenceDot, partnerOnline ? styles.onlineDot : styles.offlineDot]} />
+                                    </TouchableOpacity>
+                                    {showVideoCallGuide && (
+                                        <View style={styles.videoCallGuide} accessibilityRole="alert">
+                                            <View style={styles.videoCallGuideArrow} />
+                                            <HomeText style={styles.videoCallGuideTitle}>Start a video call</HomeText>
+                                            <HomeText style={styles.videoCallGuideText}>
+                                                Tap here to call {partnerName}. If they’re away, we’ll notify them.
+                                            </HomeText>
+                                            <TouchableOpacity
+                                                style={styles.videoCallGuideButton}
+                                                onPress={dismissVideoCallGuide}
+                                                activeOpacity={0.8}
+                                                accessibilityRole="button"
+                                                accessibilityLabel="Dismiss video call guidance"
+                                            >
+                                                <HomeText style={styles.videoCallGuideButtonText}>Got it</HomeText>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </View>
                             )}
                             <TouchableOpacity style={styles.headerButton} onPress={onNotificationPress} activeOpacity={0.82}>
                                 <IconSvg type="bell" color={colors.text} size={20} />
@@ -703,7 +777,7 @@ const HomeScreen = ({
                     </View>
 
                 </ScrollView>
-            </SafeAreaView>
+            </View>
         </LinearGradient>
     );
 };
@@ -726,6 +800,13 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
+    },
+    topFadeGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 20,
     },
     scrollView: {
         flex: 1,
@@ -755,6 +836,72 @@ const styles = StyleSheet.create({
     headerActions: {
         flexDirection: 'row',
         gap: 7,
+        zIndex: 20,
+    },
+    videoCallGuideAnchor: {
+        width: 39,
+        height: 39,
+        zIndex: 30,
+    },
+    videoCallGuideRing: {
+        position: 'absolute',
+        top: -5,
+        left: -5,
+        width: 49,
+        height: 49,
+        borderRadius: 25,
+        borderWidth: 3,
+        borderColor: 'rgba(216,79,134,0.38)',
+        backgroundColor: 'rgba(255,255,255,0.42)',
+    },
+    videoCallGuide: {
+        position: 'absolute',
+        top: 53,
+        left: -96,
+        width: 232,
+        paddingHorizontal: 16,
+        paddingTop: 15,
+        paddingBottom: 13,
+        borderRadius: 18,
+        backgroundColor: '#4B2947',
+        shadowColor: '#321B33',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+        elevation: 16,
+    },
+    videoCallGuideArrow: {
+        position: 'absolute',
+        top: -7,
+        left: 109,
+        width: 14,
+        height: 14,
+        backgroundColor: '#4B2947',
+        transform: [{ rotate: '45deg' }],
+    },
+    videoCallGuideTitle: {
+        color: '#FFFFFF',
+        fontFamily: fontFamily.bold,
+        fontSize: 15,
+        marginBottom: 4,
+    },
+    videoCallGuideText: {
+        color: '#F3E7F0',
+        fontSize: 12.5,
+        lineHeight: 18,
+    },
+    videoCallGuideButton: {
+        alignSelf: 'flex-end',
+        marginTop: 10,
+        paddingHorizontal: 13,
+        paddingVertical: 7,
+        borderRadius: 12,
+        backgroundColor: '#F7D8E8',
+    },
+    videoCallGuideButtonText: {
+        color: '#8D315F',
+        fontFamily: fontFamily.bold,
+        fontSize: 12,
     },
     headerButton: {
         width: 39,

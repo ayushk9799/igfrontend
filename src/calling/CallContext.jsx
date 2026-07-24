@@ -5,6 +5,7 @@ import {
     Platform,
 } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
+import * as Haptics from 'expo-haptics';
 import InCallManager from 'react-native-incall-manager';
 import { useSelector } from 'react-redux';
 import {
@@ -22,6 +23,7 @@ import { CALL_STATE, ICE_FAILURE_TIMEOUT_MS, STUN_URLS } from './callConstants';
 import { collectSanitizedStats, getCandidateType } from './callDiagnostics';
 
 const CallContext = createContext(null);
+const RemoteAudioLevelContext = createContext(0);
 
 const initialDiagnostic = () => ({
     startedAt: new Date().toISOString(),
@@ -49,6 +51,10 @@ export const CallProvider = ({ children }) => {
     const user = useSelector(selectUser);
     const userId = String(user?.id || user?._id || '');
     const partnerId = String(user?.partnerId || '');
+    const partnerDisplayName = user?.partnerNickname
+        || user?.partnerUsername
+        || user?.partnerName
+        || 'Partner';
 
     const [callState, setCallState] = useState(CALL_STATE.IDLE);
     const [activeCall, setActiveCall] = useState(null);
@@ -63,6 +69,7 @@ export const CallProvider = ({ children }) => {
     const [remoteAudioLevel, setRemoteAudioLevel] = useState(0);
     const [permissionState, setPermissionState] = useState(initialPermissionState);
     const [permissionIssue, setPermissionIssue] = useState(null);
+    const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
     const [requestingDevice, setRequestingDevice] = useState(null);
     const [errorMessage, setErrorMessage] = useState(null);
 
@@ -80,17 +87,28 @@ export const CallProvider = ({ children }) => {
     const connectionTimeoutRef = useRef(null);
     const finishingRef = useRef(false);
     const pendingOutgoingRef = useRef(false);
+    const startingCallRef = useRef(false);
+    const permissionActionRef = useRef(false);
     const settingsDeviceRef = useRef(null);
     const speakerPreferenceRef = useRef(true);
     const userMinimizedCallRef = useRef(false);
+    const errorTimerRef = useRef(null);
 
     useEffect(() => {
         activeCallRef.current = activeCall;
     }, [activeCall]);
 
     const notifyError = useCallback((message) => {
+        if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
         setErrorMessage(message);
-        setTimeout(() => setErrorMessage(null), 4000);
+        errorTimerRef.current = setTimeout(() => {
+            errorTimerRef.current = null;
+            setErrorMessage(null);
+        }, 4000);
+    }, []);
+
+    useEffect(() => () => {
+        if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     }, []);
 
     const refreshPermissionStatuses = useCallback(async () => {
@@ -163,9 +181,12 @@ export const CallProvider = ({ children }) => {
         setRemoteMediaState(initialMediaState);
         setRemoteAudioLevel(0);
         setPermissionIssue(null);
+        setShowPermissionPrompt(false);
         setRequestingDevice(null);
         finishingRef.current = false;
         pendingOutgoingRef.current = false;
+        startingCallRef.current = false;
+        permissionActionRef.current = false;
         settingsDeviceRef.current = null;
     }, [stopCallSounds, stopMedia]);
 
@@ -214,6 +235,7 @@ export const CallProvider = ({ children }) => {
         if (finishingRef.current) return;
         finishingRef.current = true;
         stopCallSounds();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
         const call = activeCallRef.current;
 
         if (notifyServer && socket && call?.callId) {
@@ -222,7 +244,17 @@ export const CallProvider = ({ children }) => {
         await sendDiagnostic({ outcome, failureCode });
         resetCall();
         if (message) notifyError(message);
+        if (outcome === 'failed') setCallState(CALL_STATE.FAILED);
     }, [notifyError, resetCall, sendDiagnostic, socket, stopCallSounds]);
+
+    const dismissFailedCall = useCallback(() => {
+        if (errorTimerRef.current) {
+            clearTimeout(errorTimerRef.current);
+            errorTimerRef.current = null;
+        }
+        setErrorMessage(null);
+        setCallState(current => current === CALL_STATE.FAILED ? CALL_STATE.IDLE : current);
+    }, []);
 
     const emitLocalMediaState = useCallback((overrides = {}) => {
         const callId = activeCallRef.current?.callId;
@@ -242,7 +274,7 @@ export const CallProvider = ({ children }) => {
             existingTrack.enabled = true;
             if (isMicrophone) setIsMuted(false);
             else setIsCameraEnabled(true);
-            setPermissionIssue(null);
+            setPermissionIssue(current => current === device ? null : current);
             emitLocalMediaState({ [isMicrophone ? 'microphoneEnabled' : 'cameraEnabled']: true });
             return true;
         }
@@ -491,17 +523,57 @@ export const CallProvider = ({ children }) => {
         }
     }, []);
 
+    const beginOutgoingCall = useCallback(() => {
+        permissionActionRef.current = false;
+        if (!pendingOutgoingRef.current || !activeCallRef.current || activeCallRef.current.callId) {
+            startingCallRef.current = false;
+            setShowPermissionPrompt(false);
+            return;
+        }
+        if (!socket?.connected) {
+            resetCall();
+            notifyError('You are offline. Reconnect before starting a call.');
+            return;
+        }
+
+        setShowPermissionPrompt(false);
+        startingCallRef.current = false;
+        diagnosticRef.current = initialDiagnostic();
+        socket.emit('call:start', {
+            mediaType: 'video',
+            microphoneEnabled: audioTrackRef.current?.enabled === true,
+            cameraEnabled: videoTrackRef.current?.enabled === true,
+        });
+    }, [notifyError, resetCall, socket]);
+
+    const allowCallPermissions = useCallback(async () => {
+        if (!pendingOutgoingRef.current || requestingDevice || permissionActionRef.current) return;
+        permissionActionRef.current = true;
+        try {
+            await activateDevice('camera', true);
+            if (!pendingOutgoingRef.current) return;
+            await activateDevice('microphone', true);
+            if (!pendingOutgoingRef.current) return;
+            beginOutgoingCall();
+        } finally {
+            permissionActionRef.current = false;
+        }
+    }, [activateDevice, beginOutgoingCall, requestingDevice]);
+
+    const continueCallWithoutPermissions = useCallback(() => {
+        if (!pendingOutgoingRef.current || requestingDevice || permissionActionRef.current) return;
+        permissionActionRef.current = true;
+        beginOutgoingCall();
+    }, [beginOutgoingCall, requestingDevice]);
+
     const startCall = useCallback(async () => {
+        if (startingCallRef.current) return;
         if (!partnerId) {
             notifyError('Pair with a partner before starting a call.');
             return;
         }
-        if (!isConnected) {
+        if (!isConnected || !socket) {
             notifyError('You are offline. Reconnect before starting a call.');
-            return;
-        }
-        if (!partnerOnline) {
-            notifyError('Your partner is offline right now.');
             return;
         }
         if (callState !== CALL_STATE.IDLE) {
@@ -513,44 +585,45 @@ export const CallProvider = ({ children }) => {
             callId: null,
             callerId: userId,
             calleeId: partnerId,
-            partnerName: user.partnerUsername || 'Your Love',
+            partnerName: partnerDisplayName,
             partnerAvatar: user.partnerAvatarThumbnail || user.partnerAvatar || null,
             mediaType: 'video',
         };
+        startingCallRef.current = true;
         activeCallRef.current = pendingCall;
         userMinimizedCallRef.current = false;
+        pendingOutgoingRef.current = true;
         setActiveCall(pendingCall);
-        setCallState(CALL_STATE.PRECALL);
+        setCallState(CALL_STATE.OUTGOING);
         setIsExpanded(true);
         setPermissionIssue(null);
 
         const statuses = await refreshPermissionStatuses();
-        await Promise.all([
-            statuses.microphone === permissions.RESULT.GRANTED
-                ? activateDevice('microphone', false)
-                : Promise.resolve(),
-            statuses.camera === permissions.RESULT.GRANTED
-                ? activateDevice('camera', false)
-                : Promise.resolve(),
-        ]);
-    }, [activateDevice, callState, isConnected, notifyError, partnerId, partnerOnline, refreshPermissionStatuses, user.partnerAvatar, user.partnerAvatarThumbnail, user.partnerUsername, userId]);
 
-    const placeCall = useCallback(() => {
-        if (callState !== CALL_STATE.PRECALL || !socket) return;
-        diagnosticRef.current = initialDiagnostic();
-        pendingOutgoingRef.current = true;
-        setCallState(CALL_STATE.OUTGOING);
-        setIsExpanded(false);
-        socket.emit('call:start', {
-            mediaType: 'video',
-            microphoneEnabled: audioTrackRef.current?.enabled === true,
-            cameraEnabled: videoTrackRef.current?.enabled === true,
-        });
-    }, [callState, socket]);
+        if (!pendingOutgoingRef.current || activeCallRef.current !== pendingCall) {
+            resetCall();
+            return;
+        }
 
-    const closePreCall = useCallback(() => {
-        if (callState === CALL_STATE.PRECALL) resetCall();
-    }, [callState, resetCall]);
+        const permissionsReady = statuses.camera === permissions.RESULT.GRANTED
+            && statuses.microphone === permissions.RESULT.GRANTED;
+        if (!permissionsReady) {
+            setShowPermissionPrompt(true);
+            return;
+        }
+
+        await activateDevice('camera', false);
+        if (!pendingOutgoingRef.current || activeCallRef.current !== pendingCall) {
+            resetCall();
+            return;
+        }
+        await activateDevice('microphone', false);
+        if (!pendingOutgoingRef.current || activeCallRef.current !== pendingCall) {
+            resetCall();
+            return;
+        }
+        beginOutgoingCall();
+    }, [activateDevice, beginOutgoingCall, callState, isConnected, notifyError, partnerDisplayName, partnerId, refreshPermissionStatuses, resetCall, socket, user.partnerAvatar, user.partnerAvatarThumbnail, userId]);
 
     const acceptCall = useCallback(async () => {
         const call = activeCallRef.current;
@@ -558,7 +631,7 @@ export const CallProvider = ({ children }) => {
         stopCallSounds();
         diagnosticRef.current = initialDiagnostic();
 
-        // The caller prepares already-granted devices on the pre-call screen.
+        // The caller prepares devices before the outgoing screen appears.
         // Do the equivalent for the answering side only after they tap Accept,
         // so a video call is symmetric without activating devices while ringing.
         await refreshPermissionStatuses();
@@ -683,17 +756,15 @@ export const CallProvider = ({ children }) => {
 
     useEffect(() => {
         try {
-            if (callState === CALL_STATE.OUTGOING && activeCall?.callId) {
-                InCallManager.startRingback('_DEFAULT_');
-            } else if (callState === CALL_STATE.INCOMING) {
-                InCallManager.startRingtone('_DEFAULT_');
+            if (callState === CALL_STATE.INCOMING) {
+                InCallManager.startRingtone('_BUNDLE_', [0, 700, 500, 700, 500, 700]);
             }
         } catch (error) {
             // A ringtone failure should not prevent the call from continuing.
         }
 
         return stopCallSounds;
-    }, [activeCall?.callId, callState, stopCallSounds]);
+    }, [callState, stopCallSounds]);
 
     const isCallAudioActive = [CALL_STATE.CONNECTING, CALL_STATE.CONNECTED].includes(callState);
     useEffect(() => {
@@ -812,7 +883,7 @@ export const CallProvider = ({ children }) => {
             const outgoingCall = {
                 ...activeCallRef.current,
                 ...call,
-                partnerName: user.partnerUsername || 'Your Love',
+                partnerName: partnerDisplayName,
                 partnerAvatar: user.partnerAvatarThumbnail || user.partnerAvatar || null,
             };
             activeCallRef.current = outgoingCall;
@@ -824,7 +895,7 @@ export const CallProvider = ({ children }) => {
             diagnosticRef.current = initialDiagnostic();
             const incomingCall = {
                 ...call,
-                partnerName: call.callerName || user.partnerUsername || 'Your Love',
+                partnerName: user.partnerNickname || call.callerNickname || call.callerName || partnerDisplayName,
                 partnerAvatar: user.partnerAvatarThumbnail || user.partnerAvatar || null,
             };
             activeCallRef.current = incomingCall;
@@ -929,7 +1000,7 @@ export const CallProvider = ({ children }) => {
             finishCall({
                 outcome: 'rejected',
                 failureCode: 'partner_rejected',
-                message: `${call.partnerName || 'Your partner'} declined the call.`,
+                message: `${call.partnerName || partnerDisplayName} declined the call.`,
             });
         };
         const onCancelled = remoteFinish({ outcome: 'cancelled', message: 'The call was cancelled.' });
@@ -942,6 +1013,12 @@ export const CallProvider = ({ children }) => {
         socket.on('call:ended', onEnded);
         socket.on('call:busy', onError);
         socket.on('call:error', onError);
+
+        const requestPendingCall = () => socket.emit('call:getPending');
+        socket.on('connect', requestPendingCall);
+        if (socket.connected) {
+            requestPendingCall();
+        }
 
         return () => {
             socket.off('call:outgoing', onOutgoing);
@@ -957,8 +1034,9 @@ export const CallProvider = ({ children }) => {
             socket.off('call:ended', onEnded);
             socket.off('call:busy', onError);
             socket.off('call:error', onError);
+            socket.off('connect', requestPendingCall);
         };
-    }, [attachAnswerTracks, createPeerConnection, emitLocalMediaState, finishCall, flushPendingCandidates, refreshPermissionStatuses, socket, stopCallSounds, user.partnerAvatar, user.partnerAvatarThumbnail, user.partnerUsername, userId]);
+    }, [attachAnswerTracks, createPeerConnection, emitLocalMediaState, finishCall, flushPendingCandidates, partnerDisplayName, refreshPermissionStatuses, socket, stopCallSounds, user.partnerAvatar, user.partnerAvatarThumbnail, user.partnerNickname, userId]);
 
     useEffect(() => () => stopMedia(), [stopMedia]);
 
@@ -983,17 +1061,18 @@ export const CallProvider = ({ children }) => {
         isChangingAudioOutput,
         isRemoteCameraEnabled,
         isRemoteMuted: !remoteMediaState.microphoneEnabled,
-        remoteAudioLevel,
         localAvatar: user.avatarThumbnail || user.avatar || null,
         microphonePermission: permissionState.microphone,
         cameraPermission: permissionState.camera,
         permissionIssue,
+        showPermissionPrompt,
         requestingDevice,
         errorMessage,
+        dismissFailedCall,
         partnerOnline,
+        allowCallPermissions,
+        continueCallWithoutPermissions,
         startCall,
-        placeCall,
-        closePreCall,
         acceptCall,
         rejectCall,
         cancelCall,
@@ -1013,15 +1092,21 @@ export const CallProvider = ({ children }) => {
         dismissPermissionIssue: () => setPermissionIssue(null),
         openPermissionSettings,
     }), [
-        acceptCall, activeCall, callState, cancelCall, closePreCall,
-        endCall, errorMessage, isCameraEnabled, isChangingAudioOutput, isExpanded, isMuted, isRemoteCameraEnabled, isSpeakerOn, localStream,
+        acceptCall, activeCall, allowCallPermissions, callState, cancelCall, continueCallWithoutPermissions,
+        dismissFailedCall, endCall, errorMessage, isCameraEnabled, isChangingAudioOutput, isExpanded, isMuted, isRemoteCameraEnabled, isSpeakerOn, localStream,
         openPermissionSettings, partnerOnline, permissionIssue,
-        permissionState.camera, permissionState.microphone, placeCall, rejectCall,
-        remoteAudioLevel, remoteMediaState.microphoneEnabled, remoteStream, requestingDevice,
-        startCall, switchCamera, toggleCamera, toggleMute, toggleSpeaker, user.avatar, user.avatarThumbnail,
+        permissionState.camera, permissionState.microphone, rejectCall,
+        remoteMediaState.microphoneEnabled, remoteStream, requestingDevice,
+        showPermissionPrompt, startCall, switchCamera, toggleCamera, toggleMute, toggleSpeaker, user.avatar, user.avatarThumbnail,
     ]);
 
-    return <CallContext.Provider value={value}>{children}</CallContext.Provider>;
+    return (
+        <CallContext.Provider value={value}>
+            <RemoteAudioLevelContext.Provider value={remoteAudioLevel}>
+                {children}
+            </RemoteAudioLevelContext.Provider>
+        </CallContext.Provider>
+    );
 };
 
 export const useCall = () => {
@@ -1029,5 +1114,7 @@ export const useCall = () => {
     if (!context) throw new Error('useCall must be used inside CallProvider');
     return context;
 };
+
+export const useRemoteAudioLevel = () => useContext(RemoteAudioLevelContext);
 
 export default CallContext;

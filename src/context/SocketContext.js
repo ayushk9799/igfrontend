@@ -113,19 +113,34 @@ export const SocketProvider = ({ children }) => {
     const connect = useCallback(() => {
         const user = getUser();
         const userId = user?.id || user?._id;
+        const rawPartnerId = user?.partnerId;
+        const partnerId = rawPartnerId?.id || rawPartnerId?._id || rawPartnerId;
         if (!userId) {
             return;
         }
 
-        // Check if already connected
-        if (socketRef.current?.connected) {
-            // If the connected userId matches the current user, we're good
-            if (socketRef.current.auth?.userId === userId) {
+        const existingSocket = socketRef.current;
+        if (existingSocket) {
+            const isCurrentUser = String(existingSocket.auth?.userId) === String(userId);
+
+            if (isCurrentUser && existingSocket.connected) {
+                // Foregrounding an already connected app must still refresh
+                // presence in case an event was missed while it was suspended.
+                existingSocket.emit('presence:getStatus');
                 refreshCurrentPhotos();
                 return;
             }
-            // Otherwise, we have a stale connection (e.g. after logout/login)
-            socketRef.current.disconnect();
+
+            // Do not create a duplicate socket while this one is connecting or
+            // automatically reconnecting.
+            if (isCurrentUser && existingSocket.active) {
+                return;
+            }
+
+            // Otherwise, discard a stale socket (for example after account
+            // switching or after reconnection has permanently stopped).
+            existingSocket.disconnect();
+            socketRef.current = null;
         }
 
         setConnectionState(CONNECTION_STATE.CONNECTING);
@@ -160,6 +175,7 @@ export const SocketProvider = ({ children }) => {
 
         socketInstance.on('disconnect', (reason) => {
             setConnectionState(CONNECTION_STATE.DISCONNECTED);
+            setPartnerOnline(false);
         });
 
         socketInstance.on('connect_error', (error) => {
@@ -184,15 +200,24 @@ export const SocketProvider = ({ children }) => {
 
         // Presence events
         socketInstance.on('presence:online', (data) => {
+            if (!partnerId || String(data?.userId) !== String(partnerId)) {
+                return;
+            }
             setPartnerOnline(true);
         });
 
         socketInstance.on('presence:offline', (data) => {
+            if (!partnerId || String(data?.userId) !== String(partnerId)) {
+                return;
+            }
             setPartnerOnline(false);
         });
 
         socketInstance.on('presence:status', (data) => {
-            setPartnerOnline(data.isOnline);
+            if (data?.partnerId && partnerId && String(data.partnerId) !== String(partnerId)) {
+                return;
+            }
+            setPartnerOnline(Boolean(data?.isOnline));
         });
 
         // Mood events - partner's mood
@@ -206,7 +231,6 @@ export const SocketProvider = ({ children }) => {
         socketInstance.on('mood:partnerMood', (data) => {
             if (data.mood && data.mood.emoji) {
                 setPartnerMood(data.mood);
-                setPartnerOnline(data.isOnline);
             } else {
                 setPartnerMood(null);
             }

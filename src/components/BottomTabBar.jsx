@@ -1,6 +1,7 @@
 // Premium Bottom Tab Bar Component
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+    AccessibilityInfo,
     View,
     TouchableOpacity,
     Text,
@@ -12,7 +13,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { House, CalendarDays, Gamepad2, MessageCircle, Notebook } from 'lucide-react-native';
+import { House, Gamepad2, MessageCircle, Notebook } from 'lucide-react-native';
 
 const getLiquidGlassModule = () => {
     if (Platform.OS !== 'ios') return null;
@@ -40,10 +41,13 @@ const getGlassAvailability = () => {
         };
     }
 
+    const isApiAvailable = !!liquidGlassModule.isGlassEffectAPIAvailable?.();
+    const isLiquidGlassAvailable = !!liquidGlassModule.isLiquidGlassAvailable?.();
+
     return {
         GlassView,
-        isApiAvailable: true,
-        isLiquidGlassAvailable: !!liquidGlassModule.isLiquidGlassAvailable?.(),
+        isApiAvailable,
+        isLiquidGlassAvailable,
     };
 };
 
@@ -51,33 +55,71 @@ const getGlassAvailability = () => {
 const iconMap = {
     home: House,
     timeline: Notebook,
-    today: CalendarDays,
     games: Gamepad2,
     chats: MessageCircle,
 };
 
+const TABS = [
+    { key: 'home', label: 'Home', iconKey: 'home' },
+    { key: 'memories', label: 'Timeline', iconKey: 'timeline' },
+    { key: 'games', label: 'Games', iconKey: 'games' },
+    { key: 'chats', label: 'Chats', iconKey: 'chats' },
+];
+
+const useAccessibilityPreferences = () => {
+    const [reduceMotion, setReduceMotion] = useState(false);
+    const [reduceTransparency, setReduceTransparency] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+            if (isMounted) setReduceMotion(enabled);
+        });
+        AccessibilityInfo.isReduceTransparencyEnabled().then((enabled) => {
+            if (isMounted) setReduceTransparency(enabled);
+        });
+
+        const motionSubscription = AccessibilityInfo.addEventListener(
+            'reduceMotionChanged',
+            setReduceMotion
+        );
+        const transparencySubscription = AccessibilityInfo.addEventListener(
+            'reduceTransparencyChanged',
+            setReduceTransparency
+        );
+
+        return () => {
+            isMounted = false;
+            motionSubscription.remove();
+            transparencySubscription.remove();
+        };
+    }, []);
+
+    return { reduceMotion, reduceTransparency };
+};
+
 // Vector icon tab component
 const TabIcon = ({ iconKey, color, size = 24, filled = false }) => {
-    const IconComponent = iconMap[iconKey];
+    const IconComponent = iconMap[iconKey] || House;
     return <IconComponent color={color} size={size} strokeWidth={filled ? 2.5 : 1.75} />;
 };
 
-
-
-const TabItem = ({ iconKey, label, isActive, onPress, badge = 0 }) => {
+const TabItem = ({ iconKey, label, isActive, onPress, badge = 0, reduceMotion = false }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
-    const translateY = useRef(new Animated.Value(0)).current;
     const activeGlowAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
+    const pressAnimationRef = useRef(null);
 
     useEffect(() => {
-        Animated.parallel([
+        if (reduceMotion) {
+            scaleAnim.setValue(isActive ? 1.1 : 1);
+            activeGlowAnim.setValue(isActive ? 1 : 0);
+            return () => pressAnimationRef.current?.stop();
+        }
+
+        const activeAnimation = Animated.parallel([
             Animated.spring(scaleAnim, {
                 toValue: isActive ? 1.1 : 1,
-                useNativeDriver: true,
-                friction: 5,
-            }),
-            Animated.spring(translateY, {
-                toValue: 0,
                 useNativeDriver: true,
                 friction: 5,
             }),
@@ -86,24 +128,49 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0 }) => {
                 duration: 180,
                 useNativeDriver: true,
             }),
-        ]).start();
-    }, [activeGlowAnim, isActive, scaleAnim, translateY]);
+        ]);
+
+        activeAnimation.start();
+
+        return () => {
+            activeAnimation.stop();
+            pressAnimationRef.current?.stop();
+        };
+    }, [activeGlowAnim, isActive, reduceMotion, scaleAnim]);
 
     const handlePressIn = () => {
-        Animated.spring(scaleAnim, {
+        if (reduceMotion) {
+            scaleAnim.setValue(0.9);
+            return;
+        }
+
+        pressAnimationRef.current?.stop();
+        pressAnimationRef.current = Animated.spring(scaleAnim, {
             toValue: 0.9,
             useNativeDriver: true,
             friction: 5,
-        }).start();
+        });
+        pressAnimationRef.current.start();
     };
 
     const handlePressOut = () => {
-        Animated.spring(scaleAnim, {
+        if (reduceMotion) {
+            scaleAnim.setValue(isActive ? 1.1 : 1);
+            return;
+        }
+
+        pressAnimationRef.current?.stop();
+        pressAnimationRef.current = Animated.spring(scaleAnim, {
             toValue: isActive ? 1.1 : 1,
             useNativeDriver: true,
             friction: 5,
-        }).start();
+        });
+        pressAnimationRef.current.start();
     };
+
+    const badgeLabel = badge > 0
+        ? `, ${badge} unread ${badge === 1 ? 'message' : 'messages'}`
+        : '';
 
     return (
         <TouchableOpacity
@@ -112,6 +179,9 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0 }) => {
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             activeOpacity={0.9}
+            accessibilityRole="tab"
+            accessibilityLabel={`${label}${badgeLabel}`}
+            accessibilityState={{ selected: isActive }}
         >
             <Animated.View
                 style={[
@@ -119,7 +189,6 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0 }) => {
                     {
                         transform: [
                             { scale: scaleAnim },
-                            { translateY },
                         ],
                     },
                 ]}
@@ -177,29 +246,47 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0 }) => {
     );
 };
 
+/**
+ * @param {{
+ *   currentTab: string,
+ *   onTabChange: (tab: 'home' | 'memories' | 'games' | 'chats') => void,
+ *   chatBadge?: number,
+ * }} props
+ */
 export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
     const insets = useSafeAreaInsets();
+    const { reduceMotion, reduceTransparency } = useAccessibilityPreferences();
     const {
         GlassView,
-        isApiAvailable: shouldUseLiquidGlass,
+        isApiAvailable,
+        isLiquidGlassAvailable,
     } = getGlassAvailability();
+    const shouldUseLiquidGlass = isApiAvailable
+        && isLiquidGlassAvailable
+        && !reduceTransparency;
     const floatingOffsetStyle = {
         bottom: Platform.OS === 'android'
             ? Math.max(insets.bottom, 12)
-            : (insets.bottom > 0 ? insets.bottom - 18 : 2),
+            : Math.max(insets.bottom - 18, 2),
         left: Platform.OS === 'android' ? 18 : 24,
         right: Platform.OS === 'android' ? 18 : 24,
     };
 
-   
-
-    const tabs = [
-        { key: 'home', label: 'Home', iconKey: 'home' },
-        { key: 'memories', label: 'Timeline', iconKey: 'timeline' },
-        { key: 'dailyChallenge', label: 'Today', iconKey: 'today' },
-        { key: 'games', label: 'Games', iconKey: 'games' },
-        { key: 'chats', label: 'Chats', iconKey: 'chats', badge: chatBadge },
-    ];
+    const tabBarContent = (
+        <View style={styles.tabBar} accessibilityRole="tablist">
+            {TABS.map((tab) => (
+                <TabItem
+                    key={tab.key}
+                    iconKey={tab.iconKey}
+                    label={tab.label}
+                    isActive={currentTab === tab.key}
+                    onPress={() => onTabChange(tab.key)}
+                    badge={tab.key === 'chats' ? chatBadge : 0}
+                    reduceMotion={reduceMotion}
+                />
+            ))}
+        </View>
+    );
 
     return (
         <View
@@ -219,35 +306,17 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
                         style={styles.glassSurface}
                     >
                         <View style={styles.glassMilkTint} />
-                        <View style={styles.tabBar}>
-                            {tabs.map((tab) => (
-                                <TabItem
-                                    key={tab.key}
-                                    iconKey={tab.iconKey}
-                                    label={tab.label}
-                                    isActive={currentTab === tab.key}
-                                    onPress={() => onTabChange(tab.key)}
-                                    badge={tab.badge || 0}
-                                />
-                            ))}
-                        </View>
+                        {tabBarContent}
                     </GlassView>
                 ) : (
                     <>
-                        <BlurView intensity={42} tint="light" style={StyleSheet.absoluteFillObject} />
-                        <View style={styles.liquidTint} />
-                        <View style={styles.tabBar}>
-                            {tabs.map((tab) => (
-                                <TabItem
-                                    key={tab.key}
-                                    iconKey={tab.iconKey}
-                                    label={tab.label}
-                                    isActive={currentTab === tab.key}
-                                    onPress={() => onTabChange(tab.key)}
-                                    badge={tab.badge || 0}
-                                />
-                            ))}
-                        </View>
+                        {reduceTransparency ? (
+                            <View style={styles.opaqueSurface} />
+                        ) : (
+                            <BlurView intensity={42} tint="light" style={StyleSheet.absoluteFillObject} />
+                        )}
+                        {!reduceTransparency && <View style={styles.liquidTint} />}
+                        {tabBarContent}
                     </>
                 )}
             </View>
@@ -294,6 +363,10 @@ const styles = StyleSheet.create({
     liquidTint: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(255,255,255,0.34)',
+    },
+    opaqueSurface: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: '#FFF8FC',
     },
     tabBar: {
         flexDirection: 'row',

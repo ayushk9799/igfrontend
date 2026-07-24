@@ -11,8 +11,8 @@ import {
     Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
+import { Video } from 'lucide-react-native';
 import { colors, spacing, borderRadius } from '../theme';
 import GradientBackground from '../components/GradientBackground';
 import { API_BASE } from '../constants/Api';
@@ -87,7 +87,6 @@ export default function ChatListScreen({
     liveChatDisabled = false,
     onLiveChatPress,
     onSelectChat,
-    onBack,
 }) {
     const insets = useSafeAreaInsets();
     const [chats, setChats] = useState([]);
@@ -278,22 +277,10 @@ export default function ChatListScreen({
 
     return (
         <GradientBackground variant="light" showOrbs={true} showParticles={true}>
-            <View style={[styles.container, { paddingTop: insets.top }]}>
+            <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                            <Path
-                                d="M15 18l-6-6 6-6"
-                                stroke={colors.text}
-                                strokeWidth={2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </Svg>
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}> Chats</Text>
-                    <View style={{ width: 44 }} />
+                    <Text style={styles.headerTitle}>Chats</Text>
                 </View>
 
                 <TouchableOpacity
@@ -310,7 +297,7 @@ export default function ChatListScreen({
                         end={{ x: 1, y: 1 }}
                         style={styles.liveChatIcon}
                     >
-                        <Text style={styles.liveChatIconText}>◉</Text>
+                        <Video color="#FFFFFF" size={27} strokeWidth={2.5} />
                     </LinearGradient>
                     <View style={styles.liveChatCopy}>
                         <View style={styles.liveChatTitleRow}>
@@ -319,11 +306,11 @@ export default function ChatListScreen({
                                 <Text style={styles.liveBadgeText}>LIVE</Text>
                             </View>
                         </View>
-                        <Text style={styles.liveChatSubtitle} numberOfLines={1}>
-                            {liveChatDisabled
-                                ? 'Available after your video call ends'
-                                : 'One message each, with their reaction live'}
-                        </Text>
+                        {liveChatDisabled && (
+                            <Text style={styles.liveChatSubtitle} numberOfLines={1}>
+                                Available after your video call ends
+                            </Text>
+                        )}
                         <View style={styles.livePresenceRow}>
                             <View style={[styles.livePresenceDot, partnerOnline && styles.livePresenceDotOnline]} />
                             <Text style={styles.livePresenceText}>
@@ -394,30 +381,19 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.md,
-        borderBottomWidth: 1.5,
-        borderBottomColor: '#FAE8FF',
+        justifyContent: 'flex-start',
+        paddingHorizontal: 18,
+        paddingTop: 6,
+        paddingBottom: 4,
         backgroundColor: 'transparent',
     },
-    backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...cardShadow,
-    },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: fontWeight('800'),
-        color: colors.text,
-        letterSpacing: 0.5,
         fontFamily: fontFamily.extraBold,
+        fontSize: 32,
+        fontWeight: fontWeight('800'),
+        color: '#202B5E',
+        letterSpacing: -0.5,
+        marginBottom: 6,
     },
     liveChatCard: {
         flexDirection: 'row',
@@ -441,11 +417,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
-    },
-    liveChatIconText: {
-        color: '#FFFFFF',
-        fontSize: 27,
-        fontWeight: fontWeight('900'),
     },
     liveChatCopy: {
         flex: 1,

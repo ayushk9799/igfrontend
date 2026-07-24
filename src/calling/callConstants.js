@@ -1,6 +1,5 @@
 export const CALL_STATE = {
     IDLE: 'idle',
-    PRECALL: 'precall',
     INCOMING: 'incoming',
     OUTGOING: 'outgoing',
     CONNECTING: 'connecting',

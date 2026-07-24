@@ -24,11 +24,13 @@ const PartnerPremiumPurchaseModal = ({ visible, partnerName, onClose }) => {
         >
             <View style={styles.backdrop}>
                 <View style={styles.card}>
-                    <LinearGradient
-                        colors={['#FFE4F0', '#FFF8FB', '#FFFFFF']}
-                        locations={[0, 0.58, 1]}
-                        style={styles.cardGradient}
-                    >
+                    <View style={styles.cardSurface}>
+                        <LinearGradient
+                            pointerEvents="none"
+                            colors={['#FFE4F0', '#FFF8FB', '#FFFFFF']}
+                            locations={[0, 0.58, 1]}
+                            style={StyleSheet.absoluteFillObject}
+                        />
                         <View style={[styles.glow, styles.glowLeft]} />
                         <View style={[styles.glow, styles.glowRight]} />
                         <Text style={[styles.floatingHeart, styles.leftHeart]}>♥</Text>
@@ -74,7 +76,7 @@ const PartnerPremiumPurchaseModal = ({ visible, partnerName, onClose }) => {
                                 <Text style={styles.buttonHeart}>♥</Text>
                             </LinearGradient>
                         </Pressable>
-                    </LinearGradient>
+                    </View>
                 </View>
             </View>
         </Modal>
@@ -93,14 +95,16 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 390,
         borderRadius: 32,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FFE4F0',
         shadowColor: '#3C1C31',
         shadowOffset: { width: 0, height: 16 },
         shadowOpacity: 0.28,
         shadowRadius: 28,
         elevation: 18,
     },
-    cardGradient: {
+    cardSurface: {
+        width: '100%',
+        alignSelf: 'stretch',
         alignItems: 'center',
         overflow: 'hidden',
         borderRadius: 32,
@@ -175,9 +179,10 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
         textAlign: 'center',
+        alignSelf: 'stretch',
     },
     message: {
-        maxWidth: 310,
+        alignSelf: 'stretch',
         color: '#746573',
         fontSize: 14,
         lineHeight: 21,
@@ -217,10 +222,12 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     unlockedText: {
+        flexShrink: 1,
         color: '#4A3343',
         fontSize: 13,
         fontFamily: fontFamily.bold,
         fontWeight: fontWeight('700'),
+        textAlign: 'center',
     },
     buttonWrap: {
         alignSelf: 'stretch',

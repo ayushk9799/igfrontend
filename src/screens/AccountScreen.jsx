@@ -23,6 +23,7 @@ import { requestNotificationPermission, registerFCMToken } from '../utils/pushNo
 import { getApp } from '@react-native-firebase/app';
 import { getMessaging, AuthorizationStatus } from '@react-native-firebase/messaging';
 import { PermissionsAndroid } from 'react-native';
+import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -327,7 +328,10 @@ export const AccountScreen = ({
                         >
                             <BackArrowIcon />
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>Settings</Text>
+                        <View style={styles.headerTitleWrap}>
+                            <Text style={styles.headerTitle}>Settings</Text>
+                        </View>
+                        <View style={{ width: 42 }} />
                     </View>
                 )}
 
@@ -441,7 +445,7 @@ export const AccountScreen = ({
                                 <View style={styles.premiumCardHeader}>
                                     <CrownIcon size={20} color="#FFB800" />
                                     <Text style={styles.premiumCardTitle}>
-                                        {premiumSource === 'partner' ? 'Couple Premium ✨' : "You're Premium"}
+                                        Penguin Couple Premium
                                     </Text>
                                 </View>
                                 <View style={styles.premiumCardDetails}>
@@ -491,45 +495,54 @@ export const AccountScreen = ({
                             </View>
                         ) : (
                             <TouchableOpacity
-                                activeOpacity={0.9}
                                 onPress={onNavigateToPremium}
-                                style={styles.upgradeBannerWrap}
+                                activeOpacity={0.9}
+                                style={styles.premiumCardPressable}
+                                accessibilityRole="button"
+                                accessibilityLabel="Open Penguin Couple Premium"
                             >
-                                <Image
-                                    source={require('../../assets/images/premium-banner.png')}
-                                    style={styles.upgradeBannerBg}
-                                    resizeMode="cover"
-                                />
-                                <View style={styles.upgradeBannerContent}>
-                                    <Text
-                                        numberOfLines={1}
-                                        adjustsFontSizeToFit
-                                        style={styles.upgradeBannerTitle}
-                                    >
-                                        Go Premium.{' '}
-                                        <Text style={styles.upgradeBannerTitleItalic}>Unlock More Love.</Text>
-                                    </Text>
-                                    <View style={styles.upgradeBannerFeature}>
-                                        <CheckCircleIcon />
-                                        <Text style={styles.upgradeBannerFeatureText}>Unlimited games</Text>
+                                <View style={styles.premiumCardShadow}>
+                                    <View style={styles.premiumUpgradeCard}>
+                                        <LinearGradient
+                                            colors={['#FFF1A8', '#FFD66B', '#FF9EC4']}
+                                            locations={[0, 0.52, 1]}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 1 }}
+                                            style={styles.premiumCardGradient}
+                                            pointerEvents="none"
+                                        />
+                                        <View style={styles.premiumCardGlowOne} />
+                                        <View style={styles.premiumCardGlowTwo} />
+                                        <View style={styles.premiumCardIcon}>
+                                            <Svg width={25} height={25} viewBox="0 0 24 24" fill="none">
+                                                <Path
+                                                    d="M4 17L2.8 7.2L8.2 11L12 4L15.8 11L21.2 7.2L20 17H4Z"
+                                                    fill="#FFF8D8"
+                                                    stroke="#8A4E18"
+                                                    strokeWidth={1.4}
+                                                    strokeLinejoin="round"
+                                                />
+                                                <Path d="M5 20H19" stroke="#8A4E18" strokeWidth={1.8} strokeLinecap="round" />
+                                            </Svg>
+                                        </View>
+                                        <View style={styles.premiumCardCopy}>
+                                            <Text style={styles.premiumCardBannerTitle}>Penguin Couple Premium</Text>
+                                            <Text style={styles.premiumCardBannerSubtitle} numberOfLines={2}>
+                                                Unlock all games, widgets, live drawing
+                                            </Text>
+                                        </View>
+                                        <View style={styles.premiumCardArrow}>
+                                            <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                                                <Path
+                                                    d="M5 12H18M13 7L18 12L13 17"
+                                                    stroke="#FFFFFF"
+                                                    strokeWidth={2.4}
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </Svg>
+                                        </View>
                                     </View>
-                                    <View style={styles.upgradeBannerFeature}>
-                                        <CheckCircleIcon />
-                                        <Text style={styles.upgradeBannerFeatureText}>2000+ couple questions</Text>
-                                    </View>
-                                    <View style={styles.upgradeBannerFeature}>
-                                        <CheckCircleIcon />
-                                        <Text style={styles.upgradeBannerFeatureText}>Widgets</Text>
-                                    </View>
-                                </View>
-                                <LinearGradient
-                                    colors={['transparent', 'rgba(255,94,151,0.45)']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 0, y: 1 }}
-                                    style={styles.upgradeBannerBottomGradient}
-                                />
-                                <View style={styles.upgradeBannerArrowCircle}>
-                                    <Text style={styles.upgradeBannerArrowText}>→</Text>
                                 </View>
                             </TouchableOpacity>
                         )}
@@ -904,76 +917,95 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         textAlign: 'center',
     },
-    upgradeBannerWrap: {
-        borderRadius: 20,
+    premiumCardPressable: {
+        marginTop: 0,
+    },
+    premiumCardShadow: {
+        borderRadius: 22,
+        backgroundColor: '#FFD66B',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#B45C78',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.18,
+                shadowRadius: 14,
+            },
+            android: {
+                elevation: 5,
+            },
+        }),
+    },
+    premiumUpgradeCard: {
+        height: 70,
+        borderRadius: 22,
         overflow: 'hidden',
-        shadowColor: '#FF5E97',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 5,
-        minHeight: 115,
-    },
-    upgradeBannerBg: {
-        ...StyleSheet.absoluteFillObject,
-        width: '100%',
-        height: '100%',
-        transform: [{ scale: 1.2 }, { translateX: 8 }],
-    },
-    upgradeBannerContent: {
-        paddingTop: 12,
-        paddingBottom: 10,
-        paddingLeft: '32%',
-        paddingRight: 14,
-    },
-    upgradeBannerTitle: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: '#FFFFFF',
-        marginBottom: 6,
-        textShadowColor: 'rgba(0, 0, 0, 0.45)',
-        textShadowOffset: { width: 0, height: 1.5 },
-        textShadowRadius: 4,
-    },
-    upgradeBannerTitleItalic: {
-        fontStyle: 'italic',
-    },
-    upgradeBannerFeature: {
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.82)',
+        paddingHorizontal: 13,
+        paddingVertical: 8,
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 3,
     },
-    upgradeBannerFeatureText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#FFFFFF',
-        marginLeft: 5,
-        textShadowColor: 'rgba(0, 0, 0, 0.4)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
+    premiumCardGradient: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 22,
     },
-    upgradeBannerArrowCircle: {
+    premiumCardGlowOne: {
         position: 'absolute',
-        bottom: 12,
-        right: 14,
+        width: 86,
+        height: 86,
+        borderRadius: 43,
+        right: -18,
+        top: -40,
+        backgroundColor: 'rgba(255,255,255,0.28)',
+    },
+    premiumCardGlowTwo: {
+        position: 'absolute',
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        left: 62,
+        bottom: -38,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    premiumCardIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 13,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 11,
+        backgroundColor: 'rgba(255,255,255,0.48)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.72)',
+    },
+    premiumCardCopy: {
+        flex: 1,
+        minWidth: 0,
+        paddingRight: 10,
+    },
+    premiumCardBannerTitle: {
+        color: '#592A42',
+        fontSize: 15,
+        lineHeight: 19,
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.extraBold,
+    },
+    premiumCardBannerSubtitle: {
+        color: '#79435B',
+        fontSize: 11,
+        lineHeight: 15,
+        fontWeight: fontWeight('700'),
+        fontFamily: fontFamily.bold,
+        marginTop: 3,
+    },
+    premiumCardArrow: {
         width: 30,
         height: 30,
         borderRadius: 15,
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        justifyContent: 'center',
         alignItems: 'center',
-    },
-    upgradeBannerArrowText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: navy,
-    },
-    upgradeBannerBottomGradient: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '20%',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(116,58,84,0.82)',
     },
     allowNotifButton: {
         flexDirection: 'row',
@@ -1055,11 +1087,15 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 3,
     },
+    headerTitleWrap: {
+        flex: 1,
+        alignItems: 'center',
+    },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 20,
         fontWeight: '800',
         color: navy,
-        marginLeft: 14,
+        textAlign: 'center',
     },
 });
 

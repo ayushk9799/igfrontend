@@ -595,9 +595,9 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     headerBackBtn: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
         backgroundColor: 'rgba(255,255,255,0.92)',
         justifyContent: 'center',
         alignItems: 'center',
@@ -606,12 +606,12 @@ const styles = StyleSheet.create({
         ...Platform.select({
             ios: {
                 shadowColor: '#A04D79',
-                shadowOffset: { width: 0, height: 7 },
+                shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.12,
-                shadowRadius: 14,
+                shadowRadius: 10,
             },
             android: {
-                elevation: 4,
+                elevation: 3,
             },
         }),
     },

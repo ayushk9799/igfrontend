@@ -377,9 +377,9 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     backButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
         backgroundColor: colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
