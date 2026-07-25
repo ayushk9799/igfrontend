@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera } from 'react-native-camera-kit';
 import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { FlipType, manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
@@ -26,18 +26,21 @@ const getImageSize = (uri) => new Promise((resolve, reject) => {
     Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
 });
 
-const makeSquareAsset = async (uri) => {
+const makeSquareAsset = async (uri, mirrorHorizontally = false) => {
     const normalizedUri = normalizeUri(uri);
     const { width, height } = await getImageSize(normalizedUri);
     const size = Math.min(width, height);
-    const result = await manipulateAsync(normalizedUri, [{
+    const actions = [{
         crop: {
             originX: Math.max(0, (width - size) / 2),
             originY: Math.max(0, (height - size) / 2),
             width: size,
             height: size,
         },
-    }], { compress: 0.9, format: SaveFormat.JPEG });
+    }];
+    if (mirrorHorizontally) actions.push({ flip: FlipType.Horizontal });
+
+    const result = await manipulateAsync(normalizedUri, actions, { compress: 0.9, format: SaveFormat.JPEG });
 
     return { uri: normalizeUri(result.uri), width: result.width, height: result.height };
 };
@@ -76,7 +79,7 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
             const result = await cameraRef.current?.capture();
             const source = result?.uri || result?.path;
             if (!source) throw new Error('No image captured');
-            setPreviewAsset(await makeSquareAsset(source));
+            setPreviewAsset(await makeSquareAsset(source, cameraType === 'front'));
         } catch (error) {
             Alert.alert('Couldn’t take photo', error?.message || 'Please try again.');
         } finally {
@@ -179,12 +182,23 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
 
                     {previewAsset ? (
                         <View style={styles.previewActions}>
-                            <TouchableOpacity disabled={isSending} onPress={() => setPreviewAsset(null)} style={styles.retakeButton}>
+                            <TouchableOpacity disabled={isSending} onPress={() => setPreviewAsset(null)} activeOpacity={0.82} style={styles.retakeButton}>
                                 <Text style={styles.retakeText}>Retake</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity disabled={isSending} onPress={send} style={styles.sendButton}>
-                                <LinearGradient colors={['#FF6E9F', '#D85CC7', '#9B72F2']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sendGradient}>
-                                    {isSending ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.sendText}>Send to {partnerName}</Text>}
+                            <TouchableOpacity disabled={isSending} onPress={send} activeOpacity={0.88} style={styles.sendButton}>
+                                <LinearGradient colors={['#FF5E97', '#FFA1C9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.sendGradient}>
+                                    {isSending ? (
+                                        <ActivityIndicator color="#FFFFFF" />
+                                    ) : (
+                                        <Text
+                                            numberOfLines={1}
+                                            adjustsFontSizeToFit
+                                            minimumFontScale={0.8}
+                                            style={styles.sendText}
+                                        >
+                                            Send to {partnerName}
+                                        </Text>
+                                    )}
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
@@ -245,11 +259,11 @@ const styles = StyleSheet.create({
     shutterOuter: { width: 78, height: 78, borderRadius: 39, backgroundColor: '#FFFFFF', borderWidth: 4, borderColor: '#F07EAA', alignItems: 'center', justifyContent: 'center', elevation: 6 },
     shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#E95D96' },
     previewActions: { width: '100%', maxWidth: 390, flexDirection: 'row', gap: 12, marginTop: 28 },
-    retakeButton: { flex: 0.75, height: 55, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)', borderWidth: 1, borderColor: '#F0D9E6', alignItems: 'center', justifyContent: 'center' },
-    retakeText: { color: '#654F65', fontSize: 15, fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },
-    sendButton: { flex: 1.25, height: 55, borderRadius: 20, overflow: 'hidden' },
-    sendGradient: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-    sendText: { color: '#FFFFFF', fontSize: 14, fontFamily: fontFamily.bold, fontWeight: fontWeight('700'), textAlign: 'center' },
+    retakeButton: { flex: 0.72, height: 52, borderRadius: 26, backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#FFD2E1', alignItems: 'center', justifyContent: 'center', shadowColor: '#D95C9A', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 3 },
+    retakeText: { color: '#D94E86', fontSize: 15, fontFamily: fontFamily.extraBold, fontWeight: fontWeight('800') },
+    sendButton: { flex: 1.28, height: 52, borderRadius: 26, shadowColor: '#FF5E97', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 5 },
+    sendGradient: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 26, overflow: 'hidden' },
+    sendText: { color: '#FFFFFF', fontSize: 14, fontFamily: fontFamily.extraBold, fontWeight: fontWeight('800'), textAlign: 'center' },
 });
 
 export default CouplePhotoCaptureScreen;

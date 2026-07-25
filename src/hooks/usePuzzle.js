@@ -133,6 +133,18 @@ export const usePuzzle = () => {
         }
     }, []);
 
+    const startPuzzle = useCallback(async (puzzleId) => {
+        try {
+            const response = await fetch(`${API_BASE}/api/puzzle/${puzzleId}/start`, {
+                method: 'POST',
+            });
+            const data = await response.json();
+            return { ...data, httpStatus: response.status };
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    }, []);
+
     /**
      * Record a piece move
      */
@@ -143,7 +155,8 @@ export const usePuzzle = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fromIndex, toIndex, pieces: newPieces }),
             });
-            return await response.json();
+            const data = await response.json();
+            return { ...data, httpStatus: response.status };
         } catch (err) {
             return { success: false, error: err.message };
         }
@@ -173,6 +186,7 @@ export const usePuzzle = () => {
         createPuzzle,
         fetchPendingPuzzles,
         getPuzzle,
+        startPuzzle,
         movePiece,
         solvePuzzle,
         clearError,

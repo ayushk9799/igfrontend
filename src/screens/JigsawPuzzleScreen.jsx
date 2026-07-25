@@ -10,6 +10,7 @@ import {
     PanResponder,
     StatusBar,
     Alert,
+    AppState,
     ScrollView,
     useWindowDimensions,
 } from 'react-native';
@@ -27,6 +28,7 @@ import * as Haptics from 'expo-haptics';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
 const MAX_GRID_SIZE = 9;
+const PUZZLE_DURATION_MS = 5 * 60 * 1000;
 const SHOW_DEV_NUMBERS = false; // Set to false to hide numbers in production
 const TRAY_PIECE_HEIGHT = 110;
 const PIECE_SHADOW_OFFSET = { x: 0.5, y: 0.5 };
@@ -183,16 +185,16 @@ const RaisedPieceEdges = ({
                     <Path
                         d={edgePath}
                         fill="none"
-                        stroke="rgba(255, 255, 255, 0.82)"
-                        strokeWidth={isDragging ? 2.4 : 1.9}
-                        transform="translate(-1 -1)"
+                        stroke="rgba(255, 255, 255, 0.42)"
+                        strokeWidth={isDragging ? 1.5 : 1.1}
+                        transform="translate(-0.45 -0.45)"
                     />
                     <Path
                         d={edgePath}
                         fill="none"
-                        stroke="rgba(44, 20, 72, 0.34)"
-                        strokeWidth={isDragging ? 2.8 : 2.2}
-                        transform="translate(1.2 1.6)"
+                        stroke="rgba(44, 20, 72, 0.18)"
+                        strokeWidth={isDragging ? 1.7 : 1.25}
+                        transform="translate(0.55 0.7)"
                     />
                 </React.Fragment>
             ))}
@@ -308,14 +310,22 @@ const timerStyles = StyleSheet.create({
  */
 const JigsawPuzzleScreen = ({ navigation, route }) => {
     const { puzzleId, puzzleData: initialData } = route.params || {};
-    const { getPuzzle, movePiece } = usePuzzle();
+    const { getPuzzle, startPuzzle, movePiece } = usePuzzle();
 
     const [puzzle, setPuzzle] = useState(initialData || null);
     const [pieces, setPieces] = useState([]);
     const [trayOrder, setTrayOrder] = useState([]);
     const [moveCount, setMoveCount] = useState(0);
     const [isSolved, setIsSolved] = useState(false);
-    const [showReference, setShowReference] = useState(true);
+    const [showReference, setShowReference] = useState(initialData?.status !== 'in_progress');
+    const [expiresAt, setExpiresAt] = useState(initialData?.expiresAt || null);
+    const [remainingMs, setRemainingMs] = useState(() => (
+        initialData?.expiresAt
+            ? Math.max(0, new Date(initialData.expiresAt).getTime() - Date.now())
+            : PUZZLE_DURATION_MS
+    ));
+    const [isExpired, setIsExpired] = useState(initialData?.status === 'expired');
+    const [isStarting, setIsStarting] = useState(false);
     const [draggingPiece, setDraggingPiece] = useState(null);
     const draggingIndex = draggingPiece ? draggingPiece.currentIndex : null;
     const dragPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -376,6 +386,10 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     useEffect(() => {
         piecesRef.current = pieces;
     }, [pieces]);
+    const interactionLockedRef = useRef(isSolved || isExpired || showReference);
+    useEffect(() => {
+        interactionLockedRef.current = isSolved || isExpired || showReference;
+    }, [isExpired, isSolved, showReference]);
 
     // Grid position ref
     const gridPositionRef = useRef(gridPosition);
@@ -408,6 +422,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     const jigsawSoundUriRef = useRef(null);
     const jigsawSoundPlayingRef = useRef(false);
     const jigsawSoundTimeoutRef = useRef(null);
+    const moveQueueRef = useRef(Promise.resolve());
+    const legacyStartAttemptedRef = useRef(false);
 
     useEffect(() => {
         audioPlayerRef.current = new AudioRecorderPlayer();
@@ -548,6 +564,9 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                     }
 
                     setPuzzle(loadedPuzzle);
+                    setExpiresAt(loadedPuzzle.expiresAt || null);
+                    setShowReference(loadedPuzzle.status === 'pending');
+                    setIsExpired(loadedPuzzle.status === 'expired');
                     originalImageUrlRef.current = loadedPuzzle.imageUrl;
                     originalPiecesRef.current = [...loadedPieces];
                     originalGridSizeRef.current = loadedPuzzle.gridSize || { rows: dim, cols: dim };
@@ -588,6 +607,9 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                 setPieces(loadedPieces);
                 setTrayOrder(loadedPieces.filter(val => val !== null && val < 0).map(val => -val - 1));
                 setMoveCount(initialData.moveCount || 0);
+                setExpiresAt(initialData.expiresAt || null);
+                setShowReference(initialData.status === 'pending');
+                setIsExpired(initialData.status === 'expired');
             }
         };
         loadPuzzle();
@@ -628,14 +650,135 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         }
     }, [imageLoaded]);
 
-    // Hide reference image after 5 seconds and show puzzle instantly
+    const expireLocally = useCallback(() => {
+        setRemainingMs(0);
+        setIsSolved(false);
+        setIsExpired(true);
+        setDraggingPiece(null);
+        setHoverTarget(-1);
+    }, []);
+
+    // A fixed deadline keeps running across screens, backgrounding, and offline periods.
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setShowReference(false); // Instant switch, no animation
+        if (!expiresAt || isSolved || isExpired) return undefined;
+
+        const updateRemaining = () => {
+            const next = Math.max(0, new Date(expiresAt).getTime() - Date.now());
+            setRemainingMs(next);
+            if (next <= 0) expireLocally();
+        };
+        updateRemaining();
+        const timer = setInterval(updateRemaining, 250);
+        const appStateSubscription = AppState.addEventListener('change', updateRemaining);
+
+        return () => {
+            clearInterval(timer);
+            appStateSubscription.remove();
+        };
+    }, [expiresAt, expireLocally, isExpired, isSolved]);
+
+    // Pending puzzles get one 5-second preview; its end permanently starts the attempt.
+    useEffect(() => {
+        if (!showReference || puzzle?.status !== 'pending' || !imageLoaded || !piecesReady) {
+            return undefined;
+        }
+
+        const timer = setTimeout(async () => {
+            setIsStarting(true);
+            const result = await startPuzzle(puzzleId || puzzle?._id);
+            setIsStarting(false);
+            if (result.success) {
+                setPuzzle(result.data);
+                setExpiresAt(result.data.expiresAt);
+                setRemainingMs(Math.max(0, new Date(result.data.expiresAt).getTime() - Date.now()));
+                setShowReference(false);
+            } else if (result.code === 'PUZZLE_EXPIRED') {
+                setShowReference(false);
+                expireLocally();
+            } else {
+                Alert.alert(
+                    'Couldn’t start puzzle',
+                    'Check your connection and try opening the puzzle again.',
+                    [{ text: 'Back', onPress: () => navigation.goBack() }]
+                );
+            }
         }, 5000);
 
         return () => clearTimeout(timer);
-    }, []);
+    }, [
+        expireLocally,
+        imageLoaded,
+        navigation,
+        piecesReady,
+        puzzle,
+        puzzleId,
+        showReference,
+        startPuzzle,
+    ]);
+
+    // Puzzles that were already active before timed puzzles existed need a deadline once.
+    useEffect(() => {
+        if (
+            puzzle?.status !== 'in_progress'
+            || puzzle.expiresAt
+            || expiresAt
+            || isExpired
+            || legacyStartAttemptedRef.current
+        ) {
+            return;
+        }
+
+        legacyStartAttemptedRef.current = true;
+        let cancelled = false;
+        setIsStarting(true);
+        startPuzzle(puzzleId || puzzle?._id).then((result) => {
+            if (cancelled) return;
+            setIsStarting(false);
+            if (result.success && result.data?.expiresAt) {
+                setPuzzle(result.data);
+                setExpiresAt(result.data.expiresAt);
+                setRemainingMs(Math.max(
+                    0,
+                    new Date(result.data.expiresAt).getTime() - Date.now()
+                ));
+            } else if (result.code === 'PUZZLE_EXPIRED') {
+                expireLocally();
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        expireLocally,
+        expiresAt,
+        isExpired,
+        puzzle,
+        puzzleId,
+        startPuzzle,
+    ]);
+
+    const handleBack = useCallback(() => {
+        if (puzzle?.status === 'in_progress' && !isSolved && !isExpired) {
+            const seconds = Math.ceil(remainingMs / 1000);
+            const minutesPart = Math.floor(seconds / 60);
+            const secondsPart = String(seconds % 60).padStart(2, '0');
+            Alert.alert(
+                'Puzzle still running',
+                `Your timer will continue even if you leave. You have ${minutesPart}:${secondsPart} remaining.`,
+                [
+                    { text: 'Keep solving', style: 'cancel' },
+                    { text: 'Leave anyway', onPress: () => navigation.goBack() },
+                ]
+            );
+            return;
+        }
+        navigation.goBack();
+    }, [isExpired, isSolved, navigation, puzzle?.status, remainingMs]);
+
+    const timerSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const timerLabel = `${String(Math.floor(timerSeconds / 60)).padStart(2, '0')}:${String(timerSeconds % 60).padStart(2, '0')}`;
+    const timerTone = timerSeconds <= 30 ? 'danger' : timerSeconds <= 60 ? 'warning' : 'normal';
 
     // trayOrder is synchronized directly inside interaction and helper functions
 
@@ -665,6 +808,21 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             }),
         ]).start();
     }, [celebrateScale, celebrateOpacity]);
+
+    const persistMove = useCallback((fromIndex, toIndex, currentPieces) => {
+        if (!puzzleId) return;
+        moveQueueRef.current = moveQueueRef.current
+            .catch(() => {})
+            .then(() => movePiece(puzzleId, fromIndex, toIndex, currentPieces))
+            .then((result) => {
+                if (result?.code === 'PUZZLE_EXPIRED') {
+                    expireLocally();
+                }
+            })
+            .catch((error) => {
+                console.error('Failed to update backend:', error);
+            });
+    }, [expireLocally, movePiece, puzzleId]);
 
     // Get target position from screen coordinates
     const measureGridPosition = useCallback(() => {
@@ -771,11 +929,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                 setTrayOrder(prev => prev.filter(idx => idx !== originalPieceFrom));
                 playJigsawSound();
 
-                if (puzzleId) {
-                    movePiece(puzzleId, fromIndex, toIndex, currentPieces).catch(err => {
-                        console.error('Failed to update backend:', err);
-                    });
-                }
+                persistMove(fromIndex, toIndex, currentPieces);
 
                 if (checkSolved(currentPieces)) {
                     setIsSolved(true);
@@ -850,11 +1004,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         }
 
         // Update backend (async but don't wait)
-        if (puzzleId) {
-            movePiece(puzzleId, fromIndex, toIndex, currentPieces).catch(err => {
-                console.error('Failed to update backend:', err);
-            });
-        }
+        persistMove(fromIndex, toIndex, currentPieces);
 
         // Check if solved
         if (checkSolved(currentPieces)) {
@@ -870,7 +1020,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             } catch (e) {}
         }
         return true;
-    }, [puzzleId, movePiece, checkSolved, requestGameReviewOnce, playCelebration, playJigsawSound, gridDim]);
+    }, [checkSolved, requestGameReviewOnce, playCelebration, playJigsawSound, gridDim, persistMove]);
 
     // Memoized pan responders
     const panResponders = useRef(
@@ -878,18 +1028,20 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             PanResponder.create({
                 onStartShouldSetPanResponder: () => false,
                 onMoveShouldSetPanResponder: (evt, gestureState) => {
+                    if (interactionLockedRef.current) return false;
                     const currentSlot = piecesRef.current.indexOf(index);
                     const isOnBoard = currentSlot !== -1;
                     if (isOnBoard) {
-                        return (Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2) && !isSolved;
+                        return Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2;
                     }
                     // Only claim responder if vertical drag is dominant (to allow horizontal scrolling in tray)
                     const isVertical = Math.abs(gestureState.dy) > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
-                    return isVertical && !isSolved;
+                    return isVertical;
                 },
                 onPanResponderTerminationRequest: () => false,
 
                 onPanResponderGrant: (evt, gestureState) => {
+                    if (interactionLockedRef.current) return;
                     measureGridPosition();
 
                     const currentSlot = piecesRef.current.indexOf(index) !== -1
@@ -973,11 +1125,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                     trayScrollViewRef.current?.scrollTo({ x: 0, animated: true });
                                 }, 100);
 
-                                if (puzzleId) {
-                                    movePiece(puzzleId, currentSlot, -1, currentPieces).catch(err => {
-                                        console.error('Failed to update backend:', err);
-                                    });
-                                }
+                                persistMove(currentSlot, -1, currentPieces);
 
                                 // Reset dragging states immediately, preventing the ghost piece from flying back
                                 setHoverTarget(-1);
@@ -1236,13 +1384,25 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                 <SafeAreaView style={styles.container} edges={['top']}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
                             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                                 <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                             </Svg>
                         </TouchableOpacity>
                         <Text style={styles.headerTitle}>Solve Puzzle 🧩</Text>
                         <View style={styles.headerRight}>
+                            {!showReference && !isSolved && (
+                                <View style={[
+                                    styles.solveTimer,
+                                    timerTone === 'warning' && styles.solveTimerWarning,
+                                    timerTone === 'danger' && styles.solveTimerDanger,
+                                ]}>
+                                    <Text style={[
+                                        styles.solveTimerText,
+                                        timerTone !== 'normal' && styles.solveTimerTextUrgent,
+                                    ]}>⏱ {timerLabel}</Text>
+                                </View>
+                            )}
                             {SHOW_DEV_NUMBERS && (
                                 <>
                                     <TouchableOpacity
@@ -1281,22 +1441,18 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                     />
                                 </Svg>
                             </TouchableOpacity>
-                            <View style={styles.moveCounter}>
-                                <Text style={styles.moveText}>{moveCount}</Text>
-                                <Text style={styles.moveLabel}>moves</Text>
-                            </View>
                         </View>
                     </View>
 
                     {/* Instructions */}
-                    {!isSolved && (
+                    {!isSolved && !isExpired && (
                         <View style={styles.instructionContainer}>
                             <Text style={styles.instructionText}>
                                 {devShowCorrect 
                                     ? '🎯 Dev Mode: Showing Correct Placements 🎯' 
                                     : devJiggle 
                                         ? '🫨 Dev Mode: Jiggly Explosive Cut-View 🫨' 
-                                        : '👆 Drag pieces to swap them'}
+                                        : `👆 Drag pieces to swap · ${moveCount} moves`}
                             </Text>
                         </View>
                     )}
@@ -1322,7 +1478,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                             ]}
                             onLayout={handleGridLayout}
                             collapsable={false}
-                            pointerEvents={showReference ? 'none' : 'auto'}
+                            pointerEvents={(showReference || isExpired) ? 'none' : 'auto'}
                         >
                             {piecesReady && pieces.length > 0 && pieces.length === gridDim * gridDim && pieces.map((val, currentIndex) => {
                                 const isHovered = hoverTarget === currentIndex && draggingPiece;
@@ -1486,7 +1642,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                         {/* Reference image overlay - shown on top during countdown */}
                         {showReference && imageLoaded && (
                             <Animated.View style={[styles.referenceOverlay, { opacity: referenceOpacity }]}>
-                                <Text style={styles.referencePreviewLabel}>Memorize this image ⏱️</Text>
+                                <Text style={styles.referencePreviewLabel}>Memorize this image 👀</Text>
                                 <View style={[styles.referenceImageWrapper, { width: actualPuzzleSize, height: actualPuzzleSize }]}>
                                     <Image
                                         source={{
@@ -1501,13 +1657,15 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                         <CountdownTimer duration={5} />
                                     </View>
                                 </View>
-                                <Text style={styles.referencePreviewHint}>Puzzle will appear here...</Text>
+                                <Text style={styles.referencePreviewHint}>
+                                    {isStarting ? 'Starting your timer...' : 'You’ll have 5 minutes to solve it'}
+                                </Text>
                             </Animated.View>
                         )}
                     </View>
 
                     {/* Horizontal Tray of Unplaced Pieces */}
-                    {!isSolved && imageLoaded && piecesReady && !showReference && (
+                    {!isSolved && !isExpired && imageLoaded && piecesReady && !showReference && (
                         <View style={styles.trayContainer}>
                             <Text style={styles.trayTitle}>Remaining Pieces</Text>
                             <ScrollView
@@ -1574,8 +1732,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                                     <Path
                                                         d={trayPiecePath}
                                                         fill="none"
-                                                        stroke="rgba(255, 255, 255, 0.7)"
-                                                        strokeWidth={1.5}
+                                                        stroke="rgba(255, 255, 255, 0.42)"
+                                                        strokeWidth={1}
                                                     />
                                                     {SHOW_DEV_NUMBERS && (
                                                         <SvgText
@@ -1620,6 +1778,23 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                 <Text style={styles.premiumActionText}>Back to Home</Text>
                             </TouchableOpacity>
                         </Animated.View>
+                    )}
+
+                    {isExpired && (
+                        <View style={styles.expiredCard}>
+                            <Text style={styles.expiredEmoji}>⏰</Text>
+                            <Text style={styles.expiredTitle}>Time’s up</Text>
+                            <Text style={styles.expiredText}>
+                                The 5-minute challenge is over. This puzzle can’t be continued.
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => navigation.goBack()}
+                                activeOpacity={0.8}
+                                style={styles.premiumActionButton}
+                            >
+                                <Text style={styles.premiumActionText}>Back to Games</Text>
+                            </TouchableOpacity>
+                        </View>
                     )}
 
                 </SafeAreaView>
@@ -1672,8 +1847,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                         <Path
                             d={dragPiecePath}
                             fill="none"
-                            stroke="rgba(255, 255, 255, 0.8)"
-                            strokeWidth={2}
+                            stroke="rgba(255, 255, 255, 0.5)"
+                            strokeWidth={1.25}
                         />
                     </Svg>
                         );
@@ -1758,6 +1933,34 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
+    },
+    solveTimer: {
+        minWidth: 84,
+        alignItems: 'center',
+        backgroundColor: colors.primarySoft,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: borderRadius.lg,
+        borderWidth: 1,
+        borderColor: colors.primaryLight,
+    },
+    solveTimerWarning: {
+        backgroundColor: '#FFF3CD',
+        borderColor: '#F4B740',
+    },
+    solveTimerDanger: {
+        backgroundColor: '#FFE2E2',
+        borderColor: '#F05252',
+    },
+    solveTimerText: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 15,
+        fontWeight: '800',
+        color: colors.primary,
+        fontVariant: ['tabular-nums'],
+    },
+    solveTimerTextUrgent: {
+        color: '#C53030',
     },
     gridToggleBtn: {
         width: 36,
@@ -1858,6 +2061,39 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: spacing.lg,
         paddingHorizontal: spacing.xl,
+    },
+    expiredCard: {
+        position: 'absolute',
+        top: 150,
+        left: spacing.xl,
+        right: spacing.xl,
+        zIndex: 200,
+        alignItems: 'center',
+        paddingVertical: spacing.xl,
+        paddingHorizontal: spacing.xl,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderRadius: borderRadius.xl,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+    },
+    expiredEmoji: {
+        fontSize: 48,
+        marginBottom: spacing.sm,
+    },
+    expiredTitle: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 24,
+        fontWeight: '800',
+        color: colors.text,
+        marginBottom: spacing.xs,
+    },
+    expiredText: {
+        fontFamily: fontFamily.medium,
+        fontSize: 14,
+        lineHeight: 20,
+        textAlign: 'center',
+        color: colors.textSecondary,
+        marginBottom: spacing.lg,
     },
     celebrateEmoji: {
         fontSize: 48,
