@@ -28,8 +28,10 @@ import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
+import { isValidFiveLetterWord } from '../utils/wordValidator';
 
 const FREE_WORDLE_GAME_LIMIT = 3;
+const WORDLE_AUTO_SUBMIT_DELAY_MS = 600;
 
 const AnimatedWordleTile = ({
     letter,
@@ -708,6 +710,11 @@ const WordleScreen = ({
             shakeRow();
             return;
         }
+        if (!isValidFiveLetterWord(word)) {
+            setErrorMessage('This word is not in our dictionary. Please choose another word.');
+            shakeRow();
+            return;
+        }
 
         submittingRef.current = true;
         setSubmitting(true);
@@ -763,6 +770,11 @@ const WordleScreen = ({
         const guess = guessOverride || currentGuess;
         if (guess.length !== 5) {
             setErrorMessage('Guess must be 5 letters');
+            shakeRow();
+            return;
+        }
+        if (!isValidFiveLetterWord(guess)) {
+            setErrorMessage('Not a valid word. Try another!');
             shakeRow();
             return;
         }
@@ -960,6 +972,12 @@ const WordleScreen = ({
     };
 
     // Handle text input change - only allow letters
+    const handleInputKeyPress = ({ nativeEvent }) => {
+        if (nativeEvent.key !== 'Backspace' || !autoSubmitTimerRef.current) return;
+        clearTimeout(autoSubmitTimerRef.current);
+        autoSubmitTimerRef.current = null;
+    };
+
     const handleTextChange = (text) => {
         if (submitting) return;
         if (autoSubmitTimerRef.current) {
@@ -987,7 +1005,10 @@ const WordleScreen = ({
                     setShowLinkPartner(true);
                     Keyboard.dismiss();
                 } else {
-                    autoSubmitTimerRef.current = setTimeout(() => createGame(limitedText), 100);
+                    autoSubmitTimerRef.current = setTimeout(
+                        () => createGame(limitedText),
+                        WORDLE_AUTO_SUBMIT_DELAY_MS
+                    );
                 }
             } else {
                 setShowLinkPartner(false);
@@ -996,7 +1017,10 @@ const WordleScreen = ({
             setCurrentGuess(limitedText);
             // Auto-submit when 5 letters entered - pass word directly
             if (limitedText.length === 5) {
-                autoSubmitTimerRef.current = setTimeout(() => submitGuess(limitedText), 100);
+                autoSubmitTimerRef.current = setTimeout(
+                    () => submitGuess(limitedText),
+                    WORDLE_AUTO_SUBMIT_DELAY_MS
+                );
             }
         }
         setErrorMessage('');
@@ -1295,6 +1319,7 @@ const WordleScreen = ({
                             style={styles.hiddenInput}
                             value={mode === 'create' ? secretWord : currentGuess}
                             onChangeText={handleTextChange}
+                            onKeyPress={handleInputKeyPress}
                             maxLength={5}
                             autoCapitalize="characters"
                             autoCorrect={false}

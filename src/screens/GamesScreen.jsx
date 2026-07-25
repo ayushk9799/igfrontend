@@ -183,6 +183,13 @@ const GamesScreen = ({
     }, [dismissVideoCallGuide, onVideoCallPress]);
 
     useEffect(() => {
+        if (pendingPuzzle?.imageUrl) {
+            Image.prefetch(pendingPuzzle.imageUrl);
+            Image.getSize(pendingPuzzle.imageUrl, () => {}, () => {});
+        }
+    }, [pendingPuzzle?.imageUrl]);
+
+    useEffect(() => {
         if (!pendingTicTacToe && !pendingWordle) {
             blinkAnim.setValue(1);
             return undefined;
@@ -199,23 +206,29 @@ const GamesScreen = ({
         return () => animation.stop();
     }, [pendingTicTacToe, pendingWordle, blinkAnim]);
 
+    const currentUser = getUser();
+    const currentUserId = currentUser?.id || currentUser?._id;
+    const isPuzzleCreator = pendingPuzzle?.creatorId
+        ? (pendingPuzzle.creatorId._id || pendingPuzzle.creatorId) === currentUserId
+        : false;
+
     const games = [
         {
             key: 'puzzle',
             title: pendingPuzzle?.status === 'in_progress'
-                ? 'Puzzle in progress'
+                ? (isPuzzleCreator ? `${partnerName} is solving!` : 'Puzzle in progress')
                 : pendingPuzzle
-                    ? 'Puzzle waiting'
+                    ? (isPuzzleCreator ? 'Puzzle sent 🧩' : 'Puzzle waiting')
                     : 'Create puzzle',
             subtitle: pendingPuzzle?.status === 'in_progress'
-                ? `⏱ ${puzzleTimeLabel} remaining`
+                ? (isPuzzleCreator ? `⏱ ${puzzleTimeLabel} remaining · Watch live` : `⏱ ${puzzleTimeLabel} remaining`)
                 : pendingPuzzle
-                    ? 'Your 5-minute timer starts after the preview.'
+                    ? (isPuzzleCreator ? `Waiting for ${partnerName} to start.` : 'Your 5-minute timer starts after the preview.')
                     : 'A tiny photo challenge for two.',
             buttonLabel: pendingPuzzle?.status === 'in_progress'
-                ? 'Continue'
+                ? (isPuzzleCreator ? 'Watch live 👀' : 'Continue')
                 : pendingPuzzle
-                    ? 'Start'
+                    ? (isPuzzleCreator ? 'View' : 'Start')
                     : "Let's play",
             gradient: ['#FFA852', '#FF6D26'],
             accent: '#FF9833',

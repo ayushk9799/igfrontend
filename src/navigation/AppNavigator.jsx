@@ -183,6 +183,7 @@ export const AppNavigator = () => {
     const [versionGate, setVersionGate] = useState({ status: 'checking', policy: null });
     const [partnerPremiumAlertVisible, setPartnerPremiumAlertVisible] = useState(false);
     const [partnerConnectedAlert, setPartnerConnectedAlert] = useState(null);
+    const [activeJigsawPuzzle, setActiveJigsawPuzzle] = useState(null);
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -213,6 +214,17 @@ export const AppNavigator = () => {
         setGamePremiumStep('free');
         setIsGamePremiumVisible(true);
     }, []);
+
+    useEffect(() => {
+        if (!socket || !userData?.id) return;
+        const handlePuzzleUpdate = () => {
+            fetchPendingPuzzle(userData.id);
+        };
+        socket.on('puzzle:updated', handlePuzzleUpdate);
+        return () => {
+            socket.off('puzzle:updated', handlePuzzleUpdate);
+        };
+    }, [socket, userData?.id]);
 
     useEffect(() => {
         if (
@@ -2338,6 +2350,7 @@ export const AppNavigator = () => {
                         onEditRelationshipDate={() => navigate('relationshipStartDate')}
                         onJigsawCreate={() => navigate('jigsawCreate')}
                         onJigsawPlay={(puzzleData) => {
+                            setActiveJigsawPuzzle(puzzleData);
                             dispatch(setSelectedPuzzle(puzzleData));
                             navigate('jigsawPuzzle');
                         }}
@@ -2502,18 +2515,25 @@ export const AppNavigator = () => {
                     />
                 );
 
-            case 'jigsawPuzzle':
+            case 'jigsawPuzzle': {
+                const puzzleToPass = activeJigsawPuzzle || selectedPuzzle || pendingPuzzle;
                 return (
                     <JigsawPuzzleScreen
-                        navigation={{ goBack: () => navigateHomeTab('games') }}
+                        navigation={{
+                            goBack: () => {
+                                setActiveJigsawPuzzle(null);
+                                navigateHomeTab('games');
+                            }
+                        }}
                         route={{
                             params: {
-                                puzzleId: selectedPuzzle?._id,
-                                puzzleData: selectedPuzzle,
+                                puzzleId: puzzleToPass?._id || puzzleToPass?.id,
+                                puzzleData: puzzleToPass,
                             }
                         }}
                     />
                 );
+            }
 
             case 'ticTacToe':
                 return (
