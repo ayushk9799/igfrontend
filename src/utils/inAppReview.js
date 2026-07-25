@@ -8,7 +8,6 @@ const MOMENT_COOLDOWN_MS = 1000 * 60 * 60 * 24 * 14;
 export const REVIEW_MOMENTS = {
     DAILY_CHALLENGE_COMPLETED: 'daily_challenge_completed',
     V2_SET_SUMMARY_SHOWN: 'v2_set_summary_shown',
-    PARTNER_PAIRED: 'partner_paired',
     SCRIBBLE_SENT: 'scribble_sent',
     PUZZLE_SENT: 'puzzle_sent',
     MOOD_UPDATED: 'mood_updated',

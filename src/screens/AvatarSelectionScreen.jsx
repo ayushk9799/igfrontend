@@ -393,7 +393,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                             resizeMode="contain" 
                                         />
                                         <Text style={styles.permissionPromptText}>
-                                            Camera access is needed to take your profile photo
+                                            Camera access is needed 
                                         </Text>
                                         <TouchableOpacity style={styles.grantButton} onPress={requestCameraPermission} activeOpacity={0.85}>
                                             <LinearGradient 

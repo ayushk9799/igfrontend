@@ -13,6 +13,7 @@ const initialState = {
     avatarThumbnail: null,        // Base64 compressed thumbnail (~100x100)
     partnerId: null,
     partnerUsername: null,
+    partnerNickname: null,
     partnerAvatar: null,
     partnerAvatarThumbnail: null, // Base64 compressed thumbnail (~100x100)
     partnerCode: null,
@@ -64,6 +65,7 @@ const userSlice = createSlice({
                 ...state,
                 partnerId: action.payload.id,
                 partnerUsername: action.payload.name,
+                partnerNickname: action.payload.nickname || action.payload.name || null,
                 partnerAvatar: action.payload.avatar || null,
                 connectionDate: action.payload.connectionDate,
                 relationshipStartDate: action.payload.relationshipStartDate || state.relationshipStartDate,

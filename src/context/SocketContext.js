@@ -83,6 +83,7 @@ export const SocketProvider = ({ children }) => {
     const [myCurrentPhoto, setMyCurrentPhoto] = useState(null);
     const [partnerCurrentPhoto, setPartnerCurrentPhoto] = useState(null);
     const socketRef = useRef(null);
+    const partnerIdRef = useRef(null);
     const appState = useRef(AppState.currentState);
     const onMoodUpdatedRef = useRef(null); // Callback for when mood is updated
 
@@ -115,6 +116,7 @@ export const SocketProvider = ({ children }) => {
         const userId = user?.id || user?._id;
         const rawPartnerId = user?.partnerId;
         const partnerId = rawPartnerId?.id || rawPartnerId?._id || rawPartnerId;
+        partnerIdRef.current = partnerId ? String(partnerId) : null;
         if (!userId) {
             return;
         }
@@ -200,22 +202,24 @@ export const SocketProvider = ({ children }) => {
 
         // Presence events
         socketInstance.on('presence:online', (data) => {
-            if (!partnerId || String(data?.userId) !== String(partnerId)) {
+            const currentPartnerId = partnerIdRef.current;
+            if (!currentPartnerId || String(data?.userId) !== currentPartnerId) {
                 return;
             }
             setPartnerOnline(true);
         });
 
         socketInstance.on('presence:offline', (data) => {
-            if (!partnerId || String(data?.userId) !== String(partnerId)) {
+            const currentPartnerId = partnerIdRef.current;
+            if (!currentPartnerId || String(data?.userId) !== currentPartnerId) {
                 return;
             }
             setPartnerOnline(false);
         });
 
         socketInstance.on('presence:status', (data) => {
-            if (data?.partnerId && partnerId && String(data.partnerId) !== String(partnerId)) {
-                return;
+            if (Object.prototype.hasOwnProperty.call(data || {}, 'partnerId')) {
+                partnerIdRef.current = data?.partnerId ? String(data.partnerId) : null;
             }
             setPartnerOnline(Boolean(data?.isOnline));
         });

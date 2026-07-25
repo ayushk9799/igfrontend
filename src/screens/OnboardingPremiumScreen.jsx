@@ -171,7 +171,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
             await getOfferingsAndEntitlements();
         };
         init();
-        // This screen intentionally mirrors PremiumScreen's one-time initialization.
+        // This screen intentionally performs a one-time purchase initialization.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

@@ -12,17 +12,13 @@ import MemoriesScreen from '../screens/MemoriesScreen';
 import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
 import ChatListScreen from '../screens/ChatListScreen';
 import NotificationCenterScreen from '../screens/NotificationCenterScreen';
-import PremiumScreen from '../screens/PremiumScreen';
 import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
 import FreeScreen from '../screens/FreeScreen';
 import MoodScreen from '../screens/MoodScreen';
 import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
 import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
 import WidgetSetupBottomSheet from '../components/WidgetSetupBottomSheet';
-import JournalOnboardingScreen from '../screens/JournalOnboardingScreen';
-import QuestionsOnboardingScreen from '../screens/QuestionsOnboardingScreen';
-import WidgetOnboardingScreen from '../screens/WidgetOnboardingScreen';
-import LiveCallOnboardingScreen from '../screens/LiveCallOnboardingScreen';
+import YearlyOfferBottomSheet from '../components/YearlyOfferBottomSheet';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
 import { colors } from '../theme';
@@ -39,9 +35,18 @@ import { sendCurrentCouplePhoto } from '../api/couplePhotoApi';
 import { disableDistanceLocationSharing, getDistanceLocationPermissionStatus, isLocationSettingsError, refreshDistanceWidgetSnapshot, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 import { reportWidgetIntent, sendPartnerLocationReminder, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import * as ImagePicker from 'expo-image-picker';
+import { storage } from '../utils/authStorage';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
+const YEARLY_OFFER_DISMISS_DELAY_MS = 5 * 1000;
+const YEARLY_OFFER_WINDOW_MS = 60 * 60 * 1000;
+const YEARLY_OFFER_COOLDOWN_MS = 48 * 60 * 60 * 1000;
+const YEARLY_OFFER_LAST_PRESENTED_KEY = 'yearly_offer_last_presented_v2';
+const YEARLY_OFFER_WINDOW_END_KEY = 'yearly_offer_window_end_v2';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ACCOUNT_EDGE_SWIPE_WIDTH = SCREEN_WIDTH * 0.2;
+
+const getYearlyOfferKey = (prefix, userId) => `${prefix}:${userId || 'device'}`;
 
 const isMoodPastRefreshWindow = (mood, now) => {
     if (!mood?.updatedAt) {
@@ -70,19 +75,22 @@ export const MainTabNavigator = ({
     onLogout,
     onDeleteAccount,
     onTabChange,
-    onEditRelationshipDate,
+    onNavigateFromAccount,
     onLiveChatPress,
     onRequestDrawPremium,
     onOpenDrawFreeScreen,
     canAutoOpenMoodPrompt = true,
+    openAccountOnMount = false,
+    onAccountRestoreHandled,
+    yearlyOfferRequestId = 0,
+    onYearlyOfferRequestHandled,
 }) => {
     const [currentTab, setCurrentTab] = useState(initialTab || 'home');
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
     const [todayChallenge, setTodayChallenge] = useState(null);
-    const [isAccountVisible, setIsAccountVisible] = useState(false);
-    const [accountPreview, setAccountPreview] = useState(null);
-    const [isPremiumOpenInAccount, setIsPremiumOpenInAccount] = useState(false);
+    const [isAccountVisible, setIsAccountVisible] = useState(openAccountOnMount);
+    const [shouldReturnToAccountFromTab, setShouldReturnToAccountFromTab] = useState(false);
     const [isHomePremiumVisible, setIsHomePremiumVisible] = useState(false);
     const [homePremiumStep, setHomePremiumStep] = useState('free');
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
@@ -101,14 +109,30 @@ export const MainTabNavigator = ({
     const [locationPermissionStatus, setLocationPermissionStatus] = useState(null);
     const [photoCaptureSource, setPhotoCaptureSource] = useState('camera');
     const [cameraPermissionMessage, setCameraPermissionMessage] = useState('');
+    const [isYearlyOfferDue, setIsYearlyOfferDue] = useState(false);
+    const [yearlyOfferWindowEndsAt, setYearlyOfferWindowEndsAt] = useState(null);
     const locationSettingsPendingRef = useRef(false);
     const cameraSettingsPendingRef = useRef(false);
     const locationRevocationSyncRef = useRef(false);
+    const yearlyOfferDelayRef = useRef(null);
     const lastAutoOpenedMoodRef = React.useRef(null);
     const currentTabRef = useRef(currentTab);
 
-    const [isAccountMounted, setIsAccountMounted] = useState(false);
-    const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+    const [isAccountMounted, setIsAccountMounted] = useState(openAccountOnMount);
+    const isAccountVisibleRef = useRef(isAccountVisible);
+    const slideAnim = useRef(
+        new Animated.Value(openAccountOnMount ? 0 : SCREEN_WIDTH)
+    ).current;
+
+    useEffect(() => {
+        isAccountVisibleRef.current = isAccountVisible;
+    }, [isAccountVisible]);
+
+    useEffect(() => {
+        if (openAccountOnMount) {
+            onAccountRestoreHandled?.();
+        }
+    }, [openAccountOnMount, onAccountRestoreHandled]);
 
     useEffect(() => {
         if (isAccountVisible) {
@@ -119,7 +143,6 @@ export const MainTabNavigator = ({
                 useNativeDriver: true,
             }).start();
         } else {
-            setAccountPreview(null);
             Animated.timing(slideAnim, {
                 toValue: SCREEN_WIDTH,
                 duration: 200,
@@ -132,13 +155,18 @@ export const MainTabNavigator = ({
 
     const panResponder = useRef(
         PanResponder.create({
-            onStartShouldSetPanResponder: (evt, gestureState) => {
-                return isAccountVisible && gestureState.x0 < 60;
-            },
+            onStartShouldSetPanResponder: () => false,
             onMoveShouldSetPanResponder: (evt, gestureState) => {
-                return isAccountVisible && gestureState.x0 < 60 && gestureState.dx > 10;
+                const startX = gestureState.moveX - gestureState.dx;
+                const isHorizontalRightSwipe = gestureState.dx > 10
+                    && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
+
+                return isAccountVisibleRef.current
+                    && startX >= 0
+                    && startX <= ACCOUNT_EDGE_SWIPE_WIDTH
+                    && isHorizontalRightSwipe;
             },
-            onPanResponderGrant: () => {},
+            onPanResponderGrant: () => { },
             onPanResponderMove: (evt, gestureState) => {
                 if (gestureState.dx > 0) {
                     slideAnim.setValue(gestureState.dx);
@@ -152,7 +180,6 @@ export const MainTabNavigator = ({
                         useNativeDriver: true,
                     }).start(() => {
                         setIsAccountVisible(false);
-                        setIsPremiumOpenInAccount(false);
                         setIsAccountMounted(false);
                     });
                 } else {
@@ -218,6 +245,7 @@ export const MainTabNavigator = ({
     const hasPremiumAccess = isPremium
         || userData?.isPremium === true
         || userData?.partnerIsPremium === true;
+    const yearlyOfferUserId = userData?._id || userData?.id;
     const games = useSelector(selectGames);
     const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle } = games;
 
@@ -270,7 +298,7 @@ export const MainTabNavigator = ({
                     }
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }, [dispatch, userData]);
 
     const openWidgetSheet = useCallback((kind) => {
@@ -298,8 +326,8 @@ export const MainTabNavigator = ({
 
         setLocationSyncing(true);
         setLocationMessage('');
-        reportWidgetIntent('distance', userData).catch(() => {});
-        syncNativeWidgetStatus(userData).catch(() => {});
+        reportWidgetIntent('distance', userData).catch(() => { });
+        syncNativeWidgetStatus(userData).catch(() => { });
         try {
             const result = await syncDistanceWidgetLocation({
                 user: userData,
@@ -427,6 +455,107 @@ export const MainTabNavigator = ({
         Linking.openSettings();
     }, [widgetSheet]);
 
+    const closeYearlyOffer = useCallback(() => {
+        setIsYearlyOfferDue(false);
+        if (!yearlyOfferUserId || hasPremiumAccess) return;
+
+        const windowKey = getYearlyOfferKey(YEARLY_OFFER_WINDOW_END_KEY, yearlyOfferUserId);
+        const now = Date.now();
+        const storedWindowEnd = storage.getNumber(windowKey) || 0;
+        const windowEnd = storedWindowEnd > now
+            ? storedWindowEnd
+            : now + YEARLY_OFFER_WINDOW_MS;
+
+        storage.set(windowKey, windowEnd);
+        setYearlyOfferWindowEndsAt(windowEnd);
+    }, [hasPremiumAccess, yearlyOfferUserId]);
+
+    const completeYearlyOffer = useCallback(() => {
+        setIsYearlyOfferDue(false);
+        setYearlyOfferWindowEndsAt(null);
+        if (yearlyOfferUserId) {
+            storage.delete(
+                getYearlyOfferKey(YEARLY_OFFER_WINDOW_END_KEY, yearlyOfferUserId),
+            );
+        }
+    }, [yearlyOfferUserId]);
+
+    const markYearlyOfferPresented = useCallback(() => {
+        if (!yearlyOfferUserId) return;
+        if (yearlyOfferWindowEndsAt && yearlyOfferWindowEndsAt > Date.now()) return;
+        const now = Date.now();
+        const windowEnd = now + YEARLY_OFFER_WINDOW_MS;
+        storage.set(
+            getYearlyOfferKey(YEARLY_OFFER_LAST_PRESENTED_KEY, yearlyOfferUserId),
+            now,
+        );
+        storage.set(
+            getYearlyOfferKey(YEARLY_OFFER_WINDOW_END_KEY, yearlyOfferUserId),
+            windowEnd,
+        );
+        setYearlyOfferWindowEndsAt(windowEnd);
+    }, [yearlyOfferUserId, yearlyOfferWindowEndsAt]);
+
+    const scheduleYearlyOffer = useCallback(() => {
+        if (!yearlyOfferUserId || hasPremiumAccess) return;
+
+        const lastPresented = storage.getNumber(
+            getYearlyOfferKey(YEARLY_OFFER_LAST_PRESENTED_KEY, yearlyOfferUserId),
+        ) || 0;
+        if (Date.now() - lastPresented < YEARLY_OFFER_COOLDOWN_MS) return;
+
+        if (yearlyOfferDelayRef.current) {
+            clearTimeout(yearlyOfferDelayRef.current);
+        }
+        setIsYearlyOfferDue(false);
+        yearlyOfferDelayRef.current = setTimeout(() => {
+            yearlyOfferDelayRef.current = null;
+            setIsYearlyOfferDue(true);
+        }, YEARLY_OFFER_DISMISS_DELAY_MS);
+    }, [hasPremiumAccess, yearlyOfferUserId]);
+
+    useEffect(() => () => {
+        if (yearlyOfferDelayRef.current) {
+            clearTimeout(yearlyOfferDelayRef.current);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!yearlyOfferUserId) {
+            setYearlyOfferWindowEndsAt(null);
+            return;
+        }
+
+        const windowKey = getYearlyOfferKey(YEARLY_OFFER_WINDOW_END_KEY, yearlyOfferUserId);
+        if (hasPremiumAccess) {
+            storage.delete(windowKey);
+            setYearlyOfferWindowEndsAt(null);
+            return;
+        }
+
+        const storedWindowEnd = storage.getNumber(
+            windowKey,
+        ) || 0;
+        const now = Date.now();
+        setYearlyOfferWindowEndsAt(storedWindowEnd > now ? storedWindowEnd : null);
+    }, [hasPremiumAccess, yearlyOfferUserId]);
+
+    const expireYearlyOfferWindow = useCallback(() => {
+        setIsYearlyOfferDue(false);
+        setYearlyOfferWindowEndsAt(null);
+        if (yearlyOfferUserId) {
+            storage.delete(
+                getYearlyOfferKey(YEARLY_OFFER_WINDOW_END_KEY, yearlyOfferUserId),
+            );
+        }
+    }, [yearlyOfferUserId]);
+
+    useEffect(() => {
+        if (!yearlyOfferRequestId) return;
+        scheduleYearlyOffer();
+        onYearlyOfferRequestHandled?.();
+    }, [onYearlyOfferRequestHandled, scheduleYearlyOffer, yearlyOfferRequestId]);
+
     useEffect(() => {
         const timer = setInterval(() => {
             setMoodRefreshNow(Date.now());
@@ -442,6 +571,7 @@ export const MainTabNavigator = ({
             currentTab !== 'home' ||
             !hasPartner ||
             isMoodVisible ||
+            isYearlyOfferDue ||
             !isMoodPastRefreshWindow(yourMood, moodRefreshNow)
         ) {
             return;
@@ -454,7 +584,7 @@ export const MainTabNavigator = ({
         lastAutoOpenedMoodRef.current = yourMood.updatedAt;
         setIsMoodRefreshPrompt(true);
         setIsMoodVisible(true);
-    }, [callActive, canAutoOpenMoodPrompt, currentTab, hasPartner, isMoodVisible, moodRefreshNow, yourMood]);
+    }, [callActive, canAutoOpenMoodPrompt, currentTab, hasPartner, isMoodVisible, isYearlyOfferDue, moodRefreshNow, yourMood]);
 
     const openMoodPicker = useCallback(() => {
         setIsMoodRefreshPrompt(false);
@@ -474,7 +604,7 @@ export const MainTabNavigator = ({
         // tab-level modal before the global incoming-call sheet is presented.
         closeMoodPicker();
         setIsNotificationVisible(false);
-        setIsPremiumOpenInAccount(false);
+        setIsYearlyOfferDue(false);
     }, [callState, closeMoodPicker]);
 
     // Fetch unread chat count
@@ -534,7 +664,7 @@ export const MainTabNavigator = ({
         const handleDistanceStatusUpdate = () => {
             refreshDistanceWidgetSnapshot(userData)
                 .then(result => setDistanceReason(result?.distance?.reason || null))
-                .catch(() => {});
+                .catch(() => { });
         };
 
         socket.on('chat:notification', handleChatNotification);
@@ -557,12 +687,13 @@ export const MainTabNavigator = ({
     useEffect(() => {
         const backAction = () => {
             if (isAccountVisible) {
-                if (accountPreview) {
-                    setAccountPreview(null);
-                    return true;
-                }
                 setIsAccountVisible(false);
-                setIsPremiumOpenInAccount(false);
+                return true;
+            }
+            if (currentTab === 'widgetsLibrary' && shouldReturnToAccountFromTab) {
+                setShouldReturnToAccountFromTab(false);
+                handleBottomTabChange('home');
+                setIsAccountVisible(true);
                 return true;
             }
             if (currentTab !== 'home') {
@@ -574,7 +705,7 @@ export const MainTabNavigator = ({
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    }, [accountPreview, handleBottomTabChange, currentTab, isAccountVisible]);
+    }, [handleBottomTabChange, currentTab, isAccountVisible, shouldReturnToAccountFromTab]);
 
     const renderScreen = () => {
         switch (currentTab) {
@@ -604,7 +735,13 @@ export const MainTabNavigator = ({
                         userData={userData}
                         isPremium={hasPremiumAccess}
                         onNavigateToPremium={onPremiumPress}
-                        onBack={() => handleBottomTabChange('home')}
+                        onBack={() => {
+                            handleBottomTabChange('home');
+                            if (shouldReturnToAccountFromTab) {
+                                setShouldReturnToAccountFromTab(false);
+                                setIsAccountVisible(true);
+                            }
+                        }}
                         openDistanceSetup={openDistanceSetup}
                         onDistanceSetupHandled={() => setOpenDistanceSetup(false)}
                     />
@@ -778,6 +915,9 @@ export const MainTabNavigator = ({
                         setIsHomePremiumVisible(true);
                     }}
                     hasPremiumAccess={hasPremiumAccess}
+                    yearlyOfferEndsAt={yearlyOfferWindowEndsAt}
+                    onYearlyOfferPress={() => setIsYearlyOfferDue(true)}
+                    onYearlyOfferExpire={expireYearlyOfferWindow}
                 />
             </View>
             {renderScreen()}
@@ -802,36 +942,10 @@ export const MainTabNavigator = ({
                     ]}
                     {...panResponder.panHandlers}
                 >
-                    {accountPreview === 'journal' ? (
-                        <JournalOnboardingScreen
-                            onComplete={() => setAccountPreview(null)}
-                        />
-                    ) : accountPreview === 'liveCall' ? (
-                        <LiveCallOnboardingScreen
-                            onComplete={() => setAccountPreview(null)}
-                        />
-                    ) : accountPreview === 'questions' ? (
-                        <QuestionsOnboardingScreen
-                            onComplete={() => setAccountPreview(null)}
-                        />
-                    ) : accountPreview === 'widgets' ? (
-                        <WidgetOnboardingScreen
-                            onComplete={() => setAccountPreview(null)}
-                            relationshipStartDate={
-                                userData?.relationshipStartDate
-                                || userData?.pendingRelationshipStartDate
-                                || userData?.connectionDate
-                            }
-                            partnerPhoto={partnerCurrentPhoto}
-                            myPhoto={myCurrentPhoto}
-                            partnerName={partnerName}
-                            hasPartner={hasPartner}
-                            daysTogether={daysTogether}
-                        />
-                    ) : (
                     <AccountScreen
                         userData={userData}
                         partnerName={partnerName}
+                        partnerNickname={userData?.partnerNickname}
                         hasPartner={hasPartner}
                         isPremium={hasPremiumAccess}
                         premiumPlan={effectivePremiumPlan}
@@ -842,56 +956,41 @@ export const MainTabNavigator = ({
                         daysTogether={daysTogether}
                         onLogout={() => {
                             setIsAccountVisible(false);
-                            setIsPremiumOpenInAccount(false);
                             onLogout();
                         }}
                         onDeleteAccount={() => {
                             setIsAccountVisible(false);
-                            setIsPremiumOpenInAccount(false);
                             onDeleteAccount();
                         }}
                         onEditProfile={onEditProfile}
-                        onAvatarPress={onAvatarPress}
-                        onFindPartner={onFindPartner}
+                        onAvatarPress={() => {
+                            setIsAccountVisible(false);
+                            onNavigateFromAccount?.('avatarSelection');
+                        }}
+                        onFindPartner={() => {
+                            setIsAccountVisible(false);
+                            onNavigateFromAccount?.('partnerCode');
+                        }}
                         onNavigateToPremium={() => {
-                            setIsPremiumOpenInAccount(false);
                             setHomePremiumStep('free');
                             setIsHomePremiumVisible(true);
                         }}
                         onWidgetsPress={() => {
                             setIsAccountVisible(false);
-                            setIsPremiumOpenInAccount(false);
+                            setShouldReturnToAccountFromTab(true);
                             setCurrentTab('widgetsLibrary');
                         }}
-                        onJournalOnboardingPress={() => setAccountPreview('journal')}
-                        onQuestionsOnboardingPress={() => setAccountPreview('questions')}
-                        onWidgetOnboardingPress={() => setAccountPreview('widgets')}
-                        onLiveCallOnboardingPress={() => setAccountPreview('liveCall')}
                         onEditRelationshipDate={() => {
                             setIsAccountVisible(false);
-                            onEditRelationshipDate?.();
+                            onNavigateFromAccount?.('relationshipStartDate');
                         }}
                         onBack={() => {
                             setIsAccountVisible(false);
-                            setIsPremiumOpenInAccount(false);
                         }}
                     />
-                    )}
 
                 </Animated.View>
             )}
-
-            <Modal
-                visible={isPremiumOpenInAccount}
-                animationType="slide"
-                transparent={false}
-                statusBarTranslucent={true}
-                onRequestClose={() => setIsPremiumOpenInAccount(false)}
-            >
-                <PremiumScreen
-                    onBack={() => setIsPremiumOpenInAccount(false)}
-                />
-            </Modal>
 
             <Modal
                 visible={isHomePremiumVisible}
@@ -899,8 +998,12 @@ export const MainTabNavigator = ({
                 transparent={false}
                 statusBarTranslucent={true}
                 onRequestClose={() => {
+                    const shouldShowYearlyOffer = homePremiumStep === 'premium';
                     setIsHomePremiumVisible(false);
                     setHomePremiumStep('free');
+                    if (shouldShowYearlyOffer) {
+                        scheduleYearlyOffer();
+                    }
                 }}
             >
                 {homePremiumStep === 'free' ? (
@@ -912,6 +1015,7 @@ export const MainTabNavigator = ({
                         onBack={() => {
                             setIsHomePremiumVisible(false);
                             setHomePremiumStep('free');
+                            scheduleYearlyOffer();
                         }}
                     />
                 )}
@@ -991,6 +1095,25 @@ export const MainTabNavigator = ({
                     userData?.pendingRelationshipStartDate ||
                     userData?.connectionDate
                 }
+            />
+
+            <YearlyOfferBottomSheet
+                visible={
+                    isYearlyOfferDue
+                    && currentTab === 'home'
+                    && !hasPremiumAccess
+                    && !callActive
+                    && !isAccountMounted
+                    && !isHomePremiumVisible
+                    && !isNotificationVisible
+                    && !isMoodVisible
+                    && !widgetSheet
+                }
+                onClose={closeYearlyOffer}
+                onPresented={markYearlyOfferPresented}
+                onPurchased={completeYearlyOffer}
+                offerEndsAt={yearlyOfferWindowEndsAt}
+                onOfferExpire={expireYearlyOfferWindow}
             />
         </View>
     );

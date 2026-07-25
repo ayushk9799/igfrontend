@@ -23,6 +23,7 @@ import { requestNotificationPermission, registerFCMToken } from '../utils/pushNo
 import { getApp } from '@react-native-firebase/app';
 import { getMessaging, AuthorizationStatus } from '@react-native-firebase/messaging';
 import { PermissionsAndroid } from 'react-native';
+import * as StoreReview from 'expo-store-review';
 import { fontFamily, fontWeight } from '../constants/fonts';
 
 const { width, height } = Dimensions.get('window');
@@ -178,10 +179,6 @@ export const AccountScreen = ({
     onDeleteAccount,
     onNavigateToPremium,
     onWidgetsPress,
-    onWidgetOnboardingPress,
-    onJournalOnboardingPress,
-    onQuestionsOnboardingPress,
-    onLiveCallOnboardingPress,
     onBack,
     onEditRelationshipDate,
 }) => {
@@ -306,6 +303,26 @@ export const AccountScreen = ({
         );
     };
 
+    const handleRateApp = async () => {
+        try {
+            const hasReviewAction = await StoreReview.hasAction();
+            if (!hasReviewAction) {
+                Alert.alert(
+                    'Rating unavailable',
+                    'The store rating option is not available on this device right now.',
+                );
+                return;
+            }
+
+            await StoreReview.requestReview();
+        } catch {
+            Alert.alert(
+                'Could not open ratings',
+                'Please try again when you are connected to the App Store or Play Store.',
+            );
+        }
+    };
+
     return (
         <View style={styles.root}>
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
@@ -345,9 +362,9 @@ export const AccountScreen = ({
                     ]}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Profile Header - only show when paired */}
-                    {hasPartner && (
-                        <View style={styles.profileSection}>
+                    {/* Profile identity */}
+                    <View style={styles.profileSection}>
+                        <View style={styles.profileIdentityCard}>
                             <TouchableOpacity
                                 style={styles.avatarContainer}
                                 onPress={handleAvatarPress}
@@ -388,25 +405,56 @@ export const AccountScreen = ({
                                     </View>
                                 )}
                             </TouchableOpacity>
-                            {userData.nickname && (
-                                <Text style={styles.profileNickname}>{userData.nickname}</Text>
-                            )}
-                            <Text style={styles.profileEmail}>{userData.email || ''}</Text>
+                            <View style={styles.profileIdentityCopy}>
+                                <Text style={styles.profileName} numberOfLines={2}>
+                                    {userData.nickname || userData.name || 'Penguin Couple'}
+                                </Text>
+                                <Text style={styles.profileEmail} numberOfLines={1}>
+                                    {userData.email || ''}
+                                </Text>
+                            </View>
+                        </View>
 
+                        {hasPartner && (
                             <TouchableOpacity
-                                style={styles.partnerBadge}
+                                style={styles.relationshipCard}
                                 onPress={onEditRelationshipDate}
                                 activeOpacity={0.7}
                             >
-                                <Text style={styles.partnerBadgeText}>
-                                    💕 With {partnerNickname || partnerName}
-                                </Text>
-                                {relationshipDuration && (
-                                    <Text style={styles.partnerDurationText}>{relationshipDuration}</Text>
-                                )}
+                                <View style={styles.partnerAvatarRing}>
+                                    {userData.partnerAvatarThumbnail || userData.partnerAvatar ? (
+                                        <Image
+                                            source={{ uri: userData.partnerAvatarThumbnail || userData.partnerAvatar }}
+                                            style={styles.partnerAvatarImage}
+                                        />
+                                    ) : (
+                                        <LinearGradient
+                                            colors={['#FFD8E8', '#FFAACB']}
+                                            style={styles.partnerAvatarPlaceholder}
+                                        >
+                                            <Text style={styles.partnerAvatarInitial}>
+                                                {(partnerNickname || partnerName || '?')[0].toUpperCase()}
+                                            </Text>
+                                        </LinearGradient>
+                                    )}
+                                    <View style={styles.partnerHeartBadge}>
+                                        <Text style={styles.partnerHeart}>♥</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.relationshipCopy}>
+                                    <Text style={styles.relationshipTitle} numberOfLines={1}>
+                                        💕 With {partnerNickname || partnerName || 'Your partner'}
+                                    </Text>
+                                    {relationshipDuration && (
+                                        <Text style={styles.partnerDurationText} numberOfLines={1}>
+                                            {relationshipDuration}
+                                        </Text>
+                                    )}
+                                </View>
+                                <ChevronRight color="#FF8FB5" />
                             </TouchableOpacity>
-                        </View>
-                    )}
+                        )}
+                    </View>
 
                     {/* Connect Partner Card - show when no partner */}
                     {!hasPartner && (
@@ -567,30 +615,6 @@ export const AccountScreen = ({
                     )}
 
                     <View style={styles.menuSection}>
-                        <Text style={styles.sectionTitle}>Onboarding Previews</Text>
-                        <MenuItem
-                            title="Journal Onboarding"
-                            subtitle="Preview the shared journal introduction"
-                            onPress={onJournalOnboardingPress}
-                        />
-                        <MenuItem
-                            title="Questions Onboarding"
-                            subtitle="Preview the couple questions introduction"
-                            onPress={onQuestionsOnboardingPress}
-                        />
-                        <MenuItem
-                            title="Widget Onboarding"
-                            subtitle="Preview the Home Screen widgets introduction"
-                            onPress={onWidgetOnboardingPress}
-                        />
-                        <MenuItem
-                            title="Live Call Onboarding"
-                            subtitle="Preview the live video call introduction"
-                            onPress={onLiveCallOnboardingPress}
-                        />
-                    </View>
-
-                    <View style={styles.menuSection}>
                         <Text style={styles.sectionTitle}>Widgets</Text>
                         <MenuItem
                             title="Widgets Library"
@@ -602,8 +626,9 @@ export const AccountScreen = ({
                     <View style={styles.menuSection}>
                         <Text style={styles.sectionTitle}>Support</Text>
                         <MenuItem
-                            title="Help & FAQ"
-                            onPress={() => { }}
+                            title="Rate us 5 stars ⭐️"
+                            subtitle="Enjoying Penguin Couple? Share your support"
+                            onPress={handleRateApp}
                         />
                         <MenuItem
                             title="Privacy Policy"
@@ -655,32 +680,49 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
     },
     profileSection: {
+        marginBottom: isCompactHeight ? 18 : 24,
+    },
+    profileIdentityCard: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: isCompactHeight ? 20 : 30,
+        borderRadius: 26,
+        padding: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.72)',
+        shadowColor: '#D48CAA',
+        shadowOffset: { width: 0, height: 7 },
+        shadowOpacity: 0.14,
+        shadowRadius: 18,
+        elevation: 4,
     },
     avatarContainer: {
         position: 'relative',
-        marginBottom: 12,
+        marginRight: 16,
     },
     avatarRing: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 104,
+        height: 104,
+        borderRadius: 52,
         padding: 3,
-        borderWidth: 2,
-        borderColor: '#FFB5D0',
+        borderWidth: 3,
+        borderColor: '#FFFFFF',
         borderStyle: 'solid',
         overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#D95C8D',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.18,
+        shadowRadius: 10,
+        elevation: 4,
     },
     avatarImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 48,
+        borderRadius: 49,
     },
     avatarPlaceholder: {
         width: '100%',
         height: '100%',
-        borderRadius: 48,
+        borderRadius: 49,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -713,9 +755,9 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 104,
+        height: 104,
+        borderRadius: 52,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
         alignItems: 'center',
@@ -725,41 +767,98 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
-    profileNickname: {
-        fontSize: 20,
+    profileIdentityCopy: {
+        flex: 1,
+        minWidth: 0,
+    },
+    profileName: {
+        fontSize: isCompactHeight ? 20 : 22,
+        lineHeight: isCompactHeight ? 24 : 27,
         fontWeight: '800',
         color: navy,
-        marginBottom: 4,
-        letterSpacing: -0.3,
+        marginBottom: 6,
+        letterSpacing: -0.45,
     },
     profileEmail: {
-        fontSize: 13,
-        color: '#7380A1',
-        marginBottom: 10,
-        fontWeight: '500',
-    },
-    partnerBadge: {
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        alignItems: 'center',
-        shadowColor: '#FFB5D0',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    partnerBadgeText: {
-        fontSize: 13,
-        color: '#FF5E97',
-        fontWeight: '700',
-    },
-    partnerDurationText: {
-        fontSize: 11,
+        fontSize: 12.5,
         color: '#7380A1',
         fontWeight: '600',
-        marginTop: 2,
+    },
+    relationshipCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 22,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        marginTop: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.82)',
+        shadowColor: '#FFB5D0',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.14,
+        shadowRadius: 12,
+        elevation: 3,
+    },
+    partnerAvatarRing: {
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        padding: 3,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#D95C8D',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.18,
+        shadowRadius: 7,
+        elevation: 3,
+    },
+    partnerAvatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 26,
+    },
+    partnerAvatarPlaceholder: {
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 26,
+    },
+    partnerAvatarInitial: {
+        color: '#FFFFFF',
+        fontSize: 21,
+        fontWeight: '800',
+    },
+    partnerHeartBadge: {
+        position: 'absolute',
+        right: -3,
+        bottom: -2,
+        width: 20,
+        height: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        backgroundColor: '#FF5E97',
+    },
+    partnerHeart: {
+        color: '#FFFFFF',
+        fontSize: 10,
+    },
+    relationshipCopy: {
+        flex: 1,
+        minWidth: 0,
+        marginHorizontal: 13,
+    },
+    relationshipTitle: {
+        color: navy,
+        fontSize: 15,
+        fontWeight: '800',
+    },
+    partnerDurationText: {
+        fontSize: 12,
+        color: '#7380A1',
+        fontWeight: '600',
+        marginTop: 3,
     },
     menuSection: {
         marginBottom: isCompactHeight ? 18 : 24,

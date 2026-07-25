@@ -1,6 +1,6 @@
 // Partner Code Screen - Premium Pairing Flow
 // Share your code or enter partner's code to connect
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
     StyleSheet,
     Text,
@@ -8,28 +8,34 @@ import {
     Image,
     TouchableOpacity,
     Animated,
-    Dimensions,
     TextInput,
     Alert,
-    Clipboard,
     ActivityIndicator,
     StatusBar,
     Keyboard,
     Share,
-    Platform,
     ScrollView,
+    useWindowDimensions,
 } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { API_BASE } from '../constants/Api';
-import { updateUser } from '../utils/authStorage';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
 
-const { width, height } = Dimensions.get('window');
-const isCompactHeight = height < 760;
 const navy = '#050E3E';
+const decorativeStyles = StyleSheet.create({
+    sparkle: {
+        position: 'absolute',
+        zIndex: 1,
+    },
+    floatingHeart: {
+        position: 'absolute',
+        zIndex: 5,
+    },
+});
 
 // --- SVG Icons ---
 const TinyHeart = ({ color = "#FF8FAB" }) => (
@@ -73,7 +79,7 @@ const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
         return () => animate.stop();
     }, [opacity, delay]);
     return (
-        <Animated.View style={{ position: 'absolute', left: x, top: y, opacity, zIndex: 1 }}>
+        <Animated.View style={[decorativeStyles.sparkle, { left: x, top: y, opacity }]}>
             <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
                 <Path d="M8 0C8 4.418 4.418 8 0 8C4.418 8 8 11.582 8 16C8 11.582 11.582 8 16 8C11.582 8 8 4.418 8 0Z" fill="#FFB5D0" />
             </Svg>
@@ -82,6 +88,7 @@ const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
 };
 
 const FloatingHeart = ({ x, delay = 0, size = 18, color = '#FF8FAB' }) => {
+    const { height } = useWindowDimensions();
     const translateY = useRef(new Animated.Value(0)).current;
     const opacity = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.3)).current;
@@ -108,17 +115,15 @@ const FloatingHeart = ({ x, delay = 0, size = 18, color = '#FF8FAB' }) => {
         );
         anim.start();
         return () => anim.stop();
-    }, [delay, translateY, opacity, scaleAnim]);
+    }, [delay, height, translateY, opacity, scaleAnim]);
 
     return (
-        <Animated.View style={{
-            position: 'absolute',
+        <Animated.View style={[decorativeStyles.floatingHeart, {
             left: x,
             bottom: height * 0.25,
             opacity,
             transform: [{ translateY }, { scale: scaleAnim }],
-            zIndex: 5,
-        }}>
+        }]}>
             <Svg width={size} height={size * 0.86} viewBox="0 0 14 12" fill="none">
                 <Path d="M7 12L6.0125 11.0825C2.4 7.755 0 5.5425 0 2.8425C0 0.81 1.575 -0.75 3.5 -0.75C4.585 -0.75 5.6175 -0.255 6.265 0.4425C6.545 0.705 6.7825 1.0125 7 1.3425C7.2175 1.0125 7.455 0.705 7.735 0.4425C8.3825 -0.255 9.415 -0.75 10.5 -0.75C12.425 -0.75 14 0.81 14 2.8425C14 5.5425 11.6 7.755 7.9875 11.09L7 12Z" fill={color} />
             </Svg>
@@ -138,26 +143,45 @@ export const PartnerCodeScreen = ({
     const [isPairing, setIsPairing] = useState(false);
     const [pairingStatus, setPairingStatus] = useState('');
     const [copied, setCopied] = useState(false);
-    const [isAlreadyPaired, setIsAlreadyPaired] = useState(false);
     const [pairedPartner, setPairedPartner] = useState(null);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(40)).current;
     const connectedScale = useRef(new Animated.Value(0)).current;
     const pairedScale = useRef(new Animated.Value(0)).current;
     const shareCardAnim = useRef(new Animated.Value(1)).current;
+    const pairingRequestRef = useRef(false);
+    const pairingAbortRef = useRef(null);
+    const copyTimerRef = useRef(null);
+    const pairedTimerRef = useRef(null);
+    const mountedRef = useRef(true);
     const insets = useSafeAreaInsets();
+    const { width, height } = useWindowDimensions();
+    const isCompactHeight = height < 760;
+    const styles = useMemo(() => createStyles(isCompactHeight), [isCompactHeight]);
+    const isAlreadyPaired = Boolean(partnerId);
 
-    // Check if user is already paired on mount or when partnerId changes
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            pairingAbortRef.current?.abort();
+            if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+            if (pairedTimerRef.current) clearTimeout(pairedTimerRef.current);
+        };
+    }, []);
+
+    // Animate whenever the paired prop transitions to a connected state.
     useEffect(() => {
         if (partnerId) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-            setIsAlreadyPaired(true);
             Animated.spring(connectedScale, {
                 toValue: 1,
                 friction: 5,
                 tension: 80,
                 useNativeDriver: true,
             }).start();
+        } else {
+            connectedScale.setValue(0);
         }
     }, [partnerId, connectedScale]);
 
@@ -283,7 +307,10 @@ export const PartnerCodeScreen = ({
     const handleCopyCode = () => {
         Clipboard.setString(partnerCode);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = setTimeout(() => {
+            if (mountedRef.current) setCopied(false);
+        }, 2000);
     };
 
     const handleShareCode = async () => {
@@ -303,41 +330,41 @@ export const PartnerCodeScreen = ({
             Alert.alert('Invalid Code', 'Partner code must be 6 characters');
             return;
         }
+        if (!userId) {
+            Alert.alert('Pairing Unavailable', 'Your account is not ready. Please try again.');
+            return;
+        }
+        if (pairingRequestRef.current) return;
 
+        pairingRequestRef.current = true;
+        const abortController = new AbortController();
+        pairingAbortRef.current = abortController;
         setIsPairing(true);
-        setPairingStatus('Verifying code...');
+        setPairingStatus('Connecting...');
         try {
-            setPairingStatus('Connecting...');
             const response = await fetch(`${API_BASE}/api/partner/pair`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: abortController.signal,
                 body: JSON.stringify({
                     userId,
                     partnerCode: code.toUpperCase(),
                 }),
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                if (mountedRef.current) {
+                    Alert.alert('Pairing Failed', 'The server returned an invalid response. Please try again.');
+                }
+                return;
+            }
+            if (!mountedRef.current) return;
 
-            if (data.success) {
+            if (response.ok && data?.success && data?.partner) {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-                setPairingStatus('Paired! 💕');
-                // Save partner info to storage
-                updateUser({
-                    partnerId: data.partner.id,
-                    partnerUsername: data.partner.name,
-                    partnerAvatar: data.partner.avatar || null,
-                    connectionDate: data.partner.connectionDate,
-                    relationshipStartDate: data.partner.relationshipStartDate,
-                    shouldAskRelationshipStartDate: data.partner.shouldAskRelationshipStartDate || false,
-                    partnerIsPremium: data.partner.isPremium === true,
-                    partnerPremiumPlan: data.partner.premiumPlan || null,
-                    partnerPremiumExpiresAt: data.partner.premiumExpiresAt || null,
-                    partnerPremiumWillRenew: data.partner.premiumWillRenew ?? null,
-                    partnerPremiumCancelledAt: data.partner.premiumCancelledAt || null,
-                    partnerSubscriptionStatus: data.partner.subscriptionStatus || null,
-                    partnerSubscriptionBillingIssueAt: data.partner.subscriptionBillingIssueAt || null,
-                });
 
                 // Show connected screen with floating hearts
                 setPairedPartner(data.partner);
@@ -349,18 +376,23 @@ export const PartnerCodeScreen = ({
                 }).start();
 
                 // Auto-navigate after showing the connected screen
-                setTimeout(() => {
+                pairedTimerRef.current = setTimeout(() => {
                     onPaired(data.partner);
                 }, 3000);
             } else {
-                Alert.alert('Pairing Failed', data.error || 'Could not connect with this code');
+                Alert.alert('Pairing Failed', data?.error || 'Could not connect with this code');
             }
         } catch (error) {
+            if (error?.name === 'AbortError') return;
             console.error('Pairing error:', error);
             Alert.alert('Error', 'Network error. Please try again.');
         } finally {
-            setIsPairing(false);
-            setPairingStatus('');
+            pairingRequestRef.current = false;
+            pairingAbortRef.current = null;
+            if (mountedRef.current) {
+                setIsPairing(false);
+                setPairingStatus('');
+            }
         }
     };
 
@@ -390,7 +422,7 @@ export const PartnerCodeScreen = ({
                 </View>
 
                 <ScrollView
-                    style={[styles.scrollView, { backgroundColor: 'transparent' }]}
+                    style={styles.scrollView}
                     contentContainerStyle={[
                         styles.scrollContent,
                         {
@@ -444,15 +476,14 @@ export const PartnerCodeScreen = ({
                         ]}
                     >
                         {/* Smoothly Collapsible Container for Share Code Card & Divider */}
-                        <Animated.View style={{
+                        <Animated.View style={[styles.collapsibleCard, {
                             opacity: shareCardAnim,
                             maxHeight: shareCardAnim.interpolate({
                                 inputRange: [0, 1],
                                 outputRange: [0, 260],
                             }),
                             transform: [{ scale: shareCardAnim }],
-                            overflow: 'hidden',
-                        }}>
+                        }]}>
                             {/* Share Code Card */}
                             <View style={styles.shareCodeCard}>
                                 <View style={styles.codeRow}>
@@ -460,6 +491,8 @@ export const PartnerCodeScreen = ({
                                         style={[styles.copyButton, copied && styles.copyButtonCopied]}
                                         onPress={handleCopyCode}
                                         activeOpacity={0.7}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={copied ? 'Partner code copied' : 'Copy partner code'}
                                     >
                                         {copied ? <CheckIcon /> : <CopyIcon />}
                                     </TouchableOpacity>
@@ -470,6 +503,8 @@ export const PartnerCodeScreen = ({
                                     style={styles.shareButton}
                                     onPress={handleShareCode}
                                     activeOpacity={0.85}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Share partner code"
                                 >
                                     <LinearGradient
                                         colors={['#FF5E97', '#FFA1C9']}
@@ -512,6 +547,7 @@ export const PartnerCodeScreen = ({
                                 autoCapitalize="characters"
                                 autoCorrect={false}
                                 editable={!isPairing}
+                                accessibilityLabel="Enter your partner code"
                             />
 
                             {/* Loading State */}
@@ -526,7 +562,12 @@ export const PartnerCodeScreen = ({
 
                     {/* Skip Button */}
                     <Animated.View style={[styles.skipContainer, { opacity: fadeAnim }]}>
-                        <TouchableOpacity onPress={onSkip} activeOpacity={0.7}>
+                        <TouchableOpacity
+                            onPress={onSkip}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                            accessibilityLabel="Connect with a partner later"
+                        >
                             <Text style={styles.skipText}>I'll do this later →</Text>
                         </TouchableOpacity>
                     </Animated.View>
@@ -544,7 +585,7 @@ export const PartnerCodeScreen = ({
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (isCompactHeight) => StyleSheet.create({
     root: {
         flex: 1,
     },
@@ -630,6 +671,9 @@ const styles = StyleSheet.create({
     },
     codeSection: {
         gap: 0,
+    },
+    collapsibleCard: {
+        overflow: 'hidden',
     },
     shareCodeCard: {
         backgroundColor: '#FFFFFF',
@@ -732,17 +776,6 @@ const styles = StyleSheet.create({
         color: '#7380A1',
         fontWeight: '600',
     },
-    connectButtonWrapper: {
-        width: '100%',
-        height: isCompactHeight ? 44 : 48,
-        borderRadius: 24,
-        overflow: 'hidden',
-        shadowColor: '#FF5E97',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 5,
-    },
     shareButton: {
         width: '75%',
         height: isCompactHeight ? 38 : 42,
@@ -762,19 +795,6 @@ const styles = StyleSheet.create({
     },
     shareButtonText: {
         fontSize: isCompactHeight ? 12 : 13,
-        fontWeight: '800',
-        color: '#FFFFFF',
-    },
-    connectButtonDisabled: {
-        opacity: 0.5,
-    },
-    connectButtonGradient: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    connectButtonText: {
-        fontSize: isCompactHeight ? 14 : 15,
         fontWeight: '800',
         color: '#FFFFFF',
     },

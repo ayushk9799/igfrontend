@@ -20,6 +20,7 @@ import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import HomeWidgetShowcase from '../components/HomeWidgetShowcase';
+import HomeYearlyOfferCard from '../components/HomeYearlyOfferCard';
 import { getUser, storage } from '../utils/authStorage';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
@@ -194,6 +195,9 @@ const HomeScreen = ({
     onDistanceSetupPress,
     onPremiumPress,
     hasPremiumAccess = false,
+    yearlyOfferEndsAt = null,
+    onYearlyOfferPress,
+    onYearlyOfferExpire,
 }) => {
     const { width } = useWindowDimensions();
     const insets = useSafeAreaInsets();
@@ -672,7 +676,14 @@ const HomeScreen = ({
                         </View>
                     </TouchableOpacity>
 
-                    {!hasPremiumAccess && (
+                    {!hasPremiumAccess && yearlyOfferEndsAt ? (
+                        <HomeYearlyOfferCard
+                            visible
+                            endsAt={yearlyOfferEndsAt}
+                            onPress={onYearlyOfferPress}
+                            onExpire={onYearlyOfferExpire}
+                        />
+                    ) : !hasPremiumAccess ? (
                         <TouchableOpacity
                             onPress={onPremiumPress}
                             activeOpacity={0.9}
@@ -724,7 +735,7 @@ const HomeScreen = ({
                                 </View>
                             </View>
                         </TouchableOpacity>
-                    )}
+                    ) : null}
 
                     <View style={styles.widgetsSectionHeader}>
                         <HomeText style={styles.sectionTitle}>Widgets</HomeText>

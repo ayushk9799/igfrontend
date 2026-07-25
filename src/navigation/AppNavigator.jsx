@@ -35,7 +35,6 @@ import JigsawPuzzleScreen from '../screens/JigsawPuzzleScreen';
 import TicTacToeScreen from '../screens/TicTacToeScreen';
 import WordleScreen from '../screens/WordleScreen';
 import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
-import PremiumScreen from '../screens/PremiumScreen';
 import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
 import FreeScreen from '../screens/FreeScreen';
 import PartnerPremiumPurchaseModal from '../components/PartnerPremiumPurchaseModal';
@@ -168,7 +167,6 @@ export const AppNavigator = () => {
     // Local state (navigation & UI only)
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
     const [hasPlayedSplashAnimation, setHasPlayedSplashAnimation] = useState(false);
-    const [isPremiumVisible, setIsPremiumVisible] = useState(false);
     const [isGamePremiumVisible, setIsGamePremiumVisible] = useState(false);
     const [gamePremiumStep, setGamePremiumStep] = useState('free');
     const gamePremiumDismissRef = useRef(null);
@@ -183,6 +181,9 @@ export const AppNavigator = () => {
     const [versionGate, setVersionGate] = useState({ status: 'checking', policy: null });
     const [partnerPremiumAlertVisible, setPartnerPremiumAlertVisible] = useState(false);
     const [partnerConnectedAlert, setPartnerConnectedAlert] = useState(null);
+    const [shouldRestoreAccount, setShouldRestoreAccount] = useState(false);
+    const [yearlyOfferRequestId, setYearlyOfferRequestId] = useState(0);
+    const accountReturnPendingRef = useRef(false);
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -192,12 +193,16 @@ export const AppNavigator = () => {
         && user?.shouldAskRelationshipStartDate === true;
 
     const closeGamePremium = useCallback(() => {
+        const shouldQueueYearlyOffer = gamePremiumStep === 'premium';
         setIsGamePremiumVisible(false);
         setGamePremiumStep('free');
         const onDismiss = gamePremiumDismissRef.current;
         gamePremiumDismissRef.current = null;
         onDismiss?.();
-    }, []);
+        if (shouldQueueYearlyOffer) {
+            setYearlyOfferRequestId(previous => previous + 1);
+        }
+    }, [gamePremiumStep]);
 
     const showPremiumLimitSheet = useCallback((feature) => {
         setPremiumLimitFeature(feature);
@@ -514,7 +519,7 @@ export const AppNavigator = () => {
 
             updateUserStorage(userUpdates);
             dispatch(updateUser(userUpdates));
-            saveTogetherWidgetStartDate(getTogetherWidgetStartDate({ ...getUser(), ...userUpdates })).catch(() => {});
+            saveTogetherWidgetStartDate(getTogetherWidgetStartDate({ ...getUser(), ...userUpdates })).catch(() => { });
 
             return data.user;
         } catch (error) {
@@ -563,7 +568,7 @@ export const AppNavigator = () => {
             dispatch(setPremiumStatus(premiumData));
 
             if (!premiumData.isPremium) {
-                saveLockedDistanceWidgetData(getUser() || {}).catch(() => {});
+                saveLockedDistanceWidgetData(getUser() || {}).catch(() => { });
             }
         } catch (serverError) {
             // Preserve current/legacy access on all verification failures. The
@@ -640,7 +645,7 @@ export const AppNavigator = () => {
         if ((currentScreen === null && versionGate.status !== 'required') || hasHiddenBootSplashRef.current) return;
 
         hasHiddenBootSplashRef.current = true;
-        BootSplash.hide({ fade: true }).catch(() => {});
+        BootSplash.hide({ fade: true }).catch(() => { });
     }, [currentScreen, versionGate.status]);
 
     // ── Backend-driven app version gate ──
@@ -855,6 +860,7 @@ export const AppNavigator = () => {
                     const partnerData = {
                         partnerId: statusData.partner.id,
                         partnerUsername: statusData.partner.name,
+                        partnerNickname: statusData.partner.nickname || statusData.partner.name || null,
                         partnerAvatar: statusData.partner.avatar || null,
                         connectionDate: statusData.connectionDate,
                         relationshipStartDate: statusData.relationshipStartDate,
@@ -885,6 +891,7 @@ export const AppNavigator = () => {
                     dispatch(setPartner({
                         id: statusData.partner.id,
                         name: statusData.partner.name,
+                        nickname: statusData.partner.nickname || statusData.partner.name || null,
                         avatar: statusData.partner.avatar || null,
                         connectionDate: statusData.connectionDate,
                         relationshipStartDate: statusData.relationshipStartDate,
@@ -893,8 +900,7 @@ export const AppNavigator = () => {
                         premiumPlan: statusData.partner.premiumPlan || null,
                         premiumExpiresAt: statusData.partner.premiumExpiresAt || null,
                     }));
-                    cancelPartnerInviteReminders().catch(() => {});
-                    requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
+                    cancelPartnerInviteReminders().catch(() => { });
                     setPartnerConnectedAlert({
                         name: data?.partnerName || statusData.partner.name,
                         avatar: data?.partnerAvatar || statusData.partner.avatar || null,
@@ -1166,7 +1172,7 @@ export const AppNavigator = () => {
         // 3. Foreground Message Handler — mirror FCM as a local notification
         const unsubscribeForeground = setupForegroundMessageHandler((remoteMessage) => {
             if (remoteMessage?.data?.type === 'distance_widget_refresh') {
-                refreshDistanceWidgetSnapshot().catch(() => {});
+                refreshDistanceWidgetSnapshot().catch(() => { });
                 return;
             }
 
@@ -1466,6 +1472,7 @@ export const AppNavigator = () => {
                             const partnerData = {
                                 partnerId: statusData.partner.id,
                                 partnerUsername: statusData.partner.name,
+                                partnerNickname: statusData.partner.nickname || statusData.partner.name || null,
                                 partnerAvatar: statusData.partner.avatar || null,
                                 connectionDate: statusData.connectionDate,
                                 relationshipStartDate: statusData.relationshipStartDate,
@@ -1488,7 +1495,7 @@ export const AppNavigator = () => {
                             const premiumSource = userPremium ? (storedUser.premiumSource || 'self') : (partnerPremium ? 'partner' : null);
                             updateUserStorage({ ...partnerData, isPremium: effectivePremium, premiumSource });
                             dispatch(updateUser({ ...partnerData, isPremium: effectivePremium, premiumSource, isOnboarded: true }));
-                            cancelPartnerInviteReminders().catch(() => {});
+                            cancelPartnerInviteReminders().catch(() => { });
 
                             if (!storedUser.partnerId) {
                                 // We were just paired by someone else!
@@ -1508,6 +1515,7 @@ export const AppNavigator = () => {
                             const clearedData = {
                                 partnerId: null,
                                 partnerUsername: null,
+                                partnerNickname: null,
                                 partnerAvatar: null,
                                 connectionDate: null,
                                 relationshipStartDate: null,
@@ -1607,7 +1615,8 @@ export const AppNavigator = () => {
     // Use startTransition for non-blocking navigation
     const navigate = (screen) => {
         if (screen === 'premium') {
-            setIsPremiumVisible(true);
+            setGamePremiumStep('free');
+            setIsGamePremiumVisible(true);
             return;
         }
 
@@ -1634,6 +1643,17 @@ export const AppNavigator = () => {
 
     const navigateHomeTab = (tab = lastHomeTab || 'home') => {
         setHomeInitialTab(tab);
+        navigate('home');
+    };
+
+    const navigateFromAccount = (screen) => {
+        accountReturnPendingRef.current = true;
+        navigate(screen);
+    };
+
+    const returnToAccount = () => {
+        accountReturnPendingRef.current = false;
+        setShouldRestoreAccount(true);
         navigate('home');
     };
 
@@ -1831,6 +1851,11 @@ export const AppNavigator = () => {
             }
         }
 
+        if (accountReturnPendingRef.current) {
+            returnToAccount();
+            return;
+        }
+
         startTransition(() => {
             if (userData.partnerId) {
                 dispatch(setOnboarded(true));
@@ -1846,6 +1871,11 @@ export const AppNavigator = () => {
 
     // Handle avatar completion
     const handleAvatarComplete = async () => {
+        if (accountReturnPendingRef.current) {
+            returnToAccount();
+            return;
+        }
+
         // After avatar, go to notification permission (or skip if already granted)
         const hasPermission = await checkNotificationPermission();
         startTransition(() => {
@@ -1867,6 +1897,11 @@ export const AppNavigator = () => {
     const continueAfterPartnerStep = async (nextUser = userData) => {
         if (needsRelationshipStartDate(nextUser)) {
             setCurrentScreen('relationshipStartDate');
+            return;
+        }
+
+        if (accountReturnPendingRef.current) {
+            returnToAccount();
             return;
         }
 
@@ -1932,6 +1967,7 @@ export const AppNavigator = () => {
         const partnerData = {
             partnerId: resolvedPartner.id,
             partnerUsername: resolvedPartner.name,
+            partnerNickname: resolvedPartner.nickname || resolvedPartner.name || null,
             partnerAvatar: resolvedPartner.avatar || null,
             connectionDate: resolvedPartner.connectionDate,
             relationshipStartDate: resolvedPartner.relationshipStartDate,
@@ -1955,8 +1991,7 @@ export const AppNavigator = () => {
                 || (partnerIsPremium ? 'partner' : null),
         });
         dispatch(setPartner(resolvedPartner));
-        cancelPartnerInviteReminders().catch(() => {});
-        requestReviewForMoment(REVIEW_MOMENTS.PARTNER_PAIRED);
+        cancelPartnerInviteReminders().catch(() => { });
 
         if (coupleIsPremium) {
             await continueAfterPartnerStep({ ...nextUser, isPremium: true });
@@ -2053,7 +2088,7 @@ export const AppNavigator = () => {
 
     // Handle logout - clear auth and go to login
     const handleLogout = () => {
-        cancelPartnerInviteReminders().catch(() => {});
+        cancelPartnerInviteReminders().catch(() => { });
         startTransition(() => {
             disconnect(); // Explicitly disconnect socket
             clearAuth();
@@ -2080,7 +2115,7 @@ export const AppNavigator = () => {
             const data = await response.json();
 
             if (data.success) {
-                cancelPartnerInviteReminders().catch(() => {});
+                cancelPartnerInviteReminders().catch(() => { });
                 // Clear all local storage and navigate to login
                 startTransition(() => {
                     disconnect(); // Explicitly disconnect socket
@@ -2100,7 +2135,7 @@ export const AppNavigator = () => {
 
     // Handle authentication errors globally (401/403 responses)
     const handleAuthError = useCallback((error) => {
-        cancelPartnerInviteReminders().catch(() => {});
+        cancelPartnerInviteReminders().catch(() => { });
         // Directly navigate to login without showing alert
         startTransition(() => {
             disconnect(); // Explicitly disconnect socket
@@ -2125,15 +2160,20 @@ export const AppNavigator = () => {
                 return true;
             }
 
-            if (isPremiumVisible) {
-                setIsPremiumVisible(false);
+            if (accountReturnPendingRef.current && currentScreen !== 'home') {
+                returnToAccount();
+                return true;
+            }
+
+            if (currentScreen === 'account') {
+                navigate('home');
                 return true;
             }
 
             const homeSubScreens = [
                 'mood', 'scribble', 'questions', 'jigsawCreate',
                 'jigsawPuzzle', 'ticTacToe', 'wordle', 'chat', 'liveChat', 'questionChatV2',
-                'premium', 'dailyChallenge', 'questionCategories',
+                'dailyChallenge', 'questionCategories',
             ];
 
             if (currentScreen === 'chat' || currentScreen === 'liveChat') {
@@ -2164,8 +2204,8 @@ export const AppNavigator = () => {
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [closeGamePremium, currentScreen, isGamePremiumVisible, isPremiumVisible]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [closeGamePremium, currentScreen, isGamePremiumVisible]);
 
     // Handle onboarding completion
     const handleOnboardingComplete = () => {
@@ -2253,6 +2293,11 @@ export const AppNavigator = () => {
                         initialDate={userData?.relationshipStartDate || userData?.connectionDate}
                         onComplete={handleRelationshipStartDateComplete}
                         onBack={() => {
+                            if (accountReturnPendingRef.current) {
+                                returnToAccount();
+                                return;
+                            }
+
                             if (userData?.relationshipStartDate) {
                                 navigate('home');
                             } else {
@@ -2266,7 +2311,13 @@ export const AppNavigator = () => {
                 return (
                     <AvatarSelectionScreen
                         onComplete={handleAvatarComplete}
-                        onBack={() => navigate('nickname')}
+                        onBack={() => {
+                            if (accountReturnPendingRef.current) {
+                                returnToAccount();
+                                return;
+                            }
+                            navigate('nickname');
+                        }}
                     />
                 );
 
@@ -2335,7 +2386,7 @@ export const AppNavigator = () => {
                         onOpenDrawFreeScreen={handlePremiumLimitUpgrade}
                         onAvatarPress={() => navigate('avatarSelection')}
                         onFindPartner={() => navigate('partnerCode')}
-                        onEditRelationshipDate={() => navigate('relationshipStartDate')}
+                        onNavigateFromAccount={navigateFromAccount}
                         onJigsawCreate={() => navigate('jigsawCreate')}
                         onJigsawPlay={(puzzleData) => {
                             dispatch(setSelectedPuzzle(puzzleData));
@@ -2355,6 +2406,10 @@ export const AppNavigator = () => {
                         onDeleteAccount={handleDeleteAccount}
                         onTabChange={setLastHomeTab}
                         canAutoOpenMoodPrompt={hasPlayedSplashAnimation}
+                        openAccountOnMount={shouldRestoreAccount}
+                        onAccountRestoreHandled={() => setShouldRestoreAccount(false)}
+                        yearlyOfferRequestId={yearlyOfferRequestId}
+                        onYearlyOfferRequestHandled={() => setYearlyOfferRequestId(0)}
                     />
                 );
 
@@ -2626,17 +2681,6 @@ export const AppNavigator = () => {
                     onFinish={handleSplashAnimationFinish}
                 />
             )}
-            <Modal
-                visible={isPremiumVisible}
-                animationType="slide"
-                transparent={false}
-                statusBarTranslucent={true}
-                onRequestClose={() => setIsPremiumVisible(false)}
-            >
-                <PremiumScreen
-                    onBack={() => setIsPremiumVisible(false)}
-                />
-            </Modal>
             <Modal
                 visible={isGamePremiumVisible}
                 animationType="slide"
