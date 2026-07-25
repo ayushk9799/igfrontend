@@ -109,8 +109,10 @@ const GamesScreen = ({
     const { width } = useWindowDimensions();
     const blinkAnim = useRef(new Animated.Value(1)).current;
     const refreshPuzzleRef = useRef(onRefreshPuzzle);
+    const refreshedExpiredPuzzleRef = useRef(null);
     const cardMinHeight = Math.max(152, Math.min(168, width * 0.42));
     const [showVideoCallGuide, setShowVideoCallGuide] = useState(false);
+    const [puzzleNow, setPuzzleNow] = useState(Date.now());
     const videoCallGuideStorageKey = useMemo(() => {
         const currentUser = getUser();
         const currentUserId = currentUser?.id || currentUser?._id || 'device';
@@ -124,6 +126,34 @@ const GamesScreen = ({
     useEffect(() => {
         refreshPuzzleRef.current?.();
     }, []);
+
+    useEffect(() => {
+        if (pendingPuzzle?.status !== 'in_progress' || !pendingPuzzle?.expiresAt) {
+            return undefined;
+        }
+        const update = () => setPuzzleNow(Date.now());
+        update();
+        const timer = setInterval(update, 1000);
+        return () => clearInterval(timer);
+    }, [pendingPuzzle?.expiresAt, pendingPuzzle?.status]);
+
+    const puzzleSecondsRemaining = pendingPuzzle?.expiresAt
+        ? Math.max(0, Math.ceil((new Date(pendingPuzzle.expiresAt).getTime() - puzzleNow) / 1000))
+        : null;
+    const puzzleTimeLabel = puzzleSecondsRemaining === null
+        ? null
+        : `${String(Math.floor(puzzleSecondsRemaining / 60)).padStart(2, '0')}:${String(puzzleSecondsRemaining % 60).padStart(2, '0')}`;
+
+    useEffect(() => {
+        if (
+            pendingPuzzle?.status === 'in_progress'
+            && puzzleSecondsRemaining === 0
+            && refreshedExpiredPuzzleRef.current !== pendingPuzzle._id
+        ) {
+            refreshedExpiredPuzzleRef.current = pendingPuzzle._id;
+            refreshPuzzleRef.current?.();
+        }
+    }, [pendingPuzzle?._id, pendingPuzzle?.status, puzzleSecondsRemaining]);
 
     useEffect(() => {
         if (
@@ -153,6 +183,13 @@ const GamesScreen = ({
     }, [dismissVideoCallGuide, onVideoCallPress]);
 
     useEffect(() => {
+        if (pendingPuzzle?.imageUrl) {
+            Image.prefetch(pendingPuzzle.imageUrl);
+            Image.getSize(pendingPuzzle.imageUrl, () => {}, () => {});
+        }
+    }, [pendingPuzzle?.imageUrl]);
+
+    useEffect(() => {
         if (!pendingTicTacToe && !pendingWordle) {
             blinkAnim.setValue(1);
             return undefined;
@@ -169,12 +206,30 @@ const GamesScreen = ({
         return () => animation.stop();
     }, [pendingTicTacToe, pendingWordle, blinkAnim]);
 
+    const currentUser = getUser();
+    const currentUserId = currentUser?.id || currentUser?._id;
+    const isPuzzleCreator = pendingPuzzle?.creatorId
+        ? (pendingPuzzle.creatorId._id || pendingPuzzle.creatorId) === currentUserId
+        : false;
+
     const games = [
         {
             key: 'puzzle',
-            title: pendingPuzzle ? 'Puzzle waiting' : 'Create puzzle',
-            subtitle: 'A tiny photo challenge for two.',
-            buttonLabel: pendingPuzzle ? 'Continue' : "Let's play",
+            title: pendingPuzzle?.status === 'in_progress'
+                ? (isPuzzleCreator ? `${partnerName} is solving!` : 'Puzzle in progress')
+                : pendingPuzzle
+                    ? (isPuzzleCreator ? 'Puzzle sent 🧩' : 'Puzzle waiting')
+                    : 'Create puzzle',
+            subtitle: pendingPuzzle?.status === 'in_progress'
+                ? (isPuzzleCreator ? `⏱ ${puzzleTimeLabel} remaining · Watch live` : `⏱ ${puzzleTimeLabel} remaining`)
+                : pendingPuzzle
+                    ? (isPuzzleCreator ? `Waiting for ${partnerName} to start.` : 'Your 5-minute timer starts after the preview.')
+                    : 'A tiny photo challenge for two.',
+            buttonLabel: pendingPuzzle?.status === 'in_progress'
+                ? (isPuzzleCreator ? 'Watch live 👀' : 'Continue')
+                : pendingPuzzle
+                    ? (isPuzzleCreator ? 'View' : 'Start')
+                    : "Let's play",
             gradient: ['#FFA852', '#FF6D26'],
             accent: '#FF9833',
             icon: 'puzzle',

@@ -7,7 +7,6 @@ import {
     Image,
     Platform,
     PermissionsAndroid,
-    Alert,
     ActivityIndicator,
     Animated,
     Dimensions,
@@ -40,6 +39,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     const [showCamera, setShowCamera] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [cameraType, setCameraType] = useState('back');
+    const [screenMessage, setScreenMessage] = useState(null);
 
     const [isCameraInitialized, setIsCameraInitialized] = useState(false);
 
@@ -98,11 +98,10 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             const granted = status === 'granted';
             setHasPermission(granted);
             if (!granted) {
-                Alert.alert(
-                    'Camera Permission Needed',
-                    'Camera access is needed to take puzzle photos. You can still choose a photo from Gallery.',
-                    [{ text: 'OK' }]
-                );
+                setScreenMessage({
+                    tone: 'warning',
+                    text: 'Camera access is needed for photos. You can still choose one from Gallery.',
+                });
             }
             return granted;
         }
@@ -110,14 +109,10 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
         const granted = result === PermissionsAndroid.RESULTS.GRANTED;
         setHasPermission(granted);
         if (!granted) {
-            Alert.alert(
-                'Camera Permission Needed',
-                'Camera access is needed to take puzzle photos. You can still choose a photo from Gallery.',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Try Again', onPress: () => requestCameraPermission() },
-                ]
-            );
+            setScreenMessage({
+                tone: 'warning',
+                text: 'Camera access is needed for photos. You can still choose one from Gallery.',
+            });
         }
         return granted;
     };
@@ -164,7 +159,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
             setShowCamera(false);
         } catch (e) {
-            Alert.alert('Error', 'Could not capture photo');
+            setScreenMessage({ tone: 'error', text: 'Could not capture the photo. Please try again.' });
         } finally {
             isProcessingRef.current = false;
         }
@@ -174,14 +169,10 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
         try {
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
-                Alert.alert(
-                    'Gallery Permission Needed',
-                    'Photo library access is needed to choose a puzzle photo.',
-                    [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Try Again', onPress: () => handlePickFromGallery() },
-                    ]
-                );
+                setScreenMessage({
+                    tone: 'warning',
+                    text: 'Photo library access is needed to choose a puzzle photo.',
+                });
                 return;
             }
 
@@ -249,14 +240,22 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
             if (result.success) {
                 requestReviewForMoment(REVIEW_MOMENTS.PUZZLE_SENT);
-                Alert.alert('🧩 Puzzle Sent!', `${partnerName || 'Your partner'} will receive a notification to solve it!`, [
-                    { text: 'Awesome!', onPress: () => navigation.goBack() }
-                ]);
+                setScreenMessage({
+                    tone: 'success',
+                    text: `Puzzle sent — ${partnerName || 'your partner'} can solve it now.`,
+                });
+                setTimeout(() => navigation.goBack(), 1200);
             } else {
-                Alert.alert('Oops!', result.error || 'Failed to send puzzle');
+                setScreenMessage({
+                    tone: 'error',
+                    text: result.error || 'Failed to send the puzzle. Please try again.',
+                });
             }
         } catch (error) {
-            Alert.alert('Oops!', 'Failed to send puzzle');
+            setScreenMessage({
+                tone: 'error',
+                text: 'Failed to send the puzzle. Please try again.',
+            });
         }
         setIsSending(false);
     };
@@ -293,6 +292,22 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                     <Text style={styles.subtitle}>
                         {previewUri ? 'Your puzzle preview 🧩' : `Pick a photo and challenge ${partnerName || 'your partner'} to solve it`}
                     </Text>
+                    {screenMessage && (
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => setScreenMessage(null)}
+                            style={styles.messageArea}
+                        >
+                            <Text style={[
+                                styles.messageText,
+                                screenMessage.tone === 'success' && styles.messageSuccess,
+                                screenMessage.tone === 'warning' && styles.messageWarning,
+                                screenMessage.tone === 'error' && styles.messageError,
+                            ]}>
+                                {screenMessage.text}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Camera / Preview Box */}
                     <View style={styles.cameraBoxContainer}>
@@ -485,6 +500,26 @@ const styles = StyleSheet.create({
     content: { flex: 1, alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.md },
     title: { color: colors.text, fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: spacing.xs },
     subtitle: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xl, paddingHorizontal: spacing.sm },
+    messageArea: {
+        marginTop: -spacing.md,
+        marginBottom: spacing.md,
+        paddingHorizontal: spacing.sm,
+    },
+    messageText: {
+        fontSize: 15,
+        lineHeight: 20,
+        fontWeight: '800',
+        textAlign: 'center',
+    },
+    messageSuccess: {
+        color: '#16803A',
+    },
+    messageWarning: {
+        color: '#9A6200',
+    },
+    messageError: {
+        color: '#C03434',
+    },
 
     // Camera Box
     cameraBoxContainer: {

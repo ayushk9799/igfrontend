@@ -184,6 +184,7 @@ export const AppNavigator = () => {
     const [shouldRestoreAccount, setShouldRestoreAccount] = useState(false);
     const [yearlyOfferRequestId, setYearlyOfferRequestId] = useState(0);
     const accountReturnPendingRef = useRef(false);
+    const [activeJigsawPuzzle, setActiveJigsawPuzzle] = useState(null);
 
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
@@ -218,6 +219,17 @@ export const AppNavigator = () => {
         setGamePremiumStep('free');
         setIsGamePremiumVisible(true);
     }, []);
+
+    useEffect(() => {
+        if (!socket || !userData?.id) return;
+        const handlePuzzleUpdate = () => {
+            fetchPendingPuzzle(userData.id);
+        };
+        socket.on('puzzle:updated', handlePuzzleUpdate);
+        return () => {
+            socket.off('puzzle:updated', handlePuzzleUpdate);
+        };
+    }, [socket, userData?.id]);
 
     useEffect(() => {
         if (
@@ -2389,6 +2401,7 @@ export const AppNavigator = () => {
                         onNavigateFromAccount={navigateFromAccount}
                         onJigsawCreate={() => navigate('jigsawCreate')}
                         onJigsawPlay={(puzzleData) => {
+                            setActiveJigsawPuzzle(puzzleData);
                             dispatch(setSelectedPuzzle(puzzleData));
                             navigate('jigsawPuzzle');
                         }}
@@ -2557,18 +2570,25 @@ export const AppNavigator = () => {
                     />
                 );
 
-            case 'jigsawPuzzle':
+            case 'jigsawPuzzle': {
+                const puzzleToPass = activeJigsawPuzzle || selectedPuzzle || pendingPuzzle;
                 return (
                     <JigsawPuzzleScreen
-                        navigation={{ goBack: () => navigateHomeTab('games') }}
+                        navigation={{
+                            goBack: () => {
+                                setActiveJigsawPuzzle(null);
+                                navigateHomeTab('games');
+                            }
+                        }}
                         route={{
                             params: {
-                                puzzleId: selectedPuzzle?._id,
-                                puzzleData: selectedPuzzle,
+                                puzzleId: puzzleToPass?._id || puzzleToPass?.id,
+                                puzzleData: puzzleToPass,
                             }
                         }}
                     />
                 );
+            }
 
             case 'ticTacToe':
                 return (
