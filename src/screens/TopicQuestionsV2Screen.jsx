@@ -198,16 +198,19 @@ export default function TopicQuestionsV2Screen({
     const [userAnswers, setUserAnswers] = useState([]);
     const [answeredQuestionIds, setAnsweredQuestionIds] = useState([]);
     const [skippedQuestionIds, setSkippedQuestionIds] = useState([]);
+    const [initiallyHiddenQuestionIds, setInitiallyHiddenQuestionIds] = useState([]);
     const [setsLoading, setSetsLoading] = useState(true);
     const [questionsLoading, setQuestionsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [page, setPage] = useState({ nextCursor: null, hasMore: false, totalQuestions: 0 });
     const [showSummary, setShowSummary] = useState(false);
+    const [summaryReturnsToQuestions, setSummaryReturnsToQuestions] = useState(false);
     const [singleQuestionToAnswer, setSingleQuestionToAnswer] = useState(null);
     const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
     const [questionChatToOpen, setQuestionChatToOpen] = useState(null);
 
     const fetchingQuestionsRef = useRef(false);
+    const normalizedTaskCacheRef = useRef(new WeakMap());
 
     const fetchSets = useCallback(async () => {
         setSetsLoading(true);
@@ -266,17 +269,26 @@ export default function TopicQuestionsV2Screen({
                     }
                 });
                 setUserAnswers(restoredAnswers);
-                setAnsweredQuestionIds([
+                const restoredAnsweredQuestionIds = [
                     ...new Set([
                         ...(responseProgress.answeredQuestionIds || []),
                         ...savedAnswers.map((savedAnswer) => savedAnswer.questionId),
                     ]),
+                ];
+                const restoredSkippedQuestionIds = responseProgress.skippedQuestionIds || [];
+                setAnsweredQuestionIds(restoredAnsweredQuestionIds);
+                setSkippedQuestionIds(restoredSkippedQuestionIds);
+                setInitiallyHiddenQuestionIds([
+                    ...new Set([
+                        ...restoredAnsweredQuestionIds,
+                        ...restoredSkippedQuestionIds,
+                    ]),
                 ]);
-                setSkippedQuestionIds(responseProgress.skippedQuestionIds || []);
                 setCurrentIndex(0);
             }
 
             if (responseProgress.completedAt && !append) {
+                setSummaryReturnsToQuestions(false);
                 setShowSummary(true);
             }
 
@@ -304,6 +316,8 @@ export default function TopicQuestionsV2Screen({
         setUserAnswers([]);
         setAnsweredQuestionIds([]);
         setSkippedQuestionIds([]);
+        setInitiallyHiddenQuestionIds([]);
+        setSummaryReturnsToQuestions(false);
         setShowSummary(false);
         setPage({ nextCursor: null, hasMore: false, totalQuestions: set.totalQuestions || 0 });
         fetchQuestions({ set, cursor: 0, append: false });
@@ -325,6 +339,8 @@ export default function TopicQuestionsV2Screen({
             setUserAnswers([]);
             setAnsweredQuestionIds([]);
             setSkippedQuestionIds([]);
+            setInitiallyHiddenQuestionIds([]);
+            setSummaryReturnsToQuestions(false);
             setShowSummary(false);
             return;
         }
@@ -527,28 +543,38 @@ export default function TopicQuestionsV2Screen({
             action: 'completed',
             cursor: String(questions.length),
         });
+        setSummaryReturnsToQuestions(false);
         setShowSummary(true);
         requestReviewForMoment(REVIEW_MOMENTS.V2_SET_SUMMARY_SHOWN);
     }, [effectiveUserId, questions.length, selectedSet, topic, singleQuestionToAnswer]);
 
     const tasks = useMemo(() => {
-        const hiddenQuestionIds = new Set([...answeredQuestionIds, ...skippedQuestionIds]);
+        const hiddenQuestionIds = new Set(initiallyHiddenQuestionIds);
+        const category = selectedSet?.format || 'deep';
         return questions
             .filter((question) => !hiddenQuestionIds.has(question.questionId))
-            .map((question) => ({
-                _id: question.questionId,
-                questionId: question.questionId,
-                taskstatement: question.prompt,
-                category: selectedSet?.format || 'deep',
-                options: question.options || [],
-                minValue: question.minValue,
-                maxValue: question.maxValue,
-                minLabel: question.minLabel,
-                maxLabel: question.maxLabel,
-                originalIndex: question.index,
-                backendIndex: question.index,
-            }));
-    }, [answeredQuestionIds, questions, selectedSet?.format, skippedQuestionIds]);
+            .map((question) => {
+                const cached = normalizedTaskCacheRef.current.get(question);
+                if (cached?.category === category) return cached.task;
+
+                const task = {
+                    _id: question.questionId,
+                    questionId: question.questionId,
+                    taskstatement: question.prompt,
+                    category,
+                    options: question.options || [],
+                    minValue: question.minValue,
+                    maxValue: question.maxValue,
+                    minLabel: question.minLabel,
+                    maxLabel: question.maxLabel,
+                    order: question.order,
+                    originalIndex: question.index,
+                    backendIndex: question.index,
+                };
+                normalizedTaskCacheRef.current.set(question, { category, task });
+                return task;
+            });
+    }, [initiallyHiddenQuestionIds, questions, selectedSet?.format]);
 
     useEffect(() => {
         setCurrentIndex((prev) => Math.max(0, Math.min(prev, Math.max(tasks.length - 1, 0))));
@@ -596,6 +622,7 @@ export default function TopicQuestionsV2Screen({
                 cursor: String(page.totalQuestions || questions.length),
             });
             setSummaryRefreshKey((prev) => prev + 1);
+            setSummaryReturnsToQuestions(false);
             setShowSummary(true);
             requestReviewForMoment(REVIEW_MOMENTS.V2_SET_SUMMARY_SHOWN);
         }
@@ -689,6 +716,7 @@ export default function TopicQuestionsV2Screen({
                     style={styles.viewAnswersButton}
                     onPress={() => {
                         setSummaryRefreshKey((prev) => prev + 1);
+                        setSummaryReturnsToQuestions(true);
                         setShowSummary(true);
                     }}
                     activeOpacity={0.82}
@@ -869,6 +897,7 @@ export default function TopicQuestionsV2Screen({
                     onSkipQuestion={handleQuestionSkip}
                     userAnswers={userAnswers}
                     autoAdvanceOnSubmit={false}
+                    showAlreadyAnsweredOverlay={false}
                     isPremium={isPremium}
                     onNavigateToPremium={onNavigateToPremium}
                     totalCardsOverride={page.totalQuestions || tasks.length}
@@ -911,7 +940,8 @@ export default function TopicQuestionsV2Screen({
                             userId={effectiveUserId}
                             partnerName={partnerName}
                             onBack={() => {
-                                if (tasks.length > 0) {
+                                if (summaryReturnsToQuestions && tasks.length > 0) {
+                                    setSummaryReturnsToQuestions(false);
                                     setShowSummary(false);
                                 } else {
                                     handleBack();

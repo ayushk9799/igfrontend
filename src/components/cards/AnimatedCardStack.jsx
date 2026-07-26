@@ -1,14 +1,19 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, Dimensions, View, Platform, Text, TouchableOpacity } from 'react-native';
+import React, { useCallback, useLayoutEffect, useRef } from 'react';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-    useSharedValue,
+    Easing,
+    Extrapolate,
+    interpolate,
+    runOnJS,
+    useAnimatedReaction,
     useAnimatedStyle,
+    useReducedMotion,
+    useSharedValue,
+    withDelay,
+    withSequence,
     withSpring,
     withTiming,
-    runOnJS,
-    interpolate,
-    Extrapolate,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
@@ -16,26 +21,156 @@ import TaskCard from './TaskCard';
 import { fontFamily } from '../../constants/fonts';
 
 const { width } = Dimensions.get('window');
-
-// Thresholds for swipe detection
 const SWIPE_THRESHOLD = width * 0.25;
 const SWIPE_VELOCITY_THRESHOLD = 500;
+const HANDOFF_THRESHOLD = width * 1.05;
 
-// Spring config for natural feel
+const COMPLETION_NONE = 0;
+const COMPLETION_PROGRAMMATIC = 1;
+const COMPLETION_SKIP = 2;
+const COMPLETION_PREVIOUS = 3;
+
 const SPRING_CONFIG = {
     damping: 15,
     stiffness: 150,
     mass: 0.5,
 };
-
-const QUICK_TRANSITION_CONFIG = {
-    duration: 180,
+const CONFIRMATION_PULSE_UP_CONFIG = {
+    duration: 80,
+    easing: Easing.out(Easing.quad),
 };
+const CONFIRMATION_PULSE_DOWN_CONFIG = {
+    duration: 90,
+    easing: Easing.inOut(Easing.quad),
+};
+const REDUCED_MOTION_FADE_CONFIG = {
+    duration: 160,
+    easing: Easing.out(Easing.quad),
+};
+const ANSWER_FEEDBACK_HOLD_MS = 500;
+const FREE_QUESTION_ORDER_LIMIT = 6;
 
 /**
- * AnimatedCardStack - Manages card transitions with smooth Reanimated animations
- * Uses Double Buffering (Slot A / Slot B) to prevent Android flicker on reset
+ * A persistent question layer. Its visual role is derived entirely from shared
+ * values, so promotion from background to foreground is atomic on the UI thread.
  */
+const CardLayer = React.memo(({
+    task,
+    taskIndex,
+    cardProps,
+    interactive,
+    reduceMotion,
+    visualIndex,
+    transitionFromIndex,
+    transitionDirection,
+    isTransitioning,
+    completionMode,
+    x,
+    y,
+    rotation,
+    activeScale,
+    activeOpacity,
+}) => {
+    const animatedStyle = useAnimatedStyle(() => {
+        const relativeIndex = taskIndex - visualIndex.value;
+        const isOutgoing =
+            isTransitioning.value
+            && taskIndex === transitionFromIndex.value;
+
+        if (isOutgoing) {
+            return {
+                transform: [
+                    { translateX: x.value },
+                    { translateY: y.value },
+                    { rotate: `${rotation.value}deg` },
+                    { scale: activeScale.value },
+                ],
+                zIndex: 3,
+                opacity: activeOpacity.value,
+            };
+        }
+
+        if (relativeIndex === 0) {
+            return {
+                transform: [
+                    { translateX: 0 },
+                    { translateY: 0 },
+                    { rotate: '0deg' },
+                    { scale: 1 },
+                ],
+                zIndex: 2,
+                opacity: 1,
+            };
+        }
+
+        const isAdjacent = Math.abs(relativeIndex) === 1;
+        if (!isAdjacent) {
+            return {
+                transform: [{ scale: 0.96 }, { translateY: 14 }],
+                zIndex: 0,
+                opacity: 0,
+            };
+        }
+
+        const dragDirection = x.value < 0 ? 1 : x.value > 0 ? -1 : 0;
+        const effectiveDirection =
+            transitionDirection.value !== 0
+                ? transitionDirection.value
+                : dragDirection;
+        const isRevealTarget = relativeIndex === effectiveDirection;
+
+        if (!isRevealTarget) {
+            return {
+                transform: [{ scale: 0.96 }, { translateY: 14 }],
+                zIndex: 0,
+                opacity: 0,
+            };
+        }
+
+        if (
+            reduceMotion
+            && isTransitioning.value
+            && completionMode.value === COMPLETION_PROGRAMMATIC
+        ) {
+            const revealProgress = 1 - activeOpacity.value;
+            return {
+                transform: [{ scale: 1 }, { translateY: 0 }],
+                zIndex: 1,
+                opacity: revealProgress,
+            };
+        }
+
+        const directionalTravel =
+            relativeIndex === 1
+                ? Math.max(-x.value, 0)
+                : Math.max(x.value, 0);
+        const revealProgress = interpolate(
+            directionalTravel,
+            [0, width * 0.85],
+            [0, 1],
+            Extrapolate.CLAMP
+        );
+
+        return {
+            transform: [
+                { scale: interpolate(revealProgress, [0, 1], [0.96, 1]) },
+                { translateY: interpolate(revealProgress, [0, 1], [14, 0]) },
+            ],
+            zIndex: 1,
+            opacity: 1,
+        };
+    }, [reduceMotion, taskIndex]);
+
+    return (
+        <Animated.View
+            style={[styles.fullCard, animatedStyle]}
+            pointerEvents={interactive ? 'auto' : 'none'}
+        >
+            <TaskCard {...cardProps} task={task} index={taskIndex} />
+        </Animated.View>
+    );
+});
+
 const AnimatedCardStack = ({
     tasks,
     currentIndex,
@@ -52,103 +187,92 @@ const AnimatedCardStack = ({
     onAnswerSubmit,
     onAnswerTransitionComplete,
     onSkipQuestion,
-    challengeId,
     userAnswers = [],
     autoAdvanceOnSubmit = true,
+    showAlreadyAnsweredOverlay = true,
     isPremium = false,
     onNavigateToPremium = () => { },
     totalCardsOverride,
     displayIndexOffset = 0,
     cardHeight,
 }) => {
-    // Current active slot (0 or 1)
-    const activeSlotIndex = currentIndex % 2;
+    const reduceMotion = useReducedMotion();
 
-    // Shared values for Slot 0
-    const val0 = {
-        x: useSharedValue(0),
-        y: useSharedValue(0),
-        rot: useSharedValue(0),
-    };
-
-    // Shared values for Slot 1
-    const val1 = {
-        x: useSharedValue(0),
-        y: useSharedValue(0),
-        rot: useSharedValue(0),
-    };
-
-    const isGestureActive = useSharedValue(false);
+    const x = useSharedValue(0);
+    const y = useSharedValue(0);
+    const rotation = useSharedValue(0);
+    const activeScale = useSharedValue(1);
+    const activeOpacity = useSharedValue(1);
+    const visualIndex = useSharedValue(currentIndex);
+    const transitionFromIndex = useSharedValue(currentIndex);
+    const transitionDirection = useSharedValue(0);
     const isTransitioning = useSharedValue(false);
+    const completionMode = useSharedValue(COMPLETION_NONE);
+
     const pendingAnsweredTaskIndexRef = useRef(null);
     const isAnswerSubmissionPendingRef = useRef(false);
 
-    // Navigation helpers
     const canGoNext = currentIndex < tasks.length - 1;
     const canGoPrev = currentIndex > 0;
-
-    // Premium restriction: lock questions with order >= 6 (first 5 orders are free)
-    // Check current card's order field from database
-    const FREE_QUESTION_ORDER_LIMIT = 6; // Questions with order >= 6 are premium
     const currentTask = tasks[currentIndex];
-    const isCurrentCardLocked = !isPremium && currentTask?.order >= FREE_QUESTION_ORDER_LIMIT;
     const currentAnswerIndex = currentTask?.originalIndex ?? currentIndex;
-    const currentCardAnswered = !!(userAnswers[currentAnswerIndex]?.answer);
+    const currentCardAnswered = !!userAnswers[currentAnswerIndex]?.answer;
+    const isCurrentCardLocked =
+        !isPremium && currentTask?.order >= FREE_QUESTION_ORDER_LIMIT;
     const showSkipButton = !!currentTask && canGoNext && !currentCardAnswered;
 
-    // Reset the INACTIVE slot when index changes
-    useEffect(() => {
-        // When index changes, the NEW active slot (passed in props) is already at 0,0 (visually).
-        // The OLD active slot (now inactive) needs to be reset to 0,0 so it's ready for *next* time.
-
+    useLayoutEffect(() => {
+        // visualIndex is normally promoted on the UI thread before this render.
+        // Reasserting it here also handles external index changes and new sets.
+        visualIndex.value = currentIndex;
+        transitionFromIndex.value = currentIndex;
+        transitionDirection.value = 0;
+        completionMode.value = COMPLETION_NONE;
         isTransitioning.value = false;
-
-        if (activeSlotIndex === 0) {
-            // Logic: We just switched TO Slot 0. Slot 1 was swiped away or previous.
-            // Reset Slot 1 so it can be the "Next" card behind Slot 0.
-            val1.x.value = 0;
-            val1.y.value = 0;
-            val1.rot.value = 0;
-        } else {
-            // Logic: We just switched TO Slot 1. Slot 0 was swiped away.
-            // Reset Slot 0.
-            val0.x.value = 0;
-            val0.y.value = 0;
-            val0.rot.value = 0;
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentIndex]); // Only run on index change
+        x.value = 0;
+        y.value = 0;
+        rotation.value = 0;
+        activeScale.value = 1;
+        activeOpacity.value = 1;
+    }, [
+        activeOpacity,
+        activeScale,
+        completionMode,
+        currentIndex,
+        isTransitioning,
+        rotation,
+        transitionDirection,
+        transitionFromIndex,
+        visualIndex,
+        x,
+        y,
+    ]);
 
     const triggerHaptic = useCallback(() => {
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        } catch (e) {
-            // Ignore
+        } catch (error) {
+            // Haptics are optional.
         }
     }, []);
 
     const goToNextCard = useCallback(() => {
-        if (canGoNext) {
-            onIndexChange(currentIndex + 1);
-        }
+        if (canGoNext) onIndexChange(currentIndex + 1);
     }, [canGoNext, currentIndex, onIndexChange]);
 
     const goToPrevCard = useCallback(() => {
-        if (canGoPrev) {
-            onIndexChange(currentIndex - 1);
-        }
+        if (canGoPrev) onIndexChange(currentIndex - 1);
     }, [canGoPrev, currentIndex, onIndexChange]);
 
     const finishSkip = useCallback(() => {
         const task = tasks[currentIndex];
         if (task && onSkipQuestion) {
             onSkipQuestion(task.originalIndex ?? currentIndex);
-            return;
         }
         if (canGoNext) {
             goToNextCard();
-        } else if (onComplete) {
-            onComplete();
+        } else {
+            onComplete?.();
         }
     }, [canGoNext, currentIndex, goToNextCard, onComplete, onSkipQuestion, tasks]);
 
@@ -159,53 +283,113 @@ const AnimatedCardStack = ({
 
         if (answeredTaskIndex !== null && onAnswerTransitionComplete) {
             onAnswerTransitionComplete(answeredTaskIndex);
+            if (canGoNext) {
+                goToNextCard();
+            } else {
+                onComplete?.();
+            }
             return;
         }
 
         finishSkip();
-    }, [finishSkip, onAnswerTransitionComplete]);
+    }, [canGoNext, finishSkip, goToNextCard, onAnswerTransitionComplete, onComplete]);
 
-    // Programmatic transition (Skip/Submit)
-    const triggerTransition = useCallback(() => {
+    const triggerTransition = useCallback((delayMs = 0, showConfirmationPulse = false) => {
         if (isTransitioning.value) return;
 
-        if (!canGoNext) {
-            isTransitioning.value = true;
-            const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
-            const activeY = activeSlotIndex === 0 ? val0.y : val1.y;
-            const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
+        const direction = canGoNext ? 1 : 0;
+        transitionFromIndex.value = currentIndex;
+        transitionDirection.value = direction;
+        completionMode.value = COMPLETION_PROGRAMMATIC;
+        isTransitioning.value = true;
 
-            activeRot.value = withTiming(-12, QUICK_TRANSITION_CONFIG);
-            activeY.value = withTiming(0, QUICK_TRANSITION_CONFIG);
-            activeX.value = withTiming(-width * 1.3, QUICK_TRANSITION_CONFIG, (finished) => {
-                if (finished) {
-                    runOnJS(finishProgrammaticTransition)();
-                }
-            });
+        if (reduceMotion) {
+            activeOpacity.value = withDelay(
+                delayMs,
+                withTiming(0, REDUCED_MOTION_FADE_CONFIG)
+            );
             return;
         }
 
-        isTransitioning.value = true;
-        const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
-        const activeY = activeSlotIndex === 0 ? val0.y : val1.y;
-        const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
+        activeScale.value = showConfirmationPulse
+            ? withSequence(
+                withTiming(1.025, CONFIRMATION_PULSE_UP_CONFIG),
+                withTiming(1, CONFIRMATION_PULSE_DOWN_CONFIG)
+            )
+            : 1;
+        activeOpacity.value = 1;
+        y.value = withDelay(delayMs, withSpring(-28, {
+            ...SPRING_CONFIG,
+            velocity: -120,
+        }));
+        rotation.value = withDelay(delayMs, withSpring(-15, {
+            ...SPRING_CONFIG,
+            velocity: -35,
+        }));
+        x.value = withDelay(delayMs, withSpring(-width * 1.3, {
+            ...SPRING_CONFIG,
+            velocity: -900,
+        }));
+    }, [
+        activeOpacity,
+        activeScale,
+        canGoNext,
+        completionMode,
+        currentIndex,
+        isTransitioning,
+        reduceMotion,
+        rotation,
+        transitionDirection,
+        transitionFromIndex,
+        x,
+        y,
+    ]);
 
-        // Add rotation to match swipe feel
-        activeRot.value = withTiming(-12, QUICK_TRANSITION_CONFIG);
-        activeY.value = withTiming(0, QUICK_TRANSITION_CONFIG);
+    useAnimatedReaction(
+        () => ({
+            mode: completionMode.value,
+            direction: transitionDirection.value,
+            crossedBoundary: Math.abs(x.value) >= HANDOFF_THRESHOLD,
+            fadedOut: activeOpacity.value <= 0.01,
+        }),
+        (state) => {
+            if (state.mode === COMPLETION_NONE) return;
+            const usesReducedMotionFade =
+                reduceMotion && state.mode === COMPLETION_PROGRAMMATIC;
+            if (usesReducedMotionFade ? !state.fadedOut : !state.crossedBoundary) return;
 
-        activeX.value = withTiming(-width * 1.3, QUICK_TRANSITION_CONFIG, (finished) => {
-            if (finished) {
-                runOnJS(finishProgrammaticTransition)();
+            // Promote the already-visible layer before React updates currentIndex.
+            // This is the atomic handoff that prevents a background-style frame.
+            completionMode.value = COMPLETION_NONE;
+            if (state.direction !== 0) {
+                visualIndex.value += state.direction;
+                isTransitioning.value = false;
+            } else {
+                // Keep the final outgoing card offscreen until the completion
+                // screen replaces the stack.
+                activeOpacity.value = 0;
             }
-        });
-    }, [canGoNext, activeSlotIndex, finishProgrammaticTransition, isTransitioning, val0.x, val1.x, val0.y, val1.y, val0.rot, val1.rot]);
+
+            if (state.mode === COMPLETION_PROGRAMMATIC) {
+                runOnJS(finishProgrammaticTransition)();
+            } else if (state.mode === COMPLETION_SKIP) {
+                runOnJS(finishSkip)();
+            } else if (state.mode === COMPLETION_PREVIOUS) {
+                runOnJS(goToPrevCard)();
+            }
+        },
+        [
+            finishProgrammaticTransition,
+            finishSkip,
+            goToPrevCard,
+            reduceMotion,
+        ]
+    );
 
     const submitAnswerWithTransition = useCallback(async (...args) => {
         if (onAnswerTransitionComplete && isAnswerSubmissionPendingRef.current) {
             return false;
         }
-
         if (onAnswerTransitionComplete) {
             isAnswerSubmissionPendingRef.current = true;
         }
@@ -225,11 +409,11 @@ const AnimatedCardStack = ({
 
         if (onAnswerTransitionComplete) {
             pendingAnsweredTaskIndexRef.current = args[0];
-            triggerTransition();
+            triggerHaptic();
+            triggerTransition(ANSWER_FEEDBACK_HOLD_MS, true);
         }
-
         return submitted;
-    }, [onAnswerSubmit, onAnswerTransitionComplete, triggerTransition]);
+    }, [onAnswerSubmit, onAnswerTransitionComplete, triggerHaptic, triggerTransition]);
 
     const triggerSkipTransition = useCallback(() => {
         pendingAnsweredTaskIndexRef.current = null;
@@ -237,20 +421,15 @@ const AnimatedCardStack = ({
     }, [triggerTransition]);
 
     const panGesture = Gesture.Pan()
-        .onStart(() => {
-            isGestureActive.value = true;
-        })
         .onUpdate((event) => {
             if (isTransitioning.value) return;
 
-            // Drive the ACTIVE slot
-            const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
-            const activeY = activeSlotIndex === 0 ? val0.y : val1.y;
-            const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
-
-            activeX.value = event.translationX;
-            activeY.value = event.translationY * 0.3;
-            activeRot.value = interpolate(
+            transitionFromIndex.value = visualIndex.value;
+            transitionDirection.value =
+                event.translationX < 0 ? 1 : event.translationX > 0 ? -1 : 0;
+            x.value = event.translationX;
+            y.value = event.translationY * 0.3;
+            rotation.value = interpolate(
                 event.translationX,
                 [-width / 2, 0, width / 2],
                 [-10, 0, 10],
@@ -258,170 +437,163 @@ const AnimatedCardStack = ({
             );
         })
         .onEnd((event) => {
-            isGestureActive.value = false;
             if (isTransitioning.value) return;
 
             const shouldSwipeLeft =
-                (event.translationX < -SWIPE_THRESHOLD || event.velocityX < -SWIPE_VELOCITY_THRESHOLD) && !isCurrentCardLocked;
+                (
+                    event.translationX < -SWIPE_THRESHOLD
+                    || event.velocityX < -SWIPE_VELOCITY_THRESHOLD
+                )
+                && !isCurrentCardLocked;
             const shouldSwipeRight =
-                (event.translationX > SWIPE_THRESHOLD || event.velocityX > SWIPE_VELOCITY_THRESHOLD) && canGoPrev;
-
-            const activeX = activeSlotIndex === 0 ? val0.x : val1.x;
-            const activeY = activeSlotIndex === 0 ? val0.y : val1.y;
-            const activeRot = activeSlotIndex === 0 ? val0.rot : val1.rot;
+                (
+                    event.translationX > SWIPE_THRESHOLD
+                    || event.velocityX > SWIPE_VELOCITY_THRESHOLD
+                )
+                && canGoPrev;
 
             if (shouldSwipeLeft) {
+                const direction = canGoNext ? 1 : 0;
+                transitionDirection.value = direction;
+                completionMode.value = COMPLETION_SKIP;
                 isTransitioning.value = true;
                 runOnJS(triggerHaptic)();
-                activeX.value = withSpring(-width * 1.3, { ...SPRING_CONFIG, velocity: event.velocityX }, (finished) => {
-                    if (finished) {
-                        runOnJS(finishSkip)();
-                    }
+                x.value = withSpring(-width * 1.3, {
+                    ...SPRING_CONFIG,
+                    velocity: event.velocityX,
                 });
-                activeY.value = withSpring(event.translationY + event.velocityY * 0.1, { ...SPRING_CONFIG, velocity: event.velocityY });
-                activeRot.value = withSpring(-15, { ...SPRING_CONFIG, velocity: event.velocityX * 0.05 });
-            } else if (shouldSwipeRight) {
-                isTransitioning.value = true;
-                runOnJS(triggerHaptic)();
-                activeX.value = withSpring(width * 1.3, { ...SPRING_CONFIG, velocity: event.velocityX }, (finished) => {
-                    if (finished) runOnJS(goToPrevCard)();
-                });
-                activeY.value = withSpring(event.translationY + event.velocityY * 0.1, { ...SPRING_CONFIG, velocity: event.velocityY });
-                activeRot.value = withSpring(15, { ...SPRING_CONFIG, velocity: event.velocityX * 0.05 });
-            } else {
-                activeX.value = withSpring(0, SPRING_CONFIG);
-                activeY.value = withSpring(0, SPRING_CONFIG);
-                activeRot.value = withSpring(0, SPRING_CONFIG);
-            }
-        });
-
-    // Helper to separate rendering logic
-    const renderSlot = (slotIndex) => {
-        // Determine if this slot is the Active Request (front) or the Next/Prev (back)
-        const isActive = slotIndex === activeSlotIndex;
-
-        // Calculate which task index sits in this slot
-        // If this slot is Active, it holds 'currentIndex'
-        // If this slot is Inactive, it holds 'currentIndex + 1' (Next Card)
-        // Note: For 'Prev' card history, we typically don't render it in the stack until we swipe back, 
-        // effectively 'currentIndex - 1' becomes Active. 
-        // So the "Inactive" slot is always the "Next" card in the waiting line.
-        const taskIndex = isActive ? currentIndex : currentIndex + 1;
-        const task = tasks[taskIndex];
-
-        // Animated Styles
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const slotStyle = useAnimatedStyle(() => {
-            const myVals = slotIndex === 0 ? val0 : val1;
-            const otherVals = slotIndex === 0 ? val1 : val0; // The active card if I am inactive
-
-            if (isActive) {
-                // I am the Front Card -> use my own values directly
-                return {
-                    transform: [
-                        { translateX: myVals.x.value },
-                        { translateY: myVals.y.value },
-                        { rotate: `${myVals.rot.value}deg` },
-                    ],
-                    zIndex: 2, // Highlight: Front
-                    opacity: 1,
-                };
-            } else {
-                // I am the Back Card (Next) -> animate purely based on the OTHER (Active) card's movement
-                // We create a "Peek" effect.
-                const activeCardX = otherVals.x.value;
-
-                // Keep cards exactly the same size with no scale or translation changes
-                const scale = 1;
-                const translateY = 0;
-
-                const opacity = interpolate(
-                    Math.abs(activeCardX),
-                    [0, SWIPE_THRESHOLD],
-                    [0.5, 1],
-                    Extrapolate.CLAMP
+                y.value = withSpring(
+                    event.translationY + event.velocityY * 0.1,
+                    { ...SPRING_CONFIG, velocity: event.velocityY }
                 );
-
-                return {
-                    transform: [{ scale }, { translateY }],
-                    zIndex: 1, // Behind
-                    opacity,
-                };
+                rotation.value = withSpring(-15, {
+                    ...SPRING_CONFIG,
+                    velocity: event.velocityX * 0.05,
+                });
+            } else if (shouldSwipeRight) {
+                transitionDirection.value = -1;
+                completionMode.value = COMPLETION_PREVIOUS;
+                isTransitioning.value = true;
+                runOnJS(triggerHaptic)();
+                x.value = withSpring(width * 1.3, {
+                    ...SPRING_CONFIG,
+                    velocity: event.velocityX,
+                });
+                y.value = withSpring(
+                    event.translationY + event.velocityY * 0.1,
+                    { ...SPRING_CONFIG, velocity: event.velocityY }
+                );
+                rotation.value = withSpring(15, {
+                    ...SPRING_CONFIG,
+                    velocity: event.velocityX * 0.05,
+                });
+            } else {
+                transitionDirection.value = 0;
+                x.value = withSpring(0, SPRING_CONFIG);
+                y.value = withSpring(0, SPRING_CONFIG);
+                rotation.value = withSpring(0, SPRING_CONFIG);
             }
         });
 
-        if (!task) return null; // End of stack
+    const getCardProps = useCallback((task, taskIndex) => {
+        const answerIndex = task.originalIndex ?? taskIndex;
+        const cardIsLocked =
+            !isPremium && task.order >= FREE_QUESTION_ORDER_LIMIT;
 
-        const getCardProps = (t, i) => {
-            // Use originalIndex if available (from filtered unansweredTasks), fallback to i
-            const answerIndex = t.originalIndex ?? i;
-            // Card is locked if user is not premium and question order >= 6
-            const cardIsLocked = !isPremium && t?.order >= FREE_QUESTION_ORDER_LIMIT;
-            return {
-                task: t,
-                index: i,
-                displayIndex: displayIndexOffset + (t.originalIndex ?? i) + 1,
-                totalCards: totalCardsOverride ?? tasks.length,
-                partnerName,
-                userName,
-                userAvatar,
-                partnerAvatar,
-                userId,
-                partnerId,
-                hasPartner,
-                onLinkPartner,
-                onSubmit: cardIsLocked ? onNavigateToPremium : triggerSkipTransition,
-                onSkip: cardIsLocked ? onNavigateToPremium : triggerSkipTransition,
-                isLastCard: i >= tasks.length - 1,
-                onAnswerSubmit: submitAnswerWithTransition,
-                isAnswered: !!(userAnswers[answerIndex]?.answer),
-                previousAnswer: userAnswers[answerIndex]?.answer,
-                autoAdvanceOnSubmit,
-                isLocked: cardIsLocked,
-                onNavigateToPremium,
-            };
-        };
-
-        return (
-            <Animated.View
-                key={`slot-${slotIndex}`}
-                style={[styles.fullCard, slotStyle]}
-                needsOffscreenAlphaCompositing={Platform.OS === 'android'}
-            >
-                <TaskCard {...getCardProps(task, taskIndex)} />
-            </Animated.View>
-        );
-    };
-
-    // Hints need to check the ACTIVE card's position
-    const leftHintStyle = useAnimatedStyle(() => {
-        const activeX = activeSlotIndex === 0 ? val0.x.value : val1.x.value;
         return {
-            opacity: interpolate(activeX, [0, SWIPE_THRESHOLD], [0, 1], Extrapolate.CLAMP),
+            displayIndex: displayIndexOffset + answerIndex + 1,
+            totalCards: totalCardsOverride ?? tasks.length,
+            partnerName,
+            userName,
+            userAvatar,
+            partnerAvatar,
+            userId,
+            partnerId,
+            hasPartner,
+            onLinkPartner,
+            onSubmit: cardIsLocked ? onNavigateToPremium : triggerSkipTransition,
+            onSkip: cardIsLocked ? onNavigateToPremium : triggerSkipTransition,
+            isLastCard: taskIndex >= tasks.length - 1,
+            onAnswerSubmit: submitAnswerWithTransition,
+            isAnswered: !!userAnswers[answerIndex]?.answer,
+            previousAnswer: userAnswers[answerIndex]?.answer,
+            autoAdvanceOnSubmit,
+            showAlreadyAnsweredOverlay,
+            isLocked: cardIsLocked,
+            onNavigateToPremium,
         };
-    });
+    }, [
+        autoAdvanceOnSubmit,
+        displayIndexOffset,
+        hasPartner,
+        isPremium,
+        onLinkPartner,
+        onNavigateToPremium,
+        partnerAvatar,
+        partnerId,
+        partnerName,
+        showAlreadyAnsweredOverlay,
+        submitAnswerWithTransition,
+        tasks.length,
+        totalCardsOverride,
+        triggerSkipTransition,
+        userAnswers,
+        userAvatar,
+        userId,
+        userName,
+    ]);
 
-    const rightHintStyle = useAnimatedStyle(() => {
-        const activeX = activeSlotIndex === 0 ? val0.x.value : val1.x.value;
-        return {
-            opacity: interpolate(activeX, [0, -SWIPE_THRESHOLD], [0, 1], Extrapolate.CLAMP),
-        };
-    });
+    const layerIndexes = [currentIndex - 1, currentIndex, currentIndex + 1]
+        .filter((index) => index >= 0 && index < tasks.length);
 
     return (
         <View style={styles.container}>
             <GestureDetector gesture={panGesture}>
-                <View style={[styles.cardWrapper, cardHeight ? [styles.fixedCardWrapper, { height: cardHeight }] : null]}>
-                    {/* Render Both Slots */}
-                    {renderSlot(0)}
-                    {renderSlot(1)}
+                <View
+                    style={[
+                        styles.cardWrapper,
+                        cardHeight
+                            ? [styles.fixedCardWrapper, { height: cardHeight }]
+                            : null,
+                    ]}
+                >
+                    {layerIndexes.map((taskIndex) => {
+                        const task = tasks[taskIndex];
+                        return (
+                            <CardLayer
+                                key={task._id || task.questionId || taskIndex}
+                                task={task}
+                                taskIndex={taskIndex}
+                                cardProps={getCardProps(task, taskIndex)}
+                                interactive={taskIndex === currentIndex}
+                                reduceMotion={reduceMotion}
+                                visualIndex={visualIndex}
+                                transitionFromIndex={transitionFromIndex}
+                                transitionDirection={transitionDirection}
+                                isTransitioning={isTransitioning}
+                                completionMode={completionMode}
+                                x={x}
+                                y={y}
+                                rotation={rotation}
+                                activeScale={activeScale}
+                                activeOpacity={activeOpacity}
+                            />
+                        );
+                    })}
                 </View>
             </GestureDetector>
 
             <TouchableOpacity
-                style={[styles.skipButton, !showSkipButton && { opacity: 0 }]}
+                style={[
+                    styles.skipButton,
+                    !showSkipButton && styles.hiddenSkipButton,
+                ]}
                 disabled={!showSkipButton}
-                onPress={isCurrentCardLocked ? onNavigateToPremium : triggerSkipTransition}
+                onPress={
+                    isCurrentCardLocked
+                        ? onNavigateToPremium
+                        : triggerSkipTransition
+                }
                 activeOpacity={0.82}
             >
                 <Text style={styles.skipText}>{'Swipe to skip ->'}</Text>
@@ -442,14 +614,12 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        // Important: this wrapper shouldn't clip if we want swipe out to be visible
-        // but often we want the stack contained.
     },
     fixedCardWrapper: {
         flex: 0,
     },
     fullCard: {
-        width: '100%', // defined by wrapper
+        width: '100%',
         height: '100%',
         borderRadius: 28,
         position: 'absolute',
@@ -457,7 +627,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         overflow: 'hidden',
-        backgroundColor: 'transparent', // Prevent transparency flicker
+        backgroundColor: 'transparent',
     },
     skipButton: {
         marginTop: 22,
@@ -467,33 +637,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    hiddenSkipButton: {
+        opacity: 0,
+    },
     skipText: {
         color: 'rgba(46, 30, 60, 0.58)',
         fontSize: 16,
         fontWeight: '800',
         fontFamily: fontFamily.bold,
-    },
-    swipeHint: {
-        position: 'absolute',
-        top: '50%',
-        marginTop: -20,
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10,
-    },
-    swipeHintLeft: {
-        left: 5,
-    },
-    swipeHintRight: {
-        right: 5,
-    },
-    swipeHintDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
     },
 });
 

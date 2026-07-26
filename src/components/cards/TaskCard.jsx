@@ -230,6 +230,7 @@ const TaskCard = React.memo(({
     previousAnswer = null,
     autoAdvanceOnSubmit = true,
     isLocked = false,
+    showAlreadyAnsweredOverlay = true,
     onNavigateToPremium = () => { },
 }) => {
     if (!task) return null;
@@ -257,6 +258,7 @@ const TaskCard = React.memo(({
         previousAnswer,
         autoAdvanceOnSubmit,
         isLocked: false,
+        showAlreadyAnsweredOverlay,
         onNavigateToPremium,
     };
 

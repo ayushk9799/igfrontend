@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -71,6 +71,8 @@ export default function DailyChallengeScreen({
   const [showConfetti, setShowConfetti] = useState(false);
   const [ritualStatus, setRitualStatus] = useState(null);
   const [partnerNickname, setPartnerNickname] = useState(null);
+  const [initiallyAnsweredTaskIndexes, setInitiallyAnsweredTaskIndexes] = useState([]);
+  const pendingAnswersRef = useRef(new Map());
 
   useEffect(() => {
     if (!userId) return undefined;
@@ -117,6 +119,8 @@ export default function DailyChallengeScreen({
       setCurrentIndex(0);
       setHasReachedEndOfStack(false);
       setUserAnswers([]);
+      setInitiallyAnsweredTaskIndexes([]);
+      pendingAnswersRef.current.clear();
       setIsComplete(false);
 
       if (json.success && challengeData?._id && json.data?.answers) {
@@ -130,6 +134,11 @@ export default function DailyChallengeScreen({
             };
           });
           setUserAnswers(savedAnswers);
+          setInitiallyAnsweredTaskIndexes(
+            savedAnswers
+              .map((answer, index) => (answer ? index : null))
+              .filter(index => index !== null)
+          );
 
           if (json.data.answers.isComplete) {
             setIsComplete(true);
@@ -161,19 +170,20 @@ export default function DailyChallengeScreen({
     [userAnswers]
   );
 
-  // Create filtered list of unanswered tasks with original indices
-  // Check if userAnswers[idx] exists and has a truthy answer value
-  const unansweredTasks = useMemo(() => {
+  // Keep the live deck stable. Tasks answered during this session stay mounted
+  // until the stack advances; only answers restored at load are omitted.
+  const challengeDeckTasks = useMemo(() => {
+    const initiallyAnswered = new Set(initiallyAnsweredTaskIndexes);
     return tasks
       .map((task, originalIndex) => ({ ...task, originalIndex }))
-      .filter((_, idx) => {
-        const hasAnswer = userAnswers[idx] && userAnswers[idx].answer;
-        return !hasAnswer;
-      });
-  }, [tasks, userAnswers]);
+      .filter(task => !initiallyAnswered.has(task.originalIndex));
+  }, [initiallyAnsweredTaskIndexes, tasks]);
 
-  const hasAnsweredAllTasks = tasks.length > 0 && unansweredTasks.length === 0;
-  const hasMovedPastVisibleCards = tasks.length > 0 && unansweredTasks.length > 0 && currentIndex >= unansweredTasks.length;
+  const hasAnsweredAllTasks = tasks.length > 0 && answeredCount >= tasks.length;
+  const hasMovedPastVisibleCards =
+    tasks.length > 0
+    && challengeDeckTasks.length > 0
+    && currentIndex >= challengeDeckTasks.length;
   const shouldShowDoneScreen = isComplete || hasAnsweredAllTasks || hasReachedEndOfStack || hasMovedPastVisibleCards;
 
   useEffect(() => {
@@ -192,79 +202,77 @@ export default function DailyChallengeScreen({
   }, []);
 
   // Callback to submit answer to backend
-  const handleAnswerSubmit = useCallback(async (taskIndex, answer, answerType = 'text') => {
-
+  const handleAnswerSubmit = useCallback((taskIndex, answer, answerType = 'text') => {
     const task = tasks[taskIndex];
-
-    // Delay local state update so user can see "Submitted" text before card is filtered out
-    setTimeout(() => {
-      setUserAnswers(prev => {
-        const updated = [...prev];
-        updated[taskIndex] = {
-          taskIndex,
-          answer,
-          answerType,
-          task,
-          answeredAt: new Date().toISOString()
-        };
-
-        // Check if all tasks are answered
-        const answered = updated.filter(a => a !== undefined && a !== null).length;
-        if (answered >= tasks.length) {
-          setIsComplete(true);
-          setShowConfetti(true);
-        }
-
-        return updated;
-      });
-    }, 600); // 600ms delay to show "Submitted" text
+    pendingAnswersRef.current.set(taskIndex, {
+      taskIndex,
+      answer,
+      answerType,
+      task,
+      answeredAt: new Date().toISOString(),
+    });
 
     // Submit to backend (store placeholder for progress tracking, actual answer goes to Chat)
     if (!userId || !challenge?._id) {
       console.warn('⚠️ [ANSWER] Cannot submit to server: missing userId');
-      return;
-    }
-
-    try {
+    } else {
       // Store 'answered' placeholder in DailyAnswers for progress tracking only
       // Actual answer content is stored in Chat model below
-      const result = await submitAnswer(userId, challenge._id, taskIndex, 'answered', answerType);
-      if (result.success) {
-        if (result.data?.ritual) {
-          setRitualStatus(result.data.ritual);
-          setShowConfetti(true);
-        }
-      }
-    } catch (error) {
-    }
-
-    // Create/update chat thread for this question
-    if (task) {
-      try {
-        const response = await fetch(`${API_BASE}/api/chat/answer`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId,
-            questionSource: 'dailychallenge',
-            challengeId: challenge._id,
-            taskIndex,
-            questionText: task.taskstatement,
-            questionCategory: task.category, // 'likelyto', 'neverhaveiever', 'deep', etc.
-            answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
-            answerType,
-          }),
+      submitAnswer(userId, challenge._id, taskIndex, 'answered', answerType)
+        .then(result => {
+          if (result.success && result.data?.ritual) {
+            setRitualStatus(result.data.ritual);
+            setShowConfetti(true);
+          }
+        })
+        .catch(() => {
+          // The local transition should not wait for persistence.
         });
-        const json = await response.json();
-
-        if (json.success) {
-        } else {
-        }
-      } catch (err) {
-        // Don't block answer flow if chat creation fails
-      }
     }
+
+    // Create/update chat thread for this question without blocking the card.
+    if (task && userId && challenge?._id) {
+      fetch(`${API_BASE}/api/chat/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          questionSource: 'dailychallenge',
+          challengeId: challenge._id,
+          taskIndex,
+          questionText: task.taskstatement,
+          questionCategory: task.category,
+          answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
+          answerType,
+        }),
+      })
+        .then(response => response.json())
+        .catch(() => {
+          // Don't block answer flow if chat creation fails.
+        });
+    }
+
+    return true;
   }, [userId, challenge?._id, tasks]);
+
+  const handleAnswerTransitionComplete = useCallback((taskIndex) => {
+    const pendingAnswer = pendingAnswersRef.current.get(taskIndex);
+    if (!pendingAnswer) return;
+
+    pendingAnswersRef.current.delete(taskIndex);
+    setUserAnswers(prev => {
+      const updated = [...prev];
+      updated[taskIndex] = pendingAnswer;
+
+      const answered = updated.filter(answer => answer != null).length;
+      if (answered >= tasks.length) {
+        setIsComplete(true);
+        setShowConfetti(true);
+      }
+
+      return updated;
+    });
+  }, [tasks.length]);
 
   if (loading) {
     return (
@@ -310,7 +318,6 @@ export default function DailyChallengeScreen({
         streak={ritualStatus}
         onBack={onBack}
         onCompareWithPartner={onCompareWithPartner}
-        onChatNow={onCompareWithPartner}
         onRemindPartner={async () => {
           try {
             const response = await fetch(`${API_BASE}/api/daily-challenge/remind`, {
@@ -352,11 +359,10 @@ export default function DailyChallengeScreen({
               <View style={{ width: 48 }} />
             </View>
 
-            {/* Cards Stack - Using AnimatedCardStack for smooth transitions */}
-            {/* Only show unanswered tasks - already answered ones are filtered out */}
+            {/* Stable card deck; answers are committed at the visual handoff. */}
             <View style={styles.cardsContainer}>
               <AnimatedCardStack
-                tasks={unansweredTasks}
+                tasks={challengeDeckTasks}
                 currentIndex={currentIndex}
                 partnerName={partnerName}
                 userName={userName}
@@ -369,6 +375,7 @@ export default function DailyChallengeScreen({
                 onIndexChange={handleIndexChange}
                 onComplete={handleStackComplete}
                 onAnswerSubmit={handleAnswerSubmit}
+                onAnswerTransitionComplete={handleAnswerTransitionComplete}
                 challengeId={challenge._id}
                 userAnswers={userAnswers}
                 autoAdvanceOnSubmit={false}

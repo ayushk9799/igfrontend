@@ -45,6 +45,35 @@ const BellIcon = ({ color = '#FFFFFF', size = 24 }) => (
     </Svg>
 );
 
+const CheckIcon = ({ color = '#1F9D55', size = 22 }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M5 12.5 9.2 17 19 7"
+            stroke={color}
+            strokeWidth={2.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </Svg>
+);
+
+const ClockIcon = ({ color = '#8C829C', size = 21 }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M12 6v6l4 2"
+            stroke={color}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <Path
+            d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"
+            stroke={color}
+            strokeWidth={2.2}
+        />
+    </Svg>
+);
+
 const HeartStateIcon = ({
     youComplete = false,
     partnerComplete = false,
@@ -147,7 +176,6 @@ export default function DailyChallengeDoneScreen({
     onBack = () => {},
     onCompareWithPartner = () => {},
     onRemindPartner = () => {},
-    onChatNow = () => {},
 }) {
     const insets = useSafeAreaInsets();
     const opacity = useRef(new Animated.Value(0)).current;
@@ -164,6 +192,13 @@ export default function DailyChallengeDoneScreen({
     const partnerComplete = Boolean(streak?.partnerComplete);
     const isFullHeart = youComplete && partnerComplete;
     const currentStreak = Number(streak?.currentStreak) || 0;
+    const isStartingStreak = currentStreak === 0;
+    const waitingTitle = isStartingStreak
+        ? 'Complete together to start Day 1'
+        : `Complete together to keep your ${currentStreak}-day streak`;
+    const waitingMessage = isStartingStreak
+        ? 'Your streak starts when you both finish today’s challenge.'
+        : `Your streak updates when ${partnerName} finishes today’s challenge.`;
 
     useEffect(() => {
         const entrance = Animated.parallel([
@@ -301,7 +336,7 @@ export default function DailyChallengeDoneScreen({
             <View style={styles.topOrb} />
             <View style={styles.bottomOrb} />
 
-            {showConfetti && (
+            {showConfetti && isFullHeart && (
                 <ConfettiCannon
                     count={80}
                     origin={{ x: width / 2, y: 80 }}
@@ -323,8 +358,17 @@ export default function DailyChallengeDoneScreen({
                     { opacity, transform: [{ translateY: contentTranslateY }] },
                 ]}>
                     <View style={styles.titleRow}>
-                        <Text style={styles.titleDark}>Ritual </Text>
-                        <Text style={styles.titlePink}>Complete!</Text>
+                        {isFullHeart ? (
+                            <>
+                                <Text style={styles.titleDark}>Ritual </Text>
+                                <Text style={styles.titlePink}>Complete!</Text>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.titleDark}>Your part </Text>
+                                <Text style={styles.titlePink}>is done!</Text>
+                            </>
+                        )}
                     </View>
 
                     <Animated.View style={[
@@ -335,22 +379,66 @@ export default function DailyChallengeDoneScreen({
                             youComplete={youComplete}
                             partnerComplete={partnerComplete}
                         />
+                        {!isFullHeart && (
+                            <>
+                                <View style={[styles.heartStatusBadge, styles.youHeartBadge]}>
+                                    <CheckIcon />
+                                </View>
+                                <View style={[styles.heartStatusBadge, styles.partnerHeartBadge]}>
+                                    <ClockIcon />
+                                </View>
+                            </>
+                        )}
                     </Animated.View>
 
                     <Animated.View style={[
                         styles.streakCard,
+                        !isFullHeart && styles.waitingCard,
                         { opacity: cardOpacity, transform: [{ translateY: cardTranslateY }] },
                     ]}>
-                        <Text style={styles.streakLabel}>Current Streak</Text>
-                        <Animated.View
-                            style={[
-                                styles.countWrap,
-                                { opacity: countOpacity, transform: [{ scale: countScale }] },
-                            ]}
-                        >
-                            <Text style={styles.streakNumber}>{currentStreak}</Text>
-                            <Text style={styles.streakUnit}>{currentStreak === 1 ? 'DAY' : 'DAYS'}</Text>
-                        </Animated.View>
+                        {isFullHeart ? (
+                            <>
+                                <Text style={styles.streakLabel}>Current Streak</Text>
+                                <Animated.View
+                                    style={[
+                                        styles.countWrap,
+                                        { opacity: countOpacity, transform: [{ scale: countScale }] },
+                                    ]}
+                                >
+                                    <Text style={styles.streakNumber}>{currentStreak}</Text>
+                                    <Text style={styles.streakUnit}>
+                                        {currentStreak === 1 ? 'DAY' : 'DAYS'}
+                                    </Text>
+                                </Animated.View>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.waitingTitle}>{waitingTitle}</Text>
+                                <View style={styles.statusList}>
+                                    <View style={styles.statusRow}>
+                                        <View style={[styles.statusIcon, styles.doneStatusIcon]}>
+                                            <CheckIcon size={18} />
+                                        </View>
+                                        <Text style={styles.statusName}>You</Text>
+                                        <Text style={styles.doneStatusText}>Done</Text>
+                                    </View>
+                                    <View style={styles.statusDivider} />
+                                    <View style={styles.statusRow}>
+                                        <View style={[styles.statusIcon, styles.waitingStatusIcon]}>
+                                            <ClockIcon size={17} />
+                                        </View>
+                                        <Text
+                                            style={styles.statusName}
+                                            numberOfLines={1}
+                                        >
+                                            {partnerName}
+                                        </Text>
+                                        <Text style={styles.waitingStatusText}>Waiting</Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.waitingMessage}>{waitingMessage}</Text>
+                            </>
+                        )}
                     </Animated.View>
 
                     <TouchableOpacity
@@ -367,19 +455,9 @@ export default function DailyChallengeDoneScreen({
                         >
                             {isFullHeart
                                 ? `Chat with ${partnerName}`
-                                : `Remind ${partnerName} to Play`}
+                                : `Remind ${partnerName}`}
                         </Text>
                     </TouchableOpacity>
-
-                    {!isFullHeart && (
-                        <TouchableOpacity
-                            activeOpacity={0.84}
-                            style={styles.chatButton}
-                            onPress={onChatNow}
-                        >
-                            <Text style={styles.chatButtonText}>Chat now</Text>
-                        </TouchableOpacity>
-                    )}
 
                     <TouchableOpacity style={styles.backButton} onPress={onBack}>
                         <Text style={styles.backText}>← Back to Home</Text>
@@ -446,10 +524,34 @@ const styles = StyleSheet.create({
     heartWrap: {
         width: 200,
         height: 200,
+        position: 'relative',
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: spacing.xl,
         marginBottom: spacing.lg,
+    },
+    heartStatusBadge: {
+        position: 'absolute',
+        top: 88,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.94)',
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.9)',
+        shadowColor: '#6D5365',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.18,
+        shadowRadius: 9,
+        elevation: 5,
+    },
+    youHeartBadge: {
+        left: 40,
+    },
+    partnerHeartBadge: {
+        right: 40,
     },
     streakCard: {
         width: CARD_WIDTH,
@@ -465,6 +567,79 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.16,
         shadowRadius: 25,
         elevation: 7,
+    },
+    waitingCard: {
+        minHeight: 250,
+        justifyContent: 'flex-start',
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.xl,
+        paddingBottom: spacing.lg,
+    },
+    waitingTitle: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 20,
+        lineHeight: 26,
+        fontWeight: '800',
+        color: '#21184F',
+        textAlign: 'center',
+    },
+    statusList: {
+        width: '100%',
+        marginTop: spacing.lg,
+    },
+    statusRow: {
+        minHeight: 44,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    statusIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: spacing.sm,
+    },
+    doneStatusIcon: {
+        backgroundColor: '#E4F6E9',
+    },
+    waitingStatusIcon: {
+        backgroundColor: '#F1EDF4',
+    },
+    statusName: {
+        flex: 1,
+        marginRight: spacing.sm,
+        fontFamily: fontFamily.bold,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#21184F',
+    },
+    doneStatusText: {
+        fontFamily: fontFamily.bold,
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1F9D55',
+    },
+    waitingStatusText: {
+        fontFamily: fontFamily.bold,
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#8C829C',
+    },
+    statusDivider: {
+        height: StyleSheet.hairlineWidth,
+        marginVertical: spacing.xs,
+        marginLeft: 42,
+        backgroundColor: '#E8E1EB',
+    },
+    waitingMessage: {
+        marginTop: spacing.md,
+        fontFamily: fontFamily.medium,
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: '500',
+        color: '#766C84',
+        textAlign: 'center',
     },
     streakLabel: {
         fontFamily: fontFamily.medium,
@@ -519,24 +694,6 @@ const styles = StyleSheet.create({
     },
     buttonEmoji: {
         fontSize: 22,
-    },
-    chatButton: {
-        width: CARD_WIDTH,
-        minHeight: 52,
-        marginTop: spacing.md,
-        borderRadius: borderRadius.full,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1.5,
-        borderColor: '#F44778',
-        backgroundColor: 'rgba(255,255,255,0.82)',
-        paddingHorizontal: 18,
-    },
-    chatButtonText: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 16,
-        fontWeight: '800',
-        color: '#F44778',
     },
     backButton: {
         paddingHorizontal: spacing.lg,

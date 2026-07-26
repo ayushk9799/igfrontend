@@ -46,6 +46,7 @@ const SliderCard = React.memo(({
     previousAnswer = null,
     autoAdvanceOnSubmit = true,
     isLocked = false,
+    showAlreadyAnsweredOverlay = true,
     onNavigateToPremium = () => { },
 }) => {
     const config = categoryConfig[task.category] || categoryConfig.slider || defaultConfig;
@@ -167,7 +168,7 @@ const SliderCard = React.memo(({
     return (
         <LinearGradient colors={['#24CE6D', '#1FB75E']} style={styles.cardInner}>
             {/* Already Answered Overlay */}
-            {isAnswered && (
+            {isAnswered && showAlreadyAnsweredOverlay && (
                 <View style={cardStyles.answeredOverlay}>
                     <View style={cardStyles.answeredBadge}>
                         <Text style={cardStyles.answeredEmoji}>✅</Text>
@@ -179,7 +180,12 @@ const SliderCard = React.memo(({
                 </View>
             )}
 
-            <View style={[styles.cardContent, isAnswered && { opacity: 0.3 }]}>
+            <View
+                style={[
+                    styles.cardContent,
+                    isAnswered && showAlreadyAnsweredOverlay && styles.answeredContent,
+                ]}
+            >
                 {/* Header */}
                 <View style={styles.topRow}>
                     <View style={styles.categoryBadge}>
@@ -231,7 +237,10 @@ const SliderCard = React.memo(({
                                     style={[
                                         styles.tick,
                                         { left: position - 1 },
-                                        tick === currentValue && { backgroundColor: config.color, height: 16 }
+                                        tick === currentValue && [
+                                            styles.activeTick,
+                                            { backgroundColor: config.color },
+                                        ]
                                     ]}
                                 />
                             );
@@ -276,6 +285,12 @@ const SliderCard = React.memo(({
 });
 
 const styles = StyleSheet.create({
+    answeredContent: {
+        opacity: 0.3,
+    },
+    activeTick: {
+        height: 16,
+    },
     cardInner: {
         flex: 1,
         borderRadius: 28,
