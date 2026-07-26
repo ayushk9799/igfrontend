@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, Dimensions, View, Platform, Text, TouchableOpacity } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -50,6 +50,8 @@ const AnimatedCardStack = ({
     onIndexChange,
     onComplete,
     onAnswerSubmit,
+    onAnswerTransitionComplete,
+    onSkipQuestion,
     challengeId,
     userAnswers = [],
     autoAdvanceOnSubmit = true,
@@ -78,6 +80,8 @@ const AnimatedCardStack = ({
 
     const isGestureActive = useSharedValue(false);
     const isTransitioning = useSharedValue(false);
+    const pendingAnsweredTaskIndexRef = useRef(null);
+    const isAnswerSubmissionPendingRef = useRef(false);
 
     // Navigation helpers
     const canGoNext = currentIndex < tasks.length - 1;
@@ -135,6 +139,32 @@ const AnimatedCardStack = ({
         }
     }, [canGoPrev, currentIndex, onIndexChange]);
 
+    const finishSkip = useCallback(() => {
+        const task = tasks[currentIndex];
+        if (task && onSkipQuestion) {
+            onSkipQuestion(task.originalIndex ?? currentIndex);
+            return;
+        }
+        if (canGoNext) {
+            goToNextCard();
+        } else if (onComplete) {
+            onComplete();
+        }
+    }, [canGoNext, currentIndex, goToNextCard, onComplete, onSkipQuestion, tasks]);
+
+    const finishProgrammaticTransition = useCallback(() => {
+        const answeredTaskIndex = pendingAnsweredTaskIndexRef.current;
+        pendingAnsweredTaskIndexRef.current = null;
+        isAnswerSubmissionPendingRef.current = false;
+
+        if (answeredTaskIndex !== null && onAnswerTransitionComplete) {
+            onAnswerTransitionComplete(answeredTaskIndex);
+            return;
+        }
+
+        finishSkip();
+    }, [finishSkip, onAnswerTransitionComplete]);
+
     // Programmatic transition (Skip/Submit)
     const triggerTransition = useCallback(() => {
         if (isTransitioning.value) return;
@@ -148,8 +178,8 @@ const AnimatedCardStack = ({
             activeRot.value = withTiming(-12, QUICK_TRANSITION_CONFIG);
             activeY.value = withTiming(0, QUICK_TRANSITION_CONFIG);
             activeX.value = withTiming(-width * 1.3, QUICK_TRANSITION_CONFIG, (finished) => {
-                if (finished && onComplete) {
-                    runOnJS(onComplete)();
+                if (finished) {
+                    runOnJS(finishProgrammaticTransition)();
                 }
             });
             return;
@@ -166,10 +196,45 @@ const AnimatedCardStack = ({
 
         activeX.value = withTiming(-width * 1.3, QUICK_TRANSITION_CONFIG, (finished) => {
             if (finished) {
-                runOnJS(goToNextCard)();
+                runOnJS(finishProgrammaticTransition)();
             }
         });
-    }, [canGoNext, activeSlotIndex, goToNextCard, isTransitioning, onComplete, val0.x, val1.x, val0.y, val1.y, val0.rot, val1.rot]);
+    }, [canGoNext, activeSlotIndex, finishProgrammaticTransition, isTransitioning, val0.x, val1.x, val0.y, val1.y, val0.rot, val1.rot]);
+
+    const submitAnswerWithTransition = useCallback(async (...args) => {
+        if (onAnswerTransitionComplete && isAnswerSubmissionPendingRef.current) {
+            return false;
+        }
+
+        if (onAnswerTransitionComplete) {
+            isAnswerSubmissionPendingRef.current = true;
+        }
+
+        let submitted;
+        try {
+            submitted = await onAnswerSubmit?.(...args);
+        } catch (error) {
+            isAnswerSubmissionPendingRef.current = false;
+            throw error;
+        }
+
+        if (submitted === false) {
+            isAnswerSubmissionPendingRef.current = false;
+            return false;
+        }
+
+        if (onAnswerTransitionComplete) {
+            pendingAnsweredTaskIndexRef.current = args[0];
+            triggerTransition();
+        }
+
+        return submitted;
+    }, [onAnswerSubmit, onAnswerTransitionComplete, triggerTransition]);
+
+    const triggerSkipTransition = useCallback(() => {
+        pendingAnsweredTaskIndexRef.current = null;
+        triggerTransition();
+    }, [triggerTransition]);
 
     const panGesture = Gesture.Pan()
         .onStart(() => {
@@ -210,11 +275,7 @@ const AnimatedCardStack = ({
                 runOnJS(triggerHaptic)();
                 activeX.value = withSpring(-width * 1.3, { ...SPRING_CONFIG, velocity: event.velocityX }, (finished) => {
                     if (finished) {
-                        if (canGoNext) {
-                            runOnJS(goToNextCard)();
-                        } else if (onComplete) {
-                            runOnJS(onComplete)();
-                        }
+                        runOnJS(finishSkip)();
                     }
                 });
                 activeY.value = withSpring(event.translationY + event.velocityY * 0.1, { ...SPRING_CONFIG, velocity: event.velocityY });
@@ -309,10 +370,10 @@ const AnimatedCardStack = ({
                 partnerId,
                 hasPartner,
                 onLinkPartner,
-                onSubmit: cardIsLocked ? onNavigateToPremium : triggerTransition,
-                onSkip: cardIsLocked ? onNavigateToPremium : triggerTransition,
+                onSubmit: cardIsLocked ? onNavigateToPremium : triggerSkipTransition,
+                onSkip: cardIsLocked ? onNavigateToPremium : triggerSkipTransition,
                 isLastCard: i >= tasks.length - 1,
-                onAnswerSubmit,
+                onAnswerSubmit: submitAnswerWithTransition,
                 isAnswered: !!(userAnswers[answerIndex]?.answer),
                 previousAnswer: userAnswers[answerIndex]?.answer,
                 autoAdvanceOnSubmit,
@@ -360,7 +421,7 @@ const AnimatedCardStack = ({
             <TouchableOpacity
                 style={[styles.skipButton, !showSkipButton && { opacity: 0 }]}
                 disabled={!showSkipButton}
-                onPress={isCurrentCardLocked ? onNavigateToPremium : triggerTransition}
+                onPress={isCurrentCardLocked ? onNavigateToPremium : triggerSkipTransition}
                 activeOpacity={0.82}
             >
                 <Text style={styles.skipText}>{'Swipe to skip ->'}</Text>
