@@ -197,6 +197,8 @@ export default function TopicQuestionsV2Screen({
     const [questions, setQuestions] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userAnswers, setUserAnswers] = useState([]);
+    const [answeredQuestionIds, setAnsweredQuestionIds] = useState([]);
+    const [skippedQuestionIds, setSkippedQuestionIds] = useState([]);
     const [setsLoading, setSetsLoading] = useState(true);
     const [questionsLoading, setQuestionsLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -246,9 +248,36 @@ export default function TopicQuestionsV2Screen({
 
         if (response.success) {
             const nextQuestions = response.data?.questions || [];
+            const responseProgress = response.data?.progress || {};
             setPage(response.data?.page || { nextCursor: null, hasMore: false, totalQuestions: nextQuestions.length });
-            
-            if (response.data?.progress?.completedAt && !append) {
+
+            if (!append) {
+                const savedAnswers = response.data?.userAnswers || [];
+                const answerByQuestionId = new Map(
+                    savedAnswers.map((savedAnswer) => [savedAnswer.questionId, savedAnswer])
+                );
+                const restoredAnswers = [];
+                nextQuestions.forEach((question) => {
+                    const savedAnswer = answerByQuestionId.get(question.questionId);
+                    if (savedAnswer) {
+                        restoredAnswers[question.index] = {
+                            ...savedAnswer,
+                            answer: savedAnswer.answer,
+                        };
+                    }
+                });
+                setUserAnswers(restoredAnswers);
+                setAnsweredQuestionIds([
+                    ...new Set([
+                        ...(responseProgress.answeredQuestionIds || []),
+                        ...savedAnswers.map((savedAnswer) => savedAnswer.questionId),
+                    ]),
+                ]);
+                setSkippedQuestionIds(responseProgress.skippedQuestionIds || []);
+                setCurrentIndex(0);
+            }
+
+            if (responseProgress.completedAt && !append) {
                 setShowSummary(true);
             }
 
@@ -274,6 +303,8 @@ export default function TopicQuestionsV2Screen({
         setQuestions([]);
         setCurrentIndex(0);
         setUserAnswers([]);
+        setAnsweredQuestionIds([]);
+        setSkippedQuestionIds([]);
         setShowSummary(false);
         setPage({ nextCursor: null, hasMore: false, totalQuestions: set.totalQuestions || 0 });
         fetchQuestions({ set, cursor: 0, append: false });
@@ -293,6 +324,8 @@ export default function TopicQuestionsV2Screen({
             setQuestions([]);
             setCurrentIndex(0);
             setUserAnswers([]);
+            setAnsweredQuestionIds([]);
+            setSkippedQuestionIds([]);
             setShowSummary(false);
             return;
         }
@@ -353,7 +386,11 @@ export default function TopicQuestionsV2Screen({
     const handleIndexChange = useCallback((newIndex) => {
         setCurrentIndex(newIndex);
 
-        const passedQuestion = questions[newIndex - 1];
+        const hiddenQuestionIds = new Set([...answeredQuestionIds, ...skippedQuestionIds]);
+        const visibleQuestions = questions.filter(
+            (question) => !hiddenQuestionIds.has(question.questionId)
+        );
+        const passedQuestion = visibleQuestions[newIndex - 1];
         if (passedQuestion && effectiveUserId && selectedSet) {
             QuestionsV2Api.saveProgress({
                 userId: effectiveUserId,
@@ -368,10 +405,20 @@ export default function TopicQuestionsV2Screen({
         if (selectedSet && page.hasMore && questions.length - newIndex <= 3) {
             fetchQuestions({ set: selectedSet, cursor: page.nextCursor, append: true });
         }
-    }, [effectiveUserId, fetchQuestions, page.hasMore, page.nextCursor, questions, selectedSet, topic]);
+    }, [
+        answeredQuestionIds,
+        effectiveUserId,
+        fetchQuestions,
+        page.hasMore,
+        page.nextCursor,
+        questions,
+        selectedSet,
+        skippedQuestionIds,
+        topic,
+    ]);
 
     const handleAnswerSubmit = useCallback((taskIndex, answer, answerType = 'text') => {
-        const question = questions[taskIndex];
+        const question = questions.find((candidate) => candidate.index === taskIndex);
         if (!question || !selectedSet) return false;
 
         setUserAnswers((prev) => {
@@ -379,6 +426,7 @@ export default function TopicQuestionsV2Screen({
             next[taskIndex] = { answer, questionId: question.questionId, answerType };
             return next;
         });
+        setSkippedQuestionIds((prev) => prev.filter((questionId) => questionId !== question.questionId));
 
         QuestionsV2Api.submitAnswer({
             userId: effectiveUserId,
@@ -394,9 +442,53 @@ export default function TopicQuestionsV2Screen({
                     questionId: question.questionId,
                     message: response.message || response.error,
                 });
+            } else {
+                // Refresh an open/final summary after the background save finishes.
+                setSummaryRefreshKey((prev) => prev + 1);
             }
         }).catch((err) => {
             console.warn('[TopicQuestionsV2] Failed to submit answer', {
+                questionId: question.questionId,
+                message: err.message,
+            });
+        });
+
+        return true;
+    }, [effectiveUserId, questions, selectedSet, topic]);
+
+    const handleAnswerTransitionComplete = useCallback((taskIndex) => {
+        const question = questions.find((candidate) => candidate.index === taskIndex);
+        if (!question) return;
+
+        setAnsweredQuestionIds((prev) => (
+            prev.includes(question.questionId) ? prev : [...prev, question.questionId]
+        ));
+    }, [questions]);
+
+    const handleQuestionSkip = useCallback((taskIndex) => {
+        const question = questions.find((candidate) => candidate.index === taskIndex);
+        if (!question || !selectedSet) return false;
+
+        setSkippedQuestionIds((prev) => (
+            prev.includes(question.questionId) ? prev : [...prev, question.questionId]
+        ));
+
+        QuestionsV2Api.saveProgress({
+            userId: effectiveUserId,
+            topicId: topic,
+            setId: selectedSet.setId,
+            questionId: question.questionId,
+            action: 'skipped',
+            cursor: String(taskIndex + 1),
+        }).then((response) => {
+            if (response.success === false) {
+                console.warn('[TopicQuestionsV2] Failed to save skipped question', {
+                    questionId: question.questionId,
+                    message: response.message || response.error,
+                });
+            }
+        }).catch((err) => {
+            console.warn('[TopicQuestionsV2] Failed to save skipped question', {
                 questionId: question.questionId,
                 message: err.message,
             });
@@ -440,19 +532,85 @@ export default function TopicQuestionsV2Screen({
         requestReviewForMoment(REVIEW_MOMENTS.V2_SET_SUMMARY_SHOWN);
     }, [effectiveUserId, questions.length, selectedSet, topic, singleQuestionToAnswer]);
 
-    const tasks = useMemo(() => questions.map((question, questionIndex) => ({
-        _id: question.questionId,
-        questionId: question.questionId,
-        taskstatement: question.prompt,
-        category: selectedSet?.format || 'deep',
-        options: question.options || [],
-        minValue: question.minValue,
-        maxValue: question.maxValue,
-        minLabel: question.minLabel,
-        maxLabel: question.maxLabel,
-        originalIndex: questionIndex,
-        backendIndex: question.index,
-    })), [questions, selectedSet?.format]);
+    const tasks = useMemo(() => {
+        const hiddenQuestionIds = new Set([...answeredQuestionIds, ...skippedQuestionIds]);
+        return questions
+            .filter((question) => !hiddenQuestionIds.has(question.questionId))
+            .map((question) => ({
+                _id: question.questionId,
+                questionId: question.questionId,
+                taskstatement: question.prompt,
+                category: selectedSet?.format || 'deep',
+                options: question.options || [],
+                minValue: question.minValue,
+                maxValue: question.maxValue,
+                minLabel: question.minLabel,
+                maxLabel: question.maxLabel,
+                originalIndex: question.index,
+                backendIndex: question.index,
+            }));
+    }, [answeredQuestionIds, questions, selectedSet?.format, skippedQuestionIds]);
+
+    useEffect(() => {
+        setCurrentIndex((prev) => Math.max(0, Math.min(prev, Math.max(tasks.length - 1, 0))));
+    }, [tasks.length]);
+
+    useEffect(() => {
+        if (
+            selectedSet
+            && questions.length > 0
+            && tasks.length === 0
+            && page.hasMore
+            && page.nextCursor !== null
+            && !questionsLoading
+        ) {
+            fetchQuestions({
+                set: selectedSet,
+                cursor: page.nextCursor,
+                append: true,
+            });
+        }
+    }, [
+        fetchQuestions,
+        page.hasMore,
+        page.nextCursor,
+        questions.length,
+        questionsLoading,
+        selectedSet,
+        tasks.length,
+    ]);
+
+    useEffect(() => {
+        if (
+            selectedSet
+            && questions.length > 0
+            && tasks.length === 0
+            && !questionsLoading
+            && !page.hasMore
+            && !showSummary
+        ) {
+            QuestionsV2Api.saveProgress({
+                userId: effectiveUserId,
+                topicId: topic,
+                setId: selectedSet.setId,
+                action: 'completed',
+                cursor: String(page.totalQuestions || questions.length),
+            });
+            setSummaryRefreshKey((prev) => prev + 1);
+            setShowSummary(true);
+            requestReviewForMoment(REVIEW_MOMENTS.V2_SET_SUMMARY_SHOWN);
+        }
+    }, [
+        effectiveUserId,
+        page.hasMore,
+        page.totalQuestions,
+        questions.length,
+        questionsLoading,
+        selectedSet,
+        showSummary,
+        tasks.length,
+        topic,
+    ]);
 
     const renderSingleQuestionHeader = () => (
         <View style={styles.header}>
@@ -527,7 +685,20 @@ export default function TopicQuestionsV2Screen({
                     {topicEmoji ? `${topicEmoji} ${topicTitle}` : topicTitle}
                 </Text>
             </View>
-            <View style={styles.headerSpacer} />
+            {selectedSet && answeredQuestionIds.length > 0 ? (
+                <TouchableOpacity
+                    style={styles.viewAnswersButton}
+                    onPress={() => {
+                        setSummaryRefreshKey((prev) => prev + 1);
+                        setShowSummary(true);
+                    }}
+                    activeOpacity={0.82}
+                >
+                    <Text style={styles.viewAnswersButtonText}>View Answers</Text>
+                </TouchableOpacity>
+            ) : (
+                <View style={styles.headerSpacer} />
+            )}
         </View>
     );
 
@@ -695,7 +866,10 @@ export default function TopicQuestionsV2Screen({
                     onIndexChange={handleIndexChange}
                     onComplete={handleComplete}
                     onAnswerSubmit={handleAnswerSubmit}
+                    onAnswerTransitionComplete={handleAnswerTransitionComplete}
+                    onSkipQuestion={handleQuestionSkip}
                     userAnswers={userAnswers}
+                    autoAdvanceOnSubmit={false}
                     isPremium={isPremium}
                     onNavigateToPremium={onNavigateToPremium}
                     totalCardsOverride={page.totalQuestions || tasks.length}
@@ -737,7 +911,13 @@ export default function TopicQuestionsV2Screen({
                             selectedSet={selectedSet}
                             userId={effectiveUserId}
                             partnerName={partnerName}
-                            onBack={handleBack}
+                            onBack={() => {
+                                if (tasks.length > 0) {
+                                    setShowSummary(false);
+                                } else {
+                                    handleBack();
+                                }
+                            }}
                             onNavigateToPremium={onNavigateToPremium}
                             isPremium={isPremium}
                             hasPartner={hasPartner}
@@ -801,6 +981,19 @@ const styles = StyleSheet.create({
     },
     headerSpacer: {
         width: 42,
+    },
+    viewAnswersButton: {
+        minHeight: 36,
+        paddingHorizontal: spacing.md,
+        borderRadius: borderRadius.full,
+        backgroundColor: colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    viewAnswersButtonText: {
+        color: '#FFFFFF',
+        fontFamily: fontFamily.semiBold,
+        fontSize: 13,
     },
     headerTitle: {
         fontSize: 18,
