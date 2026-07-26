@@ -10,6 +10,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const PartnerPremiumPurchaseModal = ({ visible, partnerName, onClose }) => {
     const displayName = partnerName?.trim() || 'Your partner';
@@ -46,23 +47,23 @@ const PartnerPremiumPurchaseModal = ({ visible, partnerName, onClose }) => {
                             resizeMode="contain"
                         />
 
-                        <Text style={styles.eyebrow}>PENGUIN COUPLE PREMIUM</Text>
-                        <Text style={styles.title}>Premium for both of you!</Text>
+                        <Text style={styles.eyebrow}>{translateUiText("PENGUIN COUPLE PREMIUM")}</Text>
+                        <Text style={styles.title}>{translateUiText("Premium for both of you!")}</Text>
                         <Text style={styles.message}>
                             <Text style={styles.partnerName}>{displayName}</Text>
-                            {' just purchased Premium. Everything is now unlocked for your couple.'}
+                            {translateUiText(" just purchased Premium. Everything is now unlocked for your couple.")}
                         </Text>
 
                         <View style={styles.unlockedPill}>
                             <View style={styles.checkCircle}>
                                 <Text style={styles.check}>✓</Text>
                             </View>
-                            <Text style={styles.unlockedText}>All premium features unlocked</Text>
+                            <Text style={styles.unlockedText}>{translateUiText("All premium features unlocked")}</Text>
                         </View>
 
                         <Pressable
                             accessibilityRole="button"
-                            accessibilityLabel="Continue with Premium"
+                            accessibilityLabel={translateUiText("Continue with Premium")}
                             onPress={onClose}
                             style={({ pressed }) => [styles.buttonWrap, pressed && styles.buttonPressed]}
                         >
@@ -72,7 +73,7 @@ const PartnerPremiumPurchaseModal = ({ visible, partnerName, onClose }) => {
                                 end={{ x: 1, y: 0.5 }}
                                 style={styles.button}
                             >
-                                <Text style={styles.buttonText}>Enjoy Premium</Text>
+                                <Text style={styles.buttonText}>{translateUiText("Enjoy Premium")}</Text>
                                 <Text style={styles.buttonHeart}>♥</Text>
                             </LinearGradient>
                         </Pressable>

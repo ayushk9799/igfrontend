@@ -8,6 +8,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import VoiceBubble from './VoiceBubble';
+import { getUiLocale, translateUiTemplate, translateUiText } from '../../i18n/uiTranslation';
 
 // Double check icon for read receipts
 const DoubleCheck = ({ color = '#007AFF', size = 12 }) => (
@@ -46,10 +47,9 @@ const ChatBubble = ({
     const formatTime = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toLocaleTimeString('en-US', {
+        return date.toLocaleTimeString(getUiLocale(), {
             hour: 'numeric',
             minute: '2-digit',
-            hour12: true
         });
     };
 
@@ -104,7 +104,7 @@ const ChatBubble = ({
                             styles.answerLabel,
                             answerType === 'photo' && styles.answerLabelPhoto
                         ]}>
-                            {isSent ? 'YOUR ANSWER' : `${senderName.toUpperCase()}'S ANSWER`}
+                            {isSent ? translateUiText("YOUR ANSWER") : translateUiTemplate("{{0}}'S ANSWER", [senderName.toUpperCase()])}
                         </Text>
                     )}
                     {answerType === 'voice' ? (

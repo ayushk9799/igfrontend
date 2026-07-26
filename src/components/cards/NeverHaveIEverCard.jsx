@@ -5,6 +5,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { categoryConfig } from './categoryConfig';
 import { spacing } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 
 /**
@@ -32,7 +33,7 @@ const ChoiceButton = ({ choice, isSelected, onPress, disabled }) => {
                 styles.choiceLabel,
                 { color: isSelected ? cfg.selectedTextColor : cfg.textColor },
                 isSelected && { fontWeight: '900' },
-            ]}>{choice}</Text>
+            ]}>{translateUiText(choice)}</Text>
             {isSelected && (
                 <View style={[styles.choiceCheckBadge, { backgroundColor: cfg.selectedTextColor }]}>
                     <Text style={[styles.choiceCheck, { color: '#FFFFFF' }]}>✓</Text>
@@ -123,7 +124,7 @@ const NeverHaveIEverCard = React.memo(({
                 <View style={styles.topRow}>
                     <View style={styles.categoryBadge}>
                         <Text style={styles.badgeEmoji}>🔥</Text>
-                        <Text style={styles.categoryText}>{config.label}</Text>
+                        <Text style={styles.categoryText}>{translateUiText(config.label)}</Text>
                     </View>
                 </View>
 

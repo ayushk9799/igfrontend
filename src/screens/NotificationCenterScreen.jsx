@@ -14,6 +14,7 @@ import Svg, { Path } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSelector } from 'react-redux';
 import { selectDuelNotifications } from '../store/slices/notificationsSlice';
+import { translateUiText } from '../i18n/uiTranslation';
 
 // Game-specific icons
 const PuzzleIcon = ({ size = 22 }) => (
@@ -94,8 +95,8 @@ const NotificationItem = ({ item, onPress }) => (
 
         {/* Text content */}
         <View style={styles.textContent}>
-            <Text style={styles.notifTitle}>{item.title}</Text>
-            <Text style={styles.notifMessage}>{item.message}</Text>
+            <Text style={styles.notifTitle}>{translateUiText(item.title)}</Text>
+            <Text style={styles.notifMessage}>{translateUiText(item.message)}</Text>
         </View>
 
         {/* Chevron */}
@@ -116,8 +117,8 @@ const EmptyState = () => (
                 />
             </Svg>
         </View>
-        <Text style={styles.emptyTitle}>You're all caught up!</Text>
-        <Text style={styles.emptySubtitle}>No pending duels right now.</Text>
+        <Text style={styles.emptyTitle}>{translateUiText("You're all caught up!")}</Text>
+        <Text style={styles.emptySubtitle}>{translateUiText("No pending duels right now.")}</Text>
     </View>
 );
 
@@ -171,7 +172,7 @@ export const NotificationCenterScreen = ({
                     >
                         <CloseIcon />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Notifications</Text>
+                    <Text style={styles.headerTitle}>{translateUiText("Notifications")}</Text>
                     <View style={styles.headerSpacer} />
                 </View>
 

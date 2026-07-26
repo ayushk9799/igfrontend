@@ -3,7 +3,7 @@
  * @format
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -14,10 +14,19 @@ import { CallProvider } from './src/calling/CallContext';
 import CallOverlay from './src/calling/CallOverlay';
 import AppNavigator from './src/navigation/AppNavigator';
 import { colors } from './src/theme';
+import i18n from './src/i18n';
 
 function App() {
+    const [language, setLanguage] = useState(i18n.resolvedLanguage);
+
+    useEffect(() => {
+        const handleLanguageChange = (nextLanguage) => setLanguage(nextLanguage);
+        i18n.on('languageChanged', handleLanguageChange);
+        return () => i18n.off('languageChanged', handleLanguageChange);
+    }, []);
+
     return (
-        <Provider store={store}>
+        <Provider store={store} key={language}>
             <SafeAreaProvider>
                 <KeyboardProvider statusBarTranslucent>
                     <SocketProvider>

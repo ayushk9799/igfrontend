@@ -6,6 +6,7 @@ import { AppRegistry } from 'react-native';
 import { getApp } from '@react-native-firebase/app';
 import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebase/messaging';
 import './src/constants/applyGlobalFonts';
+import './src/i18n';
 import App from './App';
 import { name as appName } from './app.json';
 import { setLocalNotificationBackgroundHandler } from './src/utils/localNotifications';

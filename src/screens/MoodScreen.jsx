@@ -15,6 +15,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius } from '../theme';
 import { emojis } from '../constants/Moods';
+import { formatRelativeTime, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,7 +27,7 @@ const ITEM_SIZE = (width - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / G
 const formatTimeAgo = (dateValue) => {
     const updatedAt = new Date(dateValue).getTime();
     if (!dateValue || Number.isNaN(updatedAt)) {
-        return 'a while';
+        return translateUiText("a while ago");
     }
 
     const diffMs = Math.max(Date.now() - updatedAt, 0);
@@ -35,32 +36,29 @@ const formatTimeAgo = (dateValue) => {
     const day = 24 * hour;
 
     if (diffMs < minute) {
-        return 'just now';
+        return formatRelativeTime(0, 'minute');
     }
 
     if (diffMs < hour) {
         const minutes = Math.floor(diffMs / minute);
-        return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+        return formatRelativeTime(-minutes, 'minute', { style: 'long' });
     }
 
     if (diffMs < day) {
         const hours = Math.floor(diffMs / hour);
-        return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+        return formatRelativeTime(-hours, 'hour', { style: 'long' });
     }
 
     const days = Math.floor(diffMs / day);
-    return `${days} ${days === 1 ? 'day' : 'days'}`;
+    return formatRelativeTime(-days, 'day', { style: 'long' });
 };
 
 const getLastUpdatedText = (dateValue) => {
     if (!dateValue) {
-        return 'Mood not updated yet';
+        return translateUiText("Mood not updated yet");
     }
 
-    const timeAgo = formatTimeAgo(dateValue);
-    return timeAgo === 'just now'
-        ? 'just now'
-        : `${timeAgo} ago`;
+    return formatTimeAgo(dateValue);
 };
 
 const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
@@ -74,7 +72,7 @@ const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
             ]}
         >
             <Image source={mood.imageSource} style={styles.emojiImage} />
-            <Text style={styles.emojiLabel}>{mood.label}</Text>
+            <Text style={styles.emojiLabel}>{translateUiText(mood.label)}</Text>
         </TouchableOpacity>
     );
 });
@@ -82,11 +80,11 @@ const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
 const MoodListHeader = ({ onBack, partnerName, isRefreshPrompt, moodUpdatedAt }) => {
     const timeAgo = formatTimeAgo(moodUpdatedAt);
     const title = isRefreshPrompt
-        ? `Last mood updated ${timeAgo}${timeAgo === 'just now' ? '' : ' ago'}`
-        : 'How are you feeling?';
+        ? translateUiTemplate("Last mood updated {{0}}", [timeAgo])
+        : translateUiText("How are you feeling?");
     const subtitle = isRefreshPrompt
-        ? `Let ${partnerName} know how you feel now`
-        : `Let ${partnerName} know your vibe ✨`;
+        ? translateUiTemplate("Let {{0}} know how you feel now", [partnerName])
+        : translateUiTemplate("Let {{0}} know your vibe ✨", [partnerName]);
 
     return (
         <View style={styles.header}>
@@ -215,9 +213,7 @@ export const MoodScreen = ({
                         ]}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.shareButtonText}>
-                            Share My Vibe
-                        </Text>
+                        <Text style={styles.shareButtonText}>{translateUiText("Share My Vibe")}</Text>
                     </TouchableOpacity>
                 </View>
             </Animated.View>

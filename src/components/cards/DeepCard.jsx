@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 import { categoryConfig, defaultConfig } from './categoryConfig';
 import { spacing } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 
 /**
@@ -73,7 +74,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                             <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
                                 <Path d="M21 12C21 16.42 16.97 20 12 20C10.9 20 9.85 19.82 8.88 19.5L4 21L5.62 16.82C4.6 15.48 4 13.82 4 12C4 7.58 8.03 4 13 4C17.97 4 21 7.58 21 12Z" fill="#8B5CF6" />
                             </Svg>
-                            <Text style={styles.categoryText}>{config.label}</Text>
+                            <Text style={styles.categoryText}>{translateUiText(config.label)}</Text>
                         </View>
                     </View>
 
@@ -93,7 +94,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                     ]}>
                         <TextInput
                             style={styles.textInput}
-                            placeholder="Type your response..."
+                            placeholder={translateUiText("Type your response...")}
                             placeholderTextColor="rgba(255, 255, 255, 0.5)"
                             multiline
                             value={answer}
@@ -133,9 +134,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                                         styles.submitButtonText,
                                         answer.trim() ? { color: '#8B5CF6' } : styles.submitButtonTextDisabled
                                     ]}
-                                >
-                                    Submit
-                                </Text>
+                                >{translateUiText("Submit")}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

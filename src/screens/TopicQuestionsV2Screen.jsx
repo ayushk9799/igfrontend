@@ -24,6 +24,7 @@ import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import { selectIsPremium, selectUser } from '../store/slices/userSlice';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const PAGE_SIZE = 10;
 const { height } = Dimensions.get('window');
@@ -457,7 +458,7 @@ export default function TopicQuestionsV2Screen({
         <View style={styles.header}>
             <View style={styles.headerSpacer} />
             <View style={styles.headerTextBlock}>
-                <Text style={styles.headerTitle}>Answer Question</Text>
+                <Text style={styles.headerTitle}>{translateUiText("Answer Question")}</Text>
             </View>
             <TouchableOpacity onPress={() => setSingleQuestionToAnswer(null)} style={styles.headerBackBtn}>
                 <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -535,7 +536,7 @@ export default function TopicQuestionsV2Screen({
             return (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={styles.loadingText}>Loading {topicTitle}</Text>
+                    <Text style={styles.loadingText}>{translateUiText("Loading")}{topicTitle}</Text>
                 </View>
             );
         }
@@ -545,7 +546,7 @@ export default function TopicQuestionsV2Screen({
                 <View style={styles.center}>
                     <Text style={styles.errorText}>{error}</Text>
                     <TouchableOpacity style={styles.primaryButton} onPress={fetchSets}>
-                        <Text style={styles.primaryButtonText}>Try Again</Text>
+                        <Text style={styles.primaryButtonText}>{translateUiText("Try Again")}</Text>
                     </TouchableOpacity>
                 </View>
             );
@@ -595,7 +596,7 @@ export default function TopicQuestionsV2Screen({
                                         numberOfLines={2}
                                         allowFontScaling={false}
                                     >
-                                        {set.subtitle || set.description || formatDescription[set.format] || 'A new way to connect together'}
+                                        {set.subtitle || set.description || formatDescription[set.format] || translateUiText("A new way to connect together")}
                                     </Text>
                                 </View>
 
@@ -654,7 +655,7 @@ export default function TopicQuestionsV2Screen({
             return (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={styles.loadingText}>Loading questions</Text>
+                    <Text style={styles.loadingText}>{translateUiText("Loading questions")}</Text>
                 </View>
             );
         }
@@ -664,7 +665,7 @@ export default function TopicQuestionsV2Screen({
                 <View style={styles.center}>
                     <Text style={styles.errorText}>{error}</Text>
                     <TouchableOpacity style={styles.primaryButton} onPress={() => fetchQuestions({ set: selectedSet, cursor: 0, append: false })}>
-                        <Text style={styles.primaryButtonText}>Try Again</Text>
+                        <Text style={styles.primaryButtonText}>{translateUiText("Try Again")}</Text>
                     </TouchableOpacity>
                 </View>
             );
@@ -673,7 +674,7 @@ export default function TopicQuestionsV2Screen({
         if (tasks.length === 0) {
             return (
                 <View style={styles.center}>
-                    <Text style={styles.emptyText}>No questions yet</Text>
+                    <Text style={styles.emptyText}>{translateUiText("No questions yet")}</Text>
                 </View>
             );
         }

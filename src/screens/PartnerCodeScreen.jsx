@@ -24,6 +24,7 @@ import Svg, { Path } from 'react-native-svg';
 import { API_BASE } from '../constants/Api';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const navy = '#050E3E';
 const decorativeStyles = StyleSheet.create({
@@ -255,11 +256,10 @@ export const PartnerCodeScreen = ({
                     <View style={styles.connectedContainer}>
                         <Animated.View style={[styles.connectedContent, { transform: [{ scale: connectedScale }] }]}>
                             <Text style={styles.connectedEmoji}>💕</Text>
-                            <Text style={styles.connectedTitle}>You're Connected!</Text>
+                            <Text style={styles.connectedTitle}>{translateUiText("You're Connected!")}</Text>
                             {partnerUsername && (
                                 <Text style={styles.connectedSubtitle}>
-                                    {partnerUsername} just paired with you
-                                </Text>
+                                    {partnerUsername}{translateUiText("just paired with you")}</Text>
                             )}
                         </Animated.View>
                     </View>
@@ -293,9 +293,8 @@ export const PartnerCodeScreen = ({
                     <View style={styles.connectedContainer}>
                         <Animated.View style={[styles.connectedContent, { transform: [{ scale: pairedScale }] }]}>
                             <Text style={styles.connectedEmoji}>💕</Text>
-                            <Text style={styles.connectedTitle}>You're Connected!</Text>
-                            <Text style={styles.connectedSubtitle}>
-                                You're now paired with {pairedPartner.name}
+                            <Text style={styles.connectedTitle}>{translateUiText("You're Connected!")}</Text>
+                            <Text style={styles.connectedSubtitle}>{translateUiText("You're now paired with")}{pairedPartner.name}
                             </Text>
                         </Animated.View>
                     </View>
@@ -327,11 +326,11 @@ export const PartnerCodeScreen = ({
     const handlePair = async (codeToUse) => {
         const code = codeToUse || enteredCode;
         if (code.length !== 6) {
-            Alert.alert('Invalid Code', 'Partner code must be 6 characters');
+            Alert.alert(translateUiText("Invalid Code"), translateUiText("Partner code must be 6 characters"));
             return;
         }
         if (!userId) {
-            Alert.alert('Pairing Unavailable', 'Your account is not ready. Please try again.');
+            Alert.alert(translateUiText("Pairing Unavailable"), translateUiText("Your account is not ready. Please try again."));
             return;
         }
         if (pairingRequestRef.current) return;
@@ -357,7 +356,7 @@ export const PartnerCodeScreen = ({
                 data = await response.json();
             } catch {
                 if (mountedRef.current) {
-                    Alert.alert('Pairing Failed', 'The server returned an invalid response. Please try again.');
+                    Alert.alert(translateUiText("Pairing Failed"), translateUiText("The server returned an invalid response. Please try again."));
                 }
                 return;
             }
@@ -380,12 +379,12 @@ export const PartnerCodeScreen = ({
                     onPaired(data.partner);
                 }, 3000);
             } else {
-                Alert.alert('Pairing Failed', data?.error || 'Could not connect with this code');
+                Alert.alert(translateUiText("Pairing Failed"), data?.error || 'Could not connect with this code');
             }
         } catch (error) {
             if (error?.name === 'AbortError') return;
             console.error('Pairing error:', error);
-            Alert.alert('Error', 'Network error. Please try again.');
+            Alert.alert(translateUiText("Error"), translateUiText("Network error. Please try again."));
         } finally {
             pairingRequestRef.current = false;
             pairingAbortRef.current = null;
@@ -457,12 +456,12 @@ export const PartnerCodeScreen = ({
                             <View style={styles.titleBurstLeft}>
                                 <TitleBurst />
                             </View>
-                            <Text style={styles.title}>Connect with your Love</Text>
+                            <Text style={styles.title}>{translateUiText("Connect with your Love")}</Text>
                             <View style={styles.titleHeartRight}>
                                 <TinyHeart color="#FF8FAB" />
                             </View>
                         </View>
-                        <Text style={styles.subtitle}>Share your code or enter theirs to pair</Text>
+                        <Text style={styles.subtitle}>{translateUiText("Share your code or enter theirs to pair")}</Text>
                     </Animated.View>
 
                     {/* Share Code Card */}
@@ -492,7 +491,7 @@ export const PartnerCodeScreen = ({
                                         onPress={handleCopyCode}
                                         activeOpacity={0.7}
                                         accessibilityRole="button"
-                                        accessibilityLabel={copied ? 'Partner code copied' : 'Copy partner code'}
+                                        accessibilityLabel={copied ? translateUiText("Partner code copied") : translateUiText("Copy partner code")}
                                     >
                                         {copied ? <CheckIcon /> : <CopyIcon />}
                                     </TouchableOpacity>
@@ -504,7 +503,7 @@ export const PartnerCodeScreen = ({
                                     onPress={handleShareCode}
                                     activeOpacity={0.85}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Share partner code"
+                                    accessibilityLabel={translateUiText("Share partner code")}
                                 >
                                     <LinearGradient
                                         colors={['#FF5E97', '#FFA1C9']}
@@ -512,7 +511,7 @@ export const PartnerCodeScreen = ({
                                         end={{ x: 1, y: 0 }}
                                         style={styles.shareButtonGradient}
                                     >
-                                        <Text style={styles.shareButtonText}>Share Code with Partner</Text>
+                                        <Text style={styles.shareButtonText}>{translateUiText("Share Code with Partner")}</Text>
                                     </LinearGradient>
                                 </TouchableOpacity>
                             </View>
@@ -520,14 +519,14 @@ export const PartnerCodeScreen = ({
                             {/* OR Divider */}
                             <View style={styles.divider}>
                                 <View style={styles.dividerLine} />
-                                <Text style={styles.dividerText}>OR</Text>
+                                <Text style={styles.dividerText}>{translateUiText("OR")}</Text>
                                 <View style={styles.dividerLine} />
                             </View>
                         </Animated.View>
 
                         {/* Enter Partner Code Card */}
                         <View style={styles.enterCodeCard}>
-                            <Text style={styles.cardLabel}>Enter your Partner Code</Text>
+                            <Text style={styles.cardLabel}>{translateUiText("Enter your Partner Code")}</Text>
                             <TextInput
                                 style={[styles.codeInput, isPairing && styles.codeInputDisabled]}
                                 value={enteredCode}
@@ -541,13 +540,13 @@ export const PartnerCodeScreen = ({
                                 }}
                                 onFocus={handleFocus}
                                 onBlur={handleBlur}
-                                placeholder="ABC123"
+                                placeholder={translateUiText("ABC123")}
                                 placeholderTextColor="#D1A3B8"
                                 maxLength={6}
                                 autoCapitalize="characters"
                                 autoCorrect={false}
                                 editable={!isPairing}
-                                accessibilityLabel="Enter your partner code"
+                                accessibilityLabel={translateUiText("Enter your partner code")}
                             />
 
                             {/* Loading State */}
@@ -566,9 +565,9 @@ export const PartnerCodeScreen = ({
                             onPress={onSkip}
                             activeOpacity={0.7}
                             accessibilityRole="button"
-                            accessibilityLabel="Connect with a partner later"
+                            accessibilityLabel={translateUiText("Connect with a partner later")}
                         >
-                            <Text style={styles.skipText}>I'll do this later →</Text>
+                            <Text style={styles.skipText}>{translateUiText("I'll do this later →")}</Text>
                         </TouchableOpacity>
                     </Animated.View>
                     </Animated.View>

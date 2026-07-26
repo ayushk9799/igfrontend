@@ -60,6 +60,7 @@ import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const UPDATE_CHECK_TIMEOUT_MS = 8000;
 
@@ -314,7 +315,7 @@ export const AppNavigator = () => {
                 return;
             }
 
-            Alert.alert('Store link missing', 'Please set the store URL in the backend update config.');
+            Alert.alert(translateUiText("Store link missing"), translateUiText("Please set the store URL in the backend update config."));
         } catch (error) {
             if (fallbackUrl && fallbackUrl !== primaryUrl) {
                 try {
@@ -322,7 +323,7 @@ export const AppNavigator = () => {
                     return;
                 } catch { }
             }
-            Alert.alert('Could not open store', 'Please open the app store and update Penguin Couple.');
+            Alert.alert(translateUiText("Could not open store"), translateUiText("Please open the app store and update Penguin Couple."));
         }
     }, [inAppUpdates, versionGate.policy]);
 
@@ -339,14 +340,14 @@ export const AppNavigator = () => {
             versionGate.policy?.message || 'Please update it to continue.',
             [
                 {
-                    text: 'Update now',
+                    text: translateUiText("Update now"),
                     onPress: () => {
                         forceUpdateAlertVisibleRef.current = false;
                         openUpdateStore();
                     },
                 },
                 {
-                    text: 'I updated, check again',
+                    text: translateUiText("I updated, check again"),
                     onPress: () => {
                         forceUpdateAlertVisibleRef.current = false;
                         retryVersionGate();
@@ -697,11 +698,11 @@ export const AppNavigator = () => {
                     statusListener = (event) => {
                         if (event.status === IAUInstallStatus.DOWNLOADED) {
                             Alert.alert(
-                                'Update ready',
-                                'A newer version has finished downloading. Restart to install now?',
+                                translateUiText("Update ready"),
+                                translateUiText("A newer version has finished downloading. Restart to install now?"),
                                 [
-                                    { text: 'Later', style: 'cancel' },
-                                    { text: 'Restart', onPress: () => inAppUpdates.installUpdate() },
+                                    { text: translateUiText("Later"), style: 'cancel' },
+                                    { text: translateUiText("Restart"), onPress: () => inAppUpdates.installUpdate() },
                                 ],
                             );
                         }
@@ -710,8 +711,8 @@ export const AppNavigator = () => {
                     await inAppUpdates.startUpdate({ updateType: IAUUpdateKind.IMMEDIATE });
                 } else {
                     await inAppUpdates.startUpdate({
-                        title: 'Update available',
-                        message: 'A new version is ready on the App Store.',
+                        title: translateUiText("Update available"),
+                        message: translateUiText("A new version is ready on the App Store."),
                         buttonUpgradeText: 'Update',
                         buttonCancelText: 'Later',
                     });
@@ -1296,8 +1297,11 @@ export const AppNavigator = () => {
             if (currentScreen === 'questionChatV2' && sameId(selectedQuestionV2Chat?._id, data.chatId)) return;
 
             showRoutedLocalNotification({
-                title: data.questionText || 'Question chat',
-                body: `${data.senderName || partnerName}: ${data.preview || 'Answered a question'}`,
+                title: data.questionText || translateUiText("Question chat"),
+                body: translateUiTemplate("{{0}}: {{1}}", [
+                    data.senderName || partnerName,
+                    data.preview || translateUiText("Answered a question"),
+                ]),
                 data: {
                     type: 'questionChatV2',
                     chatId: data.chatId,
@@ -1309,8 +1313,8 @@ export const AppNavigator = () => {
             if (!data.sessionId || currentScreen === 'liveChat') return;
 
             showRoutedLocalNotification({
-                title: 'live chat message',
-                body: data.preview || 'Sent you a Live Chat message',
+                title: translateUiText("live chat message"),
+                body: data.preview || translateUiText("Sent you a Live Chat message"),
                 data: {
                     type: 'live_chat',
                     sessionId: data.sessionId,
@@ -1322,8 +1326,10 @@ export const AppNavigator = () => {
 
         const handleScribbleReceived = (data = {}) => {
             showRoutedLocalNotification({
-                title: 'New Scribble',
-                body: `${data.fromUserName || partnerName} sent you a doodle`,
+                title: translateUiText("New Scribble"),
+                body: translateUiTemplate("{{0}} sent you a doodle", [
+                    data.fromUserName || partnerName,
+                ]),
                 data: {
                     type: 'scribble',
                 },
@@ -1337,8 +1343,11 @@ export const AppNavigator = () => {
                 ? String(data.mood.label).trim().toLowerCase()
                 : 'in a new mood';
             showRoutedLocalNotification({
-                title: 'Mood Update',
-                body: `${data.userName || partnerName} is ${moodLabel}`,
+                title: translateUiText("Mood Update"),
+                body: translateUiTemplate("{{0}} is {{1}}", [
+                    data.userName || partnerName,
+                    translateUiText(moodLabel),
+                ]),
                 data: {
                     type: 'mood_update',
                 },
@@ -1350,8 +1359,10 @@ export const AppNavigator = () => {
             if (currentScreenRef.current === 'ticTacToe') return;
 
             showRoutedLocalNotification({
-                title: 'Tic Tac Toe',
-                body: data.gameComplete ? 'Your game was updated' : 'Your partner made a move',
+                title: translateUiText("Tic Tac Toe"),
+                body: data.gameComplete
+                    ? translateUiText("Your game was updated")
+                    : translateUiText("Your partner made a move"),
                 data: {
                     type: 'tictactoe',
                     gameId: data.gameId,
@@ -1364,8 +1375,10 @@ export const AppNavigator = () => {
             if (currentScreenRef.current === 'ticTacToe') return;
 
             showRoutedLocalNotification({
-                title: 'Tic Tac Toe Challenge',
-                body: `${data.fromName || partnerName} challenged you to play`,
+                title: translateUiText("Tic Tac Toe Challenge"),
+                body: translateUiTemplate("{{0}} challenged you to play", [
+                    data.fromName || partnerName,
+                ]),
                 data: {
                     type: 'tictactoe',
                     gameId: data.gameId,
@@ -1378,8 +1391,10 @@ export const AppNavigator = () => {
             if (currentScreenRef.current === 'wordle') return;
 
             showRoutedLocalNotification({
-                title: 'Wordle Update',
-                body: data.gameComplete ? 'Your Wordle game finished' : 'Your Wordle game was updated',
+                title: translateUiText("Wordle Update"),
+                body: data.gameComplete
+                    ? translateUiText("Your Wordle game finished")
+                    : translateUiText("Your Wordle game was updated"),
                 data: {
                     type: 'wordle',
                     gameId: data.gameId,
@@ -1392,8 +1407,10 @@ export const AppNavigator = () => {
             if (currentScreenRef.current === 'wordle') return;
 
             showRoutedLocalNotification({
-                title: 'Wordle Challenge',
-                body: `${data.creatorName || partnerName} set a word for you`,
+                title: translateUiText("Wordle Challenge"),
+                body: translateUiTemplate("{{0}} set a word for you", [
+                    data.creatorName || partnerName,
+                ]),
                 data: {
                     type: 'wordle',
                     gameId: data.gameId,
@@ -1403,8 +1420,10 @@ export const AppNavigator = () => {
 
         const handleNudgeReceived = (data = {}) => {
             showRoutedLocalNotification({
-                title: 'Partner Nudge',
-                body: `${data.fromName || partnerName} nudged you`,
+                title: translateUiText("Partner Nudge"),
+                body: translateUiTemplate("{{0}} nudged you", [
+                    data.fromName || partnerName,
+                ]),
                 data: {
                     type: 'nudge',
                 },
@@ -2137,11 +2156,11 @@ export const AppNavigator = () => {
                     setCurrentScreen('login');
                 });
             } else {
-                Alert.alert('Error', data.error || 'Failed to delete account');
+                Alert.alert(translateUiText("Error"), data.error || 'Failed to delete account');
             }
         } catch (error) {
             console.error('🗑️ [DELETE] Error deleting account:', error);
-            Alert.alert('Error', 'Failed to delete account. Please try again.');
+            Alert.alert(translateUiText("Error"), translateUiText("Failed to delete account. Please try again."));
         }
     };
 

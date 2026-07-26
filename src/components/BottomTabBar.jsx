@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { House, Gamepad2, MessageCircle, Notebook } from 'lucide-react-native';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const getLiquidGlassModule = () => {
     if (Platform.OS !== 'ios') return null;
@@ -60,10 +61,10 @@ const iconMap = {
 };
 
 const TABS = [
-    { key: 'home', label: 'Home', iconKey: 'home' },
-    { key: 'memories', label: 'Timeline', iconKey: 'timeline' },
-    { key: 'games', label: 'Games', iconKey: 'games' },
-    { key: 'chats', label: 'Chats', iconKey: 'chats' },
+    { key: 'home', label: "Home", iconKey: 'home' },
+    { key: 'memories', label: "Timeline", iconKey: 'timeline' },
+    { key: 'games', label: "Games", iconKey: 'games' },
+    { key: 'chats', label: "Chats", iconKey: 'chats' },
 ];
 
 const useAccessibilityPreferences = () => {
@@ -278,7 +279,7 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
                 <TabItem
                     key={tab.key}
                     iconKey={tab.iconKey}
-                    label={tab.label}
+                    label={translateUiText(tab.label)}
                     isActive={currentTab === tab.key}
                     onPress={() => onTabChange(tab.key)}
                     badge={tab.key === 'chats' ? chatBadge : 0}

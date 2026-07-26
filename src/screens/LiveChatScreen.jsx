@@ -41,6 +41,7 @@ import { CALL_STATE, STUN_URLS } from '../calling/callConstants';
 import { API_BASE } from '../constants/Api';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { clearLiveChatActive, markLiveChatActive, storage } from '../utils/authStorage';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const MAX_MESSAGE_LENGTH = 500;
 const VIDEO_NEGOTIATION_TIMEOUT_MS = 12_000;
@@ -1259,7 +1260,7 @@ export default function LiveChatScreen({
                         style={styles.backButton}
                         onPress={handleBack}
                         accessibilityRole="button"
-                        accessibilityLabel="Back to chats"
+                        accessibilityLabel={translateUiText("Back to chats")}
                     >
                         <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                             <Path
@@ -1271,12 +1272,12 @@ export default function LiveChatScreen({
                             />
                         </Svg>
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Live Chat</Text>
+                    <Text style={styles.headerTitle}>{translateUiText("Live Chat")}</Text>
                     <TouchableOpacity
                         style={styles.headerButton}
                         onPress={toggleFrontCamera}
                         accessibilityRole="button"
-                        accessibilityLabel={cameraEnabled ? 'Turn off front camera' : 'Turn on front camera'}
+                        accessibilityLabel={cameraEnabled ? translateUiText("Turn off front camera") : translateUiText("Turn on front camera")}
                         accessibilityState={{ checked: cameraEnabled }}
                     >
                         {cameraEnabled ? (
@@ -1323,7 +1324,7 @@ export default function LiveChatScreen({
                                                     {partnerDisplayName.charAt(0).toUpperCase()}
                                                 </Text>
                                             )}
-                                            <Text style={styles.videoOffLabel}>Video is turned off</Text>
+                                            <Text style={styles.videoOffLabel}>{translateUiText("Video is turned off")}</Text>
                                         </LinearGradient>
                                     )}
                                 </View>
@@ -1333,7 +1334,7 @@ export default function LiveChatScreen({
                                 <View style={styles.nameRow}>
                                     <Text style={styles.personName}>{partnerDisplayName}</Text>
                                     {partnerTyping && (
-                                        <Text style={styles.typingText}>typing…</Text>
+                                        <Text style={styles.typingText}>{translateUiText("typing…")}</Text>
                                     )}
                                 </View>
                                 <SmoothMessageText text={partnerDisplayText} />
@@ -1357,7 +1358,7 @@ export default function LiveChatScreen({
                                     ) : (
                                         <LinearGradient colors={['#FFDCE8', '#F2DFF5']} style={styles.videoPlaceholder}>
                                             <Text style={styles.partnerInitial}>Y</Text>
-                                            <Text style={styles.videoOffLabel}>Video is turned off</Text>
+                                            <Text style={styles.videoOffLabel}>{translateUiText("Video is turned off")}</Text>
                                         </LinearGradient>
                                     )}
                                 </View>
@@ -1365,7 +1366,7 @@ export default function LiveChatScreen({
                             </View>
                             <View style={styles.messageContent}>
                                 <View style={styles.nameRow}>
-                                    <Text style={styles.personName}>You</Text>
+                                    <Text style={styles.personName}>{translateUiText("You")}</Text>
                                 </View>
                                 <SmoothMessageText text={myDisplayText} />
                             </View>
@@ -1379,9 +1380,9 @@ export default function LiveChatScreen({
                                 <TouchableOpacity
                                     onPress={() => Linking.openSettings()}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Open app settings"
+                                    accessibilityLabel={translateUiText("Open app settings")}
                                 >
-                                    <Text style={styles.settingsText}>Open Settings</Text>
+                                    <Text style={styles.settingsText}>{translateUiText("Open Settings")}</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -1390,8 +1391,7 @@ export default function LiveChatScreen({
                     <View style={styles.composerArea}>
                         {showFreeTierCountdown && (
                             <View style={styles.freeTierCountdown}>
-                                <Text style={styles.freeTierCountdownText}>
-                                    Free tier left:{' '}
+                                <Text style={styles.freeTierCountdownText}>{translateUiText("Free tier left:")}{' '}
                                     <Text style={styles.freeTierCountdownTime}>
                                         {formatFreeTime(remainingFreeSeconds)}
                                     </Text>
@@ -1400,9 +1400,9 @@ export default function LiveChatScreen({
                                     onPress={handleFreeTierUpgrade}
                                     activeOpacity={0.7}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Upgrade Live Chat"
+                                    accessibilityLabel={translateUiText("Upgrade Live Chat")}
                                 >
-                                    <Text style={styles.freeTierUpgradeText}>Upgrade</Text>
+                                    <Text style={styles.freeTierUpgradeText}>{translateUiText("Upgrade")}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -1413,21 +1413,21 @@ export default function LiveChatScreen({
                                 onChangeText={handleDraftChange}
                                 onPressIn={isFreeLimitReached ? handleRequestPremium : undefined}
                                 style={styles.input}
-                                placeholder={isFreeLimitReached ? 'Tap to unlock Live Chat' : 'Type a message…'}
+                                placeholder={isFreeLimitReached ? translateUiText("Tap to unlock Live Chat") : translateUiText("Type a message…")}
                                 placeholderTextColor="#A99CA9"
                                 maxLength={MAX_MESSAGE_LENGTH}
                                 multiline
                                 editable={Boolean(sessionId) && !isFreeLimitReached}
                                 accessibilityLabel={isFreeLimitReached
-                                    ? 'Unlock Live Chat'
-                                    : 'Live Chat message'}
+                                    ? translateUiText("Unlock Live Chat")
+                                    : translateUiText("Live Chat message")}
                             />
                             <TouchableOpacity
                                 style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
                                 onPress={handleSend}
                                 disabled={!canSend}
                                 accessibilityRole="button"
-                                accessibilityLabel={sendPending ? 'Sending message' : 'Send message'}
+                                accessibilityLabel={sendPending ? translateUiText("Sending message") : translateUiText("Send message")}
                                 accessibilityState={{ disabled: !canSend, busy: sendPending }}
                             >
                                 <Text style={styles.sendIcon}>➤</Text>
@@ -1454,10 +1454,8 @@ export default function LiveChatScreen({
                                     <View style={styles.instructionIcon}>
                                         <Text style={styles.instructionIconText}>1</Text>
                                     </View>
-                                    <Text style={styles.instructionTitle}>One message at a time</Text>
-                                    <Text style={styles.instructionText}>
-                                        Each of you has one message on screen. Sending a new message replaces your previous one.
-                                    </Text>
+                                    <Text style={styles.instructionTitle}>{translateUiText("One message at a time")}</Text>
+                                    <Text style={styles.instructionText}>{translateUiText("Each of you has one message on screen. Sending a new message replaces your previous one.")}</Text>
                                 </>
                             )}
                             {cameraPermissionState !== 'granted' && (
@@ -1476,15 +1474,15 @@ export default function LiveChatScreen({
                                     <View style={styles.cameraPermissionCopy}>
                                         <Text style={styles.cameraPermissionTitle}>
                                             {cameraPermissionState === 'checking'
-                                                ? 'Checking camera access…'
+                                                ? translateUiText("Checking camera access…")
                                                 : cameraPermissionState === 'denied'
-                                                    ? 'Camera permission is off'
-                                                    : 'Camera permission required'}
+                                                    ? translateUiText("Camera permission is off")
+                                                    : translateUiText("Camera permission required")}
                                         </Text>
                                         <Text style={styles.cameraPermissionText}>
                                             {cameraPermissionState === 'denied'
-                                                ? 'Open Settings to enable live video. Messages still work without it.'
-                                                : 'Camera permission is required for video chat with your partner.'}
+                                                ? translateUiText("Open Settings to enable live video. Messages still work without it.")
+                                                : translateUiText("Camera permission is required for video chat with your partner.")}
                                         </Text>
                                     </View>
                                 </View>
@@ -1501,10 +1499,10 @@ export default function LiveChatScreen({
                                 accessibilityRole="button"
                                 accessibilityLabel={
                                     cameraPermissionState === 'granted'
-                                            ? 'Continue to Live Chat'
+                                            ? translateUiText("Continue to Live Chat")
                                             : cameraPermissionState === 'denied'
-                                                ? 'Open settings for camera permission'
-                                                : 'Continue with camera permission'
+                                                ? translateUiText("Open settings for camera permission")
+                                                : translateUiText("Continue with camera permission")
                                 }
                             >
                                 {requestingCameraPermission || cameraPermissionState === 'checking' ? (
@@ -1512,10 +1510,10 @@ export default function LiveChatScreen({
                                 ) : (
                                     <Text style={styles.instructionButtonText}>
                                         {cameraPermissionState === 'granted'
-                                            ? 'Got it'
+                                            ? translateUiText("Got it")
                                             : cameraPermissionState === 'denied'
-                                                ? 'Open Settings'
-                                                : 'Continue Camera'}
+                                                ? translateUiText("Open Settings")
+                                                : translateUiText("Continue Camera")}
                                     </Text>
                                 )}
                             </TouchableOpacity>
@@ -1527,11 +1525,9 @@ export default function LiveChatScreen({
                                         onPress={dismissInstruction}
                                         activeOpacity={0.75}
                                         accessibilityRole="button"
-                                        accessibilityLabel="Not now"
+                                        accessibilityLabel={translateUiText("Not now")}
                                     >
-                                        <Text style={styles.continueWithoutCameraText}>
-                                            Not Now
-                                        </Text>
+                                        <Text style={styles.continueWithoutCameraText}>{translateUiText("Not Now")}</Text>
                                     </TouchableOpacity>
                                 )}
                         </View>

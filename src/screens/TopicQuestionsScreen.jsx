@@ -34,6 +34,7 @@ import { API_BASE } from '../constants/Api';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { useSelector } from 'react-redux';
 import { selectUser, selectIsPremium } from '../store/slices/userSlice';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const { width } = Dimensions.get('window');
 
@@ -61,7 +62,7 @@ export default function TopicQuestionsScreen({
     const isPremium = useSelector(selectIsPremium);
     const topicConfig = TOPIC_CATEGORIES[topic] || {
         title: topicTitle,
-        subtitle: 'Questions made for the two of you',
+        subtitle: translateUiText("Questions made for the two of you"),
         emoji: topicEmoji || '💞',
         color: colors.primary,
         bgGradient: ['#FFE4EF', '#FFF4F8'],
@@ -326,7 +327,7 @@ export default function TopicQuestionsScreen({
             return (
                 <View style={[styles.center, { paddingTop: insets.top }]}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={styles.loadingText}>Loading {topicTitle} questions...</Text>
+                    <Text style={styles.loadingText}>{translateUiText("Loading")}{topicTitle}{translateUiText("questions...")}</Text>
                 </View>
             );
         }
@@ -337,10 +338,10 @@ export default function TopicQuestionsScreen({
                     <Text style={styles.errorEmoji}>😕</Text>
                     <Text style={styles.errorText}>{error}</Text>
                     <TouchableOpacity style={styles.retryBtn} onPress={() => fetchQuestions(true)}>
-                        <Text style={styles.retryBtnText}>Try Again</Text>
+                        <Text style={styles.retryBtnText}>{translateUiText("Try Again")}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-                        <Text style={styles.backBtnText}>← Go Back</Text>
+                        <Text style={styles.backBtnText}>{translateUiText("← Go Back")}</Text>
                     </TouchableOpacity>
                 </View>
             );
@@ -358,9 +359,9 @@ export default function TopicQuestionsScreen({
                     ) : (
                         <Text style={styles.emptyEmoji}>{topicEmoji || '📝'}</Text>
                     )}
-                    <Text style={styles.emptyText}>No questions available for {topicTitle}</Text>
+                    <Text style={styles.emptyText}>{translateUiText("No questions available for")}{topicTitle}</Text>
                     <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-                        <Text style={styles.backBtnText}>← Go Back</Text>
+                        <Text style={styles.backBtnText}>{translateUiText("← Go Back")}</Text>
                     </TouchableOpacity>
                 </View>
             );
@@ -393,19 +394,23 @@ export default function TopicQuestionsScreen({
 
                             <View style={styles.heroCopy}>
                                 <View style={[styles.heroBadge, { backgroundColor: topicConfig.color }]}>
-                                    <Text style={styles.heroBadgeText}>COUPLE QUESTIONS</Text>
+                                    <Text style={styles.heroBadgeText}>{translateUiText("COUPLE QUESTIONS")}</Text>
                                 </View>
                                 <Text
                                     style={[styles.headerTitle, { color: topicConfig.textColor || topicConfig.color }]}
                                     numberOfLines={1}
                                 >
-                                    {topicTitle || topicConfig.title}
+                                    {translateUiText(topicTitle || topicConfig.title)}
                                 </Text>
                                 <Text
                                     style={[styles.headerSubtitle, { color: topicConfig.textColor || topicConfig.color }]}
                                     numberOfLines={2}
                                 >
-                                    {(topicConfig.subtitle || topicConfig.description || 'Discover more about each other').replace(/\n/g, ' ')}
+                                    {translateUiText(
+                                        topicConfig.subtitle
+                                            || topicConfig.description
+                                            || 'Discover more about each other',
+                                    ).replace(/\n/g, ' ')}
                                 </Text>
                             </View>
 

@@ -31,7 +31,7 @@
         android:layout_margin="10dp"
         android:background="@drawable/couple_photo_overlay_background"
         android:clipToOutline="true"
-        android:contentDescription="My latest sent photo"
+        android:contentDescription="@string/couple_photo_my_image_description"
         android:elevation="5dp"
         android:padding="2dp"
         android:scaleType="centerCrop"

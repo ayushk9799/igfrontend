@@ -74,6 +74,8 @@ PODS:
     - ExpoModulesCore
   - ExpoKeepAwake (15.0.8):
     - ExpoModulesCore
+  - ExpoLocalization (17.0.9):
+    - ExpoModulesCore
   - ExpoModulesCore (3.0.30):
     - boost
     - DoubleConversion
@@ -3228,6 +3230,7 @@ DEPENDENCIES:
   - ExpoImageManipulator (from `../node_modules/expo-image-manipulator/ios`)
   - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../node_modules/expo/node_modules/expo-keep-awake/ios`)
+  - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoStoreReview (from `../node_modules/expo-store-review/ios`)
   - fast_float (from `../node_modules/react-native/third-party-podspecs/fast_float.podspec`)
@@ -3392,6 +3395,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo/node_modules/expo-keep-awake/ios"
+  ExpoLocalization:
+    :path: "../node_modules/expo-localization/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
   ExpoStoreReview:
@@ -3601,6 +3606,7 @@ SPEC CHECKSUMS:
   ExpoImageManipulator: 607a5c8c88085381639458a46cc55fb9d3869148
   ExpoImagePicker: ade85e148f735fc7e6f27dfe3eef28eb3887e90a
   ExpoKeepAwake: 55f75eca6499bb9e4231ebad6f3e9cb8f99c0296
+  ExpoLocalization: d936ff63557366e2e487264f5b495b1f0637fabd
   ExpoModulesCore: 20899b4dd703e10a543ff4c50ee1543e47d90082
   ExpoStoreReview: 32bb43b6fae9c8db3e33cad69996dff3785eef5f
   fast_float: b32c788ed9c6a8c584d114d0047beda9664e7cc6

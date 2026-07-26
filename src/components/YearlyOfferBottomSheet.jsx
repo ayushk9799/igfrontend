@@ -24,6 +24,7 @@ import { fontFamily, fontWeight } from '../constants/fonts';
 import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
 import { colors } from '../theme';
 import { updateUser as updateUserStorage } from '../utils/authStorage';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const YEARLY_OFFERING_ID = 'yearly_offer';
 const REGULAR_OFFERING_ID = 'onbording';
@@ -266,7 +267,7 @@ export default function YearlyOfferBottomSheet({
         } catch (error) {
             if (!error?.userCancelled) {
                 console.error('Yearly offer purchase failed:', error);
-                Alert.alert('Purchase unavailable', error?.message || 'Please try again in a moment.');
+                Alert.alert(translateUiText("Purchase unavailable"), error?.message || 'Please try again in a moment.');
             }
         } finally {
             setPurchasing(false);
@@ -320,7 +321,7 @@ export default function YearlyOfferBottomSheet({
             <View style={styles.modalRoot}>
                 <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Close yearly offer"
+                    accessibilityLabel={translateUiText("Close yearly offer")}
                     style={styles.backdrop}
                     onPress={closeSheet}
                 />
@@ -352,7 +353,7 @@ export default function YearlyOfferBottomSheet({
                     ) : null}
                     <TouchableOpacity
                         accessibilityRole="button"
-                        accessibilityLabel="Close yearly offer"
+                        accessibilityLabel={translateUiText("Close yearly offer")}
                         activeOpacity={0.8}
                         onPress={closeSheet}
                         style={styles.closeButton}
@@ -379,30 +380,28 @@ export default function YearlyOfferBottomSheet({
                         </View>
 
                         <View style={styles.giftPill}>
-                            <Text style={styles.giftPillText}>A GIFT FOR YOU TWO</Text>
+                            <Text style={styles.giftPillText}>{translateUiText("A GIFT FOR YOU TWO")}</Text>
                         </View>
 
-                        <Text style={styles.title}>Yearly Premium Offer</Text>
+                        <Text style={styles.title}>{translateUiText("Yearly Premium Offer")}</Text>
 
                         {loadFailed ? (
                             <View style={styles.offerStatusCard}>
-                                <Text style={styles.offerStatusTitle}>Offer unavailable</Text>
-                                <Text style={styles.offerStatusText}>
-                                    Check that RevenueCat has an offering named yearly_offer with a yearly package.
-                                </Text>
+                                <Text style={styles.offerStatusTitle}>{translateUiText("Offer unavailable")}</Text>
+                                <Text style={styles.offerStatusText}>{translateUiText("Check that RevenueCat has an offering named yearly_offer with a yearly package.")}</Text>
                                 <TouchableOpacity
                                     accessibilityRole="button"
                                     activeOpacity={0.8}
                                     onPress={retryOffering}
                                     style={styles.retryButton}
                                 >
-                                    <Text style={styles.retryButtonText}>Try again</Text>
+                                    <Text style={styles.retryButtonText}>{translateUiText("Try again")}</Text>
                                 </TouchableOpacity>
                             </View>
                         ) : yearlyPackage ? (
                             <View
                                 accessible
-                                accessibilityLabel={`Yearly offer, ${accessibilityPriceLabel}, ${discountLabel}`}
+                                accessibilityLabel={translateUiTemplate("Yearly offer, {{0}}, {{1}}", [accessibilityPriceLabel, discountLabel])}
                                 style={styles.pricingSection}
                             >
                                 <View style={styles.priceRow}>
@@ -424,19 +423,19 @@ export default function YearlyOfferBottomSheet({
                                     >
                                         {price}
                                     </Text>
-                                    <Text numberOfLines={1} style={styles.pricePeriod}>/ year</Text>
+                                    <Text numberOfLines={1} style={styles.pricePeriod}>{translateUiText("/ year")}</Text>
                                 </View>
                             </View>
                         ) : (
                             <View style={styles.offerStatusCard}>
                                 <ActivityIndicator size="small" color={colors.primary} />
-                                <Text style={styles.loadingOfferText}>Loading your yearly offer…</Text>
+                                <Text style={styles.loadingOfferText}>{translateUiText("Loading your yearly offer…")}</Text>
                             </View>
                         )}
 
                         <TouchableOpacity
                             accessibilityRole="button"
-                            accessibilityLabel={`Claim yearly offer for ${accessibilityPriceLabel}`}
+                            accessibilityLabel={translateUiTemplate("Claim yearly offer for {{0}}", [accessibilityPriceLabel])}
                             activeOpacity={0.88}
                             disabled={purchasing || !yearlyPackage || loadFailed}
                             onPress={handlePurchase}
@@ -448,13 +447,13 @@ export default function YearlyOfferBottomSheet({
                             {purchasing ? (
                                 <ActivityIndicator color="#FFFFFF" />
                             ) : (
-                                <Text style={styles.ctaText}>{yearlyPackage ? 'Get offer' : 'Loading…'}</Text>
+                                <Text style={styles.ctaText}>{yearlyPackage ? translateUiText("Get offer") : translateUiText("Loading…")}</Text>
                             )}
                         </TouchableOpacity>
 
                         {offerEndsAt && remainingOfferMs > 0 ? (
                             <View style={styles.countdownRow}>
-                                <Text style={styles.countdownLabel}>Offer ends in</Text>
+                                <Text style={styles.countdownLabel}>{translateUiText("Offer ends in")}</Text>
                                 <Text style={styles.countdownValue}>
                                     {formatOfferCountdown(remainingOfferMs)}
                                 </Text>

@@ -14,6 +14,7 @@ import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-g
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const ActionButton = ({ children, onPress, disabled = false, secondary = false }) => (
     <TouchableOpacity
@@ -46,7 +47,7 @@ const LocationPreview = ({ enabled, statusLabel, isWaiting = false }) => (
         <View style={[styles.initialBubble, styles.initialBubblePurple]}><Text style={styles.initialText}>B</Text></View>
         <View style={[styles.statusPill, enabled && styles.statusPillEnabled, isWaiting && styles.statusPillAmber]}>
             <View style={[styles.statusDot, enabled && styles.statusDotEnabled, isWaiting && styles.statusDotAmber]} />
-            <Text style={styles.statusPillText}>{statusLabel || (enabled ? 'Location is on' : 'Not active')}</Text>
+            <Text style={styles.statusPillText}>{statusLabel || (enabled ? translateUiText("Location is on") : translateUiText("Not active"))}</Text>
         </View>
     </View>
 );
@@ -72,18 +73,18 @@ const PhotoChoice = ({ onTakePhoto, onChoosePhoto, onHowToAdd, partnerPhoto, myP
             </View>
             <View style={styles.photoHeart}><Text style={styles.photoHeartText}>♥</Text></View>
         </View>
-        <View style={styles.readyPill}><View style={styles.readyDot} /><Text style={styles.readyText}>Ready to share</Text></View>
+        <View style={styles.readyPill}><View style={styles.readyDot} /><Text style={styles.readyText}>{translateUiText("Ready to share")}</Text></View>
         <View style={styles.photoActions}>
             <TouchableOpacity style={[styles.photoAction, styles.takePhotoAction]} onPress={onTakePhoto} activeOpacity={0.85}>
                 <Text style={styles.photoActionIcon}>●</Text>
-                <Text style={styles.photoActionText}>Take Photo</Text>
+                <Text style={styles.photoActionText}>{translateUiText("Take Photo")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.photoAction, styles.choosePhotoAction]} onPress={onChoosePhoto} activeOpacity={0.85}>
                 <Text style={styles.photoActionIcon}>▣</Text>
-                <Text style={styles.photoActionText}>Choose Photo</Text>
+                <Text style={styles.photoActionText}>{translateUiText("Choose Photo")}</Text>
             </TouchableOpacity>
         </View>
-        <ActionButton secondary onPress={onHowToAdd}>How to add widget</ActionButton>
+        <ActionButton secondary onPress={onHowToAdd}>{translateUiText("How to add widget")}</ActionButton>
     </>
 );
 
@@ -163,18 +164,14 @@ const DaysTogetherShowcase = ({ relationshipStartDate, daysTogether, onHowToAdd,
                     style={[styles.tabSelectorButton, activeTab === 'lock' && styles.tabSelectorActive]}
                     onPress={() => setActiveTab('lock')}
                 >
-                    <Text style={[styles.tabSelectorText, activeTab === 'lock' && styles.tabSelectorActiveText]}>
-                        🔒 Lock Screen
-                    </Text>
+                    <Text style={[styles.tabSelectorText, activeTab === 'lock' && styles.tabSelectorActiveText]}>{translateUiText("🔒 Lock Screen")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     activeOpacity={0.8}
                     style={[styles.tabSelectorButton, activeTab === 'home' && styles.tabSelectorActive]}
                     onPress={() => setActiveTab('home')}
                 >
-                    <Text style={[styles.tabSelectorText, activeTab === 'home' && styles.tabSelectorActiveText]}>
-                        🏠 Home Screen
-                    </Text>
+                    <Text style={[styles.tabSelectorText, activeTab === 'home' && styles.tabSelectorActiveText]}>{translateUiText("🏠 Home Screen")}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -188,12 +185,12 @@ const DaysTogetherShowcase = ({ relationshipStartDate, daysTogether, onHowToAdd,
                 <View style={styles.lockDecorGlow2} />
 
                 <Text style={styles.lockShowcaseDate}>
-                    {activeTab === 'lock' ? 'Tue 9 Jun  •  11:44' : 'PENGUIN HOME WIDGET'}
+                    {activeTab === 'lock' ? translateUiText("Tue 9 Jun  •  11:44") : translateUiText("PENGUIN HOME WIDGET")}
                 </Text>
 
                 <View style={styles.lockShowcaseWidgetBox}>
                     <View style={styles.timeWidgetHeaderRow}>
-                        <Text style={styles.timeWidgetHeaderLabel}>together for</Text>
+                        <Text style={styles.timeWidgetHeaderLabel}>{translateUiText("together for")}</Text>
                         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                             <HeartIcon color="#FF758F" size={13} />
                         </Animated.View>
@@ -219,32 +216,32 @@ const DaysTogetherShowcase = ({ relationshipStartDate, daysTogether, onHowToAdd,
 
                     <View style={styles.timeLabelsRow}>
                         <View style={styles.timeNumCol}>
-                            <Text style={styles.timeShowcaseLbl}>days</Text>
+                            <Text style={styles.timeShowcaseLbl}>{translateUiText("days")}</Text>
                         </View>
                         <View style={styles.timeColonSpacer} />
                         <View style={styles.timeNumCol}>
-                            <Text style={styles.timeShowcaseLbl}>hr</Text>
+                            <Text style={styles.timeShowcaseLbl}>{translateUiText("hr")}</Text>
                         </View>
                         <View style={styles.timeColonSpacer} />
                         <View style={styles.timeNumCol}>
-                            <Text style={styles.timeShowcaseLbl}>min</Text>
+                            <Text style={styles.timeShowcaseLbl}>{translateUiText("min")}</Text>
                         </View>
                         <View style={styles.timeColonSpacer} />
                         <View style={styles.timeNumCol}>
-                            <Text style={styles.timeShowcaseLbl}>sec</Text>
+                            <Text style={styles.timeShowcaseLbl}>{translateUiText("sec")}</Text>
                         </View>
                     </View>
                 </View>
                 <Text style={styles.previewCaption}>
-                    {activeTab === 'lock' ? 'Lock Screen Accessory Widget' : 'Home Screen Square Widget'}
+                    {activeTab === 'lock' ? translateUiText("Lock Screen Accessory Widget") : translateUiText("Home Screen Square Widget")}
                 </Text>
             </LinearGradient>
 
-            <Text style={styles.timeShowcaseTitle}>Days Together Widget</Text>
+            <Text style={styles.timeShowcaseTitle}>{translateUiText("Days Together Widget")}</Text>
 
-            <ActionButton onPress={onHowToAdd}>How to add widget</ActionButton>
+            <ActionButton onPress={onHowToAdd}>{translateUiText("How to add widget")}</ActionButton>
             <TouchableOpacity onPress={onClose} style={styles.quietAction}>
-                <Text style={styles.quietActionText}>Done</Text>
+                <Text style={styles.quietActionText}>{translateUiText("Done")}</Text>
             </TouchableOpacity>
         </View>
     );
@@ -433,46 +430,44 @@ const WidgetSetupBottomSheet = ({
                                 <View style={styles.partnerNoticeCard}>
                                     <View style={styles.partnerNoticeHeader}>
                                         <Text style={styles.partnerNoticeIcon}>📍</Text>
-                                        <Text style={styles.partnerNoticeTitle}>{partnerName} needs to turn on location</Text>
+                                        <Text style={styles.partnerNoticeTitle}>{partnerName}{translateUiText("needs to turn on location")}</Text>
                                     </View>
-                                    <Text style={styles.partnerNoticeText}>
-                                        Your location is active! {partnerName} must also enable location in Penguin so your distance widget can calculate distance.
-                                    </Text>
+                                    <Text style={styles.partnerNoticeText}>{translateUiText("Your location is active!")}{partnerName}{translateUiText("must also enable location in Penguin so your distance widget can calculate distance.")}</Text>
                                 </View>
                             ) : (
                                 <Text style={styles.locationCopy}>{locationCopy}</Text>
                             )}
 
                             <View style={styles.permissionList}>
-                                <PermissionRow icon="➤" label="While using the app" complete={hasForegroundLocation} />
-                                <PermissionRow icon="▣" label={Platform.OS === 'ios' ? 'Always allow' : 'Allow in background'} complete={hasBackgroundLocation} />
+                                <PermissionRow icon="➤" label={translateUiText("While using the app")} complete={hasForegroundLocation} />
+                                <PermissionRow icon="▣" label={Platform.OS === 'ios' ? translateUiText("Always allow") : translateUiText("Allow in background")} complete={hasBackgroundLocation} />
                             </View>
 
                             {!!locationMessage && <Text style={styles.inlineMessage}>{locationMessage}</Text>}
                             {!!reminderSentText && <Text style={styles.successMessage}>{reminderSentText}</Text>}
 
                             {locationAccessBlocked ? (
-                                <ActionButton onPress={onOpenSettings}>Open Settings</ActionButton>
+                                <ActionButton onPress={onOpenSettings}>{translateUiText("Open Settings")}</ActionButton>
                             ) : !hasCompleteLocationAccess ? (
                                 <ActionButton disabled={isLocationLoading} onPress={onEnableLocation}>
                                     {hasForegroundLocation ? 'Enable Always Access' : 'Enable Location'}
                                 </ActionButton>
                             ) : !hasPartner ? (
-                                <ActionButton onPress={onConnectPartner}>Connect Partner</ActionButton>
+                                <ActionButton onPress={onConnectPartner}>{translateUiText("Connect Partner")}</ActionButton>
                             ) : isWaitingForPartner ? (
                                 <>
                                     <ActionButton disabled={isRemindLoading} onPress={handleRemindPress}>
                                         {isRemindLoading ? 'Sending...' : `Remind ${partnerName}`}
                                     </ActionButton>
-                                    <ActionButton secondary onPress={onHowToAdd}>How to add widget</ActionButton>
+                                    <ActionButton secondary onPress={onHowToAdd}>{translateUiText("How to add widget")}</ActionButton>
                                 </>
                             ) : locationMessage ? (
-                                <ActionButton onPress={onOpenSettings}>Open Settings</ActionButton>
+                                <ActionButton onPress={onOpenSettings}>{translateUiText("Open Settings")}</ActionButton>
                             ) : (
-                                <ActionButton onPress={onHowToAdd}>How to add widget</ActionButton>
+                                <ActionButton onPress={onHowToAdd}>{translateUiText("How to add widget")}</ActionButton>
                             )}
                             <TouchableOpacity disabled={isLocationLoading} onPress={onClose} style={styles.quietAction}>
-                                <Text style={styles.quietActionText}>{hasCompleteLocationAccess ? 'Done' : 'Not now'}</Text>
+                                <Text style={styles.quietActionText}>{hasCompleteLocationAccess ? translateUiText("Done") : translateUiText("Not now")}</Text>
                             </TouchableOpacity>
                         </>
                     )}
@@ -494,18 +489,16 @@ const WidgetSetupBottomSheet = ({
                             </View>
                             <View style={styles.cameraStatusRow}>
                                 <Text style={styles.cameraStatusIcon}>▣</Text>
-                                <Text style={styles.cameraStatusText}>Camera access needed</Text>
+                                <Text style={styles.cameraStatusText}>{translateUiText("Camera access needed")}</Text>
                             </View>
                             {!cameraMessage && (
-                                <Text style={styles.inlineMessage}>
-                                    Allow camera access to take a photo and share the moment with your partner.
-                                </Text>
+                                <Text style={styles.inlineMessage}>{translateUiText("Allow camera access to take a photo and share the moment with your partner.")}</Text>
                             )}
                             {!!cameraMessage && <Text style={styles.inlineMessage}>{cameraMessage}</Text>}
                             <ActionButton onPress={cameraMessage ? onOpenSettings : onAllowCamera}>
                                 {cameraMessage ? 'Open Settings' : 'Allow Camera'}
                             </ActionButton>
-                            <TouchableOpacity onPress={onClose} style={styles.quietAction}><Text style={styles.quietActionText}>Not now</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={onClose} style={styles.quietAction}><Text style={styles.quietActionText}>{translateUiText("Not now")}</Text></TouchableOpacity>
                         </>
                     )}
                     {kind === 'time' && (

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { colors, spacing } from '../../theme';
+import { translateUiTemplate, translateUiText } from '../../i18n/uiTranslation';
 
 // Plus icon
 const PlusIcon = ({ size = 24, color = '#8E8E93' }) => (
@@ -174,7 +175,7 @@ const ChatInput = ({
                         style={[styles.input, { height: Math.max(40, inputHeight - 8) }]}
                         value={message}
                         onChangeText={handleChangeText}
-                        placeholder={`Message ${partnerName}...`}
+                        placeholder={translateUiTemplate("Message {{0}}...", [partnerName])}
                         placeholderTextColor="rgba(255,255,255,0.4)"
                         multiline
                         maxLength={maxLength}

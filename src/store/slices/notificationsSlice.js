@@ -17,8 +17,8 @@ export const selectDuelNotifications = createSelector(
             notifications.push({
                 id: 'puzzle',
                 type: 'puzzle',
-                title: 'Jigsaw Puzzle',
-                message: 'A puzzle is waiting for you!',
+                title: "Jigsaw Puzzle",
+                message: "A puzzle is waiting for you!",
                 color: '#D4714A', // orange
                 game: pendingPuzzle,
             });
@@ -28,7 +28,7 @@ export const selectDuelNotifications = createSelector(
             notifications.push({
                 id: 'tictactoe',
                 type: 'tictactoe',
-                title: 'Tic Tac Toe',
+                title: "Tic Tac Toe",
                 message: "It's your turn!",
                 color: '#3A9B8C', // teal
                 game: pendingTicTacToe,
@@ -39,8 +39,8 @@ export const selectDuelNotifications = createSelector(
             notifications.push({
                 id: 'wordle',
                 type: 'wordle',
-                title: 'Wordle',
-                message: 'Guess the word!',
+                title: "Wordle",
+                message: "Guess the word!",
                 color: '#6AAA64', // green
                 game: pendingWordle,
             });

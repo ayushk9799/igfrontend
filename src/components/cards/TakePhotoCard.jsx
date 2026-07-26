@@ -21,7 +21,7 @@ import { cardStyles as styles } from './cardStyles';
 import { colors } from '../../theme';
 import { uploadImageToS3 } from '../../utils/uploadApi';
 import { fontFamily } from '../../constants/fonts';
-
+import { translateUiText } from '../../i18n/uiTranslation';
 
 /**
  * TakePhotoCard - Card for capturing or selecting photos
@@ -60,7 +60,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                 const { status } = await ImagePicker.requestCameraPermissionsAsync();
                 const granted = status === 'granted';
                 if (!granted) {
-                    Alert.alert('Camera Needed', 'Camera access is needed to take a photo.');
+                    Alert.alert(translateUiText("Camera Needed"), translateUiText("Camera access is needed to take a photo."));
                     return false;
                 }
                 return true;
@@ -72,7 +72,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                 );
                 const granted = result === PermissionsAndroid.RESULTS.GRANTED;
                 if (!granted) {
-                    Alert.alert('Camera Needed', 'Camera access is needed to take a photo.');
+                    Alert.alert(translateUiText("Camera Needed"), translateUiText("Camera access is needed to take a photo."));
                     return false;
                 }
                 return true;
@@ -124,7 +124,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
         try {
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
-                Alert.alert('Photo Library Needed', 'Photo library access is needed to choose a photo.');
+                Alert.alert(translateUiText("Photo Library Needed"), translateUiText("Photo library access is needed to choose a photo."));
                 return;
             }
 
@@ -191,7 +191,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
             }
         } catch (error) {
             console.error('🎯 [TakePhotoCard] Upload failed:', error);
-            Alert.alert('Upload Failed', 'Could not upload photo. Please try again.');
+            Alert.alert(translateUiText("Upload Failed"), translateUiText("Could not upload photo. Please try again."));
             setIsSubmitting(false);
         }
     };
@@ -214,7 +214,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                             <Path d="M4 7h3.2L9 4.5h6L16.8 7H20a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2Z" fill="#C084FC" />
                             <Path d="M12 16.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7Z" fill="#FFFFFF" opacity={0.9} />
                         </Svg>
-                        <Text style={photoStyles.categoryText}>{config.label}</Text>
+                        <Text style={photoStyles.categoryText}>{translateUiText(config.label)}</Text>
                     </View>
                 </View>
 
@@ -236,7 +236,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                         </View>
                         <View style={styles.photoActionsRow}>
                             <TouchableOpacity onPress={handleRetake} style={[styles.photoActionBtn, { backgroundColor: colors.borderLight }]}>
-                                <Text style={{ color: colors.text, fontWeight: '600', fontFamily: fontFamily.bold }}>Retake</Text>
+                                <Text style={{ color: colors.text, fontWeight: '600', fontFamily: fontFamily.bold }}>{translateUiText("Retake")}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={handleUsePhoto}
@@ -246,7 +246,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                                 {isSubmitting ? (
                                     <ActivityIndicator color="#fff" size="small" />
                                 ) : (
-                                    <Text style={{ color: '#fff', fontWeight: '700', fontFamily: fontFamily.bold }}>Use Photo ✨</Text>
+                                    <Text style={{ color: '#fff', fontWeight: '700', fontFamily: fontFamily.bold }}>{translateUiText("Use Photo ✨")}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -281,7 +281,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                                 <Path d="M15 18l-6-6 6-6" stroke="#8B5CF6" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
                             </Svg>
                         </TouchableOpacity>
-                        <Text style={cameraStyles.cameraTitle}>Take a Photo</Text>
+                        <Text style={cameraStyles.cameraTitle}>{translateUiText("Take a Photo")}</Text>
                         <View style={{ width: 40 }} />
                     </View>
 
@@ -293,8 +293,8 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                                 style={cameraStyles.cameraFill}
                                 cameraType={cameraType}
                                 flashMode={cameraType === 'front' ? 'off' : 'auto'}
-                                focusMode={'on'}
-                                zoomMode={'on'}
+                                focusMode={"on"}
+                                zoomMode={"on"}
                             />
                         </View>
                     </View>

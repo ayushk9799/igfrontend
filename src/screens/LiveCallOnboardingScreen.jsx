@@ -12,6 +12,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const LiveCallOnboardingScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
@@ -61,7 +62,7 @@ const LiveCallOnboardingScreen = ({ onComplete }) => {
                     ]}
                 >
                     <View style={styles.header}>
-                        <Text style={styles.title}>Never miss{'\n'}their face</Text>
+                        <Text style={styles.title}>{translateUiText("Never miss")}{'\n'}{translateUiText("their face")}</Text>
                        
                     </View>
 
@@ -83,7 +84,7 @@ const LiveCallOnboardingScreen = ({ onComplete }) => {
 
                 <TouchableOpacity
                     accessibilityRole="button"
-                    accessibilityLabel="Keep going"
+                    accessibilityLabel={translateUiText("Keep going")}
                     activeOpacity={0.86}
                     onPress={finish}
                     style={styles.buttonShadow}
@@ -94,7 +95,7 @@ const LiveCallOnboardingScreen = ({ onComplete }) => {
                         end={{ x: 1, y: 0.5 }}
                         style={styles.continueButton}
                     >
-                        <Text style={styles.continueText}>Keep going</Text>
+                        <Text style={styles.continueText}>{translateUiText("Keep going")}</Text>
                     </LinearGradient>
                 </TouchableOpacity>
             </View>

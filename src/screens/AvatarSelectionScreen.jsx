@@ -27,6 +27,7 @@ import { spacing } from '../theme';
 import useAvatarUpload from '../hooks/useAvatarUpload';
 import { selectUser } from '../store/slices/userSlice';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -132,9 +133,9 @@ const AvatarSelectionScreen = ({ onComplete }) => {
             setHasPermission(granted);
             if (!granted) {
                 Alert.alert(
-                    'Camera Permission Needed',
-                    'Camera access is needed to take your profile photo. You can still choose a photo from Gallery.',
-                    [{ text: 'OK' }]
+                    translateUiText("Camera Permission Needed"),
+                    translateUiText("Camera access is needed to take your profile photo. You can still choose a photo from Gallery."),
+                    [{ text: translateUiText("OK") }]
                 );
             }
             return;
@@ -144,11 +145,11 @@ const AvatarSelectionScreen = ({ onComplete }) => {
         setHasPermission(granted);
         if (!granted) {
             Alert.alert(
-                'Camera Permission Needed',
-                'Camera access is needed to take your profile photo. You can still choose a photo from Gallery.',
+                translateUiText("Camera Permission Needed"),
+                translateUiText("Camera access is needed to take your profile photo. You can still choose a photo from Gallery."),
                 [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Try Again', onPress: () => requestCameraPermission() },
+                    { text: translateUiText("Cancel"), style: 'cancel' },
+                    { text: translateUiText("Try Again"), onPress: () => requestCameraPermission() },
                 ]
             );
         }
@@ -189,7 +190,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
             });
 
         } catch (e) {
-            Alert.alert('Error', e.message);
+            Alert.alert(translateUiText("Error"), e.message);
         } finally {
             isProcessingRef.current = false;
         }
@@ -199,7 +200,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
         try {
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
-                Alert.alert('Photo Library Needed', 'Photo library access is needed to choose a profile photo.');
+                Alert.alert(translateUiText("Photo Library Needed"), translateUiText("Photo library access is needed to choose a profile photo."));
                 return;
             }
 
@@ -244,7 +245,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
 
     const handleNext = async () => {
         if (!previewUri) {
-            Alert.alert('Photo Required', 'Please take a photo or select one from the gallery.');
+            Alert.alert(translateUiText("Photo Required"), translateUiText("Please take a photo or select one from the gallery."));
             return;
         }
         await handleConfirmAvatar();
@@ -276,11 +277,11 @@ const AvatarSelectionScreen = ({ onComplete }) => {
             if (result.success) {
                 onComplete();
             } else {
-                Alert.alert('Upload Failed', result.error || 'Could not upload avatar');
+                Alert.alert(translateUiText("Upload Failed"), result.error || 'Could not upload avatar');
             }
         } catch (error) {
             console.error('Avatar upload error:', error);
-            Alert.alert('Error', 'Failed to set profile picture');
+            Alert.alert(translateUiText("Error"), translateUiText("Failed to set profile picture"));
         }
     };
 
@@ -304,7 +305,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                             resizeMode="contain" 
                         />
                         <TouchableOpacity onPress={onComplete} style={styles.skipButton} activeOpacity={0.85}>
-                            <Text style={styles.skipButtonText}>Skip</Text>
+                            <Text style={styles.skipButtonText}>{translateUiText("Skip")}</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -312,7 +313,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                     <View style={styles.contentCentered}>
                         {/* Centered Premium Title Block inspired by other onboarding screens */}
                         <View style={styles.titleBlock}>
-                            <Text style={styles.titlePrimary}>Add a photo</Text>
+                            <Text style={styles.titlePrimary}>{translateUiText("Add a photo")}</Text>
                             <Svg height={width < 380 ? 44 : 50} width={width - 40} style={styles.gradientTitle}>
                                 <Defs>
                                     <SvgGradient id="titleGradAvatar" x1="0" y1="0" x2="1" y2="0">
@@ -331,9 +332,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                     textAnchor="middle"
                                     x={(width - 40) / 2}
                                     y={width < 380 ? 31 : 36}
-                                >
-                                    for your partner.
-                                </SvgText>
+                                >{translateUiText("for your partner.")}</SvgText>
                             </Svg>
                             <View style={styles.titleDivider}>
                                 <View style={styles.dividerLine} />
@@ -343,7 +342,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                         </View>
 
                         {/* Centered Section Label above the card */}
-                        <Text style={styles.cardLabelText}>profile photo</Text>
+                        <Text style={styles.cardLabelText}>{translateUiText("profile photo")}</Text>
 
                         {/* Main Camera / Mascot Box */}
                         <View style={styles.cardContainer}>
@@ -392,9 +391,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                             style={styles.mascotImage} 
                                             resizeMode="contain" 
                                         />
-                                        <Text style={styles.permissionPromptText}>
-                                            Camera access is needed 
-                                        </Text>
+                                        <Text style={styles.permissionPromptText}>{translateUiText("Camera access is needed")}</Text>
                                         <TouchableOpacity style={styles.grantButton} onPress={requestCameraPermission} activeOpacity={0.85}>
                                             <LinearGradient 
                                                 colors={['#FF5E97', '#FFA1C9']} 
@@ -403,7 +400,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                                 style={styles.grantButtonGradient}
                                             >
                                                 <CameraIconOutline color="#FFFFFF" />
-                                                <Text style={styles.grantButtonText}>Continue</Text>
+                                                <Text style={styles.grantButtonText}>{translateUiText("Continue")}</Text>
                                             </LinearGradient>
                                         </TouchableOpacity>
                                     </View>
@@ -420,7 +417,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                 <TouchableOpacity style={styles.smallCircleButton} onPress={handlePickFromGallery}>
                                     <GalleryIcon />
                                 </TouchableOpacity>
-                                <Text style={styles.controlLabel}>Gallery</Text>
+                                <Text style={styles.controlLabel}>{translateUiText("Gallery")}</Text>
                             </View>
 
                             <View style={styles.controlItem}>
@@ -448,7 +445,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                 >
                                     {previewUri ? <ReplaceIcon /> : <FlipIcon />}
                                 </TouchableOpacity>
-                                <Text style={styles.controlLabel}>{previewUri ? 'Replace' : 'Flip'}</Text>
+                                <Text style={styles.controlLabel}>{previewUri ? translateUiText("Replace") : translateUiText("Flip")}</Text>
                             </View>
                         </View>
                     </View>

@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -112,10 +113,8 @@ const RelationshipStartDateScreen = ({ onComplete, onBack, initialDate }) => {
 
                     <View style={styles.card}>
                         <View style={styles.titleContainer}>
-                            <Text style={styles.title}>When did your relationship begin?</Text>
-                            <Text style={styles.subtitle}>
-                                Choose the day your story started.
-                            </Text>
+                            <Text style={styles.title}>{translateUiText("When did your relationship begin?")}</Text>
+                            <Text style={styles.subtitle}>{translateUiText("Choose the day your story started.")}</Text>
                         </View>
 
                         <View style={styles.nativePickerWrap}>
@@ -152,7 +151,7 @@ const RelationshipStartDateScreen = ({ onComplete, onBack, initialDate }) => {
 
                         <View style={styles.feedbackWrap}>
                             {!isValid && (
-                                <Text style={styles.errorText}>Pick a date from today or earlier.</Text>
+                                <Text style={styles.errorText}>{translateUiText("Pick a date from today or earlier.")}</Text>
                             )}
                         </View>
 
@@ -162,7 +161,7 @@ const RelationshipStartDateScreen = ({ onComplete, onBack, initialDate }) => {
                             activeOpacity={0.85}
                             disabled={!isValid || isSubmitting}
                             accessibilityRole="button"
-                            accessibilityLabel="Continue"
+                            accessibilityLabel={translateUiText("Continue")}
                             accessibilityState={{ disabled: !isValid || isSubmitting, busy: isSubmitting }}
                         >
                             <LinearGradient
@@ -177,7 +176,7 @@ const RelationshipStartDateScreen = ({ onComplete, onBack, initialDate }) => {
                                 {isSubmitting ? (
                                     <ActivityIndicator color="#FFFFFF" />
                                 ) : (
-                                    <Text style={styles.continueButtonText}>Continue</Text>
+                                    <Text style={styles.continueButtonText}>{translateUiText("Continue")}</Text>
                                 )}
                             </LinearGradient>
                         </TouchableOpacity>

@@ -15,12 +15,13 @@ import LinearGradient from 'react-native-linear-gradient';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { getCoupleAnswers } from '../utils/answerApi';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const categoryConfig = {
-    likelyto: { emoji: '⚖️', color: '#FF6B9D', label: 'Most likely to...' },
-    neverhaveiever: { emoji: '🤫', color: '#F4A261', label: 'Never have I ever' },
-    deep: { emoji: '💭', color: '#5BB5A6', label: 'Deep question' },
-    takephoto: { emoji: '📸', color: '#9B59B6', label: 'Photo moment' },
+    likelyto: { emoji: '⚖️', color: '#FF6B9D', label: "Most likely to..." },
+    neverhaveiever: { emoji: '🤫', color: '#F4A261', label: "Never have I ever" },
+    deep: { emoji: '💭', color: '#5BB5A6', label: "Deep question" },
+    takephoto: { emoji: '📸', color: '#9B59B6', label: "Photo moment" },
 };
 
 /**
@@ -68,11 +69,11 @@ export default function AnswerSummaryScreen({
                 <View style={styles.categoryBadge}>
                     <Text>{config.emoji}</Text>
                     <Text style={[styles.categoryLabel, { color: config.color }]}>
-                        {config.label}
+                        {translateUiText(config.label)}
                     </Text>
                     {match && (
                         <View style={styles.matchBadge}>
-                            <Text style={styles.matchText}>Match!</Text>
+                            <Text style={styles.matchText}>{translateUiText("Match!")}</Text>
                         </View>
                     )}
                 </View>
@@ -80,7 +81,7 @@ export default function AnswerSummaryScreen({
                 <View style={styles.answersRow}>
                     {/* Your answer */}
                     <View style={styles.answerBox}>
-                        <Text style={styles.answerLabel}>You</Text>
+                        <Text style={styles.answerLabel}>{translateUiText("You")}</Text>
                         {userAnswer?.category === 'takephoto' && userAnswer?.photoUrl ? (
                             <Image source={{ uri: userAnswer.photoUrl }} style={styles.answerPhoto} />
                         ) : (
@@ -94,12 +95,12 @@ export default function AnswerSummaryScreen({
 
                     {/* VS divider */}
                     <View style={styles.vsDivider}>
-                        <Text style={styles.vsText}>vs</Text>
+                        <Text style={styles.vsText}>{translateUiText("vs")}</Text>
                     </View>
 
                     {/* Partner's answer */}
                     <View style={styles.answerBox}>
-                        <Text style={styles.answerLabel}>Partner</Text>
+                        <Text style={styles.answerLabel}>{translateUiText("Partner")}</Text>
                         {partnerAnswer?.category === 'takephoto' && partnerAnswer?.photoUrl ? (
                             <Image source={{ uri: partnerAnswer.photoUrl }} style={styles.answerPhoto} />
                         ) : data.bothComplete ? (
@@ -108,7 +109,7 @@ export default function AnswerSummaryScreen({
                             </View>
                         ) : (
                             <View style={styles.pendingBubble}>
-                                <Text style={styles.pendingText}>Waiting...</Text>
+                                <Text style={styles.pendingText}>{translateUiText("Waiting...")}</Text>
                             </View>
                         )}
                     </View>
@@ -154,7 +155,7 @@ export default function AnswerSummaryScreen({
                     </Svg>
                 </TouchableOpacity>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>Answer Summary</Text>
+                    <Text style={styles.headerTitle}>{translateUiText("Answer Summary")}</Text>
                     <Text style={styles.headerSubtitle}>{challengeTitle}</Text>
                 </View>
             </View>
@@ -172,8 +173,8 @@ export default function AnswerSummaryScreen({
                     { color: data.bothComplete ? '#10B981' : '#F59E0B' }
                 ]}>
                     {data.bothComplete
-                        ? 'Both of you completed the challenge!'
-                        : "Waiting for your partner to finish..."}
+                        ? translateUiText("Both of you completed the challenge!")
+                        : translateUiText("Waiting for your partner to finish...")}
                 </Text>
             </View>
 
@@ -189,7 +190,7 @@ export default function AnswerSummaryScreen({
                 ) : (
                     <View style={styles.emptyContainer}>
                         <Text style={styles.emptyEmoji}>📝</Text>
-                        <Text style={styles.emptyText}>No answers yet</Text>
+                        <Text style={styles.emptyText}>{translateUiText("No answers yet")}</Text>
                     </View>
                 )}
             </ScrollView>

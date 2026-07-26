@@ -14,6 +14,7 @@ import ChoiceQuestionCard from './ChoiceQuestionCard';
 import PremiumLockOverlay from './PremiumLockOverlay';
 import { categoryConfig, defaultConfig } from './categoryConfig';
 import { spacing } from '../../theme';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 /**
  * PremiumLockedCard - Shown inside the card when locked for non-premium users.
@@ -29,7 +30,7 @@ const PremiumLockedCard = ({ task, onNavigateToPremium }) => {
                     {/* Category Badge */}
                     <View style={lockedStyles.topRow}>
                         <View style={lockedStyles.categoryBadge}>
-                            <Text style={lockedStyles.categoryText}>{config.label}</Text>
+                            <Text style={lockedStyles.categoryText}>{translateUiText(config.label)}</Text>
                         </View>
                     </View>
 
@@ -65,10 +66,8 @@ const PremiumLockedCard = ({ task, onNavigateToPremium }) => {
                             </Svg>
                         </View>
 
-                        <Text style={lockedStyles.premiumTitle}>Premium Only</Text>
-                        <Text style={lockedStyles.premiumSubtitle}>
-                            Upgrade to unlock unlimited questions
-                        </Text>
+                        <Text style={lockedStyles.premiumTitle}>{translateUiText("Premium Only")}</Text>
+                        <Text style={lockedStyles.premiumSubtitle}>{translateUiText("Upgrade to unlock unlimited questions")}</Text>
                     </View>
 
                     {/* Unlock Button */}
@@ -90,7 +89,7 @@ const PremiumLockedCard = ({ task, onNavigateToPremium }) => {
                                     fill="#FFFFFF"
                                 />
                             </Svg>
-                            <Text style={lockedStyles.unlockButtonText}>Unlock Now</Text>
+                            <Text style={lockedStyles.unlockButtonText}>{translateUiText("Unlock Now")}</Text>
                         </View>
                     </TouchableOpacity>
                 </View>

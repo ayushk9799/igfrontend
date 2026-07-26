@@ -22,6 +22,7 @@ import { fontFamily, fontWeight } from '../constants/fonts';
 import HomeWidgetShowcase from '../components/HomeWidgetShowcase';
 import HomeYearlyOfferCard from '../components/HomeYearlyOfferCard';
 import { getUser, storage } from '../utils/authStorage';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const SCRIBBLE_PREVIEW_PADDING = 26;
@@ -418,7 +419,7 @@ const HomeScreen = ({
                                         style={[styles.headerButton, !partnerOnline && styles.offlineHeaderButton]}
                                         onPress={handleVideoCallPress}
                                         activeOpacity={0.82}
-                                        accessibilityLabel="Start video call"
+                                        accessibilityLabel={translateUiText("Start video call")}
                                     >
                                         <IconSvg type="video" color={partnerOnline ? '#D84F86' : '#A99CA9'} size={20} />
                                         <View style={[styles.presenceDot, partnerOnline ? styles.onlineDot : styles.offlineDot]} />
@@ -426,18 +427,16 @@ const HomeScreen = ({
                                     {showVideoCallGuide && (
                                         <View style={styles.videoCallGuide} accessibilityRole="alert">
                                             <View style={styles.videoCallGuideArrow} />
-                                            <HomeText style={styles.videoCallGuideTitle}>Start a video call</HomeText>
-                                            <HomeText style={styles.videoCallGuideText}>
-                                                Tap here to call {partnerName}. If they’re away, we’ll notify them.
-                                            </HomeText>
+                                            <HomeText style={styles.videoCallGuideTitle}>{translateUiText("Start a video call")}</HomeText>
+                                            <HomeText style={styles.videoCallGuideText}>{translateUiText("Tap here to call")}{partnerName}{translateUiText(". If they’re away, we’ll notify them.")}</HomeText>
                                             <TouchableOpacity
                                                 style={styles.videoCallGuideButton}
                                                 onPress={dismissVideoCallGuide}
                                                 activeOpacity={0.8}
                                                 accessibilityRole="button"
-                                                accessibilityLabel="Dismiss video call guidance"
+                                                accessibilityLabel={translateUiText("Dismiss video call guidance")}
                                             >
-                                                <HomeText style={styles.videoCallGuideButtonText}>Got it</HomeText>
+                                                <HomeText style={styles.videoCallGuideButtonText}>{translateUiText("Got it")}</HomeText>
                                             </TouchableOpacity>
                                         </View>
                                     )}
@@ -506,7 +505,7 @@ const HomeScreen = ({
                             >
                                 <View style={styles.featureCardHeader}>
                                     <View style={styles.cardTitleRow}>
-                                        <HomeText style={[styles.smallCardTitle, styles.scribbleCardTitle]}>Canvas board</HomeText>
+                                        <HomeText style={[styles.smallCardTitle, styles.scribbleCardTitle]}>{translateUiText("Canvas board")}</HomeText>
                                         <HeartDoodle style={styles.cardTitleHeart} color="#FF8BB8" size={18} />
                                     </View>
                                 </View>
@@ -561,7 +560,7 @@ const HomeScreen = ({
                                     <View style={styles.featureCardHeader}>
                                         <View style={styles.cardTitleRowBetween}>
                                             <View style={styles.cardTitleRow}>
-                                                <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
+                                                <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>{translateUiText("Daily Ritual")}</HomeText>
                                                 <HomeText style={styles.ritualHeartStatus}>{getHeartSymbol(heartState)}</HomeText>
                                             </View>
                                         </View>
@@ -588,7 +587,7 @@ const HomeScreen = ({
                                     <View style={styles.featureCardHeader}>
                                         <View style={styles.cardTitleRowBetween}>
                                             <View style={styles.cardTitleRow}>
-                                                <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>Daily Ritual</HomeText>
+                                                <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>{translateUiText("Daily Ritual")}</HomeText>
                                                 <HomeText style={styles.ritualHeartStatus}>{getHeartSymbol(heartState)}</HomeText>
                                             </View>
                                         </View>
@@ -597,9 +596,7 @@ const HomeScreen = ({
                                         <View style={styles.paperTape} />
                                         {ritualStreak?.partnerComplete ? (
                                             <View style={styles.challengePromptContainer}>
-                                                <HomeText style={styles.ritualQuestion} numberOfLines={3}>
-                                                    Partner finished. Your turn to make it full heart.
-                                                </HomeText>
+                                                <HomeText style={styles.ritualQuestion} numberOfLines={3}>{translateUiText("Partner finished. Your turn to make it full heart.")}</HomeText>
                                             </View>
                                         ) : currentTask ? (
                                             <View style={styles.challengePromptContainer}>
@@ -609,9 +606,7 @@ const HomeScreen = ({
                                             </View>
                                         ) : (
                                             <View style={styles.challengePromptContainer}>
-                                                <HomeText style={styles.ritualQuestion} numberOfLines={3}>
-                                                    Tap to answer today's questions 
-                                                </HomeText>
+                                                <HomeText style={styles.ritualQuestion} numberOfLines={3}>{translateUiText("Tap to answer today's questions")}</HomeText>
                                             </View>
                                         )}
                                         <HeartDoodle style={styles.ritualPaperHeartOne} color="#FF9BB5" size={16} />
@@ -657,10 +652,8 @@ const HomeScreen = ({
                                 </Svg>
                             </View>
                             <View style={styles.liveDrawCopy}>
-                                <HomeText style={styles.liveDrawTitle}>Draw Together</HomeText>
-                                <HomeText style={styles.liveDrawSubtitle}>
-                                    Open the shared live canvas
-                                </HomeText>
+                                <HomeText style={styles.liveDrawTitle}>{translateUiText("Draw Together")}</HomeText>
+                                <HomeText style={styles.liveDrawSubtitle}>{translateUiText("Open the shared live canvas")}</HomeText>
                             </View>
                             <View style={styles.liveDrawArrow}>
                                 <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
@@ -689,7 +682,7 @@ const HomeScreen = ({
                             activeOpacity={0.9}
                             style={styles.premiumCardPressable}
                             accessibilityRole="button"
-                            accessibilityLabel="Open Penguin Couple Premium"
+                            accessibilityLabel={translateUiText("Open Penguin Couple Premium")}
                         >
                             <View style={styles.premiumCardShadow}>
                                 <View style={styles.premiumCard}>
@@ -716,10 +709,8 @@ const HomeScreen = ({
                                         </Svg>
                                     </View>
                                     <View style={styles.premiumCardCopy}>
-                                        <HomeText style={styles.premiumCardTitle}>Penguin Couple Premium</HomeText>
-                                        <HomeText style={styles.premiumCardSubtitle} numberOfLines={2}>
-                                            Unlock all games, widgets, live drawing
-                                        </HomeText>
+                                        <HomeText style={styles.premiumCardTitle}>{translateUiText("Penguin Couple Premium")}</HomeText>
+                                        <HomeText style={styles.premiumCardSubtitle} numberOfLines={2}>{translateUiText("Unlock all games, widgets, live drawing")}</HomeText>
                                     </View>
                                     <View style={styles.premiumCardArrow}>
                                         <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
@@ -738,7 +729,7 @@ const HomeScreen = ({
                     ) : null}
 
                     <View style={styles.widgetsSectionHeader}>
-                        <HomeText style={styles.sectionTitle}>Widgets</HomeText>
+                        <HomeText style={styles.sectionTitle}>{translateUiText("Widgets")}</HomeText>
                     </View>
                     <HomeWidgetShowcase
                         onPress={onWidgetsPress}
@@ -755,7 +746,7 @@ const HomeScreen = ({
                     />
 
                     <View style={styles.sectionHeader}>
-                        <HomeText style={styles.sectionTitle}>Deepen your connection</HomeText>
+                        <HomeText style={styles.sectionTitle}>{translateUiText("Deepen your connection")}</HomeText>
                     </View>
                     <View style={styles.topicGrid}>
                         {CONNECTION_TOPICS.map((topic) => (
@@ -779,8 +770,8 @@ const HomeScreen = ({
                                         </View>
                                     )}
                                     <View style={styles.topicCopy}>
-                                        <HomeText style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{topic.title}</HomeText>
-                                        <HomeText style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{topic.subtitle}</HomeText>
+                                        <HomeText style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{translateUiText(topic.title)}</HomeText>
+                                        <HomeText style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{translateUiText(topic.subtitle)}</HomeText>
                                     </View>
                                 </LinearGradient>
                             </TouchableOpacity>

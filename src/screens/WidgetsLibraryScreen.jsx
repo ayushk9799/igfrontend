@@ -23,6 +23,7 @@ import { colors } from '../theme';
 import { isLocationSettingsError, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 import { reportWidgetIntent, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import { updateUser } from '../store/slices/userSlice';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const DUMMY_TIME_TOGETHER_SECONDS = (1954 * 86400) + (11 * 3600) + (44 * 60) + 12;
 
@@ -67,14 +68,14 @@ const TimeTogetherWidget = () => {
     return (
         <View style={styles.timeWidgetPreview}>
             <View style={styles.timeWidgetHeader}>
-                <Text style={styles.timeWidgetHeaderText}>together for</Text>
+                <Text style={styles.timeWidgetHeaderText}>{translateUiText("together for")}</Text>
                 <HeartIcon color="#FFFFFF" size={13} />
             </View>
             <View style={styles.timeRows}>
-                <TimeBlock value={values.days} label="days" />
-                <TimeBlock value={String(values.hr).padStart(2, '0')} label="hr" />
-                <TimeBlock value={String(values.min).padStart(2, '0')} label="min" />
-                <TimeBlock value={String(values.sec).padStart(2, '0')} label="sec" />
+                <TimeBlock value={values.days} label={translateUiText("days")} />
+                <TimeBlock value={String(values.hr).padStart(2, '0')} label={translateUiText("hr")} />
+                <TimeBlock value={String(values.min).padStart(2, '0')} label={translateUiText("min")} />
+                <TimeBlock value={String(values.sec).padStart(2, '0')} label={translateUiText("sec")} />
             </View>
         </View>
     );
@@ -90,28 +91,28 @@ const TimeBlock = ({ value, label }) => (
 const LockDaysCard = ({ days }) => (
     <View style={styles.lockWidgetTile}>
         <LinearGradient colors={['#FFB8CF', '#BCA7FF', '#95D8FF']} style={styles.lockPhonePreview}>
-            <Text style={styles.lockMockDate}>Tue 9 Jun</Text>
+            <Text style={styles.lockMockDate}>{translateUiText("Tue 9 Jun")}</Text>
             <Text style={styles.lockMockTime}>11:44</Text>
             <View style={styles.accessoryCircle}>
                 <HeartIcon size={16} color="#FFFFFF" />
                 <Text style={styles.circleDaysNumber}>{days}</Text>
-                <Text style={styles.circleDaysLabel}>days</Text>
+                <Text style={styles.circleDaysLabel}>{translateUiText("days")}</Text>
             </View>
         </LinearGradient>
-        <Text style={styles.widgetTileName}>Days Together</Text>
+        <Text style={styles.widgetTileName}>{translateUiText("Days Together")}</Text>
     </View>
 );
 
 const LockCountdownCard = () => (
     <View style={styles.lockWidgetTileWide}>
         <LinearGradient colors={['#B9A7FF', '#FF9EBD', '#8ED8FF']} style={styles.lockPhonePreviewWide}>
-            <Text style={styles.lockMockDateWide}>Tue 9 Jun</Text>
+            <Text style={styles.lockMockDateWide}>{translateUiText("Tue 9 Jun")}</Text>
             <Text style={styles.lockMockTimeWide}>11:44</Text>
             <View style={styles.accessoryRect}>
                 <TimeTogetherWidget />
             </View>
         </LinearGradient>
-        <Text style={styles.widgetTileName}>Time Together</Text>
+        <Text style={styles.widgetTileName}>{translateUiText("Time Together")}</Text>
     </View>
 );
 
@@ -274,13 +275,13 @@ const AnimatedDistanceAccessory = () => {
 const LockDistanceCard = ({ onPress, isEnabled, isPremium }) => (
     <TouchableOpacity style={styles.lockWidgetTileFull} onPress={onPress} activeOpacity={0.85}>
         <LinearGradient colors={['#D4B3FF', '#9CCBFF', '#FFB3C8']} style={styles.lockPhonePreviewWide}>
-            <Text style={styles.lockMockDateWide}>Tue 9 Jun</Text>
+            <Text style={styles.lockMockDateWide}>{translateUiText("Tue 9 Jun")}</Text>
             <Text style={styles.lockMockTimeWide}>11:44</Text>
             <AnimatedDistanceAccessory />
         </LinearGradient>
-        <Text style={styles.widgetTileName}>Our Distance</Text>
+        <Text style={styles.widgetTileName}>{translateUiText("Our Distance")}</Text>
         <Text style={[styles.widgetPermissionHint, isEnabled && isPremium && styles.widgetPermissionEnabled]}>
-            {!isPremium ? 'Premium widget' : (isEnabled ? 'Location sharing active ✓' : 'Requires location permission')}
+            {!isPremium ? translateUiText("Premium widget") : (isEnabled ? translateUiText("Location sharing active ✓") : translateUiText("Requires location permission"))}
         </Text>
     </TouchableOpacity>
 );
@@ -295,9 +296,9 @@ const HomeDaysTogetherCard = ({ days }) => (
         >
             <HeartIcon size={25} color="#FFFFFF" />
             <Text style={styles.homeDaysNumber}>{days}</Text>
-            <Text style={styles.homeDaysLabel}>days together</Text>
+            <Text style={styles.homeDaysLabel}>{translateUiText("days together")}</Text>
         </LinearGradient>
-        <Text style={styles.widgetTileName}>Days Together</Text>
+        <Text style={styles.widgetTileName}>{translateUiText("Days Together")}</Text>
     </View>
 );
 
@@ -309,7 +310,7 @@ const HomeDistanceCard = ({ onPress, isEnabled, isPremium }) => (
             end={{ x: 1, y: 1 }}
             style={styles.homeWidgetPreview}
         >
-            <Text style={styles.homeDistanceTitle}>{isEnabled ? '381 km apart' : 'Share location'}</Text>
+            <Text style={styles.homeDistanceTitle}>{isEnabled ? translateUiText("381 km apart") : translateUiText("Share location")}</Text>
             <View style={styles.homeDistanceTrack}>
                 <View style={styles.homeDistanceLine} />
                 <View style={styles.homeDistanceAvatar}><Text style={styles.homeDistanceAvatarText}>R</Text></View>
@@ -317,9 +318,9 @@ const HomeDistanceCard = ({ onPress, isEnabled, isPremium }) => (
                 <View style={styles.homeDistanceAvatar}><Text style={styles.homeDistanceAvatarText}>?</Text></View>
             </View>
         </LinearGradient>
-        <Text style={styles.widgetTileName}>Our Distance</Text>
+        <Text style={styles.widgetTileName}>{translateUiText("Our Distance")}</Text>
         <Text style={[styles.widgetPermissionHint, isEnabled && isPremium && styles.widgetPermissionEnabled]}>
-            {!isPremium ? 'Premium widget' : (isEnabled ? 'Location sharing active ✓' : 'Requires location permission')}
+            {!isPremium ? translateUiText("Premium widget") : (isEnabled ? translateUiText("Location sharing active ✓") : translateUiText("Requires location permission"))}
         </Text>
     </TouchableOpacity>
 );
@@ -334,8 +335,8 @@ const ScribbleCard = () => (
                 style={styles.scribbleCardLottie}
             />
         </View>
-        <Text style={styles.widgetTileName}>Scribble</Text>
-        <Text style={styles.widgetDescription}>Send doodles to home screen</Text>
+        <Text style={styles.widgetTileName}>{translateUiText("Scribble")}</Text>
+        <Text style={styles.widgetDescription}>{translateUiText("Send doodles to home screen")}</Text>
     </View>
 );
 
@@ -348,10 +349,10 @@ const PartnerPhotoCard = () => (
                     <Path d="M15.5 12.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" stroke="#FFFFFF" strokeWidth={1.9} />
                 </Svg>
             </View>
-            <Text style={styles.partnerPhotoPreviewText}>From your love</Text>
+            <Text style={styles.partnerPhotoPreviewText}>{translateUiText("From your love")}</Text>
         </LinearGradient>
-        <Text style={styles.widgetTileName}>Partner Photo</Text>
-        <Text style={styles.widgetDescription}>Latest photo from your partner</Text>
+        <Text style={styles.widgetTileName}>{translateUiText("Partner Photo")}</Text>
+        <Text style={styles.widgetDescription}>{translateUiText("Latest photo from your partner")}</Text>
     </View>
 );
 
@@ -400,12 +401,12 @@ export const WidgetsLibraryScreen = ({
             setDistanceModalVisible(false);
             if (result?.backgroundUpdatesError && ['ios', 'android'].includes(Platform.OS)) {
                 Alert.alert(
-                    'Allow Always Location',
+                    translateUiText("Allow Always Location"),
                     result.backgroundUpdatesError.message || 'Background distance updates need Location set to Always in Settings.',
                     [
-                        { text: 'Later', style: 'cancel' },
+                        { text: translateUiText("Later"), style: 'cancel' },
                         {
-                            text: 'Open Settings',
+                            text: translateUiText("Open Settings"),
                             onPress: () => {
                                 retryLocationSyncOnActiveRef.current = true;
                                 Linking.openSettings();
@@ -417,8 +418,8 @@ export const WidgetsLibraryScreen = ({
             }
             if (result?.skipped) {
                 setCustomAlert({
-                    title: 'Location Saved',
-                    message: 'Your initials have been saved to the widget. Full distance tracking requires location access.',
+                    title: translateUiText("Location Saved"),
+                    message: translateUiText("Your initials have been saved to the widget. Full distance tracking requires location access."),
                     type: 'info',
                 });
             } else {
@@ -434,12 +435,12 @@ export const WidgetsLibraryScreen = ({
             setDistanceModalVisible(false);
             if (isLocationSettingsError(error)) {
                 Alert.alert(
-                    'Location Permission Needed',
+                    translateUiText("Location Permission Needed"),
                     error?.message || 'Please enable location access in Settings.',
                     [
-                        { text: 'Cancel', style: 'cancel' },
+                        { text: translateUiText("Cancel"), style: 'cancel' },
                         {
-                            text: 'Open Settings',
+                            text: translateUiText("Open Settings"),
                             onPress: () => {
                                 retryLocationSyncOnActiveRef.current = true;
                                 Linking.openSettings();
@@ -450,7 +451,7 @@ export const WidgetsLibraryScreen = ({
                 return;
             }
             setCustomAlert({
-                title: 'Could Not Enable',
+                title: translateUiText("Could Not Enable"),
                 message: error?.message || 'Failed to enable location sharing. Please try again.',
                 type: 'error',
             });
@@ -478,8 +479,8 @@ export const WidgetsLibraryScreen = ({
                 onNavigateToPremium();
             } else {
                 setCustomAlert({
-                    title: 'Premium Widget',
-                    message: 'Our Distance is available for premium couples.',
+                    title: translateUiText("Premium Widget"),
+                    message: translateUiText("Our Distance is available for premium couples."),
                     type: 'info',
                 });
             }
@@ -539,7 +540,7 @@ export const WidgetsLibraryScreen = ({
                     </View>
 
                     {showSeparateHomeSectionTitle && (
-                        <Text style={[styles.sectionTitle, styles.homeTitle]}>Home screen</Text>
+                        <Text style={[styles.sectionTitle, styles.homeTitle]}>{translateUiText("Home screen")}</Text>
                     )}
                     <View style={styles.widgetGrid}>
                         {Platform.OS === 'ios' && <HomeDaysTogetherCard days={daysTogether} />}
@@ -580,13 +581,9 @@ export const WidgetsLibraryScreen = ({
                             </Svg>
                         </LinearGradient>
 
-                        <Text style={styles.modalTitle}>Enable Location Sharing</Text>
-                        <Text style={styles.modalBody}>
-                            To show the distance between you and your partner on your lock screen widget, we need access to your location.
-                        </Text>
-                        <Text style={styles.modalNote}>
-                            Your partner will also need to enable this for the widget to work.
-                        </Text>
+                        <Text style={styles.modalTitle}>{translateUiText("Enable Location Sharing")}</Text>
+                        <Text style={styles.modalBody}>{translateUiText("To show the distance between you and your partner on your lock screen widget, we need access to your location.")}</Text>
+                        <Text style={styles.modalNote}>{translateUiText("Your partner will also need to enable this for the widget to work.")}</Text>
 
                         <TouchableOpacity
                             style={styles.modalEnableButton}
@@ -603,7 +600,7 @@ export const WidgetsLibraryScreen = ({
                                 {locationSyncing ? (
                                     <ActivityIndicator color="#FFFFFF" size="small" />
                                 ) : (
-                                    <Text style={styles.modalEnableText}>Enable Location</Text>
+                                    <Text style={styles.modalEnableText}>{translateUiText("Enable Location")}</Text>
                                 )}
                             </LinearGradient>
                         </TouchableOpacity>
@@ -614,7 +611,7 @@ export const WidgetsLibraryScreen = ({
                             activeOpacity={0.7}
                             disabled={locationSyncing}
                         >
-                            <Text style={styles.modalCancelText}>Not Now</Text>
+                            <Text style={styles.modalCancelText}>{translateUiText("Not Now")}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -696,7 +693,7 @@ export const WidgetsLibraryScreen = ({
                                 end={{ x: 1, y: 1 }}
                                 style={styles.modalEnableGradient}
                             >
-                                <Text style={styles.modalEnableText}>Got it</Text>
+                                <Text style={styles.modalEnableText}>{translateUiText("Got it")}</Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>

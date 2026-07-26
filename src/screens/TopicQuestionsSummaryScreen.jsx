@@ -15,6 +15,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import { QuestionsV2Api } from '../api/questionsV2Api';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const formatLabels = {
     deep: 'Deep',
@@ -161,7 +162,7 @@ export default function TopicQuestionsSummaryScreen({
             return (
                 <View style={[styles.pendingBubble, isCurrentUser && styles.userPendingBubble]}>
                     <Text style={[styles.pendingText, isCurrentUser && styles.userPendingText]}>
-                        {isCurrentUser ? 'Tap to answer ✍️' : 'Waiting...'}
+                        {isCurrentUser ? translateUiText("Tap to answer ✍️") : translateUiText("Waiting...")}
                     </Text>
                 </View>
             );
@@ -190,7 +191,7 @@ export default function TopicQuestionsSummaryScreen({
         return (
             <View style={styles.center}>
                 <ActivityIndicator size="large" color={setColors.primary} />
-                <Text style={styles.loadingText}>Loading Summary...</Text>
+                <Text style={styles.loadingText}>{translateUiText("Loading Summary...")}</Text>
             </View>
         );
     }
@@ -203,10 +204,10 @@ export default function TopicQuestionsSummaryScreen({
                     style={[styles.primaryButton, { backgroundColor: setColors.primary }]}
                     onPress={fetchReport}
                 >
-                    <Text style={styles.primaryButtonText}>Try Again</Text>
+                    <Text style={styles.primaryButtonText}>{translateUiText("Try Again")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.secondaryButton} onPress={onBack}>
-                    <Text style={styles.secondaryButtonText}>Back to Sets</Text>
+                    <Text style={styles.secondaryButtonText}>{translateUiText("Back to Sets")}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -286,14 +287,14 @@ export default function TopicQuestionsSummaryScreen({
                                 </Text>
                                 {isMatch && (
                                     <View style={styles.matchBadge}>
-                                        <Text style={styles.matchText}>Match!</Text>
+                                        <Text style={styles.matchText}>{translateUiText("Match!")}</Text>
                                     </View>
                                 )}
                             </View>
 
                             <View style={styles.answersContainer}>
                                 <View style={styles.answerBox}>
-                                    <Text style={styles.answerLabel}>You</Text>
+                                    <Text style={styles.answerLabel}>{translateUiText("You")}</Text>
                                     {renderAnswerPreview(item.userAnswer, format, true)}
                                 </View>
 
@@ -324,7 +325,7 @@ export default function TopicQuestionsSummaryScreen({
                     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
                         <Path d="M19 12H5M12 19l-7-7 7-7" stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
                     </Svg>
-                    <Text style={styles.doneBtnText}>Back to Sets</Text>
+                    <Text style={styles.doneBtnText}>{translateUiText("Back to Sets")}</Text>
                 </TouchableOpacity>
             </ScrollView>
         </LinearGradient>

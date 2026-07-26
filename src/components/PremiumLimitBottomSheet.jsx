@@ -11,31 +11,32 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const FEATURE_CONTENT = {
     wordle: {
         icon: '🔤',
         eyebrow: 'Wordle free limit',
-        title: 'You’ve used 3 free games',
-        message: 'Upgrade to Premium to keep creating and guessing words together.',
+        title: "You’ve used 3 free games",
+        message: "Upgrade to Premium to keep creating and guessing words together.",
     },
     ticTacToe: {
         icon: '⭕',
         eyebrow: 'Tic-Tac-Toe free limit',
-        title: 'You’ve used 5 free games',
-        message: 'Upgrade to Premium for unlimited games with your partner.',
+        title: "You’ve used 5 free games",
+        message: "Upgrade to Premium for unlimited games with your partner.",
     },
     liveChat: {
         icon: '💬',
         eyebrow: 'Live Chat free limit',
-        title: 'Your 5 free minutes are used',
-        message: 'Upgrade to Premium to keep chatting live whenever you’re both here.',
+        title: "Your 5 free minutes are used",
+        message: "Upgrade to Premium to keep chatting live whenever you’re both here.",
     },
     drawTogether: {
         icon: '🎨',
         eyebrow: 'Draw Together free limit',
-        title: 'Your 3 free minutes are used',
-        message: 'Upgrade to Premium to keep drawing live with your partner.',
+        title: "Your 3 free minutes are used",
+        message: "Upgrade to Premium to keep drawing live with your partner.",
     },
 };
 
@@ -124,7 +125,7 @@ const PremiumLimitBottomSheet = ({
                 <Pressable
                     style={StyleSheet.absoluteFill}
                     onPress={onClose}
-                    accessibilityLabel="Close premium limit message"
+                    accessibilityLabel={translateUiText("Close premium limit message")}
                 />
                 <Animated.View
                     style={[
@@ -142,7 +143,7 @@ const PremiumLimitBottomSheet = ({
                         onPress={onClose}
                         activeOpacity={0.75}
                         accessibilityRole="button"
-                        accessibilityLabel="Close premium limit message"
+                        accessibilityLabel={translateUiText("Close premium limit message")}
                     >
                         <CloseIcon />
                     </TouchableOpacity>
@@ -150,20 +151,20 @@ const PremiumLimitBottomSheet = ({
                     <View style={styles.iconCircle}>
                         <Text style={styles.iconText}>{content.icon}</Text>
                     </View>
-                    <Text style={styles.eyebrow}>{content.eyebrow}</Text>
-                    <Text style={styles.title}>{content.title}</Text>
-                    <Text style={styles.message}>{content.message}</Text>
+                    <Text style={styles.eyebrow}>{translateUiText(content.eyebrow)}</Text>
+                    <Text style={styles.title}>{translateUiText(content.title)}</Text>
+                    <Text style={styles.message}>{translateUiText(content.message)}</Text>
 
                     <TouchableOpacity
                         style={styles.upgradeButton}
                         onPress={handleUpgrade}
                         activeOpacity={0.84}
                         accessibilityRole="button"
-                        accessibilityLabel="Upgrade to Premium"
+                        accessibilityLabel={translateUiText("Upgrade to Premium")}
                     >
-                        <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
+                        <Text style={styles.upgradeButtonText}>{translateUiText("Upgrade to Premium")}</Text>
                     </TouchableOpacity>
-                    <Text style={styles.coupleNote}>One subscription unlocks Premium for both of you.</Text>
+                    <Text style={styles.coupleNote}>{translateUiText("One subscription unlocks Premium for both of you.")}</Text>
                 </Animated.View>
             </View>
         </Modal>

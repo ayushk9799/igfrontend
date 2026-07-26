@@ -5,6 +5,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { categoryConfig } from './categoryConfig';
 import { spacing } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 const FORMAT_FALLBACKS = {
     wouldyourather: ['Option A', 'Option B'],
@@ -78,7 +79,7 @@ const ChoiceQuestionCard = React.memo(({
                 <View style={styles.topRow}>
                     <View style={styles.categoryBadge}>
                         <Text style={styles.badgeEmoji}>{config.emoji || '💬'}</Text>
-                        <Text style={styles.categoryText}>{config.label}</Text>
+                        <Text style={styles.categoryText}>{translateUiText(config.label)}</Text>
                     </View>
                 </View>
 
@@ -102,7 +103,7 @@ const ChoiceQuestionCard = React.memo(({
                                 styles.choiceLabel,
                                 selectedAnswer === choice && styles.choiceLabelSelected,
                             ]}>
-                                {choice}
+                                {translateUiText(choice)}
                             </Text>
                         </TouchableOpacity>
                     ))}

@@ -216,16 +216,16 @@ object RelationshipWidgetRenderer {
 
         val prefs = context.getSharedPreferences(ScribbleWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
         val bitmap = when (type) {
-            WidgetType.DAYS -> renderDaysWidget(widthPx, heightPx, loadStartTime(prefs.getString(KEY_TOGETHER_START_DATE, null)))
-            WidgetType.COUNTDOWN -> renderCountdownWidget(widthPx, heightPx, loadStartTime(prefs.getString(KEY_TOGETHER_START_DATE, null)))
-            WidgetType.DISTANCE -> renderDistanceWidget(widthPx, heightPx, prefs.getString(KEY_DISTANCE_DATA, null))
+            WidgetType.DAYS -> renderDaysWidget(context, widthPx, heightPx, loadStartTime(prefs.getString(KEY_TOGETHER_START_DATE, null)))
+            WidgetType.COUNTDOWN -> renderCountdownWidget(context, widthPx, heightPx, loadStartTime(prefs.getString(KEY_TOGETHER_START_DATE, null)))
+            WidgetType.DISTANCE -> renderDistanceWidget(context, widthPx, heightPx, prefs.getString(KEY_DISTANCE_DATA, null))
         }
 
         views.setImageViewBitmap(R.id.relationship_widget_image, bitmap)
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }
 
-    private fun renderDaysWidget(width: Int, height: Int, startTime: Long?): Bitmap {
+    private fun renderDaysWidget(context: Context, width: Int, height: Int, startTime: Long?): Bitmap {
         val bitmap = createBitmap(width, height)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
@@ -239,16 +239,16 @@ object RelationshipWidgetRenderer {
         drawHeart(canvas, centerX, centerY - circleRadius * 0.35f, circleRadius * 0.32f, Color.WHITE)
 
         if (days == null) {
-            drawText(canvas, "Set date", centerX, centerY + circleRadius * 0.28f, width * 0.1f, Color.WHITE, Paint.Align.CENTER, true)
+            drawText(canvas, context.getString(R.string.widget_set_date), centerX, centerY + circleRadius * 0.28f, width * 0.1f, Color.WHITE, Paint.Align.CENTER, true)
         } else {
             drawText(canvas, days.toString(), centerX, centerY + circleRadius * 0.22f, width * 0.16f, Color.WHITE, Paint.Align.CENTER, true)
-            drawText(canvas, "days", centerX, centerY + circleRadius * 0.62f, width * 0.08f, Color.argb(225, 255, 255, 255), Paint.Align.CENTER, false)
+            drawText(canvas, context.getString(R.string.widget_days), centerX, centerY + circleRadius * 0.62f, width * 0.08f, Color.argb(225, 255, 255, 255), Paint.Align.CENTER, false)
         }
 
         return bitmap
     }
 
-    private fun renderCountdownWidget(width: Int, height: Int, startTime: Long?): Bitmap {
+    private fun renderCountdownWidget(context: Context, width: Int, height: Int, startTime: Long?): Bitmap {
         val bitmap = createBitmap(width, height)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
@@ -257,7 +257,7 @@ object RelationshipWidgetRenderer {
         drawGlassRoundRect(canvas, rect, rect.height() * 0.28f)
 
         if (startTime == null) {
-            drawText(canvas, "Set anniversary", rect.centerX(), rect.centerY() + height * 0.025f, height * 0.095f, Color.WHITE, Paint.Align.CENTER, true)
+            drawText(canvas, context.getString(R.string.widget_set_anniversary), rect.centerX(), rect.centerY() + height * 0.025f, height * 0.095f, Color.WHITE, Paint.Align.CENTER, true)
             return bitmap
         }
 
@@ -267,10 +267,15 @@ object RelationshipWidgetRenderer {
         val minutes = (elapsed % 3_600L) / 60L
         val seconds = elapsed % 60L
 
-        drawText(canvas, "together for", rect.centerX() - rect.width() * 0.08f, rect.top + rect.height() * 0.32f, rect.height() * 0.21f, Color.WHITE, Paint.Align.CENTER, true)
+        drawText(canvas, context.getString(R.string.widget_together_for), rect.centerX() - rect.width() * 0.08f, rect.top + rect.height() * 0.32f, rect.height() * 0.21f, Color.WHITE, Paint.Align.CENTER, true)
         drawHeart(canvas, rect.centerX() + rect.width() * 0.31f, rect.top + rect.height() * 0.26f, rect.height() * 0.065f, Color.WHITE)
 
-        val labels = arrayOf("days", "hr", "min", "sec")
+        val labels = arrayOf(
+            context.getString(R.string.widget_days),
+            context.getString(R.string.widget_hours_short),
+            context.getString(R.string.widget_minutes_short),
+            context.getString(R.string.widget_seconds_short)
+        )
         val values = arrayOf(days.toString(), hours.twoDigits(), minutes.twoDigits(), seconds.twoDigits())
         val columns = values.size
         val usableWidth = rect.width() * 0.86f
@@ -286,7 +291,7 @@ object RelationshipWidgetRenderer {
         return bitmap
     }
 
-    private fun renderDistanceWidget(width: Int, height: Int, distanceJson: String?): Bitmap {
+    private fun renderDistanceWidget(context: Context, width: Int, height: Int, distanceJson: String?): Bitmap {
         val bitmap = createBitmap(width, height)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
@@ -302,21 +307,21 @@ object RelationshipWidgetRenderer {
         val userInitial = data.initialFrom("userInitial", "userName")
         val partnerInitial = data.initialFrom("partnerInitial", "partnerName")
         val title = when {
-            isTogether -> "We're together!"
-            distanceKm == null && reason == "partner_sharing_disabled" -> "Partner location off"
-            distanceKm == null && reason == "missing_partner" -> "Connect partner"
-            distanceKm == null && reason == "missing_location" -> "Open app to sync"
-            distanceKm == null -> "Share location"
-            distanceKm >= 10 -> "Our distance: ${Math.round(distanceKm).toInt()} km"
-            else -> "Our distance: ${String.format(Locale.US, "%.1f", distanceKm)} km"
+            isTogether -> context.getString(R.string.widget_together)
+            distanceKm == null && reason == "partner_sharing_disabled" -> context.getString(R.string.widget_partner_location_off)
+            distanceKm == null && reason == "missing_partner" -> context.getString(R.string.widget_connect_partner)
+            distanceKm == null && reason == "missing_location" -> context.getString(R.string.widget_open_app_sync)
+            distanceKm == null -> context.getString(R.string.widget_share_location)
+            distanceKm >= 10 -> context.getString(R.string.widget_distance_format, Math.round(distanceKm).toInt().toString())
+            else -> context.getString(R.string.widget_distance_format, String.format(Locale.getDefault(), "%.1f", distanceKm))
         }
 
         val rect = accessoryRect(width, height)
         drawGlassRoundRect(canvas, rect, rect.height() * 0.28f)
 
         if (isLocked) {
-            drawText(canvas, "Premium widget", rect.centerX(), rect.top + rect.height() * 0.42f, rect.height() * 0.2f, Color.WHITE, Paint.Align.CENTER, true)
-            drawText(canvas, "Open app to unlock", rect.centerX(), rect.top + rect.height() * 0.66f, rect.height() * 0.14f, Color.argb(220, 255, 255, 255), Paint.Align.CENTER, false)
+            drawText(canvas, context.getString(R.string.widget_premium), rect.centerX(), rect.top + rect.height() * 0.42f, rect.height() * 0.2f, Color.WHITE, Paint.Align.CENTER, true)
+            drawText(canvas, context.getString(R.string.widget_open_app_unlock), rect.centerX(), rect.top + rect.height() * 0.66f, rect.height() * 0.14f, Color.argb(220, 255, 255, 255), Paint.Align.CENTER, false)
             return bitmap
         }
 

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { fontFamily } from '../../constants/fonts';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 /**
  * PremiumLockOverlay - Shared premium restriction overlay for all card types
@@ -76,7 +77,7 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
                 </View>
 
                 {/* Title */}
-                <Text style={styles.title}>Premium Content</Text>
+                <Text style={styles.title}>{translateUiText("Premium Content")}</Text>
 
                 {/* Divider line */}
                 <View style={styles.divider}>
@@ -91,7 +92,7 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
                 {/* Question preview (visible through overlay) */}
                 {questionText ? (
                     <View style={styles.questionPreview}>
-                        <Text style={styles.questionLabel}>Question</Text>
+                        <Text style={styles.questionLabel}>{translateUiText("Question")}</Text>
                         <Text style={styles.questionText} numberOfLines={3}>
                             {questionText}
                         </Text>
@@ -99,9 +100,7 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
                 ) : null}
 
                 {/* Subtitle */}
-                <Text style={styles.subtitle}>
-                    Upgrade to unlock all premium questions & features
-                </Text>
+                <Text style={styles.subtitle}>{translateUiText("Upgrade to unlock all premium questions & features")}</Text>
 
                 {/* Unlock Button with gradient */}
                 <TouchableOpacity
@@ -122,7 +121,7 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
                                 fill="#FFFFFF"
                             />
                         </Svg>
-                        <Text style={styles.unlockButtonText}>Unlock Premium</Text>
+                        <Text style={styles.unlockButtonText}>{translateUiText("Unlock Premium")}</Text>
                         <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" style={{ marginLeft: 6 }}>
                             <Path
                                 d="M5 12h14M12 5l7 7-7 7"
@@ -136,7 +135,7 @@ const PremiumLockOverlay = ({ onPress, questionText }) => {
                 </TouchableOpacity>
 
                 {/* Reassurance text */}
-                <Text style={styles.reassurance}>Cancel anytime · Covers your partner too</Text>
+                <Text style={styles.reassurance}>{translateUiText("Cancel anytime · Covers your partner too")}</Text>
             </View>
         </TouchableOpacity>
     );

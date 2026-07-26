@@ -1,5 +1,6 @@
 import notifee, { AndroidImportance, EventType, TriggerType } from '@notifee/react-native';
 import { storage } from './authStorage';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const CHANNEL_ID = 'partner-updates';
 const PENDING_LOCAL_NOTIFICATION_KEY = 'pending_local_notification_route';
@@ -14,25 +15,25 @@ const PARTNER_INVITE_REMINDERS = [
     {
         id: PARTNER_INVITE_REMINDER_IDS[0],
         delayMs: 12 * 60 * 60 * 1000,
-        title: 'Connect now!',
+        title: "Connect now!",
         body: 'Penguin Couple is no fun without a partner.',
     },
     {
         id: PARTNER_INVITE_REMINDER_IDS[1],
         delayMs: 36 * 60 * 60 * 1000,
-        title: 'Connect now!',
+        title: "Connect now!",
         body: 'Penguin Couple is no fun without a partner.',
     },
     {
         id: PARTNER_INVITE_REMINDER_IDS[2],
         daysFromNow: 3,
-        title: 'Connect now!',
+        title: "Connect now!",
         body: 'Penguin Couple is no fun without a partner.',
     },
     {
         id: PARTNER_INVITE_REMINDER_IDS[3],
         daysFromNow: 7,
-        title: 'Connect now!',
+        title: "Connect now!",
         body: 'Penguin Couple is no fun without a partner.',
     },
 ];
@@ -52,7 +53,7 @@ export const ensureLocalNotificationSetup = async () => {
     if (!channelReady) {
         await notifee.createChannel({
             id: CHANNEL_ID,
-            name: 'Partner updates',
+            name: translateUiText("Partner updates"),
             importance: AndroidImportance.HIGH,
             sound: 'default',
             vibration: true,
@@ -123,8 +124,8 @@ export const schedulePartnerInviteReminders = async ({ userId, partnerCode }) =>
         notifee.createTriggerNotification(
             {
                 id: reminder.id,
-                title: reminder.title,
-                body: reminder.body,
+                title: translateUiText(reminder.title),
+                body: translateUiText(reminder.body),
                 data: stringifyData(data),
                 android: {
                     channelId: CHANNEL_ID,

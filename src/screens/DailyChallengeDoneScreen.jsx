@@ -25,6 +25,7 @@ import Svg, {
 
 import { borderRadius, spacing } from '../theme';
 import { fontFamily } from '../constants/fonts';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(width - 40, 360);
@@ -323,8 +324,8 @@ export default function DailyChallengeDoneScreen({
                     { opacity, transform: [{ translateY: contentTranslateY }] },
                 ]}>
                     <View style={styles.titleRow}>
-                        <Text style={styles.titleDark}>Ritual </Text>
-                        <Text style={styles.titlePink}>Complete!</Text>
+                        <Text style={styles.titleDark}>{translateUiText("Ritual")}</Text>
+                        <Text style={styles.titlePink}>{translateUiText("Complete!")}</Text>
                     </View>
 
                     <Animated.View style={[
@@ -341,7 +342,7 @@ export default function DailyChallengeDoneScreen({
                         styles.streakCard,
                         { opacity: cardOpacity, transform: [{ translateY: cardTranslateY }] },
                     ]}>
-                        <Text style={styles.streakLabel}>Current Streak</Text>
+                        <Text style={styles.streakLabel}>{translateUiText("Current Streak")}</Text>
                         <Animated.View
                             style={[
                                 styles.countWrap,
@@ -349,7 +350,7 @@ export default function DailyChallengeDoneScreen({
                             ]}
                         >
                             <Text style={styles.streakNumber}>{currentStreak}</Text>
-                            <Text style={styles.streakUnit}>{currentStreak === 1 ? 'DAY' : 'DAYS'}</Text>
+                            <Text style={styles.streakUnit}>{currentStreak === 1 ? translateUiText("DAY") : translateUiText("DAYS")}</Text>
                         </Animated.View>
                     </Animated.View>
 
@@ -366,8 +367,8 @@ export default function DailyChallengeDoneScreen({
                             minimumFontScale={0.78}
                         >
                             {isFullHeart
-                                ? `Chat with ${partnerName}`
-                                : `Remind ${partnerName} to Play`}
+                                ? translateUiTemplate("Chat with {{0}}", [partnerName])
+                                : translateUiTemplate("Remind {{0}} to Play", [partnerName])}
                         </Text>
                     </TouchableOpacity>
 
@@ -377,12 +378,12 @@ export default function DailyChallengeDoneScreen({
                             style={styles.chatButton}
                             onPress={onChatNow}
                         >
-                            <Text style={styles.chatButtonText}>Chat now</Text>
+                            <Text style={styles.chatButtonText}>{translateUiText("Chat now")}</Text>
                         </TouchableOpacity>
                     )}
 
                     <TouchableOpacity style={styles.backButton} onPress={onBack}>
-                        <Text style={styles.backText}>← Back to Home</Text>
+                        <Text style={styles.backText}>{translateUiText("← Back to Home")}</Text>
                     </TouchableOpacity>
                 </Animated.View>
             </ScrollView>

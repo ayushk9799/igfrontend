@@ -18,6 +18,7 @@ import GradientBackground from '../components/GradientBackground';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { colors, spacing, borderRadius } from '../theme';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -207,7 +208,7 @@ const DropZone = ({ hasSelection, selectedName }) => {
             {hasSelection ? (
                 <View style={styles.selectedDisplay}>
                     <Text style={styles.selectedText}>
-                        {selectedName === 'you' ? '🙋 Me!' : '💕 You!'}
+                        {selectedName === 'you' ? translateUiText("🙋 Me!") : translateUiText("💕 You!")}
                     </Text>
                 </View>
             ) : (
@@ -221,8 +222,8 @@ const DropZone = ({ hasSelection, selectedName }) => {
                             strokeLinejoin="round"
                         />
                     </Svg>
-                    <Text style={styles.dropHint}>Drag here</Text>
-                    <Text style={styles.dropSubhint}>or tap to select</Text>
+                    <Text style={styles.dropHint}>{translateUiText("Drag here")}</Text>
+                    <Text style={styles.dropSubhint}>{translateUiText("or tap to select")}</Text>
                 </View>
             )}
         </Animated.View>
@@ -304,14 +305,14 @@ export const ComparisonQuestionScreen = ({
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
                         <View style={styles.headerRow}>
-                            <Text style={styles.headerTitle}>Who's More Likely</Text>
+                            <Text style={styles.headerTitle}>{translateUiText("Who's More Likely")}</Text>
                             <View style={styles.progressBadge}>
                                 <Text style={styles.progressText}>
                                     #{currentQuestion.number}/{currentQuestion.total}
                                 </Text>
                             </View>
                         </View>
-                        <Text style={styles.headerSubtitle}>Drag your answer up!</Text>
+                        <Text style={styles.headerSubtitle}>{translateUiText("Drag your answer up!")}</Text>
                     </View>
                 </Animated.View>
 
@@ -356,7 +357,7 @@ export const ComparisonQuestionScreen = ({
                             avatarUrl={userAvatar}
                         />
                         <View style={styles.vsContainer}>
-                            <Text style={styles.vsText}>VS</Text>
+                            <Text style={styles.vsText}>{translateUiText("VS")}</Text>
                         </View>
                         <DraggableAvatar
                             name={partnerName}
@@ -377,7 +378,7 @@ export const ComparisonQuestionScreen = ({
                             ]}
                         >
                             <Button
-                                title={selectedAnswer ? "Lock In Answer ✨" : "Drag to select"}
+                                title={selectedAnswer ? translateUiText("Lock In Answer ✨") : translateUiText("Drag to select")}
                                 onPress={handleSubmit}
                                 variant="primary"
                                 size="lg"
@@ -392,20 +393,18 @@ export const ComparisonQuestionScreen = ({
                         <View style={styles.submittedSection}>
                             <View style={styles.submittedBadge}>
                                 <Text style={styles.submittedIcon}>✓</Text>
-                                <Text style={styles.submittedText}>Answer Locked!</Text>
+                                <Text style={styles.submittedText}>{translateUiText("Answer Locked!")}</Text>
                             </View>
 
                             <View style={styles.partnerSection}>
-                                <Text style={styles.partnerSectionTitle}>{partnerName}'s Answer</Text>
+                                <Text style={styles.partnerSectionTitle}>{partnerName}{translateUiText("'s Answer")}</Text>
                                 <Card variant="glass" padding="lg">
                                     <View style={styles.lockedContent}>
                                         <View style={styles.lockIcon}>
                                             <Text style={styles.lockEmoji}>🔒</Text>
                                         </View>
-                                        <Text style={styles.lockTitle}>Waiting...</Text>
-                                        <Text style={styles.lockText}>
-                                            You'll see their answer once they respond
-                                        </Text>
+                                        <Text style={styles.lockTitle}>{translateUiText("Waiting...")}</Text>
+                                        <Text style={styles.lockText}>{translateUiText("You'll see their answer once they respond")}</Text>
                                     </View>
                                 </Card>
                             </View>
@@ -414,9 +413,7 @@ export const ComparisonQuestionScreen = ({
 
                     {/* Tip */}
                     <View style={styles.tipContainer}>
-                        <Text style={styles.tipText}>
-                            💡 Drag your choice up to the drop zone!
-                        </Text>
+                        <Text style={styles.tipText}>{translateUiText("💡 Drag your choice up to the drop zone!")}</Text>
                     </View>
                 </View>
             </View>

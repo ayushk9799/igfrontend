@@ -18,6 +18,7 @@ import Animated, {
     Extrapolation,
 } from 'react-native-reanimated';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 /**
  * VoiceBubble - Premium audio player for voice messages in chat
@@ -246,7 +247,7 @@ const VoiceBubble = ({ audioUri, isSent = false }) => {
                     {isPlaying && (
                         <View style={styles.nowPlayingIndicator}>
                             <View style={[styles.nowPlayingDot, { backgroundColor: accentColor }]} />
-                            <Text style={[styles.nowPlayingText, { color: accentColor }]}>Playing</Text>
+                            <Text style={[styles.nowPlayingText, { color: accentColor }]}>{translateUiText("Playing")}</Text>
                         </View>
                     )}
                 </View>

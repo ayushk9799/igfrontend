@@ -16,6 +16,7 @@ import { FlipType, manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const normalizeUri = (value) => {
     if (!value) return null;
@@ -81,7 +82,7 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
             if (!source) throw new Error('No image captured');
             setPreviewAsset(await makeSquareAsset(source, cameraType === 'front'));
         } catch (error) {
-            Alert.alert('Couldn’t take photo', error?.message || 'Please try again.');
+            Alert.alert(translateUiText("Couldn’t take photo"), error?.message || 'Please try again.');
         } finally {
             capturingRef.current = false;
         }
@@ -91,7 +92,7 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
         try {
             const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!permission.granted) {
-                Alert.alert('Photo permission needed', 'Allow photo library access to choose a photo.');
+                Alert.alert(translateUiText("Photo permission needed"), translateUiText("Allow photo library access to choose a photo."));
                 return;
             }
             const result = await ImagePicker.launchImageLibraryAsync({
@@ -104,7 +105,7 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
                 setPreviewAsset(await makeSquareAsset(result.assets[0].uri));
             }
         } catch (error) {
-            Alert.alert('Couldn’t open photo', error?.message || 'Please try again.');
+            Alert.alert(translateUiText("Couldn’t open photo"), error?.message || 'Please try again.');
         }
     }, []);
 
@@ -121,7 +122,7 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
             await onSendPhoto?.(previewAsset);
             onBack?.();
         } catch (error) {
-            Alert.alert('Couldn’t send photo', error?.message || 'Please try again.');
+            Alert.alert(translateUiText("Couldn’t send photo"), error?.message || 'Please try again.');
         } finally {
             setIsSending(false);
         }
@@ -140,15 +141,15 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onBack} activeOpacity={0.8} style={styles.backButton}><BackIcon /></TouchableOpacity>
                     <View style={styles.headerCopy}>
-                        <Text style={styles.eyebrow}>PARTNER PHOTO</Text>
-                        <Text style={styles.headerTitle}>A moment for {partnerName}</Text>
+                        <Text style={styles.eyebrow}>{translateUiText("PARTNER PHOTO")}</Text>
+                        <Text style={styles.headerTitle}>{translateUiText("A moment for")}{partnerName}</Text>
                     </View>
                     <View style={styles.headerSpacer} />
                 </View>
 
                 <View style={styles.content}>
-                    <Text style={styles.title}>{previewAsset ? 'Love this one?' : 'Capture your moment'}</Text>
-                    <Text style={styles.subtitle}>{previewAsset ? 'Send it when you’re ready.' : 'Keep it simple, real, and just for them.'}</Text>
+                    <Text style={styles.title}>{previewAsset ? translateUiText("Love this one?") : translateUiText("Capture your moment")}</Text>
+                    <Text style={styles.subtitle}>{previewAsset ? translateUiText("Send it when you’re ready.") : translateUiText("Keep it simple, real, and just for them.")}</Text>
 
                     <View style={styles.cameraShell}>
                         <LinearGradient colors={['#FF8FB8', '#C89CFF', '#8DD7FF']} style={styles.cameraBorder}>
@@ -165,9 +166,9 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
                                     />
                                 ) : hasPermission === false ? (
                                     <View style={styles.permissionState}>
-                                        <Text style={styles.permissionTitle}>Camera access needed</Text>
-                                        <Text style={styles.permissionBody}>Allow access, or choose a photo from your gallery.</Text>
-                                        <TouchableOpacity onPress={requestCamera} style={styles.permissionButton}><Text style={styles.permissionButtonText}>Allow camera</Text></TouchableOpacity>
+                                        <Text style={styles.permissionTitle}>{translateUiText("Camera access needed")}</Text>
+                                        <Text style={styles.permissionBody}>{translateUiText("Allow access, or choose a photo from your gallery.")}</Text>
+                                        <TouchableOpacity onPress={requestCamera} style={styles.permissionButton}><Text style={styles.permissionButtonText}>{translateUiText("Allow camera")}</Text></TouchableOpacity>
                                     </View>
                                 ) : (
                                     <View style={styles.permissionState}><ActivityIndicator color="#D94E86" size="large" /></View>
@@ -183,7 +184,7 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
                     {previewAsset ? (
                         <View style={styles.previewActions}>
                             <TouchableOpacity disabled={isSending} onPress={() => setPreviewAsset(null)} activeOpacity={0.82} style={styles.retakeButton}>
-                                <Text style={styles.retakeText}>Retake</Text>
+                                <Text style={styles.retakeText}>{translateUiText("Retake")}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity disabled={isSending} onPress={send} activeOpacity={0.88} style={styles.sendButton}>
                                 <LinearGradient colors={['#FF5E97', '#FFA1C9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.sendGradient}>
@@ -195,8 +196,7 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
                                             adjustsFontSizeToFit
                                             minimumFontScale={0.8}
                                             style={styles.sendText}
-                                        >
-                                            Send to {partnerName}
+                                        >{translateUiText("Send to")}{partnerName}
                                         </Text>
                                     )}
                                 </LinearGradient>

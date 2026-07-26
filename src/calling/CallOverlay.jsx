@@ -34,6 +34,7 @@ import { RTCView, permissions } from 'react-native-webrtc';
 import { fontFamily } from '../constants/fonts';
 import { CALL_STATE } from './callConstants';
 import { useCall, useRemoteAudioLevel } from './CallContext';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const BUBBLE_WIDTH = 126;
 const BUBBLE_HEIGHT = 174;
@@ -123,7 +124,7 @@ const PersonPlaceholder = ({ name, avatar, compact = false }) => (
                 </Text>
             )}
         </View>
-        {!compact && <Text style={styles.placeholderName}>{name || 'Partner'}</Text>}
+        {!compact && <Text style={styles.placeholderName}>{name || translateUiText("Partner")}</Text>}
     </LinearGradient>
 );
 
@@ -184,13 +185,13 @@ const RemoteAudioPlaceholder = ({ name, avatar, isMuted, audioLevel }) => {
                     )}
                 </View>
             </View>
-            <Text style={styles.remotePlaceholderName}>{name || 'Partner'}</Text>
+            <Text style={styles.remotePlaceholderName}>{name || translateUiText("Partner")}</Text>
             <View style={[styles.remoteMicStatus, isMuted && styles.remoteMicMutedStatus]}>
                 {isMuted
                     ? <MicOff color="#FFF" size={15} strokeWidth={2.3} />
                     : <Mic color="#FFF" size={15} strokeWidth={2.3} />}
                 <Text style={styles.remoteMicStatusText} accessibilityLiveRegion="polite">
-                    {isMuted ? 'Microphone off' : audioLevel > 0.035 ? 'Speaking' : 'Listening'}
+                    {isMuted ? translateUiText("Microphone off") : audioLevel > 0.035 ? translateUiText("Speaking") : translateUiText("Listening")}
                 </Text>
             </View>
         </LinearGradient>
@@ -224,17 +225,17 @@ const PermissionIssue = ({ compact = false }) => {
                 onPress={dismissPermissionIssue}
                 style={styles.permissionDismiss}
                 accessibilityRole="button"
-                accessibilityLabel="Dismiss permission message"
+                accessibilityLabel={translateUiText("Dismiss permission message")}
             >
-                <Text style={styles.permissionDismissText}>Not now</Text>
+                <Text style={styles.permissionDismissText}>{translateUiText("Not now")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
                 onPress={() => openPermissionSettings(permissionIssue)}
                 style={styles.permissionSettings}
                 accessibilityRole="button"
-                accessibilityLabel={`Open ${permissionIssue} settings`}
+                accessibilityLabel={translateUiTemplate("Open {{0}} settings", [permissionIssue])}
             >
-                <Text style={styles.permissionSettingsText}>Settings</Text>
+                <Text style={styles.permissionSettingsText}>{translateUiText("Settings")}</Text>
             </TouchableOpacity>
         </View>
     );
@@ -250,20 +251,20 @@ const CallPermissionPrompt = () => {
 
     return (
         <View style={styles.callPermissionSheet} accessibilityViewIsModal>
-            <Text style={styles.callPermissionTitle}>Allow camera and microphone</Text>
-            <Text style={styles.callPermissionBody}>Use video and audio during your calls.</Text>
+            <Text style={styles.callPermissionTitle}>{translateUiText("Allow camera and microphone")}</Text>
+            <Text style={styles.callPermissionBody}>{translateUiText("Use video and audio during your calls.")}</Text>
             <View style={styles.callPermissionDevices}>
                 <View style={styles.callPermissionDevice}>
                     <View style={styles.callPermissionIcon}>
                         <Video color="#D84F86" size={23} strokeWidth={2.2} />
                     </View>
-                    <Text style={styles.callPermissionDeviceLabel}>Camera</Text>
+                    <Text style={styles.callPermissionDeviceLabel}>{translateUiText("Camera")}</Text>
                 </View>
                 <View style={styles.callPermissionDevice}>
                     <View style={styles.callPermissionIcon}>
                         <Mic color="#D84F86" size={23} strokeWidth={2.2} />
                     </View>
-                    <Text style={styles.callPermissionDeviceLabel}>Microphone</Text>
+                    <Text style={styles.callPermissionDeviceLabel}>{translateUiText("Microphone")}</Text>
                 </View>
             </View>
             <TouchableOpacity
@@ -272,11 +273,11 @@ const CallPermissionPrompt = () => {
                 disabled={isRequesting}
                 activeOpacity={0.86}
                 accessibilityRole="button"
-                accessibilityLabel="Continue and allow camera and microphone access"
+                accessibilityLabel={translateUiText("Continue and allow camera and microphone access")}
             >
                 {isRequesting
                     ? <ActivityIndicator color="#FFFFFF" />
-                    : <Text style={styles.callPermissionAllowText}>Continue</Text>}
+                    : <Text style={styles.callPermissionAllowText}>{translateUiText("Continue")}</Text>}
             </TouchableOpacity>
             <TouchableOpacity
                 style={styles.callPermissionNotNow}
@@ -284,9 +285,9 @@ const CallPermissionPrompt = () => {
                 disabled={isRequesting}
                 activeOpacity={0.72}
                 accessibilityRole="button"
-                accessibilityLabel="Continue without camera and microphone"
+                accessibilityLabel={translateUiText("Continue without camera and microphone")}
             >
-                <Text style={styles.callPermissionNotNowText}>Not now</Text>
+                <Text style={styles.callPermissionNotNowText}>{translateUiText("Not now")}</Text>
             </TouchableOpacity>
         </View>
     );
@@ -334,7 +335,7 @@ const DeviceControls = ({ dark = true, includeFlip = false, unwrapped = false })
                 dark={dark}
             />
             {includeFlip && (
-                <CallButton label="Flip" icon={SwitchCamera} onPress={switchCamera} dark={dark} />
+                <CallButton label={translateUiText("Flip")} icon={SwitchCamera} onPress={switchCamera} dark={dark} />
             )}
         </>
     );
@@ -360,15 +361,15 @@ const IncomingCall = () => {
                     <View style={styles.incomingHeaderCopy}>
                         <View style={styles.incomingTypeRow}>
                             <Video color="#B43D73" size={14} strokeWidth={2.4} />
-                            <Text style={styles.incomingType}>Incoming video call</Text>
+                            <Text style={styles.incomingType}>{translateUiText("Incoming video call")}</Text>
                         </View>
                         <Text style={styles.incomingName} numberOfLines={1}>{partnerName}</Text>
-                        <Text style={styles.incomingBody}>Choose how you want to answer.</Text>
+                        <Text style={styles.incomingBody}>{translateUiText("Choose how you want to answer.")}</Text>
                     </View>
                 </View>
                 <PermissionIssue compact />
                 <View style={styles.incomingPreferences}>
-                    <Text style={styles.incomingPreferencesLabel}>Join preferences</Text>
+                    <Text style={styles.incomingPreferencesLabel}>{translateUiText("Join preferences")}</Text>
                     <DeviceControls dark={false} />
                 </View>
                 <View style={styles.incomingActions}>
@@ -377,20 +378,20 @@ const IncomingCall = () => {
                         onPress={rejectCall}
                         activeOpacity={0.84}
                         accessibilityRole="button"
-                        accessibilityLabel="Decline video call"
+                        accessibilityLabel={translateUiText("Decline video call")}
                     >
                         <PhoneOff color="#C7465B" size={21} strokeWidth={2.4} />
-                        <Text style={styles.declineActionLabel}>Decline</Text>
+                        <Text style={styles.declineActionLabel}>{translateUiText("Decline")}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.acceptAction}
                         onPress={acceptCall}
                         activeOpacity={0.84}
                         accessibilityRole="button"
-                        accessibilityLabel="Accept video call"
+                        accessibilityLabel={translateUiText("Accept video call")}
                     >
                         <Check color="#FFF" size={22} strokeWidth={2.7} />
-                        <Text style={styles.acceptActionLabel}>Accept</Text>
+                        <Text style={styles.acceptActionLabel}>{translateUiText("Accept")}</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -458,13 +459,13 @@ const FullScreenCall = () => {
                     </View>
                     <Text style={styles.cameraPreparingTitle}>
                         {cameraPermission === permissions.RESULT.DENIED
-                            ? 'Camera access is off'
-                            : 'Preparing your camera'}
+                            ? translateUiText("Camera access is off")
+                            : translateUiText("Preparing your camera")}
                     </Text>
                     <Text style={styles.cameraPreparingBody}>
                         {cameraPermission === permissions.RESULT.DENIED
-                            ? 'Enable camera access from Settings to share your video.'
-                            : 'Allow camera access to show your preview before the call connects.'}
+                            ? translateUiText("Enable camera access from Settings to share your video.")
+                            : translateUiText("Allow camera access to show your preview before the call connects.")}
                     </Text>
                 </View>
             ) : remoteStream && isRemoteCameraEnabled ? (
@@ -485,7 +486,7 @@ const FullScreenCall = () => {
                     }
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={controlsVisible ? 'Hide call controls' : 'Show call controls'}
+                accessibilityLabel={controlsVisible ? translateUiText("Hide call controls") : translateUiText("Show call controls")}
             />
             {controlsVisible && (
                 <LinearGradient
@@ -503,7 +504,7 @@ const FullScreenCall = () => {
                                     style={styles.minimizeButton}
                                     onPress={cancelCall}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Close permission prompt and cancel call"
+                                    accessibilityLabel={translateUiText("Close permission prompt and cancel call")}
                                 >
                                     <X color="#FFF" size={24} strokeWidth={2.3} />
                                 </TouchableOpacity>
@@ -512,7 +513,7 @@ const FullScreenCall = () => {
                                     style={styles.minimizeButton}
                                     onPress={minimizeCall}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Minimize call"
+                                    accessibilityLabel={translateUiText("Minimize call")}
                                 >
                                     <Minimize2 color="#FFF" size={24} strokeWidth={2.3} />
                                 </TouchableOpacity>
@@ -526,7 +527,7 @@ const FullScreenCall = () => {
                                 {!isOutgoing && isRemoteMuted && (
                                     <View style={styles.headerMutedBadge}>
                                         <MicOff color="#FFF" size={11} strokeWidth={2.3} />
-                                        <Text style={styles.headerMutedText}>Mic off</Text>
+                                        <Text style={styles.headerMutedText}>{translateUiText("Mic off")}</Text>
                                     </View>
                                 )}
                             </View>
@@ -559,7 +560,7 @@ const FullScreenCall = () => {
                                 </View>
                                 <View style={styles.localCameraOffBadge}>
                                     <VideoOff color="#FFF" size={12} strokeWidth={2.3} />
-                                    <Text style={styles.localCameraOffText}>Camera off</Text>
+                                    <Text style={styles.localCameraOffText}>{translateUiText("Camera off")}</Text>
                                 </View>
                             </LinearGradient>
                         )}
@@ -574,13 +575,13 @@ const FullScreenCall = () => {
                         <View style={[styles.controlsPanel, isCompactHeight && styles.controlsPanelCompact]}>
                             <DeviceControls includeFlip={isCameraEnabled} unwrapped />
                             <CallButton
-                                label={isSpeakerOn ? 'Speaker' : 'Earpiece'}
+                                label={isSpeakerOn ? translateUiText("Speaker") : translateUiText("Earpiece")}
                                 icon={isSpeakerOn ? Volume2 : Volume1}
                                 onPress={toggleSpeaker}
                                 enabled={isSpeakerOn}
                             />
                             <CallButton
-                                label={isOutgoing ? 'Cancel' : 'End'}
+                                label={isOutgoing ? translateUiText("Cancel") : translateUiText("End")}
                                 icon={PhoneOff}
                                 onPress={isOutgoing ? cancelCall : endCall}
                                 danger
@@ -697,14 +698,14 @@ const FloatingCall = () => {
                 onPress={expandCall}
                 activeOpacity={0.96}
                 accessibilityRole="button"
-                accessibilityLabel={callState === CALL_STATE.CONNECTING ? 'Connecting call' : 'Active video call'}
-                accessibilityHint="Activate to expand. Accessibility actions can move the call window."
+                accessibilityLabel={callState === CALL_STATE.CONNECTING ? translateUiText("Connecting call") : translateUiText("Active video call")}
+                accessibilityHint={translateUiText("Activate to expand. Accessibility actions can move the call window.")}
                 accessibilityActions={[
-                    { name: 'activate', label: 'Expand call' },
-                    { name: 'moveLeft', label: 'Move left' },
-                    { name: 'moveRight', label: 'Move right' },
-                    { name: 'moveUp', label: 'Move up' },
-                    { name: 'moveDown', label: 'Move down' },
+                    { name: 'activate', label: translateUiText("Expand call") },
+                    { name: 'moveLeft', label: translateUiText("Move left") },
+                    { name: 'moveRight', label: translateUiText("Move right") },
+                    { name: 'moveUp', label: translateUiText("Move up") },
+                    { name: 'moveDown', label: translateUiText("Move down") },
                 ]}
                 onAccessibilityAction={handleAccessibilityAction}
             >
@@ -716,7 +717,7 @@ const FloatingCall = () => {
             </TouchableOpacity>
             <View style={styles.inCallBadge}>
                 <Text style={styles.inCallText} accessibilityLiveRegion="polite">
-                    {callState === CALL_STATE.CONNECTING ? 'Connecting' : 'In call'}
+                    {callState === CALL_STATE.CONNECTING ? translateUiText("Connecting") : translateUiText("In call")}
                 </Text>
             </View>
             <View style={styles.bubbleControls}>
@@ -724,7 +725,7 @@ const FloatingCall = () => {
                     style={styles.bubbleButton}
                     onPress={toggleMute}
                     accessibilityRole="button"
-                    accessibilityLabel={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                    accessibilityLabel={isMuted ? translateUiText("Unmute microphone") : translateUiText("Mute microphone")}
                     accessibilityState={{ selected: !isMuted }}
                 >
                     {isMuted
@@ -735,7 +736,7 @@ const FloatingCall = () => {
                     style={[styles.bubbleButton, styles.bubbleEnd]}
                     onPress={endCall}
                     accessibilityRole="button"
-                    accessibilityLabel="End call"
+                    accessibilityLabel={translateUiText("End call")}
                 >
                     <PhoneOff color="#FFF" size={15} strokeWidth={2.4} />
                 </TouchableOpacity>
@@ -763,15 +764,15 @@ const FailedCall = ({ message, onClose }) => (
     <View style={styles.failedBackdrop}>
         <View style={styles.failedCard} accessibilityRole="alert">
             <PhoneOff color="#D84F68" size={30} strokeWidth={2.3} />
-            <Text style={styles.failedTitle}>Call ended</Text>
-            <Text style={styles.failedMessage}>{message || 'The video call could not be connected.'}</Text>
+            <Text style={styles.failedTitle}>{translateUiText("Call ended")}</Text>
+            <Text style={styles.failedMessage}>{message || translateUiText("The video call could not be connected.")}</Text>
             <TouchableOpacity
                 style={styles.failedCloseButton}
                 onPress={onClose}
                 accessibilityRole="button"
-                accessibilityLabel="Close call error"
+                accessibilityLabel={translateUiText("Close call error")}
             >
-                <Text style={styles.failedCloseText}>Close</Text>
+                <Text style={styles.failedCloseText}>{translateUiText("Close")}</Text>
             </TouchableOpacity>
         </View>
     </View>

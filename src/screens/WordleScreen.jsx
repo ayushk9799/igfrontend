@@ -29,6 +29,7 @@ import { getUser } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { isValidFiveLetterWord } from '../utils/wordValidator';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const FREE_WORDLE_GAME_LIMIT = 3;
 const WORDLE_AUTO_SUBMIT_DELAY_MS = 600;
@@ -1072,7 +1073,7 @@ const WordleScreen = ({
                 activeOpacity={0.8}
                 onPress={openKeyboard}
                 accessibilityRole="button"
-                accessibilityLabel={mode === 'create' ? 'Enter a five letter word' : 'Enter your five letter guess'}
+                accessibilityLabel={mode === 'create' ? translateUiText("Enter a five letter word") : translateUiText("Enter your five letter guess")}
             >
                 <Animated.View style={[styles.guessRow, { transform: [{ translateX: shakeAnim }] }]}>
                     {tiles}
@@ -1096,7 +1097,7 @@ const WordleScreen = ({
                 <SafeAreaView style={styles.container}>
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.primary} />
-                        <Text style={styles.loadingText}>Loading...</Text>
+                        <Text style={styles.loadingText}>{translateUiText("Loading...")}</Text>
                     </View>
                 </SafeAreaView>
             </GradientBackground>
@@ -1122,7 +1123,7 @@ const WordleScreen = ({
                                 style={styles.backButton}
                                 onPress={() => navigation?.goBack?.()}
                                 accessibilityRole="button"
-                                accessibilityLabel="Go back"
+                                accessibilityLabel={translateUiText("Go back")}
                             >
                                 <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                                     <Path
@@ -1134,18 +1135,18 @@ const WordleScreen = ({
                                     />
                                 </Svg>
                             </TouchableOpacity>
-                            <Text style={styles.headerTitle}>Wordle</Text>
+                            <Text style={styles.headerTitle}>{translateUiText("Wordle")}</Text>
                         </View>
                         <View style={styles.headerRight}>
                             {partnerOnline ? (
                                 <View style={styles.onlineIndicator}>
                                     <View style={styles.onlineDot} />
-                                    <Text style={styles.onlineText}>Online</Text>
+                                    <Text style={styles.onlineText}>{translateUiText("Online")}</Text>
                                 </View>
                             ) : (
                                 <View style={styles.offlineIndicator}>
                                     <View style={styles.offlineDot} />
-                                    <Text style={styles.offlineText}>Offline</Text>
+                                    <Text style={styles.offlineText}>{translateUiText("Offline")}</Text>
                                 </View>
                             )}
                         </View>
@@ -1171,19 +1172,17 @@ const WordleScreen = ({
                             <>
                                 {renderCurrentRow()}
                                 {!showLinkPartner && (
-                                    <Text style={styles.hintText}>Type a 5-letter word</Text>
+                                    <Text style={styles.hintText}>{translateUiText("Type a 5-letter word")}</Text>
                                 )}
                                 {showLinkPartner && (
                                     <View style={styles.linkPartnerCard}>
-                                        <Text style={styles.linkPartnerText}>
-                                            Link a partner to send this word
-                                        </Text>
+                                        <Text style={styles.linkPartnerText}>{translateUiText("Link a partner to send this word")}</Text>
                                         <TouchableOpacity
                                             onPress={onLinkPartner}
                                             activeOpacity={0.8}
                                             style={styles.playAgainButton}
                                         >
-                                            <Text style={styles.playAgainText}>Link Partner 🔗</Text>
+                                            <Text style={styles.playAgainText}>{translateUiText("Link Partner 🔗")}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}
@@ -1192,16 +1191,16 @@ const WordleScreen = ({
 
                         {mode === 'error' && (
                             <View style={styles.loadErrorCard}>
-                                <Text style={styles.loadErrorTitle}>Couldn’t load Wordle</Text>
+                                <Text style={styles.loadErrorTitle}>{translateUiText("Couldn’t load Wordle")}</Text>
                                 <Text style={styles.loadErrorText}>{loadError}</Text>
                                 <TouchableOpacity
                                     onPress={retryLoadGame}
                                     activeOpacity={0.8}
                                     style={styles.playAgainButton}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Retry loading Wordle"
+                                    accessibilityLabel={translateUiText("Retry loading Wordle")}
                                 >
-                                    <Text style={styles.playAgainText}>Try Again</Text>
+                                    <Text style={styles.playAgainText}>{translateUiText("Try Again")}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -1235,8 +1234,7 @@ const WordleScreen = ({
                                 {guesses.length > 0 && (
                                     <View style={styles.creatorGuessesContainer}>
                                         <Text style={styles.creatorGuessesTitle}>
-                                            {partnerName}'s guesses:
-                                        </Text>
+                                            {partnerName}{translateUiText("'s guesses:")}</Text>
                                         {guesses.map((guess, i) => renderGuessRow(guess, i))}
                                     </View>
                                 )}
@@ -1252,12 +1250,10 @@ const WordleScreen = ({
                         {/* Status Text Rendered at the Bottom of the Grid */}
                         <View style={[styles.statusContainer, styles.statusContainerSpacing]}>
                             {mode === 'create' && (
-                                <Text style={styles.statusText}>Set a word for {partnerName} to guess</Text>
+                                <Text style={styles.statusText}>{translateUiText("Set a word for")}{partnerName}{translateUiText("to guess")}</Text>
                             )}
                             {mode === 'guess' && (
-                                <Text style={styles.statusText}>
-                                    Guess the word! ({attemptsRemaining} attempts left)
-                                </Text>
+                                <Text style={styles.statusText}>{translateUiText("Guess the word! (")}{attemptsRemaining}{translateUiText("attempts left)")}</Text>
                             )}
                             {/* Creator views - different states */}
                             {mode === 'complete' && isCreator && successMessage && status === 'pending' && (
@@ -1266,32 +1262,28 @@ const WordleScreen = ({
                                 </Text>
                             )}
                             {mode === 'complete' && isCreator && !successMessage && status === 'pending' && (
-                                <Text style={styles.statusText}>
-                                    Waiting for {partnerName} to start guessing...
-                                </Text>
+                                <Text style={styles.statusText}>{translateUiText("Waiting for")}{partnerName}{translateUiText("to start guessing...")}</Text>
                             )}
                             {mode === 'complete' && isCreator && status === 'in_progress' && (
                                 <Text style={styles.statusText}>
-                                    {partnerName} is guessing... ({guesses.length}/{maxAttempts} tries used)
-                                </Text>
+                                    {partnerName}{translateUiText("is guessing... (")}{guesses.length}/{maxAttempts}{translateUiText("tries used)")}</Text>
                             )}
                             {mode === 'complete' && isCreator && status === 'won' && (
                                 <Text style={[styles.statusText, styles.statusWin]}>
-                                    {partnerName} guessed it in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!
+                                    {partnerName}{translateUiText("guessed it in")}{guesses.length} {guesses.length === 1 ? translateUiText("try") : translateUiText("tries")}!
                                 </Text>
                             )}
                             {mode === 'complete' && isCreator && status === 'lost' && (
                                 <Text style={[styles.statusText, styles.statusLose]}>
-                                    {partnerName} couldn't guess "{secretWord}"
+                                    {partnerName}{translateUiText("couldn't guess \"")}{secretWord}"
                                 </Text>
                             )}
                             {/* Guesser views */}
                             {mode === 'complete' && !isCreator && status === 'won' && (
-                                <Text style={[styles.statusText, styles.statusWin]}>You Won in {guesses.length} {guesses.length === 1 ? 'try' : 'tries'}!</Text>
+                                <Text style={[styles.statusText, styles.statusWin]}>{translateUiText("You Won in")}{guesses.length} {guesses.length === 1 ? translateUiText("try") : translateUiText("tries")}!</Text>
                             )}
                             {mode === 'complete' && !isCreator && status === 'lost' && (
-                                <Text style={[styles.statusText, styles.statusLose]}>
-                                    Game Over - The word was "{revealedWord}"
+                                <Text style={[styles.statusText, styles.statusLose]}>{translateUiText("Game Over - The word was \"")}{revealedWord}"
                                 </Text>
                             )}
                         </View>
@@ -1303,11 +1295,10 @@ const WordleScreen = ({
                                 activeOpacity={0.8}
                                 disabled={checkingPremium || !playAgainReady}
                                 accessibilityRole="button"
-                                accessibilityLabel="Retry free-game limit check"
+                                accessibilityLabel={translateUiText("Retry free-game limit check")}
                             >
                                 <Text style={styles.limitCheckErrorText}>
-                                    {limitCheckError} Tap to retry.
-                                </Text>
+                                    {limitCheckError}{translateUiText("Tap to retry.")}</Text>
                             </TouchableOpacity>
                         )}
                     </ScrollView>
@@ -1339,15 +1330,13 @@ const WordleScreen = ({
                                 style={styles.playAgainButton}
                                 disabled={checkingPremium || !playAgainReady}
                                 accessibilityRole="button"
-                                accessibilityLabel="Play Wordle again"
+                                accessibilityLabel={translateUiText("Play Wordle again")}
                                 accessibilityState={{ disabled: checkingPremium || !playAgainReady }}
                             >
                                 {checkingPremium ? (
                                     <ActivityIndicator color="#FFFFFF" />
                                 ) : (
-                                    <Text style={styles.playAgainText}>
-                                        Play Again
-                                    </Text>
+                                    <Text style={styles.playAgainText}>{translateUiText("Play Again")}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -1365,12 +1354,12 @@ const WordleScreen = ({
                                     notifying && styles.buttonDisabled,
                                 ]}
                                 accessibilityRole="button"
-                                accessibilityLabel={`Nudge ${partnerName}`}
+                                accessibilityLabel={translateUiTemplate("Nudge {{0}}", [partnerName])}
                             >
                                 {notifying ? (
                                     <ActivityIndicator color="#FFFFFF" />
                                 ) : (
-                                    <Text style={styles.playAgainText}>{`Nudge ${partnerName}`}</Text>
+                                    <Text style={styles.playAgainText}>{translateUiTemplate("Nudge {{0}}", [partnerName])}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
