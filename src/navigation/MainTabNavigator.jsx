@@ -777,6 +777,7 @@ export const MainTabNavigator = ({
                         partnerAvatar={userData?.partnerAvatar || null}
                         userId={userData?._id || userData?.id}
                         hasPartner={hasPartner}
+                        initialTodayChallenge={todayChallenge}
                         onLinkPartner={onFindPartner}
                         onBack={() => setCurrentTab('home')}
                         onCompareWithPartner={() => setCurrentTab('chats')}

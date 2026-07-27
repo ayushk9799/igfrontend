@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Alert,
+  AppState,
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +31,63 @@ import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 
 const { width, height } = Dimensions.get('window');
 const CARD_HEIGHT = height * 0.7;
+
+const mergeTodayRitualState = (streak, updates) => {
+  if (!streak) return streak;
+
+  const youComplete = updates.youComplete ?? streak.youComplete ?? false;
+  const partnerComplete = updates.partnerComplete ?? streak.partnerComplete ?? false;
+  const next = {
+    ...streak,
+    ...updates,
+    youComplete,
+    partnerComplete,
+    heartState: youComplete && partnerComplete
+      ? 'full'
+      : youComplete || partnerComplete
+        ? 'half'
+        : 'empty',
+  };
+
+  if (!streak.week?.days) return next;
+
+  return {
+    ...next,
+    week: {
+      ...streak.week,
+      days: streak.week.days.map(day => {
+        if (!day.isToday) return day;
+        return {
+          ...day,
+          youComplete,
+          partnerComplete,
+          state: youComplete && partnerComplete
+            ? 'full'
+            : youComplete || partnerComplete
+              ? 'half'
+              : 'today-empty',
+        };
+      }),
+    },
+  };
+};
+
+const restoreSavedAnswers = (todayData) => {
+  const tasks = todayData?.challenge?.tasks || [];
+  const savedAnswers = todayData?.answers?.answers || [];
+
+  return tasks.map((task, index) => {
+    const savedAnswer = savedAnswers[index];
+    if (!savedAnswer?.value) return null;
+
+    return {
+      taskIndex: index,
+      answer: savedAnswer.value,
+      task,
+      answeredAt: savedAnswer.answeredAt,
+    };
+  });
+};
 
 /* ===================== PROGRESS DOTS ===================== */
 const ProgressDots = ({ current, total }) => (
@@ -56,22 +114,38 @@ export default function DailyChallengeScreen({
   partnerAvatar = null,
   userId,
   hasPartner = false,
+  initialTodayChallenge = null,
   onLinkPartner = () => { },
   onBack = () => { },
   onCompareWithPartner = () => { }, // New callback for partner comparison
 }) {
   const insets = useSafeAreaInsets();
   const userData = useSelector(selectUser);
-  const [challenge, setChallenge] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [challenge, setChallenge] = useState(
+    () => initialTodayChallenge?.challenge || null
+  );
+  const [loading, setLoading] = useState(() => !initialTodayChallenge);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [userAnswers, setUserAnswers] = useState([]); // Track local answers
-  const [isComplete, setIsComplete] = useState(false);
+  const [userAnswers, setUserAnswers] = useState(
+    () => restoreSavedAnswers(initialTodayChallenge)
+  );
+  const [isComplete, setIsComplete] = useState(
+    () => Boolean(
+      initialTodayChallenge?.answers?.isComplete
+      || initialTodayChallenge?.progress?.isComplete
+    )
+  );
   const [hasReachedEndOfStack, setHasReachedEndOfStack] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [ritualStatus, setRitualStatus] = useState(null);
+  const [ritualStatus, setRitualStatus] = useState(
+    () => initialTodayChallenge?.streak || null
+  );
   const [partnerNickname, setPartnerNickname] = useState(null);
-  const [initiallyAnsweredTaskIndexes, setInitiallyAnsweredTaskIndexes] = useState([]);
+  const [initiallyAnsweredTaskIndexes, setInitiallyAnsweredTaskIndexes] = useState(
+    () => restoreSavedAnswers(initialTodayChallenge)
+      .map((answer, index) => (answer ? index : null))
+      .filter(index => index !== null)
+  );
   const pendingAnswersRef = useRef(new Map());
 
   useEffect(() => {
@@ -124,15 +198,7 @@ export default function DailyChallengeScreen({
       setIsComplete(false);
 
       if (json.success && challengeData?._id && json.data?.answers) {
-          const savedAnswers = json.data.answers.answers.map((ans, idx) => {
-            if (!ans?.value) return null;
-            return {
-              taskIndex: idx,
-              answer: ans.value,
-              task: challengeData.tasks[idx],
-              answeredAt: ans.answeredAt
-            };
-          });
+          const savedAnswers = restoreSavedAnswers(json.data);
           setUserAnswers(savedAnswers);
           setInitiallyAnsweredTaskIndexes(
             savedAnswers
@@ -140,9 +206,10 @@ export default function DailyChallengeScreen({
               .filter(index => index !== null)
           );
 
-          if (json.data.answers.isComplete) {
-            setIsComplete(true);
-          }
+          setIsComplete(Boolean(
+            json.data.answers.isComplete
+            || json.data?.progress?.isComplete
+          ));
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -155,6 +222,35 @@ export default function DailyChallengeScreen({
   useEffect(() => {
     fetchToday();
   }, [fetchToday]);
+
+  useEffect(() => {
+    let mounted = true;
+    let previousState = AppState.currentState;
+
+    const subscription = AppState.addEventListener('change', nextState => {
+      const returningToForeground =
+        (previousState === 'background' || previousState === 'inactive')
+        && nextState === 'active';
+      previousState = nextState;
+
+      if (!returningToForeground || !userId) return;
+
+      getCoupleTodayChallenge(userId)
+        .then(json => {
+          if (mounted && json.success) {
+            setRitualStatus(json.data?.streak || null);
+          }
+        })
+        .catch(() => {
+          // Keep the last known week when foreground refresh is unavailable.
+        });
+    });
+
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (!hasPartner && onLinkPartner) {
@@ -221,7 +317,11 @@ export default function DailyChallengeScreen({
       submitAnswer(userId, challenge._id, taskIndex, 'answered', answerType)
         .then(result => {
           if (result.success && result.data?.ritual) {
-            setRitualStatus(result.data.ritual);
+            setRitualStatus(previous => ({
+              ...previous,
+              ...result.data.ritual,
+              week: result.data.ritual.week || previous?.week,
+            }));
             setShowConfetti(true);
           }
         })
@@ -260,6 +360,9 @@ export default function DailyChallengeScreen({
     if (!pendingAnswer) return;
 
     pendingAnswersRef.current.delete(taskIndex);
+    setRitualStatus(previous => mergeTodayRitualState(previous, {
+      youComplete: true,
+    }));
     setUserAnswers(prev => {
       const updated = [...prev];
       updated[taskIndex] = pendingAnswer;

@@ -2753,6 +2753,10 @@ PODS:
     - React-Core
   - RecaptchaInterop (101.0.0)
   - RevenueCat (5.67.1)
+  - rive-react-native (9.8.5):
+    - React-Core
+    - RiveRuntime (= 6.21.1)
+  - RiveRuntime (6.21.1)
   - RNAudioRecorderPlayer (3.6.14):
     - React-Core
   - RNBootSplash (7.3.1):
@@ -3313,6 +3317,7 @@ DEPENDENCIES:
   - ReactNativeCameraKit (from `../node_modules/react-native-camera-kit`)
   - ReactNativeIncallManager (from `../node_modules/react-native-incall-manager`)
   - RecaptchaInterop
+  - rive-react-native (from `../node_modules/rive-react-native`)
   - RNAudioRecorderPlayer (from `../node_modules/react-native-audio-recorder-player`)
   - RNBootSplash (from `../node_modules/react-native-bootsplash`)
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
@@ -3355,6 +3360,7 @@ SPEC REPOS:
     - PurchasesHybridCommon
     - RecaptchaInterop
     - RevenueCat
+    - RiveRuntime
     - SDWebImage
     - SDWebImageWebPCoder
     - SocketRocket
@@ -3551,6 +3557,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-camera-kit"
   ReactNativeIncallManager:
     :path: "../node_modules/react-native-incall-manager"
+  rive-react-native:
+    :path: "../node_modules/rive-react-native"
   RNAudioRecorderPlayer:
     :path: "../node_modules/react-native-audio-recorder-player"
   RNBootSplash:
@@ -3701,6 +3709,8 @@ SPEC CHECKSUMS:
   ReactNativeIncallManager: dccd3e7499caa3bb73d3acfedf4fb0360f1a87d5
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   RevenueCat: 9357239a9f0978285e68983637b8a602e65c94f0
+  rive-react-native: 0fad980aaaff989d45befe808c33de7dbec3f135
+  RiveRuntime: b762bd437b7de47d34d0f8e670112d0b9143f8d6
   RNAudioRecorderPlayer: b5ed41ccfe72a211a870bfe09ab36c046eb27d2a
   RNBootSplash: 0be0994fa7c528ed5f03b6f2803d7e86aa18170f
   RNCClipboard: 4b58c780f63676367640f23c8e114e9bd0cf86ac
