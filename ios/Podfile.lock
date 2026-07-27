@@ -20,7 +20,7 @@ PODS:
   - EXImageLoader (6.0.0):
     - ExpoModulesCore
     - React-Core
-  - Expo (54.0.35):
+  - Expo (54.0.36):
     - boost
     - DoubleConversion
     - ExpoModulesCore
@@ -2215,7 +2215,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-webrtc (124.0.7):
+  - react-native-webrtc (124.0.8):
     - JitsiWebRTC (~> 124.0.0)
     - React-Core
   - React-NativeModulesApple (0.81.5):
@@ -2751,17 +2751,13 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - ReactNativeIncallManager (4.2.1):
+  - ReactNativeIncallManager (4.2.2):
     - React-Core
   - RecaptchaInterop (101.0.0)
   - RevenueCat (5.67.1)
-  - rive-react-native (9.8.5):
-    - React-Core
-    - RiveRuntime (= 6.21.1)
-  - RiveRuntime (6.21.1)
   - RNAudioRecorderPlayer (3.6.14):
     - React-Core
-  - RNBootSplash (7.3.1):
+  - RNBootSplash (7.3.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -3320,7 +3316,6 @@ DEPENDENCIES:
   - ReactNativeCameraKit (from `../node_modules/react-native-camera-kit`)
   - ReactNativeIncallManager (from `../node_modules/react-native-incall-manager`)
   - RecaptchaInterop
-  - rive-react-native (from `../node_modules/rive-react-native`)
   - RNAudioRecorderPlayer (from `../node_modules/react-native-audio-recorder-player`)
   - RNBootSplash (from `../node_modules/react-native-bootsplash`)
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
@@ -3363,7 +3358,6 @@ SPEC REPOS:
     - PurchasesHybridCommon
     - RecaptchaInterop
     - RevenueCat
-    - RiveRuntime
     - SDWebImage
     - SDWebImageWebPCoder
     - SocketRocket
@@ -3562,8 +3556,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-camera-kit"
   ReactNativeIncallManager:
     :path: "../node_modules/react-native-incall-manager"
-  rive-react-native:
-    :path: "../node_modules/rive-react-native"
   RNAudioRecorderPlayer:
     :path: "../node_modules/react-native-audio-recorder-player"
   RNBootSplash:
@@ -3603,7 +3595,7 @@ SPEC CHECKSUMS:
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   EXConstants: fce59a631a06c4151602843667f7cfe35f81e271
   EXImageLoader: 189e3476581efe3ad4d1d3fb4735b7179eb26f05
-  Expo: 4479cae646b5d3ce16f45ce0e920fadbc0e7396e
+  Expo: b3a0ce325c850dc7e67244640862616daeee6551
   ExpoAsset: 9e5a7c9c0a9fb83ad5b2bb365141f2bd7f289b66
   ExpoBlur: b90747a3f22a8b6ceffd9cb0dc41a4184efdc656
   ExpoFileSystem: a8e7fb1e958471764fb48d281cf9fa81a9e4d77c
@@ -3680,7 +3672,7 @@ SPEC CHECKSUMS:
   react-native-mmkv: ac7507625cd74bac0eb5333604a7cd7b08fe9e3e
   react-native-safe-area-context: ebd2c2ece5e6e650a6963184039ec8cfd8960d86
   react-native-view-shot: 6c008e58f4720de58370848201c5d4a082c6d4ca
-  react-native-webrtc: e8f0ce746353adc2744a2b933645e1aeb41eaa74
+  react-native-webrtc: da75ba1f85a36981cbcb3fdae7dfbab7ad63c040
   React-NativeModulesApple: ebf2ce72b35870036900d6498b33724386540a71
   React-oscompat: eb0626e8ba1a2c61673c991bf9dc21834898475d
   React-perflogger: 509e1f9a3ee28df71b0a66de806ac515ce951246
@@ -3712,13 +3704,11 @@ SPEC CHECKSUMS:
   ReactCodegen: 6c26f8c25d0b5ae66f86a1cce1777076ac8bcbd8
   ReactCommon: 5f0e5c09a64a2717215dd84380e1a747810406f2
   ReactNativeCameraKit: 8bf3988eb86ba253fafca7c14286aa7855a1c9e1
-  ReactNativeIncallManager: dccd3e7499caa3bb73d3acfedf4fb0360f1a87d5
+  ReactNativeIncallManager: c6e08cc005da0f73d5a1ecbd58ad33bc61d5d79f
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   RevenueCat: 9357239a9f0978285e68983637b8a602e65c94f0
-  rive-react-native: 0fad980aaaff989d45befe808c33de7dbec3f135
-  RiveRuntime: b762bd437b7de47d34d0f8e670112d0b9143f8d6
   RNAudioRecorderPlayer: b5ed41ccfe72a211a870bfe09ab36c046eb27d2a
-  RNBootSplash: 0be0994fa7c528ed5f03b6f2803d7e86aa18170f
+  RNBootSplash: 83bc1fef5ff2e9fd3ed0f20a472dd87d8a9ef898
   RNCClipboard: 4b58c780f63676367640f23c8e114e9bd0cf86ac
   RNDateTimePicker: cda4c045beca864cebb3209ef9cc4094f974864c
   RNDeviceInfo: 4c852998208b60dc192ae3529e5867817719ad1e

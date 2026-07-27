@@ -28,7 +28,7 @@ import Svg, {
 } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { createSafeAudioPlayer } from '../utils/safeAudioPlayer';
 
 import { borderRadius, spacing } from '../theme';
 import { fontFamily } from '../constants/fonts';
@@ -246,7 +246,7 @@ export default function DailyChallengeDoneScreen({
     useEffect(() => {
         triggerSuccessHaptic();
 
-        const player = new AudioRecorderPlayer();
+        const player = createSafeAudioPlayer();
         audioPlayerRef.current = player;
 
         const playSound = async () => {

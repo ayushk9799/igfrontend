@@ -18,7 +18,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { createSafeAudioPlayer } from '../utils/safeAudioPlayer';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
@@ -323,7 +323,7 @@ const WordleScreen = ({
 
     // Initialize audio player on mount
     useEffect(() => {
-        audioPlayerRef.current = new AudioRecorderPlayer();
+        audioPlayerRef.current = createSafeAudioPlayer();
         return () => {
             if (audioPlayerRef.current) {
                 audioPlayerRef.current.stopPlayer().catch(() => {});

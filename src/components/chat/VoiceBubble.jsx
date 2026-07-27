@@ -17,7 +17,7 @@ import Animated, {
     interpolate,
     Extrapolation,
 } from 'react-native-reanimated';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { createSafeAudioPlayer } from '../../utils/safeAudioPlayer';
 import { translateUiText } from '../../i18n/uiTranslation';
 
 /**
@@ -42,11 +42,13 @@ const VoiceBubble = ({ audioUri, isSent = false }) => {
 
     // Initialize audio player
     useEffect(() => {
-        try {
-            audioPlayerRef.current = new AudioRecorderPlayer();
-            audioPlayerRef.current.setSubscriptionDuration(0.05); // 50ms updates for smooth progress
-        } catch (error) {
-            console.error('[VoiceBubble] Failed to initialize AudioRecorderPlayer:', error);
+        audioPlayerRef.current = createSafeAudioPlayer();
+        if (audioPlayerRef.current) {
+            try {
+                audioPlayerRef.current.setSubscriptionDuration(0.05); // 50ms updates for smooth progress
+            } catch (error) {
+                console.warn('[VoiceBubble] Failed to set subscription duration:', error);
+            }
         }
 
         return () => {

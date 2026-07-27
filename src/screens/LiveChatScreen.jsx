@@ -31,7 +31,7 @@ import {
     RTCSessionDescription,
     RTCView,
 } from 'react-native-webrtc';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { createSafeAudioPlayer } from '../utils/safeAudioPlayer';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Camera, Settings, Video, VideoOff } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -299,7 +299,7 @@ export default function LiveChatScreen({
 
     useEffect(() => {
         messageSoundDisposedRef.current = false;
-        messageSoundPlayerRef.current = new AudioRecorderPlayer();
+        messageSoundPlayerRef.current = createSafeAudioPlayer();
         messageSoundUrisRef.current = {
             send: Image.resolveAssetSource(require('../../assets/sounds/send.mp3')).uri,
             receive: Image.resolveAssetSource(require('../../assets/sounds/recieve.mp3')).uri,
