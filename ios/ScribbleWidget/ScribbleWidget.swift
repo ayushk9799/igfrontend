@@ -12,6 +12,12 @@ import Foundation
 import UIKit
 import ImageIO
 
+private func widgetLocalized(_ english: String, _ french: String) -> String {
+    Locale.preferredLanguages.first?.lowercased().hasPrefix("fr") == true
+        ? french
+        : english
+}
+
 // MARK: - Widget Entry
 struct ScribbleEntry: TimelineEntry {
     let date: Date
@@ -28,7 +34,7 @@ struct ScribbleProvider: TimelineProvider {
     private let appGroupIdentifier = "group.com.thousandways.love"
     
     func placeholder(in context: Context) -> ScribbleEntry {
-        ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false, canvasWidth: 350, canvasHeight: 350)
+        ScribbleEntry(date: Date(), paths: [], senderName: widgetLocalized("Your Love", "Votre amour"), hasScribble: false, canvasWidth: 350, canvasHeight: 350)
     }
     
     func getSnapshot(in context: Context, completion: @escaping (ScribbleEntry) -> Void) {
@@ -51,7 +57,7 @@ struct ScribbleProvider: TimelineProvider {
         
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
             print("❌ [Widget] Failed to get App Group container!")
-            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false, canvasWidth: 350, canvasHeight: 350)
+            return ScribbleEntry(date: Date(), paths: [], senderName: widgetLocalized("Your Love", "Votre amour"), hasScribble: false, canvasWidth: 350, canvasHeight: 350)
         }
         
         print("📁 [Widget] Container URL: \(containerURL.path)")
@@ -64,18 +70,18 @@ struct ScribbleProvider: TimelineProvider {
         
         guard let data = try? Data(contentsOf: jsonURL) else {
             print("❌ [Widget] Failed to read data from file!")
-            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false, canvasWidth: 350, canvasHeight: 350)
+            return ScribbleEntry(date: Date(), paths: [], senderName: widgetLocalized("Your Love", "Votre amour"), hasScribble: false, canvasWidth: 350, canvasHeight: 350)
         }
         
         print("📊 [Widget] Read \(data.count) bytes from file")
         
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             print("❌ [Widget] Failed to parse JSON!")
-            return ScribbleEntry(date: Date(), paths: [], senderName: "Your Love", hasScribble: false, canvasWidth: 350, canvasHeight: 350)
+            return ScribbleEntry(date: Date(), paths: [], senderName: widgetLocalized("Your Love", "Votre amour"), hasScribble: false, canvasWidth: 350, canvasHeight: 350)
         }
         
         let paths = json["paths"] as? [[String: Any]] ?? []
-        let senderName = json["senderName"] as? String ?? "Your Love"
+        let senderName = json["senderName"] as? String ?? widgetLocalized("Your Love", "Votre amour")
         let canvasWidth = Self.parseDimension(json["canvasWidth"], fallback: 350)
         let canvasHeight = Self.parseDimension(json["canvasHeight"], fallback: canvasWidth)
         let version = json["version"] as? Int ?? 0
@@ -365,8 +371,8 @@ struct ScribbleWidget: Widget {
                     .padding(-16)
             }
         }
-        .configurationDisplayName("Canvas")
-        .description("See drawing from your loved one")
+        .configurationDisplayName(LocalizedStringKey(widgetLocalized("Canvas", "Dessin")))
+        .description(LocalizedStringKey(widgetLocalized("See drawing from your loved one", "Voir le dessin de votre partenaire")))
         .supportedFamilies([.systemSmall, .systemLarge])
         .contentMarginsDisabled()
     }
@@ -438,7 +444,7 @@ struct TogetherCountdownView: View {
     var body: some View {
         ZStack {
             if entry.startDate == nil {
-                Text("Set anniversary")
+                Text(widgetLocalized("Set anniversary", "Choisir votre date"))
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.7)
@@ -446,7 +452,7 @@ struct TogetherCountdownView: View {
             } else {
                 VStack(spacing: 1) {
                     HStack(spacing: 3) {
-                        Text("together for")
+                        Text(widgetLocalized("together for", "ensemble depuis"))
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                         Image(systemName: "heart.fill")
                             .font(.system(size: 12, weight: .bold))
@@ -547,7 +553,7 @@ struct TogetherDaysView: View {
                         VStack(spacing: 8) {
                             Image(systemName: "heart.fill")
                                 .font(.system(size: 28, weight: .bold))
-                            Text("Set anniversary")
+                            Text(widgetLocalized("Set anniversary", "Choisir votre date"))
                                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                         }
                         .foregroundStyle(.white)
@@ -563,7 +569,7 @@ struct TogetherDaysView: View {
                                 .minimumScaleFactor(0.55)
                                 .allowsTightening(true)
 
-                            Text("days together")
+                            Text(widgetLocalized("days together", "jours ensemble"))
                                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                                 .lineLimit(1)
                         }
@@ -601,7 +607,7 @@ struct TogetherDaysView: View {
                                 .allowsTightening(true)
                                 .frame(maxWidth: .infinity)
 
-                            Text("days")
+                            Text(widgetLocalized("days", "jours"))
                                 .font(.system(size: labelFontSize, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.white.opacity(0.84))
                                 .lineLimit(1)
@@ -633,8 +639,8 @@ struct TogetherCountdownWidget: Widget {
                 TogetherCountdownView(entry: entry)
             }
         }
-        .configurationDisplayName("Time Together")
-        .description("Shows the time elapsed since your anniversary.")
+        .configurationDisplayName(LocalizedStringKey(widgetLocalized("Time Together", "Temps ensemble")))
+        .description(LocalizedStringKey(widgetLocalized("Shows the time elapsed since your anniversary.", "Affiche le temps écoulé depuis votre date de couple.")))
         .supportedFamilies(families)
         .contentMarginsDisabled()
     }
@@ -659,8 +665,8 @@ struct TogetherDaysWidget: Widget {
                 TogetherDaysView(entry: entry)
             }
         }
-        .configurationDisplayName("Days Together")
-        .description("Shows only your days together on the Lock Screen.")
+        .configurationDisplayName(LocalizedStringKey(widgetLocalized("Days Together", "Jours ensemble")))
+        .description(LocalizedStringKey(widgetLocalized("Shows only your days together on the Lock Screen.", "Affiche vos jours ensemble sur l’écran verrouillé.")))
         .supportedFamilies(families)
         .contentMarginsDisabled()
     }
@@ -767,24 +773,30 @@ struct DistanceWidgetView: View {
 
     private var titleText: String {
         if entry.isTogether {
-            return "Together!"
+            return widgetLocalized("Together!", "Ensemble !")
         }
         guard let distanceKm = entry.distanceKm else {
             if entry.reason == "partner_sharing_disabled" {
-                return "Partner location off"
+                return widgetLocalized("Partner location off", "Localisation du partenaire désactivée")
             }
             if entry.reason == "missing_partner" {
-                return "Connect partner"
+                return widgetLocalized("Connect partner", "Associer votre partenaire")
             }
             if entry.reason == "missing_location" {
-                return "Open app to sync"
+                return widgetLocalized("Open app to sync", "Ouvrir l’app pour synchroniser")
             }
-            return "Share location"
+            return widgetLocalized("Share location", "Partager la localisation")
         }
         if distanceKm >= 10 {
-            return "\(Int(distanceKm.rounded())) km apart"
+            return widgetLocalized(
+                "\(Int(distanceKm.rounded())) km apart",
+                "À \(Int(distanceKm.rounded())) km"
+            )
         }
-        return "\(String(format: "%.1f", distanceKm)) km apart"
+        return widgetLocalized(
+            "\(String(format: "%.1f", distanceKm)) km apart",
+            "À \(String(format: "%.1f", distanceKm)) km"
+        )
     }
 
     var body: some View {
@@ -807,13 +819,13 @@ struct DistanceWidgetView: View {
                         .font(.system(size: family == .systemSmall ? 23 : 16, weight: .bold))
                         .foregroundStyle(.white)
 
-                    Text("Premium widget")
+                    Text(widgetLocalized("Premium widget", "Widget Premium"))
                         .font(.system(size: family == .systemSmall ? 18 : 17, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
 
-                    Text("Open app to unlock")
+                    Text(widgetLocalized("Open app to unlock", "Ouvrir l’app pour déverrouiller"))
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.82))
                         .lineLimit(1)
@@ -925,8 +937,8 @@ struct DistanceWidget: Widget {
                 DistanceWidgetView(entry: entry)
             }
         }
-        .configurationDisplayName("Our Distance")
-        .description("Shows your distance from your partner.")
+        .configurationDisplayName(LocalizedStringKey(widgetLocalized("Our Distance", "Notre distance")))
+        .description(LocalizedStringKey(widgetLocalized("Shows your distance from your partner.", "Affiche la distance avec votre partenaire.")))
         .supportedFamilies(families)
         .contentMarginsDisabled()
     }
@@ -943,7 +955,7 @@ struct CouplePhotoProvider: TimelineProvider {
     private let appGroupIdentifier = "group.com.thousandways.love"
 
     func placeholder(in context: Context) -> CouplePhotoEntry {
-        CouplePhotoEntry(date: Date(), partnerImage: nil, myImage: nil, senderName: "Your partner")
+        CouplePhotoEntry(date: Date(), partnerImage: nil, myImage: nil, senderName: widgetLocalized("Your partner", "Votre partenaire"))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CouplePhotoEntry) -> Void) {
@@ -960,11 +972,11 @@ struct CouplePhotoProvider: TimelineProvider {
 
     private func loadEntry() -> CouplePhotoEntry {
         guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            return CouplePhotoEntry(date: Date(), partnerImage: nil, myImage: nil, senderName: "Your partner")
+            return CouplePhotoEntry(date: Date(), partnerImage: nil, myImage: nil, senderName: widgetLocalized("Your partner", "Votre partenaire"))
         }
         let partnerImage = loadWidgetImage(at: container.appendingPathComponent("partner_photo.jpg"))
         let myImage = loadWidgetImage(at: container.appendingPathComponent("my_photo.jpg"))
-        var senderName = "Your partner"
+        var senderName = widgetLocalized("Your partner", "Votre partenaire")
         if let data = try? Data(contentsOf: container.appendingPathComponent("partner_photo.json")),
            let metadata = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             senderName = metadata["senderName"] as? String ?? senderName
@@ -1017,7 +1029,7 @@ struct CouplePhotoWidgetView: View {
                             Image(systemName: "camera.fill")
                                 .font(.system(size: 24, weight: .semibold))
                         }
-                        Text("Send each other a moment")
+                        Text(widgetLocalized("Send each other a moment", "Envoyez-vous un moment"))
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(Color(red: 0.72, green: 0.25, blue: 0.48))
@@ -1053,8 +1065,8 @@ struct CouplePhotoWidget: Widget {
                 CouplePhotoWidgetView(entry: entry)
             }
         }
-        .configurationDisplayName("Partner Photo")
-        .description("See the latest photo from your partner.")
+        .configurationDisplayName(LocalizedStringKey(widgetLocalized("Partner Photo", "Photo du partenaire")))
+        .description(LocalizedStringKey(widgetLocalized("See the latest photo from your partner.", "Voir la dernière photo de votre partenaire.")))
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }

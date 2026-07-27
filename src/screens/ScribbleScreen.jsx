@@ -28,6 +28,7 @@ import { colors, spacing, borderRadius, shadows, timing } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { storage } from '../utils/authStorage';
+import { getUiLocale, translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 const CANVAS_SIZE = width - 40;
@@ -263,13 +264,13 @@ const getPathsSignature = (paths = []) => (
     paths.map(path => `${path.id || ''}:${path.d || ''}:${path.color || ''}:${path.strokeWidth || ''}`).join('|')
 );
 
-const formatLiveTime = (date) => date.toLocaleTimeString([], {
+const formatLiveTime = (date) => date.toLocaleTimeString(getUiLocale(), {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
 }).replace(/\s?(AM|PM)$/i, '');
 
-const formatLiveDate = (date) => date.toLocaleDateString([], {
+const formatLiveDate = (date) => date.toLocaleDateString(getUiLocale(), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -529,7 +530,7 @@ const SpectrumColorPicker = ({ selectedColor, onColorChange }) => {
             {/* Shade bar - only visible when filter button is active */}
             {showShade && (
                 <View style={styles.spectrumShadeRow}>
-                    <Text style={styles.spectrumShadeLabel}>Shade</Text>
+                    <Text style={styles.spectrumShadeLabel}>{translateUiText("Shade")}</Text>
                     <View
                         style={styles.spectrumBarOuter}
                         onLayout={(e) => setShadeBarWidth(e.nativeEvent.layout.width)}
@@ -626,7 +627,7 @@ const BrushSlider = ({ min = 1, max = 30, value, onChange, selectedColor }) => {
             onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
             {...panResponder.panHandlers}
         >
-            <Text style={styles.sliderValueText}>{localValue}px</Text>
+            <Text style={styles.sliderValueText}>{localValue}{translateUiText("px")}</Text>
 
             <View style={styles.sliderTrackContainer}>
                 <View style={styles.sliderTrackBg}>
@@ -1335,7 +1336,7 @@ export const ScribbleScreen = ({
             const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (!permission.granted) {
-                Alert.alert('Permission required', 'Please allow photo library access to choose a live background.');
+                Alert.alert(translateUiText("Permission required"), translateUiText("Please allow photo library access to choose a live background."));
                 return;
             }
 
@@ -1358,7 +1359,7 @@ export const ScribbleScreen = ({
             setShowLiveGradientPicker(false);
         } catch (error) {
             console.error('Failed to pick live background image:', error);
-            Alert.alert('Could not set background', 'Please try choosing another image.');
+            Alert.alert(translateUiText("Could not set background"), translateUiText("Please try choosing another image."));
         }
     };
 
@@ -1513,7 +1514,7 @@ export const ScribbleScreen = ({
                                         onPress={() => onRequestPremiumRef.current?.()}
                                         activeOpacity={1}
                                         accessibilityRole="button"
-                                        accessibilityLabel="Unlock Draw Together"
+                                        accessibilityLabel={translateUiText("Unlock Draw Together")}
                                     />
                                 )}
                             </View>
@@ -1610,8 +1611,7 @@ export const ScribbleScreen = ({
                 )}
                 {showFreeTierCountdown && (
                     <View style={[styles.liveFreeTierCountdown, { bottom: insets.bottom + 92 }]}>
-                        <Text style={styles.liveFreeTierCountdownText}>
-                            Free tier left:{' '}
+                        <Text style={styles.liveFreeTierCountdownText}>{translateUiText("Free tier left:")}{' '}
                             <Text style={styles.liveFreeTierCountdownTime}>
                                 {formatFreeTime(remainingFreeSeconds)}
                             </Text>
@@ -1621,7 +1621,7 @@ export const ScribbleScreen = ({
                             activeOpacity={0.72}
                             accessibilityRole="button"
                         >
-                            <Text style={styles.liveFreeTierUpgrade}>Upgrade</Text>
+                            <Text style={styles.liveFreeTierUpgrade}>{translateUiText("Upgrade")}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -1789,7 +1789,7 @@ export const ScribbleScreen = ({
                                         styles.liveToggleText,
                                         liveMode && styles.liveToggleTextActive,
                                     ]}>
-                                        {liveMode ? 'Live On' : 'Live Mode'}
+                                        {liveMode ? translateUiText("Live On") : translateUiText("Live Mode")}
                                     </Text>
                                 </TouchableOpacity>
                             )}
@@ -1799,13 +1799,13 @@ export const ScribbleScreen = ({
 
                 {/* Canvas */}
                 <View style={styles.canvasTitleRow}>
-                    <Text style={styles.canvasHeaderTitle}>Canvas</Text>
+                    <Text style={styles.canvasHeaderTitle}>{translateUiText("Canvas")}</Text>
                     <View style={styles.canvasActions}>
                         <TouchableOpacity
                             style={styles.canvasActionButton}
                             onPress={handleUndo}
                             accessibilityRole="button"
-                            accessibilityLabel="Undo last stroke"
+                            accessibilityLabel={translateUiText("Undo last stroke")}
                         >
                             <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
                                 <Path
@@ -1821,7 +1821,7 @@ export const ScribbleScreen = ({
                             style={styles.canvasActionButton}
                             onPress={handleClear}
                             accessibilityRole="button"
-                            accessibilityLabel="Delete drawing"
+                            accessibilityLabel={translateUiText("Delete drawing")}
                         >
                             <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
                                 <Path
@@ -1934,8 +1934,8 @@ export const ScribbleScreen = ({
                                 {paths.length === 0 && !currentPath && !sentScribble && (
                                     <View style={styles.emptyState}>
                                         <Text style={styles.emptyEmoji}>💕</Text>
-                                        <Text style={[styles.emptyText, liveMode && styles.liveEmptyText]}>Draw with your finger</Text>
-                                        <Text style={[styles.emptyHint, liveMode && styles.liveEmptyHint]}>Express your love through art</Text>
+                                        <Text style={[styles.emptyText, liveMode && styles.liveEmptyText]}>{translateUiText("Draw with your finger")}</Text>
+                                        <Text style={[styles.emptyHint, liveMode && styles.liveEmptyHint]}>{translateUiText("Express your love through art")}</Text>
                                     </View>
                                 )}
 
@@ -1960,7 +1960,7 @@ export const ScribbleScreen = ({
                                         </View>
 
                                         {/* Sent Text */}
-                                        <Text style={styles.sentTitle}>Sent with love! 💕</Text>
+                                        <Text style={styles.sentTitle}>{translateUiText("Sent with love! 💕")}</Text>
 
                                         {/* Preview of sent scribble */}
                                         <View style={styles.sentPreviewInCanvas}>
@@ -1985,7 +1985,7 @@ export const ScribbleScreen = ({
                                         </View>
 
                                         {/* Hint */}
-                                        <Text style={styles.sentHint}>Tap anywhere to draw another</Text>
+                                        <Text style={styles.sentHint}>{translateUiText("Tap anywhere to draw another")}</Text>
                                     </TouchableOpacity>
                                 )}
 
@@ -2000,7 +2000,7 @@ export const ScribbleScreen = ({
                     <>
                         {/* Color Picker */}
                         <View style={styles.toolSection}>
-                            <Text style={styles.toolLabel}>Color</Text>
+                            <Text style={styles.toolLabel}>{translateUiText("Color")}</Text>
                             <SpectrumColorPicker
                                 selectedColor={selectedColor}
                                 onColorChange={setSelectedColor}
@@ -2009,7 +2009,7 @@ export const ScribbleScreen = ({
 
                         {/* Brush Size */}
                         <View style={styles.toolSection}>
-                            <Text style={styles.toolLabel}>Brush Size</Text>
+                            <Text style={styles.toolLabel}>{translateUiText("Brush Size")}</Text>
                             <BrushSlider
                                 min={1}
                                 max={30}
@@ -2024,16 +2024,14 @@ export const ScribbleScreen = ({
                 {/* Send Button */}
                 <View style={styles.sendContainer}>
                     {connectionError && (
-                        <Text style={styles.connectionErrorText}>
-                            Not connected to server. Please try again.
-                        </Text>
+                        <Text style={styles.connectionErrorText}>{translateUiText("Not connected to server. Please try again.")}</Text>
                     )}
                     {liveMode ? (
                         <View style={styles.liveStatusBox}>
                             <Text style={styles.liveStatusText}>
                                 {livePartnerAvailable
-                                    ? (liveSaving ? 'Live On - Saving...' : 'Live On - Auto sending')
-                                    : 'Live On - Partner offline'}
+                                    ? (liveSaving ? translateUiText("Live On - Saving...") : translateUiText("Live On - Auto sending"))
+                                    : translateUiText("Live On - Partner offline")}
                             </Text>
                         </View>
                     ) : hasPartner ? (
@@ -2047,7 +2045,7 @@ export const ScribbleScreen = ({
                                 !hasPendingScribbleChanges && styles.scribbleSendButtonDisabled,
                             ]}
                             accessibilityRole="button"
-                            accessibilityLabel="Send drawing to your love"
+                            accessibilityLabel={translateUiText("Send drawing to your love")}
                             accessibilityState={{ disabled: !hasPendingScribbleChanges }}
                         >
                             <LinearGradient
@@ -2065,14 +2063,12 @@ export const ScribbleScreen = ({
                                 <Text style={[
                                     styles.scribbleSendText,
                                     !hasPendingScribbleChanges && styles.scribbleSendTextIdle,
-                                ]}>
-                                    Send to Your Love
-                                </Text>
+                                ]}>{translateUiText("Send to Your Love")}</Text>
                             </View>
                         </TouchableOpacity>
                     ) : (
                         <Button
-                            title="Link Partner to Send 🔗"
+                            title={translateUiText("Link Partner to Send 🔗")}
                             onPress={onLinkPartner}
                             variant="primary"
                             size="xl"
@@ -2114,7 +2110,7 @@ export const ScribbleScreen = ({
                                         />
                                     </Svg>
                                 </TouchableOpacity>
-                                <Text style={styles.timelineHeaderText}>Widget Setup</Text>
+                                <Text style={styles.timelineHeaderText}>{translateUiText("Widget Setup")}</Text>
                                 <View style={{ width: 40 }} />
                             </View>
 
@@ -2124,10 +2120,8 @@ export const ScribbleScreen = ({
                             >
                                 {/* Intro */}
                                 <View style={styles.timelineIntro}>
-                                    <Text style={styles.timelineIntroTitle}>Add to Home Screen</Text>
-                                    <Text style={styles.timelineIntroSubtitle}>
-                                        Follow these simple steps to keep your stats visible at a glance on your iPhone.
-                                    </Text>
+                                    <Text style={styles.timelineIntroTitle}>{translateUiText("Add to Home Screen")}</Text>
+                                    <Text style={styles.timelineIntroSubtitle}>{translateUiText("Follow these simple steps to keep your stats visible at a glance on your iPhone.")}</Text>
                                 </View>
 
                                 {/* Steps Container */}
@@ -2143,9 +2137,8 @@ export const ScribbleScreen = ({
                                             </View>
                                         </View>
                                         <View style={styles.timelineStepContent}>
-                                            <Text style={styles.timelineStepTitle}>Long Press</Text>
-                                            <Text style={styles.timelineStepDesc}>
-                                                Go to your <Text style={{ fontWeight: 'bold', color: colors.text }}>home screen</Text> and long press on a <Text style={{ fontWeight: 'bold', color: colors.text }}>blank area</Text> of your wallpaper until the apps start to <Text style={{ fontWeight: 'bold', color: colors.text }}>jiggle</Text>.
+                                            <Text style={styles.timelineStepTitle}>{translateUiText("Long Press")}</Text>
+                                            <Text style={styles.timelineStepDesc}>{translateUiText("Go to your")}<Text style={{ fontWeight: 'bold', color: colors.text }}>{translateUiText("home screen")}</Text>{translateUiText("and long press on a")}<Text style={{ fontWeight: 'bold', color: colors.text }}>{translateUiText("blank area")}</Text>{translateUiText("of your wallpaper until the apps start to")}<Text style={{ fontWeight: 'bold', color: colors.text }}>{translateUiText("jiggle")}</Text>.
                                             </Text>
                                             {/* Illustration 1 */}
                                             <View style={styles.mockupContainer1}>
@@ -2182,12 +2175,12 @@ export const ScribbleScreen = ({
                                         </View>
                                         <View style={styles.timelineStepContent}>
                                             <Text style={styles.timelineStepTitle}>
-                                                {Platform.OS === 'ios' ? 'Tap "Edit"' : 'Tap "Widgets"'}
+                                                {Platform.OS === 'ios' ? translateUiText("Tap \"Edit\"") : translateUiText("Tap \"Widgets\"")}
                                             </Text>
                                             <Text style={styles.timelineStepDesc}>
                                                 {Platform.OS === 'ios'
-                                                    ? <>Look for the <Text style={{ fontWeight: 'bold', color: colors.text }}>Edit</Text> or <Text style={{ fontWeight: 'bold', color: colors.text }}>plus button</Text> that appears at the top of your screen.</>
-                                                    : <>A menu will appear. Tap on <Text style={{ fontWeight: 'bold', color: colors.text }}>Widgets</Text> to open the widget gallery.</>
+                                                    ? <>{translateUiText("Look for the")}<Text style={{ fontWeight: 'bold', color: colors.text }}>{translateUiText("Edit")}</Text>{translateUiText("or")}<Text style={{ fontWeight: 'bold', color: colors.text }}>{translateUiText("plus button")}</Text>{translateUiText("that appears at the top of your screen.")}</>
+                                                    : <>{translateUiText("A menu will appear. Tap on")}<Text style={{ fontWeight: 'bold', color: colors.text }}>{translateUiText("Widgets")}</Text>{translateUiText("to open the widget gallery.")}</>
                                                 }
                                             </Text>
                                             {/* Illustration 2 */}
@@ -2200,7 +2193,7 @@ export const ScribbleScreen = ({
                                                             </View>
                                                             <View style={[styles.mockupPlusIndicator, { left: 8 }]}>
                                                                 <View style={[styles.mockupPlusButton, { width: 36, height: 18, borderRadius: 9, backgroundColor: '#3b82f6' }]}>
-                                                                    <Text style={{ color: '#fff', fontSize: 7, fontWeight: 'bold' }}>Edit</Text>
+                                                                    <Text style={{ color: '#fff', fontSize: 7, fontWeight: 'bold' }}>{translateUiText("Edit")}</Text>
                                                                 </View>
                                                                 <View style={styles.mockupPlusRing} />
                                                             </View>
@@ -2221,15 +2214,15 @@ export const ScribbleScreen = ({
                                                             <View style={styles.androidPopupMenu}>
                                                                 <View style={styles.androidMenuItem}>
                                                                     <View style={styles.androidMenuIcon} />
-                                                                    <Text style={styles.androidMenuText}>Wallpaper</Text>
+                                                                    <Text style={styles.androidMenuText}>{translateUiText("Wallpaper")}</Text>
                                                                 </View>
                                                                 <View style={[styles.androidMenuItem, styles.androidMenuItemHighlight]}>
                                                                     <View style={[styles.androidMenuIcon, { backgroundColor: '#3b82f6' }]} />
-                                                                    <Text style={[styles.androidMenuText, { color: '#3b82f6', fontWeight: 'bold' }]}>Widgets</Text>
+                                                                    <Text style={[styles.androidMenuText, { color: '#3b82f6', fontWeight: 'bold' }]}>{translateUiText("Widgets")}</Text>
                                                                 </View>
                                                                 <View style={styles.androidMenuItem}>
                                                                     <View style={styles.androidMenuIcon} />
-                                                                    <Text style={styles.androidMenuText}>Settings</Text>
+                                                                    <Text style={styles.androidMenuText}>{translateUiText("Settings")}</Text>
                                                                 </View>
                                                             </View>
                                                         </>
@@ -2248,12 +2241,12 @@ export const ScribbleScreen = ({
                                         </View>
                                         <View style={styles.timelineStepContent}>
                                             <Text style={styles.timelineStepTitle}>
-                                                {Platform.OS === 'ios' ? 'Search App' : 'Find Penguin Couple'}
+                                                {Platform.OS === 'ios' ? translateUiText("Search App") : translateUiText("Find Penguin Couple")}
                                             </Text>
                                             <Text style={styles.timelineStepDesc}>
                                                 {Platform.OS === 'ios'
-                                                    ? 'Use the search bar in the widget gallery to find our app.'
-                                                    : 'Scroll through the widget list or search to find the Penguin Couple widget.'
+                                                    ? translateUiText("Use the search bar in the widget gallery to find our app.")
+                                                    : translateUiText("Scroll through the widget list or search to find the Penguin Couple widget.")
                                                 }
                                             </Text>
                                             {/* Illustration 3 */}
@@ -2265,7 +2258,7 @@ export const ScribbleScreen = ({
                                                                 <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
                                                                     <Path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="#999" strokeWidth={2} />
                                                                 </Svg>
-                                                                <Text style={{ fontSize: 8, color: colors.text, marginLeft: 4 }}>Penguin Couple</Text>
+                                                                <Text style={{ fontSize: 8, color: colors.text, marginLeft: 4 }}>{translateUiText("Penguin Couple")}</Text>
                                                                 <View style={styles.mockupCursor} />
                                                             </View>
                                                             <View style={styles.mockupAppResult}>
@@ -2273,29 +2266,29 @@ export const ScribbleScreen = ({
                                                                     <Image source={penguinLogo} style={{ width: 24, height: 24 }} resizeMode="contain" />
                                                                 </View>
                                                                 <View style={styles.mockupAppTexts}>
-                                                                    <Text style={{ fontSize: 9, fontWeight: '800', color: colors.text }}>Penguin Couple</Text>
-                                                                    <Text style={{ fontSize: 7, color: colors.textSecondary }}>Scribble Widget</Text>
+                                                                    <Text style={{ fontSize: 9, fontWeight: '800', color: colors.text }}>{translateUiText("Penguin Couple")}</Text>
+                                                                    <Text style={{ fontSize: 7, color: colors.textSecondary }}>{translateUiText("Scribble Widget")}</Text>
                                                                 </View>
                                                             </View>
                                                         </>
                                                     ) : (
                                                         <>
                                                             {/* Android widget list */}
-                                                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: colors.textSecondary, marginBottom: 8 }}>Widgets</Text>
+                                                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: colors.textSecondary, marginBottom: 8 }}>{translateUiText("Widgets")}</Text>
                                                             <View style={styles.androidWidgetList}>
                                                                 <View style={styles.androidWidgetItem}>
                                                                     <View style={[styles.androidWidgetIcon, { backgroundColor: '#ddd' }]} />
-                                                                    <Text style={styles.androidWidgetName}>Other App</Text>
+                                                                    <Text style={styles.androidWidgetName}>{translateUiText("Other App")}</Text>
                                                                 </View>
                                                                 <View style={[styles.androidWidgetItem, styles.androidWidgetItemHighlight]}>
                                                                     <View style={[styles.androidWidgetIcon, { backgroundColor: '#FFFFFF' }]}>
                                                                         <Image source={penguinLogo} style={{ width: 20, height: 20 }} resizeMode="contain" />
                                                                     </View>
-                                                                    <Text style={[styles.androidWidgetName, { color: '#3b82f6', fontWeight: 'bold' }]}>Penguin Couple</Text>
+                                                                    <Text style={[styles.androidWidgetName, { color: '#3b82f6', fontWeight: 'bold' }]}>{translateUiText("Penguin Couple")}</Text>
                                                                 </View>
                                                                 <View style={styles.androidWidgetItem}>
                                                                     <View style={[styles.androidWidgetIcon, { backgroundColor: '#ddd' }]} />
-                                                                    <Text style={styles.androidWidgetName}>Another App</Text>
+                                                                    <Text style={styles.androidWidgetName}>{translateUiText("Another App")}</Text>
                                                                 </View>
                                                             </View>
                                                         </>
@@ -2314,12 +2307,12 @@ export const ScribbleScreen = ({
                                         </View>
                                         <View style={styles.timelineStepContent}>
                                             <Text style={styles.timelineStepTitle}>
-                                                {Platform.OS === 'ios' ? 'Pick your Scribble' : 'Add Widget'}
+                                                {Platform.OS === 'ios' ? translateUiText("Pick your Scribble") : translateUiText("Add Widget")}
                                             </Text>
                                             <Text style={styles.timelineStepDesc}>
                                                 {Platform.OS === 'ios'
-                                                    ? <>Swipe to pick your preferred size, then tap <Text style={{ fontWeight: 'bold', color: colors.text }}>"Add Widget"</Text> at the bottom.</>
-                                                    : <>Tap the Penguin Couple widget, then press <Text style={{ fontWeight: 'bold', color: colors.text }}>"Add"</Text> to place it on your home screen.</>
+                                                    ? <>{translateUiText("Swipe to pick your preferred size, then tap")}<Text style={{ fontWeight: 'bold', color: colors.text }}>{translateUiText("\"Add Widget\"")}</Text>{translateUiText("at the bottom.")}</>
+                                                    : <>{translateUiText("Tap the Penguin Couple widget, then press")}<Text style={{ fontWeight: 'bold', color: colors.text }}>{translateUiText("\"Add\"")}</Text>{translateUiText("to place it on your home screen.")}</>
                                                 }
                                             </Text>
                                             {/* Illustration 4 */}
@@ -2328,7 +2321,7 @@ export const ScribbleScreen = ({
                                                     {Platform.OS === 'ios' ? (
                                                         <>
                                                             <View style={styles.mockupWidgetPreview}>
-                                                                <Text style={{ fontSize: 6, fontWeight: 'bold', color: '#666', marginBottom: 4 }}>Scribble</Text>
+                                                                <Text style={{ fontSize: 6, fontWeight: 'bold', color: '#666', marginBottom: 4 }}>{translateUiText("Scribble")}</Text>
                                                                 <View style={styles.mockupWidgetContent} />
                                                             </View>
                                                             <View style={styles.mockupDotsIndicator}>
@@ -2337,7 +2330,7 @@ export const ScribbleScreen = ({
                                                                 <View style={styles.mockupDot} />
                                                             </View>
                                                             <View style={styles.mockupAddWidgetBtn}>
-                                                                <Text style={styles.mockupAddWidgetBtnText}>Add Widget</Text>
+                                                                <Text style={styles.mockupAddWidgetBtnText}>{translateUiText("Add Widget")}</Text>
                                                             </View>
                                                         </>
                                                     ) : (
@@ -2346,12 +2339,12 @@ export const ScribbleScreen = ({
                                                             <View style={styles.mockupWidgetPreview}>
                                                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                                                                     <Image source={penguinLogo} style={{ width: 16, height: 16, marginRight: 4 }} resizeMode="contain" />
-                                                                    <Text style={{ fontSize: 6, fontWeight: 'bold', color: '#666' }}>Penguin Couple</Text>
+                                                                    <Text style={{ fontSize: 6, fontWeight: 'bold', color: '#666' }}>{translateUiText("Penguin Couple")}</Text>
                                                                 </View>
                                                                 <View style={styles.mockupWidgetContent} />
                                                             </View>
                                                             <View style={styles.mockupAddWidgetBtn}>
-                                                                <Text style={styles.mockupAddWidgetBtnText}>Add</Text>
+                                                                <Text style={styles.mockupAddWidgetBtnText}>{translateUiText("Add")}</Text>
                                                             </View>
                                                         </>
                                                     )}
@@ -2369,7 +2362,7 @@ export const ScribbleScreen = ({
                                     onPress={() => setShowWidgetTutorial(false)}
                                     activeOpacity={0.9}
                                 >
-                                    <Text style={styles.timelineReadyBtnText}>I'm Ready</Text>
+                                    <Text style={styles.timelineReadyBtnText}>{translateUiText("I'm Ready")}</Text>
                                 </TouchableOpacity>
                             </View>
                         </Animated.View>

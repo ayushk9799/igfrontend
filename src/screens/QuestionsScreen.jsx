@@ -18,6 +18,7 @@ import GradientBackground from '../components/GradientBackground';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { colors, spacing, borderRadius, timing } from '../theme';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const categoryConfig = {
     // Legacy categories
@@ -223,8 +224,8 @@ export const QuestionsScreen = ({
                             <Text style={styles.backIcon}>←</Text>
                         </TouchableOpacity>
                         <View style={styles.headerContent}>
-                            <Text style={styles.title}>Daily Question</Text>
-                            <Text style={styles.subtitle}>Connect deeper together 💫</Text>
+                            <Text style={styles.title}>{translateUiText("Daily Question")}</Text>
+                            <Text style={styles.subtitle}>{translateUiText("Connect deeper together 💫")}</Text>
                         </View>
                     </View>
 
@@ -264,19 +265,19 @@ export const QuestionsScreen = ({
                             {yourAnswer ? (
                                 <View style={styles.answeredSection}>
                                     <View style={styles.answerHeader}>
-                                        <Text style={styles.answerLabel}>Your Answer</Text>
+                                        <Text style={styles.answerLabel}>{translateUiText("Your Answer")}</Text>
                                         <View style={styles.answeredBadgeContainer}>
-                                            <Text style={styles.answeredBadge}>✓ Submitted</Text>
+                                            <Text style={styles.answeredBadge}>{translateUiText("✓ Submitted")}</Text>
                                         </View>
                                     </View>
                                     <Text style={styles.yourAnswerText}>{yourAnswer}</Text>
-                                    <Text style={styles.answerTime}>Answered today, 9:00 AM</Text>
+                                    <Text style={styles.answerTime}>{translateUiText("Answered today, 9:00 AM")}</Text>
                                 </View>
                             ) : (
                                 <View style={styles.inputSection}>
                                     <TextInput
                                         style={styles.answerInput}
-                                        placeholder="Share your thoughts..."
+                                        placeholder={translateUiText("Share your thoughts...")}
                                         placeholderTextColor={colors.textMuted}
                                         value={answer}
                                         onChangeText={setAnswer}
@@ -286,7 +287,7 @@ export const QuestionsScreen = ({
                                     />
                                     <Animated.View style={{ transform: [{ scale: submitPulse }] }}>
                                         <Button
-                                            title="Submit Answer ✨"
+                                            title={translateUiText("Submit Answer ✨")}
                                             onPress={handleSubmit}
                                             variant="primary"
                                             size="lg"
@@ -302,7 +303,7 @@ export const QuestionsScreen = ({
                     {/* Partner's Answer Section */}
                     <View style={styles.answerSection}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>{partnerName}'s Answer</Text>
+                            <Text style={styles.sectionTitle}>{partnerName}{translateUiText("'s Answer")}</Text>
                         </View>
 
                         {canViewPartnerAnswer ? (
@@ -321,8 +322,8 @@ export const QuestionsScreen = ({
                                             <View style={styles.revealContent}>
                                                 <Text style={styles.revealEmoji}>💝</Text>
                                                 <View>
-                                                    <Text style={styles.revealTitle}>Ready to see!</Text>
-                                                    <Text style={styles.revealText}>Tap to reveal their answer</Text>
+                                                    <Text style={styles.revealTitle}>{translateUiText("Ready to see!")}</Text>
+                                                    <Text style={styles.revealText}>{translateUiText("Tap to reveal their answer")}</Text>
                                                 </View>
                                             </View>
                                             <View style={styles.revealArrow}>
@@ -333,10 +334,10 @@ export const QuestionsScreen = ({
                                 >
                                     <Card variant="glass" padding="lg" style={styles.partnerAnswerCard}>
                                         <Text style={styles.partnerAnswerText}>
-                                            {partnerAnswer || "They haven't answered yet"}
+                                            {partnerAnswer || translateUiText("They haven't answered yet")}
                                         </Text>
                                         {partnerAnswer && (
-                                            <Text style={styles.answerTime}>Answered today, 10:30 AM</Text>
+                                            <Text style={styles.answerTime}>{translateUiText("Answered today, 10:30 AM")}</Text>
                                         )}
                                     </Card>
                                 </FlipCard>
@@ -347,10 +348,8 @@ export const QuestionsScreen = ({
                                     <View style={styles.lockIcon}>
                                         <Text style={styles.lockEmoji}>🔒</Text>
                                     </View>
-                                    <Text style={styles.lockTitle}>Answer to Unlock</Text>
-                                    <Text style={styles.lockText}>
-                                        Share your thoughts first to see their response
-                                    </Text>
+                                    <Text style={styles.lockTitle}>{translateUiText("Answer to Unlock")}</Text>
+                                    <Text style={styles.lockText}>{translateUiText("Share your thoughts first to see their response")}</Text>
                                 </View>
                             </Card>
                         )}
@@ -359,9 +358,9 @@ export const QuestionsScreen = ({
                     {/* History */}
                     <View style={styles.historySection}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>Past Questions</Text>
+                            <Text style={styles.sectionTitle}>{translateUiText("Past Questions")}</Text>
                             <TouchableOpacity>
-                                <Text style={styles.viewAllLink}>View all →</Text>
+                                <Text style={styles.viewAllLink}>{translateUiText("View all →")}</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -372,10 +371,8 @@ export const QuestionsScreen = ({
                                         <Text style={{ fontSize: 20 }}>📸</Text>
                                     </View>
                                     <View style={styles.historyText}>
-                                        <Text style={styles.historyQuestion} numberOfLines={1}>
-                                            "What's your favorite memory of us?"
-                                        </Text>
-                                        <Text style={styles.historyDate}>Yesterday</Text>
+                                        <Text style={styles.historyQuestion} numberOfLines={1}>{translateUiText("\"What's your favorite memory of us?\"")}</Text>
+                                        <Text style={styles.historyDate}>{translateUiText("Yesterday")}</Text>
                                     </View>
                                     <View style={styles.historyStatus}>
                                         <Text style={styles.historyStatusText}>✓✓</Text>

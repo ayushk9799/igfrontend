@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const CONNECTION_TOPICS = Object.values(TOPIC_CATEGORIES);
 
@@ -84,8 +85,8 @@ const QuestionsOnboardingScreen = ({ onComplete }) => {
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <View style={[styles.page, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 14 }]}>
                 <View style={styles.titleBlock}>
-                    <Text style={styles.title}>Deepen your connection</Text>
-                    <Text style={styles.subtitle}>There’s always something new to discover together.</Text>
+                    <Text style={styles.title}>{translateUiText("Deepen your connection")}</Text>
+                    <Text style={styles.subtitle}>{translateUiText("There’s always something new to discover together.")}</Text>
                 </View>
 
                 <ScrollView
@@ -117,8 +118,8 @@ const QuestionsOnboardingScreen = ({ onComplete }) => {
                                     </View>
                                 )}
                                 <View style={styles.topicCopy}>
-                                    <Text style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{topic.title}</Text>
-                                    <Text style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{topic.subtitle}</Text>
+                                    <Text style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{translateUiText(topic.title)}</Text>
+                                    <Text style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{translateUiText(topic.subtitle)}</Text>
                                 </View>
                             </LinearGradient>
                         </Animated.View>
@@ -128,7 +129,7 @@ const QuestionsOnboardingScreen = ({ onComplete }) => {
                 <View style={styles.footer}>
                     <TouchableOpacity onPress={finish} activeOpacity={0.86} style={styles.buttonShadow}>
                         <LinearGradient colors={['#FF6B9C', '#E94D91']} style={styles.continueButton}>
-                            <Text style={styles.continueText}>Continue</Text>
+                            <Text style={styles.continueText}>{translateUiText("Continue")}</Text>
                             <Text style={styles.continueArrow}>→</Text>
                         </LinearGradient>
                     </TouchableOpacity>

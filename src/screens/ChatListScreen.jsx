@@ -19,15 +19,16 @@ import { API_BASE } from '../constants/Api';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { storage } from '../utils/authStorage';
+import { formatRelativeTime, getUiLocale, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const TOPIC_CONFIG = TOPIC_CATEGORIES;
 
 // Fallback config for categories without images
 const FALLBACK_CONFIG = {
-    dailychallenge: { title: 'Daily Challenge', emoji: '⭐', gradient: ['#FFE0B2', '#FFF3E0'], textColor: '#E65100' },
-    likelyto: { title: 'Most Likely To', emoji: '🎯', gradient: ['#E8EAF6', '#C5CAE9'], textColor: '#283593' },
-    neverhaveiever: { title: 'Never Have I Ever', emoji: '🤫', gradient: ['#FCE4EC', '#F8BBD0'], textColor: '#AD1457' },
-    deep: { title: 'Deep Talk', emoji: '💭', gradient: ['#EDE7F6', '#D1C4E9'], textColor: '#4527A0' },
+    dailychallenge: { title: "Daily Challenge", emoji: '⭐', gradient: ['#FFE0B2', '#FFF3E0'], textColor: '#E65100' },
+    likelyto: { title: "Most Likely To", emoji: '🎯', gradient: ['#E8EAF6', '#C5CAE9'], textColor: '#283593' },
+    neverhaveiever: { title: "Never Have I Ever", emoji: '🤫', gradient: ['#FCE4EC', '#F8BBD0'], textColor: '#AD1457' },
+    deep: { title: "Deep Talk", emoji: '💭', gradient: ['#EDE7F6', '#D1C4E9'], textColor: '#4527A0' },
 };
 
 const DEFAULT_GRADIENT = ['#F3E8FF', '#E8D5FF'];
@@ -168,11 +169,11 @@ export default function ChatListScreen({
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
 
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
+        if (diffMins < 1) return formatRelativeTime(0, 'minute');
+        if (diffMins < 60) return formatRelativeTime(-diffMins, 'minute');
+        if (diffHours < 24) return formatRelativeTime(-diffHours, 'hour');
+        if (diffDays < 7) return formatRelativeTime(-diffDays, 'day');
+        return date.toLocaleDateString(getUiLocale());
     };
 
     const getTopicConfig = (source) => {
@@ -222,7 +223,7 @@ export default function ChatListScreen({
                     {/* Header with source and time */}
                     <View style={styles.chatHeader}>
                         <Text style={[styles.chatSource, { color: config.textColor }]}>
-                            {config.title}
+                            {translateUiText(config.title)}
                         </Text>
                         <Text style={styles.chatTime}>
                             {formatTime(item.lastMessageAt || item.createdAt)}
@@ -237,7 +238,7 @@ export default function ChatListScreen({
                     {/* Last message or status */}
                     <View style={styles.chatFooter}>
                         <Text style={styles.lastMessage} numberOfLines={1}>
-                            {item.lastMessagePreview || 'New chat thread'}
+                            {item.lastMessagePreview || translateUiText("New chat thread")}
                         </Text>
                     </View>
                 </View>
@@ -257,9 +258,9 @@ export default function ChatListScreen({
     const renderEmpty = () => (
         <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>💬</Text>
-            <Text style={styles.emptyTitle}>No chats yet</Text>
+            <Text style={styles.emptyTitle}>{translateUiText("No chats yet")}</Text>
             <Text style={styles.emptyText}>
-                Answer questions with {partnerName} to start discussions!
+                {translateUiTemplate("Answer questions with {{0}} to start discussions!", [partnerName])}
             </Text>
         </View>
     );
@@ -269,7 +270,7 @@ export default function ChatListScreen({
             <GradientBackground variant="light" showOrbs={true} showParticles={true}>
                 <View style={[styles.container, styles.centerContent, { paddingTop: insets.top, backgroundColor: 'transparent' }]}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={styles.loadingText}>Loading chats...</Text>
+                    <Text style={styles.loadingText}>{translateUiText("Loading chats...")}</Text>
                 </View>
             </GradientBackground>
         );
@@ -280,7 +281,7 @@ export default function ChatListScreen({
             <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Chats</Text>
+                    <Text style={styles.headerTitle}>{translateUiText("Chats")}</Text>
                 </View>
 
                 <TouchableOpacity
@@ -289,7 +290,7 @@ export default function ChatListScreen({
                     disabled={liveChatDisabled || !onLiveChatPress}
                     activeOpacity={0.84}
                     accessibilityRole="button"
-                    accessibilityLabel="Open Live Chat Mode"
+                    accessibilityLabel={translateUiText("Open Video Chat")}
                 >
                     <LinearGradient
                         colors={liveChatDisabled ? ['#D9D3D8', '#C8C1C8'] : ['#F94E82', '#D83C73']}
@@ -301,20 +302,18 @@ export default function ChatListScreen({
                     </LinearGradient>
                     <View style={styles.liveChatCopy}>
                         <View style={styles.liveChatTitleRow}>
-                            <Text style={styles.liveChatTitle}>Live Chat Mode</Text>
+                            <Text style={styles.liveChatTitle}>{translateUiText("Video Chat")}</Text>
                             <View style={styles.liveBadge}>
-                                <Text style={styles.liveBadgeText}>LIVE</Text>
+                                <Text style={styles.liveBadgeText}>{translateUiText("LIVE")}</Text>
                             </View>
                         </View>
                         {liveChatDisabled && (
-                            <Text style={styles.liveChatSubtitle} numberOfLines={1}>
-                                Available after your video call ends
-                            </Text>
+                            <Text style={styles.liveChatSubtitle} numberOfLines={1}>{translateUiText("Available after your video call ends")}</Text>
                         )}
                         <View style={styles.livePresenceRow}>
                             <View style={[styles.livePresenceDot, partnerOnline && styles.livePresenceDotOnline]} />
                             <Text style={styles.livePresenceText}>
-                                {partnerOnline ? `${partnerName} is online` : `${partnerName} can join when online`}
+                                {partnerOnline ? translateUiTemplate("{{0}} is online", [partnerName]) : translateUiTemplate("{{0}} can join when online", [partnerName])}
                             </Text>
                         </View>
                     </View>
@@ -324,9 +323,9 @@ export default function ChatListScreen({
                 {/* Error state */}
                 {error && (
                     <View style={styles.errorContainer}>
-                        <Text style={styles.errorText}>{error}</Text>
+                        <Text style={styles.errorText}>{translateUiText(error)}</Text>
                         <TouchableOpacity style={styles.retryButton} onPress={fetchChats}>
-                            <Text style={styles.retryText}>Try Again</Text>
+                            <Text style={styles.retryText}>{translateUiText("Try Again")}</Text>
                         </TouchableOpacity>
                     </View>
                 )}

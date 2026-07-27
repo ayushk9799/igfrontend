@@ -19,6 +19,12 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     private let trackingApiBaseKey = "distance_widget_tracking_api_base"
     private let trackingEnabledKey = "distance_widget_background_tracking_enabled"
 
+    private func localized(_ english: String, _ french: String) -> String {
+        Locale.preferredLanguages.first?.lowercased().hasPrefix("fr") == true
+            ? french
+            : english
+    }
+
     override init() {
         super.init()
 
@@ -53,7 +59,7 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             // Create scribble data structure
             let scribbleData: [String: Any] = [
                 "paths": pathsArray,
-                "senderName": metadata["senderName"] ?? "Your Love",
+                "senderName": metadata["senderName"] ?? localized("Your Love", "Votre amour"),
                 "timestamp": metadata["timestamp"] ?? ISO8601DateFormatter().string(from: Date()),
                 "canvasWidth": metadata["canvasWidth"] ?? 350,
                 "canvasHeight": metadata["canvasHeight"] ?? metadata["canvasWidth"] ?? 350,
@@ -118,7 +124,7 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             // Save metadata as JSON
             let metadataURL = containerURL.appendingPathComponent("scribble_meta.json")
             let metadataDict: [String: Any] = [
-                "senderName": metadata["senderName"] ?? "Your Love",
+                "senderName": metadata["senderName"] ?? localized("Your Love", "Votre amour"),
                 "timestamp": metadata["timestamp"] ?? ISO8601DateFormatter().string(from: Date()),
                 "savedAt": ISO8601DateFormatter().string(from: Date())
             ]
@@ -165,7 +171,7 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             do {
                 try data.write(to: containerURL.appendingPathComponent("\(filePrefix).jpg"), options: .atomic)
                 let photoMetadata: [String: Any] = [
-                    "senderName": metadata["senderName"] ?? "Your partner",
+                    "senderName": metadata["senderName"] ?? self.localized("Your partner", "Votre partenaire"),
                     "timestamp": metadata["timestamp"] ?? ISO8601DateFormatter().string(from: Date()),
                     "revision": metadata["revision"] ?? Int(Date().timeIntervalSince1970 * 1000)
                 ]

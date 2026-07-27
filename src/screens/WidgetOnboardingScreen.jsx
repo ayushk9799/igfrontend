@@ -15,6 +15,7 @@ import LottieView from 'lottie-react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_COMPACT = SCREEN_HEIGHT < 760;
@@ -34,35 +35,35 @@ const CANVAS_PLACED_Y = PHONE_PREVIEW_TOP
 const PARTNER_PHOTO_SIZE = IS_COMPACT ? 240 : 260;
 
 const partnerPhotoPreviews = [
-    { image: require('../../assets/photo-crops-final/01-moon-sky.png'), caption: 'Good evening' },
-    { image: require('../../assets/photo-crops-final/02-watering-plants.png'), caption: 'Plant duty' },
-    { image: require('../../assets/photo-crops-final/03-coffee-portrait.png'), caption: 'Coffee time' },
-    { image: require('../../assets/photo-crops-final/04-couple-mugs.png'), caption: 'Our mugs' },
+    { image: require('../../assets/photo-crops-final/01-moon-sky.png'), caption: "Good evening" },
+    { image: require('../../assets/photo-crops-final/02-watering-plants.png'), caption: "Plant duty" },
+    { image: require('../../assets/photo-crops-final/03-coffee-portrait.png'), caption: "Coffee time" },
+    { image: require('../../assets/photo-crops-final/04-couple-mugs.png'), caption: "Our mugs" },
 ];
 
 const slides = [
     {
         key: 'distance',
-        label: 'Our Distance',
-        caption: 'Distance widget on ',
+        label: "Our Distance",
+        caption: "Distance widget on ",
         captionStrong: 'Lock Screen',
     },
     {
         key: 'together',
-        label: 'Together For',
-        caption: 'Together for on ',
+        label: "Together For",
+        caption: "Together for on ",
         captionStrong: 'Lock Screen',
     },
     {
         key: 'canvas',
-        label: 'Shared Canvas',
-        caption: 'Share hand-drawn doodles on ',
+        label: "Shared Canvas",
+        caption: "Share hand-drawn doodles on ",
         captionStrong: 'Home Screen',
     },
     {
         key: 'photo',
-        label: 'Partner Photo',
-        caption: 'Partner photos on ',
+        label: "Partner Photo",
+        caption: "Partner photos on ",
         captionStrong: 'Home Screen',
     },
 ];
@@ -122,7 +123,7 @@ const LockScreenSurface = ({ children }) => (
             <Text style={styles.lockStatusTime}>9:41</Text>
             <LockStatusIcons />
         </View>
-        <Text style={styles.lockDate}>Monday, June 2</Text>
+        <Text style={styles.lockDate}>{translateUiText("Monday, June 2")}</Text>
         <Text style={styles.lockTime}>9:41</Text>
         {children}
     </LinearGradient>
@@ -194,24 +195,24 @@ const TogetherWidget = ({ relationshipStartDate }) => {
         ? Math.max(0, Math.floor((now - start) / 1000))
         : (1096 * 86400) + (21 * 3600) + (25 * 60) + 31;
     const parts = [
-        { value: Math.floor(elapsed / 86400), label: 'days' },
-        { value: String(Math.floor((elapsed % 86400) / 3600)).padStart(2, '0'), label: 'hr' },
-        { value: String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0'), label: 'min' },
-        { value: String(elapsed % 60).padStart(2, '0'), label: 'sec' },
+        { value: Math.floor(elapsed / 86400), label: translateUiText("days") },
+        { value: String(Math.floor((elapsed % 86400) / 3600)).padStart(2, '0'), label: translateUiText("hr") },
+        { value: String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0'), label: translateUiText("min") },
+        { value: String(elapsed % 60).padStart(2, '0'), label: translateUiText("sec") },
     ];
 
     return (
         <LockScreenSurface>
             <View style={styles.togetherAccessory}>
                 <View style={styles.togetherHeading}>
-                    <Text style={styles.togetherHeadingText}>together for</Text>
+                    <Text style={styles.togetherHeadingText}>{translateUiText("together for")}</Text>
                     <WhiteHeart size={12} />
                 </View>
                 <View style={styles.togetherValues}>
                     {parts.map(part => (
                         <View key={part.label} style={styles.togetherColumn}>
                             <Text numberOfLines={1} adjustsFontSizeToFit style={styles.togetherValue}>{part.value}</Text>
-                            <Text style={styles.togetherLabel}>{part.label}</Text>
+                            <Text style={styles.togetherLabel}>{translateUiText(part.label)}</Text>
                         </View>
                     ))}
                 </View>
@@ -348,7 +349,7 @@ const PartnerPhotoPreview = ({ isActive }) => {
                 >
                     <Animated.Image source={preview.image} style={styles.partnerPhotoImage} resizeMode="cover" />
                     <View style={styles.partnerPhotoCaption}>
-                        <Text style={styles.partnerPhotoCaptionText}>{preview.caption}</Text>
+                        <Text style={styles.partnerPhotoCaptionText}>{translateUiText(preview.caption)}</Text>
                     </View>
                 </Animated.View>
             ))}
@@ -423,8 +424,8 @@ const WidgetOnboardingScreen = ({
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <View style={[styles.page, { paddingTop: insets.top + 8 }]}> 
                 <View style={styles.intro}>
-                    <Text style={styles.headlineMuted}>Stay Updated,</Text>
-                    <Text style={styles.headline}>With Widgets</Text>
+                    <Text style={styles.headlineMuted}>{translateUiText("Stay Updated,")}</Text>
+                    <Text style={styles.headline}>{translateUiText("With Widgets")}</Text>
                 </View>
 
                 <View style={styles.middleContent}>
@@ -450,8 +451,8 @@ const WidgetOnboardingScreen = ({
 
                     <View style={styles.showcaseCopy}>
                         <Text style={styles.showcaseCaption}>
-                            {activeSlide.caption}
-                            <Text style={styles.showcaseCaptionStrong}>{activeSlide.captionStrong}</Text>
+                            {translateUiText(activeSlide.caption)}
+                            <Text style={styles.showcaseCaptionStrong}>{translateUiText(activeSlide.captionStrong)}</Text>
                         </Text>
                     </View>
                 </View>
@@ -462,7 +463,7 @@ const WidgetOnboardingScreen = ({
                     </View>
                     <TouchableOpacity onPress={continueFlow} activeOpacity={0.86} style={styles.buttonShadow}>
                         <View style={styles.continueButton}>
-                            <Text style={styles.continueText}>{activeIndex === slides.length - 1 ? 'Get started' : 'Continue'}</Text>
+                            <Text style={styles.continueText}>{activeIndex === slides.length - 1 ? translateUiText("Get started") : translateUiText("Continue")}</Text>
                             <Text style={styles.continueArrow}>→</Text>
                         </View>
                     </TouchableOpacity>

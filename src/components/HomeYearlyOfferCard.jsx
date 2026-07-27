@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const formatCountdown = remainingMs => {
     const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
@@ -52,7 +53,7 @@ export default function HomeYearlyOfferCard({
     return (
         <TouchableOpacity
             accessibilityRole="button"
-            accessibilityLabel={`Open yearly offer, ${countdown} remaining`}
+            accessibilityLabel={translateUiTemplate("Open yearly offer, {{0}} remaining", [countdown])}
             activeOpacity={0.88}
             onPress={onPress}
             style={styles.card}
@@ -67,9 +68,9 @@ export default function HomeYearlyOfferCard({
                 />
             </View>
             <View style={styles.copy}>
-                <Text style={styles.title}>Your yearly offer</Text>
+                <Text style={styles.title}>{translateUiText("Your yearly offer")}</Text>
                 <View style={styles.countdownRow}>
-                    <Text style={styles.endsText}>Ends in</Text>
+                    <Text style={styles.endsText}>{translateUiText("Ends in")}</Text>
                     <Text style={styles.countdownText}>{countdown}</Text>
                 </View>
             </View>

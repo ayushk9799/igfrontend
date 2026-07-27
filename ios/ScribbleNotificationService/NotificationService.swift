@@ -10,6 +10,12 @@ import Foundation
 import UserNotifications
 import WidgetKit
 
+private func notificationLocalized(_ english: String, _ french: String) -> String {
+    Locale.preferredLanguages.first?.lowercased().hasPrefix("fr") == true
+        ? french
+        : english
+}
+
 class NotificationService: UNNotificationServiceExtension {
     
     var contentHandler: ((UNNotificationContent) -> Void)?
@@ -39,7 +45,7 @@ class NotificationService: UNNotificationServiceExtension {
            let imageUrl = URL(string: imageUrlString) {
             fetchPartnerPhoto(
                 from: imageUrl,
-                senderName: userInfo["senderName"] as? String ?? "Your partner",
+                senderName: userInfo["senderName"] as? String ?? notificationLocalized("Your partner", "Votre partenaire"),
                 timestamp: userInfo["timestamp"] as? String ?? ISO8601DateFormatter().string(from: Date()),
                 revision: parseRevision(userInfo["revision"])
             )
@@ -64,7 +70,7 @@ class NotificationService: UNNotificationServiceExtension {
             let legacyCanvasWidth = parseDimension(userInfo["canvasWidth"], fallback: 350)
             saveAndReloadWidget(
                 paths: paths,
-                senderName: userInfo["senderName"] as? String ?? "Your Love",
+                senderName: userInfo["senderName"] as? String ?? notificationLocalized("Your Love", "Votre amour"),
                 timestamp: userInfo["timestamp"] as? String ?? ISO8601DateFormatter().string(from: Date()),
                 canvasWidth: legacyCanvasWidth,
                 canvasHeight: parseDimension(userInfo["canvasHeight"], fallback: legacyCanvasWidth),
@@ -147,7 +153,7 @@ class NotificationService: UNNotificationServiceExtension {
 
             self.saveAndReloadWidget(
                 paths: paths,
-                senderName: scribble["senderName"] as? String ?? "Your Love",
+                senderName: scribble["senderName"] as? String ?? notificationLocalized("Your Love", "Votre amour"),
                 timestamp: scribble["timestamp"] as? String ?? ISO8601DateFormatter().string(from: Date()),
                 canvasWidth: canvasWidth,
                 canvasHeight: canvasHeight,

@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Penguin Couple</string>
+    <string name="default_notification_channel_id">partner-updates</string>
+    <string name="widget_scribble_label">그림</string>
+    <string name="widget_description">사랑하는 사람의 그림 보기</string>
+    <string name="widget_scribble_description">파트너가 보낸 그림</string>
+    <string name="together_days_widget_label">함께한 날</string>
+    <string name="together_countdown_widget_label">함께한 시간</string>
+    <string name="distance_widget_label">우리의 거리</string>
+    <string name="relationship_widget_description">커플 위젯 미리보기</string>
+    <string name="together_days_widget_description">함께한 날짜 표시</string>
+    <string name="together_countdown_widget_description">함께한 시간 표시</string>
+    <string name="distance_widget_description">파트너와의 거리 표시</string>
+    <string name="couple_photo_widget_label">파트너 사진</string>
+    <string name="couple_photo_widget_description">파트너의 최신 사진 보기</string>
+    <string name="couple_photo_empty">서로의 순간을 보내 보세요</string>
+    <string name="couple_photo_my_image_description">내가 마지막으로 보낸 사진</string>
+    <string name="widget_your_partner">내 파트너</string>
+    <string name="widget_your_love">내 사랑</string>
+    <string name="widget_from_partner">%1$s님이 보냄</string>
+    <string name="widget_set_date">날짜 설정</string>
+    <string name="widget_set_anniversary">기념일 설정</string>
+    <string name="widget_days">일</string>
+    <string name="widget_together_for">함께한 지</string>
+    <string name="widget_hours_short">시간</string>
+    <string name="widget_minutes_short">분</string>
+    <string name="widget_seconds_short">초</string>
+    <string name="widget_together">우리는 함께예요!</string>
+    <string name="widget_partner_location_off">파트너 위치 정보 꺼짐</string>
+    <string name="widget_connect_partner">파트너와 연결</string>
+    <string name="widget_open_app_sync">앱을 열어 동기화</string>
+    <string name="widget_share_location">위치 공유</string>
+    <string name="widget_distance_format">우리의 거리: %1$s km</string>
+    <string name="widget_premium">프리미엄 위젯</string>
+    <string name="widget_open_app_unlock">앱을 열어 잠금 해제</string>
+</resources>

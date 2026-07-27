@@ -5,11 +5,18 @@ import LinearGradient from 'react-native-linear-gradient';
 import { categoryConfig } from './categoryConfig';
 import { spacing } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 const FORMAT_FALLBACKS = {
     wouldyourather: ['Option A', 'Option B'],
     thisorthat: ['This', 'That'],
 };
+
+const normalizeOption = option => (
+    option && typeof option === 'object'
+        ? { value: option.value, label: option.label ?? option.value }
+        : { value: option, label: option }
+);
 
 const ChoiceQuestionCard = React.memo(({
     task,
@@ -27,7 +34,10 @@ const ChoiceQuestionCard = React.memo(({
     onNavigateToPremium = () => { },
 }) => {
     const config = categoryConfig[task.category] || categoryConfig.deep;
-    const options = task.options?.length > 0 ? task.options : FORMAT_FALLBACKS[task.category] || ['Yes', 'No'];
+    const rawOptions = task.optionItems?.length > 0
+        ? task.optionItems
+        : (task.options?.length > 0 ? task.options : FORMAT_FALLBACKS[task.category] || ['Yes', 'No']);
+    const options = rawOptions.map(normalizeOption);
     const [selectedAnswer, setSelectedAnswer] = useState(isAnswered ? previousAnswer : null);
     const [locked, setLocked] = useState(isAnswered);
     const lastTaskIdRef = useRef(task._id);
@@ -40,7 +50,7 @@ const ChoiceQuestionCard = React.memo(({
         }
     }, [task._id, isAnswered, previousAnswer]);
 
-    const handleSelect = async (choice) => {
+    const handleSelect = async ({ value }) => {
         if (locked || isAnswered) return;
         if (isLocked) {
             onNavigateToPremium?.();
@@ -51,11 +61,11 @@ const ChoiceQuestionCard = React.memo(({
             return;
         }
 
-        setSelectedAnswer(choice);
+        setSelectedAnswer(value);
         setLocked(true);
 
         try {
-            const submitted = await onAnswerSubmit?.(task.originalIndex ?? index, choice, 'choice');
+            const submitted = await onAnswerSubmit?.(task.originalIndex ?? index, value, 'choice');
             if (submitted === false) {
                 setSelectedAnswer(null);
                 setLocked(false);
@@ -63,7 +73,7 @@ const ChoiceQuestionCard = React.memo(({
             }
 
             if (autoAdvanceOnSubmit && onSubmit) {
-                onSubmit(choice);
+                onSubmit(value);
             }
         } catch (err) {
             console.error('handleSelect error:', err);
@@ -78,7 +88,7 @@ const ChoiceQuestionCard = React.memo(({
                 <View style={styles.topRow}>
                     <View style={styles.categoryBadge}>
                         <Text style={styles.badgeEmoji}>{config.emoji || '💬'}</Text>
-                        <Text style={styles.categoryText}>{config.label}</Text>
+                        <Text style={styles.categoryText}>{translateUiText(config.label)}</Text>
                     </View>
                 </View>
 
@@ -89,10 +99,10 @@ const ChoiceQuestionCard = React.memo(({
                 <View style={styles.choicesColumn}>
                     {options.map((choice) => (
                         <TouchableOpacity
-                            key={choice}
+                            key={String(choice.value)}
                             style={[
                                 styles.choiceButton,
-                                selectedAnswer === choice && styles.choiceSelected,
+                                selectedAnswer === choice.value && styles.choiceSelected,
                             ]}
                             onPress={() => handleSelect(choice)}
                             disabled={locked || isAnswered}
@@ -100,9 +110,9 @@ const ChoiceQuestionCard = React.memo(({
                         >
                             <Text style={[
                                 styles.choiceLabel,
-                                selectedAnswer === choice && styles.choiceLabelSelected,
+                                selectedAnswer === choice.value && styles.choiceLabelSelected,
                             ]}>
-                                {choice}
+                                {translateUiText(choice.label)}
                             </Text>
                         </TouchableOpacity>
                     ))}

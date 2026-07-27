@@ -27,6 +27,7 @@ import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'reac
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -348,13 +349,11 @@ const NicknameScreen = ({ onComplete }) => {
                         <View style={[styles.titleContainer, keyboardVisible && styles.titleContainerKeyboard]}>
                             <View style={styles.titleRow}>
                                 <TitleSparkleLeft />
-                                <Text style={[styles.title, keyboardVisible && styles.titleKeyboard]}>
-                                    What should we call you?
-                                </Text>
+                                <Text style={[styles.title, keyboardVisible && styles.titleKeyboard]}>{translateUiText("What should we call you?")}</Text>
                                 <TitleSparkleRight />
                             </View>
                             <Text style={[styles.subtitle, keyboardVisible && styles.subtitleKeyboard]}>
-                                {"Choose a sweet nickname your\npartner will see."}
+                                {translateUiText("Choose a sweet nickname your\npartner will see.")}
                             </Text>
                         </View>
 
@@ -376,7 +375,7 @@ const NicknameScreen = ({ onComplete }) => {
                                 </View>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Honey, Babe, Love..."
+                                    placeholder={translateUiText("Honey, Babe, Love...")}
                                     placeholderTextColor="#A7AFC8"
                                     value={nickname}
                                     onChangeText={setNickname}
@@ -387,7 +386,7 @@ const NicknameScreen = ({ onComplete }) => {
                                     maxLength={20}
                                     returnKeyType="done"
                                     onSubmitEditing={handleContinue}
-                                    accessibilityLabel="Nickname"
+                                    accessibilityLabel={translateUiText("Nickname")}
                                 />
                                 <Text style={styles.charCount}>{nickname.length}/20</Text>
                             </View>
@@ -400,7 +399,7 @@ const NicknameScreen = ({ onComplete }) => {
                             activeOpacity={0.85}
                             disabled={!isValid || isSubmitting}
                             accessibilityRole="button"
-                            accessibilityLabel="Continue"
+                            accessibilityLabel={translateUiText("Continue")}
                             accessibilityState={{ disabled: !isValid || isSubmitting, busy: isSubmitting }}
                         >
                             <LinearGradient
@@ -416,7 +415,7 @@ const NicknameScreen = ({ onComplete }) => {
                                     <ActivityIndicator color="#FFFFFF" />
                                 ) : (
                                     <View style={styles.continueButtonContent}>
-                                        <Text style={styles.continueButtonText}>Continue</Text>
+                                        <Text style={styles.continueButtonText}>{translateUiText("Continue")}</Text>
                                     </View>
                                 )}
                             </LinearGradient>
@@ -426,7 +425,7 @@ const NicknameScreen = ({ onComplete }) => {
                         {!keyboardVisible && (
                             <View style={styles.footerSparkleRow}>
                                 <MiniSparkle />
-                                <Text style={styles.footerSparkleText}>Make it cute. Make it yours.</Text>
+                                <Text style={styles.footerSparkleText}>{translateUiText("Make it cute. Make it yours.")}</Text>
                                 <MiniSparkle />
                             </View>
                         )}

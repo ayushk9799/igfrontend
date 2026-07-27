@@ -36,6 +36,7 @@ import { disableDistanceLocationSharing, getDistanceLocationPermissionStatus, is
 import { reportWidgetIntent, sendPartnerLocationReminder, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import * as ImagePicker from 'expo-image-picker';
 import { storage } from '../utils/authStorage';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const YEARLY_OFFER_DISMISS_DELAY_MS = 5 * 1000;
@@ -444,8 +445,8 @@ export const MainTabNavigator = ({
 
     const showWidgetInstructions = useCallback(() => {
         Alert.alert(
-            'Add to your home screen',
-            'Touch and hold your home screen, tap Add Widget, find Penguin, then choose this widget.'
+            translateUiText("Add to your home screen"),
+            translateUiText("Touch and hold your home screen, tap Add Widget, find Penguin, then choose this widget.")
         );
     }, []);
 

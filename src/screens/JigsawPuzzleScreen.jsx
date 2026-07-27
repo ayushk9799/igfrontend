@@ -28,6 +28,7 @@ import * as FileSystem from 'expo-file-system';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { getUser } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const MAX_GRID_SIZE = 9;
 const PUZZLE_DURATION_MS = 5 * 60 * 1000;
@@ -357,7 +358,7 @@ const CountdownTimer = ({ duration }) => {
     return (
         <View style={timerStyles.container}>
             <Text style={timerStyles.number}>{seconds}</Text>
-            <Text style={timerStyles.label}>sec</Text>
+            <Text style={timerStyles.label}>{translateUiText("sec")}</Text>
         </View>
     );
 };
@@ -421,12 +422,8 @@ const PuzzleLoader = ({ pulseAnim, glowAnim, compact = false }) => (
             <View style={[styles.loaderPiece, styles.loaderPieceLight]} />
             <View style={[styles.loaderPiece, styles.loaderPieceOffset]} />
         </Animated.View>
-        <Text style={[styles.loadingText, compact && styles.loadingTextCompact]}>
-            Building your puzzle
-        </Text>
-        <Text style={[styles.loadingSubtext, compact && styles.loadingSubtextCompact]}>
-            Cutting the photo into pieces…
-        </Text>
+        <Text style={[styles.loadingText, compact && styles.loadingTextCompact]}>{translateUiText("Building your puzzle")}</Text>
+        <Text style={[styles.loadingSubtext, compact && styles.loadingSubtextCompact]}>{translateUiText("Cutting the photo into pieces…")}</Text>
     </View>
 );
 
@@ -909,7 +906,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             } else {
                 setScreenMessage({
                     tone: 'error',
-                    text: 'Couldn’t start the puzzle. Check your connection and open it again.',
+                    text: translateUiText("Couldn’t start the puzzle. Check your connection and open it again."),
                 });
             }
         }, 5000);
@@ -976,7 +973,10 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             setLeaveWarningShown(true);
             setScreenMessage({
                 tone: 'warning',
-                text: `Puzzle still running — ${minutesPart}:${secondsPart} left. Your timer continues if you leave. Tap back again to leave.`,
+                text: translateUiTemplate("Puzzle still running — {{0}}:{{1}} left. Your timer continues if you leave. Tap back again to leave.", [
+                    minutesPart,
+                    secondsPart,
+                ]),
             });
             return;
         }
@@ -1498,7 +1498,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             if (status !== 'granted') {
                 setScreenMessage({
                     tone: 'error',
-                    text: 'Photo library access is needed to choose an image.',
+                    text: translateUiText("Photo library access is needed to choose an image."),
                 });
                 return;
             }
@@ -1672,7 +1672,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                             </Svg>
                         </TouchableOpacity>
                         <Text style={styles.headerTitle}>
-                            {isSolved ? 'Made it whole' : isSpectator ? "Partner's Puzzle" : 'Piece it together'}
+                            {isSolved ? translateUiText("Made it whole") : isSpectator ? translateUiText("Partner's Puzzle") : translateUiText("Piece it together")}
                         </Text>
                         <View style={styles.headerRight}>
                             {!showReference && !isSolved && (
@@ -1756,12 +1756,12 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                         <View style={styles.instructionContainer}>
                             <Text style={styles.instructionText}>
                                 {devShowCorrect 
-                                    ? '🎯 Dev Mode: Showing Correct Placements 🎯' 
+                                    ? translateUiText("🎯 Dev Mode: Showing Correct Placements 🎯")
                                     : devJiggle 
-                                        ? '🫨 Dev Mode: Jiggly Explosive Cut-View 🫨' 
+                                        ? translateUiText("🫨 Dev Mode: Jiggly Explosive Cut-View 🫨")
                                         : isSpectator
-                                            ? `Watching your partner piece it together · ${moveCount} moves`
-                                            : `Drag a piece into place · ${moveCount} moves`}
+                                            ? translateUiTemplate("Watching your partner piece it together · {{0}} moves", [moveCount])
+                                            : translateUiTemplate("Drag a piece into place · {{0}} moves", [moveCount])}
                             </Text>
                         </View>
                     )}
@@ -1964,7 +1964,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                 styles.referenceOverlay,
                                 { opacity: referenceImageReady ? referenceOpacity : 0 },
                             ]}>
-                                <Text style={styles.referencePreviewLabel}>Memorize this image 👀</Text>
+                                <Text style={styles.referencePreviewLabel}>{translateUiText("Memorize this image 👀")}</Text>
                                 <View style={[styles.referenceImageWrapper, { width: actualPuzzleSize, height: actualPuzzleSize }]}>
                                     <Image
                                         source={{
@@ -1983,7 +1983,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                     )}
                                 </View>
                                 <Text style={styles.referencePreviewHint}>
-                                    {isStarting ? 'Starting your timer...' : 'You’ll have 5 minutes to solve it'}
+                                    {isStarting ? translateUiText("Starting your timer...") : translateUiText("You’ll have 5 minutes to solve it")}
                                 </Text>
                             </Animated.View>
                         )}
@@ -1992,7 +1992,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                     {/* Horizontal Tray of Unplaced Pieces */}
                     {!isSolved && !isExpired && imageLoaded && piecesReady && !showReference && (
                         <View style={styles.trayContainer}>
-                            <Text style={styles.trayTitle}>Remaining Pieces</Text>
+                            <Text style={styles.trayTitle}>{translateUiText("Remaining Pieces")}</Text>
                             <ScrollView
                                 ref={trayScrollViewRef}
                                 horizontal
@@ -2096,16 +2096,18 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                 transform: [{ scale: celebrateScale }],
                             }
                         ]}>
-                            <Text style={styles.celebrateTitle}>You made it whole ✨</Text>
+                            <Text style={styles.celebrateTitle}>{translateUiText("You made it whole ✨")}</Text>
                             <Text style={styles.celebrateSubtitle}>
-                                Every piece found its place in {moveCount} moves.
+                                {moveCount === 1
+                                    ? translateUiTemplate("Every piece found its place in {{0}} move.", [moveCount])
+                                    : translateUiTemplate("Every piece found its place in {{0}} moves.", [moveCount])}
                             </Text>
                             <TouchableOpacity
                                 onPress={() => navigation.goBack()}
                                 activeOpacity={0.8}
                                 style={styles.premiumActionButton}
                             >
-                                <Text style={styles.premiumActionText}>Done</Text>
+                                <Text style={styles.premiumActionText}>{translateUiText("Done")}</Text>
                             </TouchableOpacity>
                         </Animated.View>
                     )}
@@ -2118,16 +2120,18 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                 transform: [{ scale: expiredScale }],
                             },
                         ]}>
-                            <Text style={styles.celebrateTitle}>Time’s up</Text>
+                            <Text style={styles.celebrateTitle}>{translateUiText("Time’s up")}</Text>
                             <Text style={styles.celebrateSubtitle}>
-                                You made {moveCount} {moveCount === 1 ? 'move' : 'moves'} before the timer ended.
+                                {moveCount === 1
+                                    ? translateUiTemplate("You made {{0}} move before the timer ended.", [moveCount])
+                                    : translateUiTemplate("You made {{0}} moves before the timer ended.", [moveCount])}
                             </Text>
                             <TouchableOpacity
                                 onPress={() => navigation.goBack()}
                                 activeOpacity={0.8}
                                 style={styles.premiumActionButton}
                             >
-                                <Text style={styles.premiumActionText}>Done</Text>
+                                <Text style={styles.premiumActionText}>{translateUiText("Done")}</Text>
                             </TouchableOpacity>
                         </Animated.View>
                     )}

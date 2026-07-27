@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const ArrowRightIcon = () => (
     <Svg width={24} height={24} viewBox="0 0 28 28" fill="none">
@@ -48,7 +49,7 @@ const FreeScreen = ({ onContinue, onClose }) => {
                     onPress={onClose}
                     activeOpacity={0.8}
                     accessibilityRole="button"
-                    accessibilityLabel="Close premium offer"
+                    accessibilityLabel={translateUiText("Close premium offer")}
                 >
                     <CloseIcon />
                 </TouchableOpacity>
@@ -103,7 +104,7 @@ const FreeScreen = ({ onContinue, onClose }) => {
                         />
 
                         <View style={styles.offerContainer}>
-                            <Text style={styles.offerTitle}>We offer</Text>
+                            <Text style={styles.offerTitle}>{translateUiText("We offer")}</Text>
                             <View style={styles.freeBadgeOuter}>
                                 <LinearGradient
                                     colors={['#FF5E97', '#FFA1C9']}
@@ -111,12 +112,10 @@ const FreeScreen = ({ onContinue, onClose }) => {
                                     end={{ x: 1, y: 0 }}
                                     style={styles.freeBadge}
                                 >
-                                    <Text style={styles.freeBadgeText}>7 Days Free</Text>
+                                    <Text style={styles.freeBadgeText}>{translateUiText("7 Days Free")}</Text>
                                 </LinearGradient>
                             </View>
-                            <Text style={styles.offerSubtitle}>
-                                so every couple can get{`\n`} closer with Penguin
-                            </Text>
+                            <Text style={styles.offerSubtitle}>{translateUiTemplate("so every couple can get{{0}}closer with Penguin", ['\n'])}</Text>
                         </View>
                     </View>
                 </View>
@@ -152,9 +151,7 @@ const FreeScreen = ({ onContinue, onClose }) => {
                                 styles.continueButtonText,
                                 isCompactHeight && styles.continueButtonTextCompact,
                             ]}
-                        >
-                            Continue
-                        </Text>
+                        >{translateUiText("Continue")}</Text>
                         <View style={styles.continueArrow}>
                             <ArrowRightIcon />
                         </View>

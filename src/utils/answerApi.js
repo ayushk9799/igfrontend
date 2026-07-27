@@ -1,4 +1,5 @@
 import { API_BASE } from '../constants/Api';
+import { apiFetch } from './apiFetch';
 
 /**
  * Submit an answer for a task
@@ -16,7 +17,7 @@ export const submitAnswer = async (userId, challengeId, taskIndex, answer, answe
         const body = { userId, challengeId, taskIndex, answer, answerType };
 
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -40,7 +41,7 @@ export const getUserAnswers = async (challengeId, userId) => {
     try {
         const url = `${API_BASE}/api/answers/${challengeId}?userId=${userId}`;
 
-        const response = await fetch(url);
+        const response = await apiFetch(url);
 
         const data = await response.json();
 
@@ -56,7 +57,7 @@ export const getUserAnswers = async (challengeId, userId) => {
  */
 export const getPartnerAnswers = async (challengeId, userId) => {
     try {
-        const response = await fetch(
+        const response = await apiFetch(
             `${API_BASE}/api/answers/${challengeId}/partner?userId=${userId}`
         );
         return await response.json();
@@ -72,7 +73,7 @@ export const getPartnerAnswers = async (challengeId, userId) => {
  */
 export const getActivityByDate = async (date) => {
     try {
-        const response = await fetch(`${API_BASE}/api/answers/activity/date/${date}`);
+        const response = await apiFetch(`${API_BASE}/api/answers/activity/date/${date}`);
         return await response.json();
     } catch (error) {
         console.error('Error fetching activity:', error);
@@ -88,7 +89,7 @@ export const getCoupleAnswers = async (date, userId) => {
     try {
         const url = `${API_BASE}/api/answers/couple/${date}?userId=${userId}`;
 
-        const response = await fetch(url);
+        const response = await apiFetch(url);
 
         const data = await response.json();
 
@@ -109,7 +110,7 @@ export const getChallengeWithAnswers = async (date, userId) => {
     try {
         const url = `${API_BASE}/api/daily-challenge/date/${date}/with-answers?userId=${userId}`;
 
-        const response = await fetch(url);
+        const response = await apiFetch(url);
 
         const data = await response.json();
 
@@ -126,7 +127,7 @@ export const getChallengeWithAnswers = async (date, userId) => {
 export const getCoupleTodayChallenge = async (userId) => {
     try {
         const url = `${API_BASE}/api/daily-challenge/couple-today?userId=${userId}`;
-        const response = await fetch(url);
+        const response = await apiFetch(url);
 
         return await response.json();
     } catch (error) {

@@ -1,6 +1,7 @@
 /**
  * Date utilities for consistent timezone handling across the app
  */
+import { getUiLocale } from '../i18n/uiTranslation';
 
 /**
  * Get the user's local date in YYYY-MM-DD format
@@ -15,7 +16,7 @@ export const getLocalDateString = (date = new Date()) => {
  */
 export const formatDisplayDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString(getUiLocale(), {
         month: 'short',
         day: 'numeric',
         year: 'numeric'

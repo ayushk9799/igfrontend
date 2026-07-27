@@ -9,6 +9,8 @@ import {
     ActivityIndicator,
     Image,
     Alert,
+    Modal,
+    Pressable,
     Platform,
     Linking,
     AppState,
@@ -24,13 +26,24 @@ import { getApp } from '@react-native-firebase/app';
 import { getMessaging, AuthorizationStatus } from '@react-native-firebase/messaging';
 import { PermissionsAndroid } from 'react-native';
 import * as StoreReview from 'expo-store-review';
+import { useTranslation } from 'react-i18next';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { changeAppLanguage } from '../i18n';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
 const navy = '#050E3E';
+const LANGUAGE_OPTIONS = [
+    { code: 'en', label: 'English' },
+    { code: 'fr', label: 'Français' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'es', label: 'Español' },
+    { code: 'it', label: 'Italiano' },
+    { code: 'ja', label: '日本語' },
+    { code: 'ko', label: '한국어' },
+];
 
-const formatRelationshipDuration = (startDate) => {
+const formatRelationshipDuration = (startDate, t) => {
     if (!startDate) return null;
 
     const start = new Date(startDate);
@@ -40,33 +53,33 @@ const formatRelationshipDuration = (startDate) => {
     const totalDays = Math.max(0, Math.floor((today - start) / (1000 * 60 * 60 * 24)));
 
     if (totalDays < 30) {
-        return `${totalDays || 1} ${totalDays === 1 ? 'day' : 'days'} together`;
+        return t('account.duration.days', { count: totalDays || 1 });
     }
 
     const totalMonths = Math.floor(totalDays / 30);
     if (totalMonths < 12) {
-        return `${totalMonths} ${totalMonths === 1 ? 'month' : 'months'} together`;
+        return t('account.duration.months', { count: totalMonths });
     }
 
     const years = Math.floor(totalMonths / 12);
     const months = totalMonths % 12;
     if (!months) {
-        return `${years} ${years === 1 ? 'year' : 'years'} together`;
+        return t('account.duration.years', { count: years });
     }
 
-    return `${years} ${years === 1 ? 'year' : 'years'}, ${months} ${months === 1 ? 'month' : 'months'} together`;
+    return t('account.duration.yearsAndMonths', { years, months });
 };
 
-const formatPremiumPlan = (productId) => {
-    if (!productId) return 'Active';
+const formatPremiumPlan = (productId, t) => {
+    if (!productId) return t('account.plans.active');
 
     const normalizedId = String(productId).toLowerCase();
-    if (normalizedId.includes('year') || normalizedId.includes('annual')) return 'Yearly';
-    if (normalizedId.includes('six') || normalizedId.includes('6_month')) return '6 Months';
-    if (normalizedId.includes('month')) return 'Monthly';
-    if (normalizedId.includes('week')) return 'Weekly';
-    if (normalizedId.includes('lifetime')) return 'Lifetime';
-    return 'Active';
+    if (normalizedId.includes('year') || normalizedId.includes('annual')) return t('account.plans.yearly');
+    if (normalizedId.includes('six') || normalizedId.includes('6_month')) return t('account.plans.sixMonths');
+    if (normalizedId.includes('month')) return t('account.plans.monthly');
+    if (normalizedId.includes('week')) return t('account.plans.weekly');
+    if (normalizedId.includes('lifetime')) return t('account.plans.lifetime');
+    return t('account.plans.active');
 };
 
 // --- SVG Icons ---
@@ -140,6 +153,7 @@ const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
 };
 
 import { Animated } from 'react-native';
+import { getUiLocale, translateUiText } from '../i18n/uiTranslation';
 
 // Settings menu item
 const MenuItem = ({ title, subtitle, onPress, danger = false }) => {
@@ -183,17 +197,24 @@ export const AccountScreen = ({
     onEditRelationshipDate,
 }) => {
     const insets = useSafeAreaInsets();
+    const { t, i18n } = useTranslation();
 
     const [localAvatar, setLocalAvatar] = useState(userData.avatarThumbnail || userData.avatar || null);
     const { isUploading, uploadProgress, error, uploadAvatar, clearError } = useAvatarUpload();
-    const relationshipDuration = formatRelationshipDuration(userData.relationshipStartDate || userData.connectionDate);
+    const relationshipDuration = formatRelationshipDuration(
+        userData.relationshipStartDate || userData.connectionDate,
+        t,
+    );
     const premiumEndDate = premiumExpiresAt
-        ? new Date(premiumExpiresAt).toLocaleDateString(undefined, {
+        ? new Date(premiumExpiresAt).toLocaleDateString(
+            getUiLocale(),
+            {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
-        })
-        : 'Active';
+            },
+        )
+        : t('account.plans.active');
     const premiumIsCancelled = isPremium
         && premiumWillRenew === false
         && !!premiumExpiresAt
@@ -208,6 +229,7 @@ export const AccountScreen = ({
 
     // Notification permission state
     const [notificationEnabled, setNotificationEnabled] = useState(true); // default true to hide button until checked
+    const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
 
     const checkNotificationPermission = useCallback(async () => {
         try {
@@ -249,12 +271,12 @@ export const AccountScreen = ({
         } else {
             // Permission previously denied — guide user to settings
             Alert.alert(
-                'Notifications Disabled',
-                'Please enable notifications in your device settings to stay connected.',
+                t('account.notificationsDisabledTitle'),
+                t('account.notificationsDisabledMessage'),
                 [
-                    { text: 'Cancel', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                        text: 'Open Settings',
+                        text: t('common.openSettings'),
                         onPress: () => {
                             if (Platform.OS === 'ios') {
                                 Linking.openURL('app-settings:');
@@ -286,12 +308,12 @@ export const AccountScreen = ({
 
     const handleDeleteAccount = () => {
         Alert.alert(
-            'Delete Account',
-            'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.',
+            t('account.deleteAccount'),
+            t('account.deleteAccountMessage'),
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                    text: 'Delete',
+                    text: t('common.delete'),
                     style: 'destructive',
                     onPress: () => {
                         if (onDeleteAccount) {
@@ -308,8 +330,8 @@ export const AccountScreen = ({
             const hasReviewAction = await StoreReview.hasAction();
             if (!hasReviewAction) {
                 Alert.alert(
-                    'Rating unavailable',
-                    'The store rating option is not available on this device right now.',
+                    t('account.ratingUnavailableTitle'),
+                    t('account.ratingUnavailableMessage'),
                 );
                 return;
             }
@@ -317,11 +339,29 @@ export const AccountScreen = ({
             await StoreReview.requestReview();
         } catch {
             Alert.alert(
-                'Could not open ratings',
-                'Please try again when you are connected to the App Store or Play Store.',
+                t('account.ratingsErrorTitle'),
+                t('account.ratingsErrorMessage'),
             );
         }
     };
+
+    const handleLanguagePress = () => {
+        setLanguageSheetVisible(true);
+    };
+    const handleLanguageSelect = async (language) => {
+        setLanguageSheetVisible(false);
+        await changeAppLanguage(language);
+    };
+    const currentLanguageCode = i18n.resolvedLanguage?.split('-')[0] ?? 'en';
+    const currentLanguageLabel = {
+        en: t('account.english'),
+        fr: t('account.french'),
+        de: t('account.german'),
+        es: t('account.spanish'),
+        it: t('account.italian'),
+        ja: t('account.japanese'),
+        ko: t('account.korean'),
+    }[currentLanguageCode] ?? t('account.english');
 
     return (
         <View style={styles.root}>
@@ -348,7 +388,7 @@ export const AccountScreen = ({
                             <BackArrowIcon />
                         </TouchableOpacity>
                         <View style={styles.headerTitleWrap}>
-                            <Text style={styles.headerTitle}>Settings</Text>
+                            <Text style={styles.headerTitle}>{t('account.settings')}</Text>
                         </View>
                         <View style={{ width: 42 }} />
                     </View>
@@ -407,7 +447,7 @@ export const AccountScreen = ({
                             </TouchableOpacity>
                             <View style={styles.profileIdentityCopy}>
                                 <Text style={styles.profileName} numberOfLines={2}>
-                                    {userData.nickname || userData.name || 'Penguin Couple'}
+                                    {userData.nickname || userData.name || translateUiText("Penguin Couple")}
                                 </Text>
                                 <Text style={styles.profileEmail} numberOfLines={1}>
                                     {userData.email || ''}
@@ -443,7 +483,9 @@ export const AccountScreen = ({
                                 </View>
                                 <View style={styles.relationshipCopy}>
                                     <Text style={styles.relationshipTitle} numberOfLines={1}>
-                                        💕 With {partnerNickname || partnerName || 'Your partner'}
+                                        {t('account.withPartner', {
+                                            partner: partnerNickname || partnerName || t('account.yourPartner'),
+                                        })}
                                     </Text>
                                     {relationshipDuration && (
                                         <Text style={styles.partnerDurationText} numberOfLines={1}>
@@ -467,8 +509,8 @@ export const AccountScreen = ({
                             >
                                 <PeopleIcon />
                             </LinearGradient>
-                            <Text style={styles.connectPartnerTitle}>Connect with your partner</Text>
-                            <Text style={styles.connectPartnerSubtitle}>Unlock couple settings and features</Text>
+                            <Text style={styles.connectPartnerTitle}>{t('account.connectPartnerTitle')}</Text>
+                            <Text style={styles.connectPartnerSubtitle}>{t('account.connectPartnerSubtitle')}</Text>
                             <LinearGradient
                                 colors={['#FF5E97', '#FFA1C9']}
                                 start={{ x: 0, y: 0 }}
@@ -481,7 +523,7 @@ export const AccountScreen = ({
                                     style={styles.connectPartnerButton}
                                 >
                                     <Text style={styles.connectPartnerButtonIcon}>💖</Text>
-                                    <Text style={styles.connectPartnerButtonText}>Pair with Partner</Text>
+                                    <Text style={styles.connectPartnerButtonText}>{t('account.pairWithPartner')}</Text>
                                 </TouchableOpacity>
                             </LinearGradient>
                         </View>
@@ -489,25 +531,27 @@ export const AccountScreen = ({
 
                     {/* Premium Section */}
                     <View style={styles.menuSection}>
-                        <Text style={styles.sectionTitle}>Premium</Text>
+                        <Text style={styles.sectionTitle}>{t('account.premium')}</Text>
                         {isPremium ? (
                             <View style={styles.premiumCard}>
                                 <View style={styles.premiumCardHeader}>
                                     <CrownIcon size={20} color="#FFB800" />
                                     <Text style={styles.premiumCardTitle}>
-                                        Penguin Couple Premium
+                                        {t('account.premiumTitle')}
                                     </Text>
                                 </View>
                                 <View style={styles.premiumCardDetails}>
                                     <View>
-                                        <Text style={styles.premiumCardLabel}>Plan</Text>
+                                        <Text style={styles.premiumCardLabel}>{t('account.plan')}</Text>
                                         <Text style={styles.premiumCardValue}>
-                                            {formatPremiumPlan(premiumPlan)}
+                                            {formatPremiumPlan(premiumPlan, t)}
                                         </Text>
                                     </View>
                                     <View style={{ alignItems: 'flex-end' }}>
                                         <Text style={styles.premiumCardLabel}>
-                                            {premiumIsCancelled || premiumIsPaused ? 'Access until' : 'Renews'}
+                                            {premiumIsCancelled || premiumIsPaused
+                                                ? t('account.accessUntil')
+                                                : t('account.renews')}
                                         </Text>
                                         <Text style={styles.premiumCardValue}>
                                             {premiumEndDate}
@@ -517,7 +561,7 @@ export const AccountScreen = ({
                                 {premiumIsCancelled && (
                                     <View style={styles.premiumCancellationNotice}>
                                         <Text style={styles.premiumCancellationText}>
-                                            Premium cancelled — access continues until {premiumEndDate}
+                                            {t('account.premiumCancelled', { date: premiumEndDate })}
                                         </Text>
                                     </View>
                                 )}
@@ -525,21 +569,21 @@ export const AccountScreen = ({
                                     <View style={styles.premiumCancellationNotice}>
                                         <Text style={styles.premiumCancellationText}>
                                             {premiumSource === 'partner'
-                                                ? 'Your couple subscription needs attention. Access remains available for now.'
-                                                : 'Payment issue detected. Please check your subscription payment method.'}
+                                                ? t('account.coupleBillingIssue')
+                                                : t('account.billingIssue')}
                                         </Text>
                                     </View>
                                 )}
                                 {premiumIsPaused && (
                                     <View style={styles.premiumCancellationNotice}>
                                         <Text style={styles.premiumCancellationText}>
-                                            Subscription paused — access continues until {premiumEndDate}
+                                            {t('account.premiumPaused', { date: premiumEndDate })}
                                         </Text>
                                     </View>
                                 )}
                                 {premiumSource === 'partner' && (
                                     <Text style={styles.premiumCoupleSubtext}>
-                                        Premium through your partner's subscription
+                                        {t('account.premiumThroughPartner')}
                                     </Text>
                                 )}
                             </View>
@@ -549,7 +593,7 @@ export const AccountScreen = ({
                                 activeOpacity={0.9}
                                 style={styles.premiumCardPressable}
                                 accessibilityRole="button"
-                                accessibilityLabel="Open Penguin Couple Premium"
+                                accessibilityLabel={t('account.openPremium')}
                             >
                                 <View style={styles.premiumCardShadow}>
                                     <View style={styles.premiumUpgradeCard}>
@@ -576,9 +620,9 @@ export const AccountScreen = ({
                                             </Svg>
                                         </View>
                                         <View style={styles.premiumCardCopy}>
-                                            <Text style={styles.premiumCardBannerTitle}>Penguin Couple Premium</Text>
+                                            <Text style={styles.premiumCardBannerTitle}>{t('account.premiumTitle')}</Text>
                                             <Text style={styles.premiumCardBannerSubtitle} numberOfLines={2}>
-                                                Unlock all games, widgets, live drawing
+                                                {t('account.premiumBenefits')}
                                             </Text>
                                         </View>
                                         <View style={styles.premiumCardArrow}>
@@ -601,57 +645,66 @@ export const AccountScreen = ({
                     {/* Notification Permission Button - only show when not granted */}
                     {!notificationEnabled && (
                         <View style={styles.menuSection}>
-                            <Text style={styles.sectionTitle}>Notifications</Text>
+                            <Text style={styles.sectionTitle}>{t('account.notifications')}</Text>
                             <TouchableOpacity
                                 onPress={handleAllowNotifications}
                                 activeOpacity={0.85}
                                 style={styles.allowNotifButton}
                             >
                                 <BellIcon color={navy} />
-                                <Text style={styles.allowNotifText}>Allow Notifications</Text>
+                                <Text style={styles.allowNotifText}>{t('account.allowNotifications')}</Text>
                                 <Text style={styles.allowNotifArrow}>→</Text>
                             </TouchableOpacity>
                         </View>
                     )}
 
                     <View style={styles.menuSection}>
-                        <Text style={styles.sectionTitle}>Widgets</Text>
+                        <Text style={styles.sectionTitle}>{t('account.language')}</Text>
                         <MenuItem
-                            title="Widgets Library"
-                            subtitle="Time Together and Scribble"
+                            title={t('account.language')}
+                            subtitle={currentLanguageLabel}
+                            onPress={handleLanguagePress}
+                        />
+                    </View>
+
+                    <View style={styles.menuSection}>
+                        <Text style={styles.sectionTitle}>{t('account.widgets')}</Text>
+                        <MenuItem
+                            title={t('account.widgetsLibrary')}
+                            subtitle={t('account.widgetsSubtitle')}
                             onPress={onWidgetsPress}
                         />
                     </View>
 
                     <View style={styles.menuSection}>
-                        <Text style={styles.sectionTitle}>Support</Text>
+                        <Text style={styles.sectionTitle}>{t('account.support')}</Text>
                         <MenuItem
-                            title="Rate us 5 stars ⭐️"
-                            subtitle="Enjoying Penguin Couple? Share your support"
+                            title={t('account.rateUs')}
+                            subtitle={t('account.rateUsSubtitle')}
                             onPress={handleRateApp}
                         />
                         <MenuItem
-                            title="Privacy Policy"
+                            title={t('account.privacyPolicy')}
                             onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/privacy-policy.html')}
                         />
                         <MenuItem
-                            title="Terms of Service"
+                            title={t('account.termsOfService')}
                             onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/terms-of-service.html')}
                         />
                         <MenuItem
-                            title="Log Out"
+                            title={t('account.logout')}
                             onPress={handleLogout}
                             danger
                         />
                         <MenuItem
-                            title="Delete Account"
-                            subtitle="Permanently delete your account"
+                            title={t('account.deleteAccount')}
+                            subtitle={t('account.deleteAccountSubtitle')}
                             onPress={handleDeleteAccount}
                             danger
                         />
                     </View>
 
-                    <Text style={styles.versionText}>penguin couple</Text>
+                    <Text style={styles.versionText}>{translateUiText("penguin couple")}</Text>
 
                     {/* Bottom Clouds */}
                     <View style={styles.cloudsContainer}>
@@ -661,6 +714,114 @@ export const AccountScreen = ({
                     </View>
                 </ScrollView>
             </LinearGradient>
+
+            <Modal
+                visible={languageSheetVisible}
+                transparent
+                animationType="slide"
+                statusBarTranslucent
+                navigationBarTranslucent
+                onRequestClose={() => setLanguageSheetVisible(false)}
+            >
+                <View style={styles.languageModalRoot}>
+                    <Pressable
+                        style={styles.languageBackdrop}
+                        onPress={() => setLanguageSheetVisible(false)}
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText("Close")}
+                    />
+                    <View
+                        style={[
+                            styles.languageSheet,
+                            { paddingBottom: Math.max(insets.bottom, 18) },
+                        ]}
+                        accessibilityViewIsModal
+                    >
+                        <View style={styles.languageSheetHandle} />
+                        <View style={styles.languageSheetHeader}>
+                            <View style={styles.languageSheetHeaderCopy}>
+                                <Text style={styles.languageSheetTitle}>{t('account.language')}</Text>
+                                <Text style={styles.languageSheetSubtitle}>
+                                    {t('account.chooseLanguage')}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.languageSheetClose}
+                                onPress={() => setLanguageSheetVisible(false)}
+                                activeOpacity={0.7}
+                                accessibilityRole="button"
+                                accessibilityLabel={translateUiText("Close")}
+                            >
+                                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M6 6l12 12M18 6 6 18"
+                                        stroke={navy}
+                                        strokeWidth={2.4}
+                                        strokeLinecap="round"
+                                    />
+                                </Svg>
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView
+                            style={styles.languageOptionsScroll}
+                            contentContainerStyle={styles.languageOptions}
+                            showsVerticalScrollIndicator={false}
+                            bounces={false}
+                        >
+                            {LANGUAGE_OPTIONS.map((language) => {
+                                const isSelected = currentLanguageCode === language.code;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={language.code}
+                                        style={[
+                                            styles.languageOption,
+                                            isSelected && styles.languageOptionSelected,
+                                        ]}
+                                        onPress={() => handleLanguageSelect(language.code)}
+                                        activeOpacity={0.75}
+                                        accessibilityRole="radio"
+                                        accessibilityState={{ checked: isSelected }}
+                                    >
+                                        <View
+                                            style={[
+                                                styles.languageCodeBadge,
+                                                isSelected && styles.languageCodeBadgeSelected,
+                                            ]}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.languageCodeText,
+                                                    isSelected && styles.languageCodeTextSelected,
+                                                ]}
+                                            >
+                                                {language.code.toUpperCase()}
+                                            </Text>
+                                        </View>
+                                        <Text
+                                            style={[
+                                                styles.languageOptionLabel,
+                                                isSelected && styles.languageOptionLabelSelected,
+                                            ]}
+                                        >
+                                            {language.label}
+                                        </Text>
+                                        <View
+                                            style={[
+                                                styles.languageSelectionCircle,
+                                                isSelected && styles.languageSelectionCircleSelected,
+                                            ]}
+                                        >
+                                            {isSelected && <CheckCircleIcon />}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -671,6 +832,134 @@ const styles = StyleSheet.create({
     },
     gradient: {
         flex: 1,
+    },
+    languageModalRoot: {
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+    languageBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(5, 14, 62, 0.42)',
+    },
+    languageSheet: {
+        width: '100%',
+        maxHeight: height * 0.85,
+        paddingTop: 10,
+        paddingHorizontal: 22,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        backgroundColor: '#FFF9FC',
+        shadowColor: '#050E3E',
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.16,
+        shadowRadius: 20,
+        elevation: 18,
+    },
+    languageSheetHandle: {
+        alignSelf: 'center',
+        width: 42,
+        height: 5,
+        borderRadius: 3,
+        marginBottom: 18,
+        backgroundColor: '#E7C8D8',
+    },
+    languageSheetHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 20,
+    },
+    languageSheetHeaderCopy: {
+        flex: 1,
+        paddingRight: 16,
+    },
+    languageSheetTitle: {
+        color: navy,
+        fontSize: 22,
+        lineHeight: 28,
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.extraBold,
+    },
+    languageSheetSubtitle: {
+        color: '#7380A1',
+        fontSize: 13,
+        lineHeight: 19,
+        fontWeight: fontWeight('600'),
+        fontFamily: fontFamily.medium,
+        marginTop: 4,
+    },
+    languageSheetClose: {
+        width: 36,
+        height: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 18,
+        backgroundColor: '#F5E4ED',
+    },
+    languageOptions: {
+        gap: 10,
+    },
+    languageOptionsScroll: {
+        maxHeight: Math.min(580, height * 0.72),
+    },
+    languageOption: {
+        minHeight: 66,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderWidth: 1.5,
+        borderColor: '#F0DCE6',
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+    },
+    languageOptionSelected: {
+        borderColor: '#FF6FA5',
+        backgroundColor: '#FFF0F6',
+    },
+    languageCodeBadge: {
+        width: 42,
+        height: 42,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 13,
+        backgroundColor: '#F5EAF0',
+    },
+    languageCodeBadgeSelected: {
+        backgroundColor: '#FF6FA5',
+    },
+    languageCodeText: {
+        color: '#875A70',
+        fontSize: 12,
+        letterSpacing: 0.8,
+        fontWeight: fontWeight('800'),
+        fontFamily: fontFamily.bold,
+    },
+    languageCodeTextSelected: {
+        color: '#FFFFFF',
+    },
+    languageOptionLabel: {
+        flex: 1,
+        color: navy,
+        fontSize: 16,
+        fontWeight: fontWeight('700'),
+        fontFamily: fontFamily.bold,
+        marginLeft: 14,
+    },
+    languageOptionLabelSelected: {
+        color: '#B32963',
+    },
+    languageSelectionCircle: {
+        width: 22,
+        height: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#D9C3CF',
+        borderRadius: 11,
+    },
+    languageSelectionCircleSelected: {
+        borderWidth: 0,
+        backgroundColor: '#FF5E97',
     },
     scrollView: {
         flex: 1,

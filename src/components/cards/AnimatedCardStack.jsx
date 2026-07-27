@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 
 import TaskCard from './TaskCard';
 import { fontFamily } from '../../constants/fonts';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 const { width } = Dimensions.get('window');
 const SWIPE_THRESHOLD = width * 0.25;
@@ -596,7 +597,7 @@ const AnimatedCardStack = ({
                 }
                 activeOpacity={0.82}
             >
-                <Text style={styles.skipText}>{'Swipe to skip ->'}</Text>
+                <Text style={styles.skipText}>{translateUiText("Swipe to skip ->")}</Text>
             </TouchableOpacity>
         </View>
     );

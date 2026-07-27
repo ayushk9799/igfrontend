@@ -29,6 +29,7 @@ import { colors } from '../theme';
 import { storage } from '../utils/authStorage';
 import { createMemory, fetchMemories, uploadMemoryImage } from '../api/memoriesApi';
 import { getCapturedDateFromAsset, getDisplayAspectRatio, prepareMemoryImage } from '../utils/memoryImage';
+import { getUiLocale, translateUiText } from '../i18n/uiTranslation';
 
 const PAGE_LIMIT = 20;
 const CACHE_LIMIT = 50;
@@ -37,14 +38,14 @@ const TITLE_LIMIT = 80;
 
 const TIMELINE_TYPES = {
     special_date: {
-        label: 'Special Date',
+        label: "Special Date",
         modalTitle: 'Special date',
         saveLabel: 'Save date',
         placeholderTitle: 'First met',
         placeholderCaption: 'What made this date special?',
     },
     memory: {
-        label: 'Memory',
+        label: "Memory",
         modalTitle: 'Memory',
         saveLabel: 'Save memory',
         placeholderTitle: 'Title this memory',
@@ -54,62 +55,62 @@ const TIMELINE_TYPES = {
 
 const EMOJI_CATEGORIES = [
     {
-        title: 'Love & Romance',
+        title: "Love & Romance",
         emojis: [
-            { key: 'ring', glyph: '💍', label: 'Ring' },
-            { key: 'heart_lock', glyph: '💞', label: 'Promise' },
-            { key: 'kiss', glyph: '💋', label: 'Kiss' },
-            { key: 'heart', glyph: '❤️', label: 'Heart' },
-            { key: 'sparkles', glyph: '✨', label: 'Sparkles' },
-            { key: 'couple', glyph: '💑', label: 'Couple' },
-            { key: 'gift', glyph: '🎁', label: 'Gift' },
-            { key: 'letter', glyph: '💌', label: 'Love Letter' },
-            { key: 'heart_eyes', glyph: '😍', label: 'Heart Eyes' },
+            { key: 'ring', glyph: '💍', label: "Ring" },
+            { key: 'heart_lock', glyph: '💞', label: "Promise" },
+            { key: 'kiss', glyph: '💋', label: "Kiss" },
+            { key: 'heart', glyph: '❤️', label: "Heart" },
+            { key: 'sparkles', glyph: '✨', label: "Sparkles" },
+            { key: 'couple', glyph: '💑', label: "Couple" },
+            { key: 'gift', glyph: '🎁', label: "Gift" },
+            { key: 'letter', glyph: '💌', label: "Love Letter" },
+            { key: 'heart_eyes', glyph: '😍', label: "Heart Eyes" },
         ]
     },
     {
-        title: 'Activities & Dates',
+        title: "Activities & Dates",
         emojis: [
-            { key: 'coffee', glyph: '☕', label: 'Coffee Date' },
-            { key: 'wine', glyph: '🍷', label: 'Wine Date' },
-            { key: 'dinner', glyph: '🍽️', label: 'Dinner' },
-            { key: 'movie', glyph: '🎬', label: 'Movie' },
-            { key: 'popcorn', glyph: '🍿', label: 'Popcorn' },
-            { key: 'beer', glyph: '🍻', label: 'Cheers' },
-            { key: 'concert', glyph: '🎫', label: 'Concert' },
-            { key: 'game', glyph: '🎮', label: 'Gaming' },
-            { key: 'bowling', glyph: '🎳', label: 'Bowling' },
-            { key: 'karaoke', glyph: '🎤', label: 'Karaoke' },
+            { key: 'coffee', glyph: '☕', label: "Coffee Date" },
+            { key: 'wine', glyph: '🍷', label: "Wine Date" },
+            { key: 'dinner', glyph: '🍽️', label: "Dinner" },
+            { key: 'movie', glyph: '🎬', label: "Movie" },
+            { key: 'popcorn', glyph: '🍿', label: "Popcorn" },
+            { key: 'beer', glyph: '🍻', label: "Cheers" },
+            { key: 'concert', glyph: '🎫', label: "Concert" },
+            { key: 'game', glyph: '🎮', label: "Gaming" },
+            { key: 'bowling', glyph: '🎳', label: "Bowling" },
+            { key: 'karaoke', glyph: '🎤', label: "Karaoke" },
         ]
     },
     {
-        title: 'Places & Travel',
+        title: "Places & Travel",
         emojis: [
-            { key: 'trip', glyph: '✈️', label: 'Flight' },
-            { key: 'home', glyph: '🏡', label: 'Home' },
-            { key: 'hotel', glyph: '🏨', label: 'Hotel' },
-            { key: 'beach', glyph: '🏖️', label: 'Beach' },
-            { key: 'tent', glyph: '⛺', label: 'Camping' },
-            { key: 'car', glyph: '🚗', label: 'Road Trip' },
-            { key: 'train', glyph: '🚄', label: 'Train' },
-            { key: 'mountain', glyph: '🏔️', label: 'Mountain' },
-            { key: 'ferris_wheel', glyph: '🎡', label: 'Theme Park' },
-            { key: 'sunset', glyph: '🌇', label: 'Sunset' },
+            { key: 'trip', glyph: '✈️', label: "Flight" },
+            { key: 'home', glyph: '🏡', label: "Home" },
+            { key: 'hotel', glyph: '🏨', label: "Hotel" },
+            { key: 'beach', glyph: '🏖️', label: "Beach" },
+            { key: 'tent', glyph: '⛺', label: "Camping" },
+            { key: 'car', glyph: '🚗', label: "Road Trip" },
+            { key: 'train', glyph: '🚄', label: "Train" },
+            { key: 'mountain', glyph: '🏔️', label: "Mountain" },
+            { key: 'ferris_wheel', glyph: '🎡', label: "Theme Park" },
+            { key: 'sunset', glyph: '🌇', label: "Sunset" },
         ]
     },
     {
-        title: 'Special Moments',
+        title: "Special Moments",
         emojis: [
-            { key: 'calendar', glyph: '🗓️', label: 'Special Day' },
-            { key: 'balloon', glyph: '🎈', label: 'Celebration' },
-            { key: 'cake', glyph: '🎂', label: 'Birthday' },
-            { key: 'champagne', glyph: '🍾', label: 'Celebration Drink' },
-            { key: 'fireworks', glyph: '🎆', label: 'Fireworks' },
-            { key: 'camera', glyph: '📸', label: 'Photo Session' },
-            { key: 'star', glyph: '⭐', label: 'Starry Night' },
-            { key: 'rainbow', glyph: '🌈', label: 'Rainbow' },
-            { key: 'trophy', glyph: '🏆', label: 'Achievement' },
-            { key: 'graduation', glyph: '🎓', label: 'Graduation' },
+            { key: 'calendar', glyph: '🗓️', label: "Special Day" },
+            { key: 'balloon', glyph: '🎈', label: "Celebration" },
+            { key: 'cake', glyph: '🎂', label: "Birthday" },
+            { key: 'champagne', glyph: '🍾', label: "Celebration Drink" },
+            { key: 'fireworks', glyph: '🎆', label: "Fireworks" },
+            { key: 'camera', glyph: '📸', label: "Photo Session" },
+            { key: 'star', glyph: '⭐', label: "Starry Night" },
+            { key: 'rainbow', glyph: '🌈', label: "Rainbow" },
+            { key: 'trophy', glyph: '🏆', label: "Achievement" },
+            { key: 'graduation', glyph: '🎓', label: "Graduation" },
         ]
     }
 ];
@@ -133,11 +134,11 @@ const formatDateParts = (value) => {
     }
 
     return {
-        month: date.toLocaleString(undefined, { month: 'short' }).toUpperCase(),
+        month: date.toLocaleString(getUiLocale(), { month: 'short' }).toUpperCase(),
         day: String(date.getDate()).padStart(2, '0'),
         year: String(date.getFullYear()),
-        line: date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }),
-        time: date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
+        line: date.toLocaleDateString(getUiLocale(), { month: 'long', day: 'numeric', year: 'numeric' }),
+        time: date.toLocaleTimeString(getUiLocale(), { hour: 'numeric', minute: '2-digit' }),
     };
 };
 
@@ -238,7 +239,7 @@ const MemoryImage = ({ uri, aspectRatio }) => {
             )}
             {failed ? (
                 <View style={styles.photoFailed}>
-                    <Text style={styles.photoFailedText}>Could not load photo</Text>
+                    <Text style={styles.photoFailedText}>{translateUiText("Could not load photo")}</Text>
                 </View>
             ) : (
                 <Image
@@ -295,7 +296,7 @@ const MemoryCard = ({ item }) => {
                             <View style={styles.momentIcon}>
                                 <Heart color="#FF758F" size={22} strokeWidth={2} />
                             </View>
-                            <Text style={styles.momentKicker}>MEMORY</Text>
+                            <Text style={styles.momentKicker}>{translateUiText("MEMORY")}</Text>
                             {!!item.title && <Text style={styles.momentTitle}>{item.title}</Text>}
                             {!!item.caption && <Text style={styles.momentCaption}>{item.caption}</Text>}
                         </View>
@@ -365,12 +366,12 @@ const EmptyState = ({ hasPartner, onAddPartner }) => {
                 <Animated.Image source={require('../../assets/images/4_timeline.png')} style={[styles.emptyStackImage, card2Style]} />
                 <Animated.Image source={require('../../assets/images/2_timeline.png')} style={[styles.emptyStackImage, card3Style]} />
             </View>
-            <Text style={styles.emptyTitle}>Your timeline is empty</Text>
-            <Text style={styles.emptyText}>Add when you met, first kisses, special dates, and the photos that belong to them.</Text>
+            <Text style={styles.emptyTitle}>{translateUiText("Your timeline is empty")}</Text>
+            <Text style={styles.emptyText}>{translateUiText("Add when you met, first kisses, special dates, and the photos that belong to them.")}</Text>
             {!hasPartner && (
                 <TouchableOpacity
                     accessibilityRole="button"
-                    accessibilityLabel="Add Partner"
+                    accessibilityLabel={translateUiText("Add Partner")}
                     activeOpacity={0.88}
                     onPress={onAddPartner}
                     style={styles.emptyButton}
@@ -381,7 +382,7 @@ const EmptyState = ({ hasPartner, onAddPartner }) => {
                         end={{ x: 1, y: 0 }}
                         style={styles.emptyButtonGradient}
                     >
-                        <Text style={styles.emptyButtonText}>Add Partner</Text>
+                        <Text style={styles.emptyButtonText}>{translateUiText("Add Partner")}</Text>
                     </LinearGradient>
                 </TouchableOpacity>
             )}
@@ -480,13 +481,13 @@ const TimelineFab = ({ isOpen, progress, onToggle, onSelect, bottomInset, pulse 
             )}
             <View pointerEvents="box-none" style={[styles.fabLayer, { bottom: bottomInset + 94 }]}>
                 <AddActionButton
-                    label="Memory"
+                    label={translateUiText("Memory")}
                     icon={<Heart color="#FFFFFF" size={17} strokeWidth={2.2} />}
                     style={actionStyle(-112, -4, 0)}
                     onPress={() => onSelect('memory')}
                 />
                 <AddActionButton
-                    label="Special Date"
+                    label={translateUiText("Special Date")}
                     icon={<CalendarDays color="#FFFFFF" size={17} strokeWidth={2.2} />}
                     style={actionStyle(-36, -116, 1)}
                     onPress={() => onSelect('special_date')}
@@ -543,7 +544,7 @@ const TimelineDatePicker = ({ value, onChange, onClose }) => {
                     textColor="#302832"
                 />
                 <TouchableOpacity style={styles.calendarDoneButton} onPress={onClose} activeOpacity={0.9}>
-                    <Text style={styles.calendarDoneText}>Done</Text>
+                    <Text style={styles.calendarDoneText}>{translateUiText("Done")}</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -727,7 +728,7 @@ const AddMemoryModal = ({
                     <View style={[styles.emojiSheet, { paddingBottom: insets.bottom + 14 }]}>
                         <View style={styles.emojiSheetHandle} />
                         <View style={styles.emojiSheetHeader}>
-                            <Text style={styles.emojiSheetTitle}>Choose an icon</Text>
+                            <Text style={styles.emojiSheetTitle}>{translateUiText("Choose an icon")}</Text>
                             <TouchableOpacity style={styles.emojiSheetClose} onPress={() => setShowIconPicker(false)}>
                                 <X color="#352B35" size={20} strokeWidth={2} />
                             </TouchableOpacity>
@@ -736,7 +737,7 @@ const AddMemoryModal = ({
                         <ScrollView style={styles.emojiScroll} showsVerticalScrollIndicator={false}>
                             {EMOJI_CATEGORIES.map((category) => (
                                 <View key={category.title} style={styles.emojiCategoryBlock}>
-                                    <Text style={styles.emojiCategoryTitle}>{category.title}</Text>
+                                    <Text style={styles.emojiCategoryTitle}>{translateUiText(category.title)}</Text>
                                     <View style={styles.emojiCategoryGrid}>
                                         {category.emojis.map((icon) => {
                                             const active = icon.key === iconKey;
@@ -835,7 +836,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 if (memory?.imageUrl) Image.prefetch(memory.imageUrl).catch(() => {});
             });
         } catch (error) {
-            Alert.alert('Memories unavailable', error.message || 'Could not load memories.');
+            Alert.alert(
+                translateUiText("Memories unavailable"),
+                translateUiText(error.message || "Could not load memories."),
+            );
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
@@ -897,7 +901,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         try {
             const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!permission.granted) {
-                Alert.alert('Photo access needed', 'Allow photo library access to add a memory.');
+                Alert.alert(translateUiText("Photo access needed"), translateUiText("Allow photo library access to add a memory."));
                 return;
             }
 
@@ -922,7 +926,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 height: asset.height,
             });
         } catch (error) {
-            Alert.alert('Could not open photos', error.message || 'Please try again.');
+            Alert.alert(
+                translateUiText("Could not open photos"),
+                translateUiText(error.message || "Please try again."),
+            );
         }
     }, []);
 
@@ -934,16 +941,16 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         const normalizedType = normalizeEntryType(entryType);
 
         if (!safeTitle) {
-            Alert.alert('Add a title', normalizedType === 'special_date'
-                ? 'Name this special date first.'
-                : 'Give this memory a title first.');
+            Alert.alert(translateUiText("Add a title"), normalizedType === 'special_date'
+                ? translateUiText("Name this special date first.")
+                : translateUiText("Give this memory a title first."));
             return;
         }
 
         if (!safeCaption) {
-            Alert.alert('Add a note', normalizedType === 'special_date'
-                ? 'Add what made this date special.'
-                : 'Add what was memorable about that day.');
+            Alert.alert(translateUiText("Add a note"), normalizedType === 'special_date'
+                ? translateUiText("Add what made this date special.")
+                : translateUiText("Add what was memorable about that day."));
             return;
         }
 
@@ -982,7 +989,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             setModalVisible(false);
             resetDraft();
         } catch (error) {
-            Alert.alert('Memory not saved', error.message || 'Please try again.');
+            Alert.alert(
+                translateUiText("Memory not saved"),
+                translateUiText(error.message || "Please try again."),
+            );
         } finally {
             setPhase('');
         }
@@ -1007,7 +1017,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             </Animated.View>
             <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
                 <View style={styles.headerCopy}>
-                    <Text style={styles.title}>Our Timeline</Text>
+                    <Text style={styles.title}>{translateUiText("Our Timeline")}</Text>
                 </View>
             </View>
 

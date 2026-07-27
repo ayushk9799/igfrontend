@@ -23,6 +23,7 @@ import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { usePuzzle } from '../hooks/usePuzzle';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -100,7 +101,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             if (!granted) {
                 setScreenMessage({
                     tone: 'warning',
-                    text: 'Camera access is needed for photos. You can still choose one from Gallery.',
+                    text: translateUiText("Camera access is needed for photos. You can still choose one from Gallery."),
                 });
             }
             return granted;
@@ -111,7 +112,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
         if (!granted) {
             setScreenMessage({
                 tone: 'warning',
-                text: 'Camera access is needed for photos. You can still choose one from Gallery.',
+                text: translateUiText("Camera access is needed for photos. You can still choose one from Gallery."),
             });
         }
         return granted;
@@ -159,7 +160,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
             setShowCamera(false);
         } catch (e) {
-            setScreenMessage({ tone: 'error', text: 'Could not capture the photo. Please try again.' });
+            setScreenMessage({ tone: 'error', text: translateUiText("Could not capture the photo. Please try again.") });
         } finally {
             isProcessingRef.current = false;
         }
@@ -171,7 +172,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             if (!perm.granted) {
                 setScreenMessage({
                     tone: 'warning',
-                    text: 'Photo library access is needed to choose a puzzle photo.',
+                    text: translateUiText("Photo library access is needed to choose a puzzle photo."),
                 });
                 return;
             }
@@ -242,19 +243,21 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                 requestReviewForMoment(REVIEW_MOMENTS.PUZZLE_SENT);
                 setScreenMessage({
                     tone: 'success',
-                    text: `Puzzle sent — ${partnerName || 'your partner'} can solve it now.`,
+                    text: translateUiTemplate("Puzzle sent — {{0}} can solve it now.", [
+                        partnerName || translateUiText("your partner"),
+                    ]),
                 });
                 setTimeout(() => navigation.goBack(), 1200);
             } else {
                 setScreenMessage({
                     tone: 'error',
-                    text: result.error || 'Failed to send the puzzle. Please try again.',
+                    text: translateUiText("Failed to send the puzzle. Please try again."),
                 });
             }
         } catch (error) {
             setScreenMessage({
                 tone: 'error',
-                text: 'Failed to send the puzzle. Please try again.',
+                text: translateUiText("Failed to send the puzzle. Please try again."),
             });
         }
         setIsSending(false);
@@ -273,7 +276,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                             <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
                         </Svg>
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Create Puzzle</Text>
+                    <Text style={styles.headerTitle}>{translateUiText("Create Puzzle")}</Text>
                     <View style={styles.headerSpacer} />
                 </View>
 
@@ -288,9 +291,9 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                 </Animated.View>
 
                 <View style={styles.content}>
-                    <Text style={styles.title}>Send a Puzzle!</Text>
+                    <Text style={styles.title}>{translateUiText("Send a Puzzle!")}</Text>
                     <Text style={styles.subtitle}>
-                        {previewUri ? 'Your puzzle preview 🧩' : `Pick a photo and challenge ${partnerName || 'your partner'} to solve it`}
+                        {previewUri ? translateUiText("Your puzzle preview 🧩") : translateUiTemplate("Pick a photo and challenge {{0}} to solve it", [partnerName || 'your partner'])}
                     </Text>
                     {screenMessage && (
                         <TouchableOpacity
@@ -321,14 +324,12 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                 />
                             ) : !hasPermission && isCameraInitialized ? (
                                 <View style={styles.loadingContainer}>
-                                    <Text style={styles.cameraPermissionText}>
-                                        Camera access is needed to take puzzle photos
-                                    </Text>
+                                    <Text style={styles.cameraPermissionText}>{translateUiText("Camera access is needed to take puzzle photos")}</Text>
                                     <TouchableOpacity
                                         onPress={requestCameraPermission}
                                         style={styles.grantCameraButton}
                                     >
-                                        <Text style={styles.grantCameraText}>Continue</Text>
+                                        <Text style={styles.grantCameraText}>{translateUiText("Continue")}</Text>
                                     </TouchableOpacity>
                                 </View>
                             ) : (
@@ -350,8 +351,8 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                 <Animated.View style={{ transform: [{ translateY: puzzleFloat }] }}>
                                     <BigPuzzleIcon />
                                 </Animated.View>
-                                <Text style={styles.pickPhotoTitle}>Choose a puzzle photo</Text>
-                                <Text style={styles.pickPhotoSubtitle}>Use your camera or pick one from your gallery.</Text>
+                                <Text style={styles.pickPhotoTitle}>{translateUiText("Choose a puzzle photo")}</Text>
+                                <Text style={styles.pickPhotoSubtitle}>{translateUiText("Use your camera or pick one from your gallery.")}</Text>
                             </View>
                         )}
                         {/* Grid Overlay on Preview */}
@@ -395,7 +396,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                         <Path d="M3 15l5-5 4 4 3-3 6 6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                                         <Circle cx="8.5" cy="8.5" r="1.5" fill={colors.text} />
                                     </Svg>
-                                    <Text style={styles.optionButtonText}>Gallery</Text>
+                                    <Text style={styles.optionButtonText}>{translateUiText("Gallery")}</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity onPress={handleOpenCamera} style={[styles.optionButton, styles.optionButtonPrimary]}>
@@ -403,12 +404,12 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                         <Path d="M4 7h3l1.5-2h7L17 7h3a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                                         <Circle cx="12" cy="13" r="3" stroke="#FFFFFF" strokeWidth={2} />
                                     </Svg>
-                                    <Text style={[styles.optionButtonText, styles.optionButtonPrimaryText]}>Camera</Text>
+                                    <Text style={[styles.optionButtonText, styles.optionButtonPrimaryText]}>{translateUiText("Camera")}</Text>
                                 </TouchableOpacity>
                             </>
                         ) : (
                             <TouchableOpacity onPress={handleOpenCamera} style={styles.controlBtnText}>
-                                <Text style={styles.retakeText}>Retake Photo</Text>
+                                <Text style={styles.retakeText}>{translateUiText("Retake Photo")}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -429,7 +430,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                             {isSending ? (
                                 <ActivityIndicator color="#FFFFFF" />
                             ) : (
-                                <Text style={styles.premiumActionText}>{`Send to ${partnerName} 🧩`}</Text>
+                                <Text style={styles.premiumActionText}>{translateUiTemplate("Send to {{0}} 🧩", [partnerName])}</Text>
                             )}
                         </TouchableOpacity>
                     ) : (
@@ -444,7 +445,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                             activeOpacity={0.8}
                             style={styles.premiumActionButton}
                         >
-                            <Text style={styles.premiumActionText}>Link Partner to Send 🔗</Text>
+                            <Text style={styles.premiumActionText}>{translateUiText("Link Partner to Send 🔗")}</Text>
                         </TouchableOpacity>
                     )}
                 </View>

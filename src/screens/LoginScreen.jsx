@@ -23,6 +23,7 @@ import { spacing } from '../theme';
 import { API_BASE } from '../constants/Api';
 import { getDeviceInfo } from '../utils/deviceInfo';
 import * as Haptics from 'expo-haptics';
+import { getContentLanguage, translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -279,6 +280,7 @@ export const LoginScreen = ({
                 },
                 body: JSON.stringify({
                     token: idToken,
+                    preferredLanguage: getContentLanguage(),
                     ...deviceInfo,
                 })
             });
@@ -298,7 +300,10 @@ export const LoginScreen = ({
             }
         } catch (error) {
             console.error('Google sign-in failed:', error);
-            Alert.alert('Sign In Failed', error.message || 'Please try again');
+            Alert.alert(
+                translateUiText("Sign In Failed"),
+                translateUiText(error.message || "Please try again"),
+            );
         } finally {
             setIsGoogleLoading(false);
         }
@@ -329,6 +334,7 @@ export const LoginScreen = ({
                     idToken: appleCredential.idToken,
                     displayName: appleCredential.displayName,
                     email: appleCredential.email,
+                    preferredLanguage: getContentLanguage(),
                     ...deviceInfo,
                 }),
             });
@@ -342,7 +348,10 @@ export const LoginScreen = ({
             }
         } catch (error) {
             console.error('Apple sign-in failed:', error);
-            Alert.alert('Sign In Failed', error.message || 'Please try again');
+            Alert.alert(
+                translateUiText("Sign In Failed"),
+                translateUiText(error.message || "Please try again"),
+            );
         } finally {
             setIsAppleLoading(false);
         }
@@ -406,15 +415,15 @@ export const LoginScreen = ({
                     >
                         {/* Welcome Text - centered */}
                         <View style={styles.welcomeSection}>
-                            <Text style={styles.title}>Welcome back <Text style={styles.heartEmoji}>💕</Text></Text>
-                            <Text style={styles.subtitle}>Sign in to keep growing together.</Text>
+                            <Text style={styles.title}>{translateUiText("Welcome back")}<Text style={styles.heartEmoji}>💕</Text></Text>
+                            <Text style={styles.subtitle}>{translateUiText("Sign in to keep growing together.")}</Text>
                         </View>
 
                         {/* Social Login Buttons */}
                         <View style={styles.socialButtons}>
                             <SocialButton
                                 icon={<GoogleIcon />}
-                                label="Continue with Google"
+                                label={translateUiText("Continue with Google")}
                                 onPress={handleGoogleSignIn}
                                 loading={isGoogleLoading}
                                 disabled={isAnyLoading}
@@ -423,7 +432,7 @@ export const LoginScreen = ({
                             {Platform.OS === 'ios' && (
                                 <SocialButton
                                     icon={<AppleIcon />}
-                                    label="Continue with Apple"
+                                    label={translateUiText("Continue with Apple")}
                                     onPress={handleAppleSignIn}
                                     loading={isAppleLoading}
                                     disabled={isAnyLoading}
@@ -436,16 +445,14 @@ export const LoginScreen = ({
 
 
                             <View style={styles.termsContainer}>
-                                <Text style={styles.termsText}>
-                                    By signing up for Penguin Couple, you agree to our
-                                </Text>
+                                <Text style={styles.termsText}>{translateUiText("By signing up for Penguin Couple, you agree to our")}</Text>
                                 <View style={styles.termsLinks}>
                                     <TouchableOpacity onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/terms-of-service.html')}>
-                                        <Text style={styles.termsLink}>Terms of Service</Text>
+                                        <Text style={styles.termsLink}>{translateUiText("Terms of Service")}</Text>
                                     </TouchableOpacity>
-                                    <Text style={styles.termsText}> and </Text>
+                                    <Text style={styles.termsText}>{translateUiText("and")}</Text>
                                     <TouchableOpacity onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/privacy-policy.html')}>
-                                        <Text style={styles.termsLink}>Privacy Policy</Text>
+                                        <Text style={styles.termsLink}>{translateUiText("Privacy Policy")}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>

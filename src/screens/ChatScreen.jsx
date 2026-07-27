@@ -20,6 +20,8 @@ import { ChatBubble, ChatInput } from '../components/chat';
 import { useSocket } from '../hooks/useSocket';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/userSlice';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { apiFetch } from '../utils/apiFetch';
 
 /**
  * ChatScreen - Individual chat conversation screen
@@ -54,7 +56,7 @@ export default function ChatScreen({
             const url = isQuestionV2Chat
                 ? `${API_BASE}/api/v2/question-chats/${chatId}?userId=${userId}&limit=50`
                 : `${API_BASE}/api/chat/${chatId}?limit=50`;
-            const response = await fetch(url);
+            const response = await apiFetch(url);
             const json = await response.json();
 
             if (json.success) {
@@ -193,7 +195,7 @@ export default function ChatScreen({
 
         try {
             if (isQuestionV2Chat) {
-                const response = await fetch(`${API_BASE}/api/v2/question-chats/${chatId}/messages`, {
+                const response = await apiFetch(`${API_BASE}/api/v2/question-chats/${chatId}/messages`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -315,7 +317,7 @@ export default function ChatScreen({
                         {questionText}
                     </Text>
                     <Text style={styles.tapHint}>
-                        {questionExpanded ? 'Tap to collapse' : 'Tap to expand'}
+                        {questionExpanded ? translateUiText("Tap to collapse") : translateUiText("Tap to expand")}
                     </Text>
                 </View>
             </TouchableOpacity>
@@ -332,7 +334,7 @@ export default function ChatScreen({
                     <View style={[styles.typingDot, styles.typingDot2]} />
                     <View style={[styles.typingDot, styles.typingDot3]} />
                 </View>
-                <Text style={styles.typingText}>{partnerName} is typing...</Text>
+                <Text style={styles.typingText}>{translateUiTemplate("{{0}} is typing...", [partnerName])}</Text>
             </View>
         );
     };
@@ -361,7 +363,7 @@ export default function ChatScreen({
                             strokeLinejoin="round"
                         />
                     </Svg>
-                    <Text style={styles.backText}>Chats</Text>
+                    <Text style={styles.backText}>{translateUiText("Chats")}</Text>
                 </TouchableOpacity>
 
                 {/* Centered avatar and name */}
@@ -374,7 +376,7 @@ export default function ChatScreen({
                     <View style={styles.headerTextContainer}>
                         <Text style={styles.headerName}>{partnerName}</Text>
                         {partnerTyping && (
-                            <Text style={styles.headerTypingText}>typing...</Text>
+                            <Text style={styles.headerTypingText}>{translateUiText("typing...")}</Text>
                         )}
                     </View>
                 </View>

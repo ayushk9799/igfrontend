@@ -21,6 +21,7 @@ import { useSocketContext } from '../context/SocketContext';
 import { selectUser } from '../store/slices/userSlice';
 import { CALL_STATE, ICE_FAILURE_TIMEOUT_MS, STUN_URLS } from './callConstants';
 import { collectSanitizedStats, getCandidateType } from './callDiagnostics';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const CallContext = createContext(null);
 const RemoteAudioLevelContext = createContext(0);
@@ -100,7 +101,7 @@ export const CallProvider = ({ children }) => {
 
     const notifyError = useCallback((message) => {
         if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-        setErrorMessage(message);
+        setErrorMessage(translateUiText(message));
         errorTimerRef.current = setTimeout(() => {
             errorTimerRef.current = null;
             setErrorMessage(null);
@@ -348,7 +349,9 @@ export const CallProvider = ({ children }) => {
             const status = await permissions.query({ name: device }).catch(() => permissions.RESULT.DENIED);
             setPermissionState(current => ({ ...current, [device]: status }));
             if (status === permissions.RESULT.DENIED) setPermissionIssue(device);
-            else notifyError(`Unable to start the ${device}. Please try again.`);
+            else notifyError(translateUiTemplate("Unable to start the {{0}}. Please try again.", [
+                translateUiText(device),
+            ]));
             return false;
         } finally {
             setRequestingDevice(null);
@@ -922,7 +925,7 @@ export const CallProvider = ({ children }) => {
                 diagnosticRef.current.offerCreated = true;
                 socket.emit('webrtc:offer', { callId: call.callId, description: offer });
             } catch (error) {
-                finishCall({ outcome: 'failed', failureCode: 'offer_failed', notifyServer: true, message: 'Unable to start the video connection.' });
+                finishCall({ outcome: 'failed', failureCode: 'offer_failed', notifyServer: true, message: translateUiText("Unable to start the video connection.") });
             }
         };
         const onOffer = async data => {
@@ -941,7 +944,7 @@ export const CallProvider = ({ children }) => {
                 diagnosticRef.current.signalingCompleted = true;
                 socket.emit('webrtc:answer', { callId: call.callId, description: answer });
             } catch (error) {
-                finishCall({ outcome: 'failed', failureCode: 'answer_failed', notifyServer: true, message: 'Unable to answer the video connection.' });
+                finishCall({ outcome: 'failed', failureCode: 'answer_failed', notifyServer: true, message: translateUiText("Unable to answer the video connection.") });
             }
         };
         const onAnswer = async data => {
@@ -953,7 +956,7 @@ export const CallProvider = ({ children }) => {
                 diagnosticRef.current.signalingCompleted = true;
                 await flushPendingCandidates();
             } catch (error) {
-                finishCall({ outcome: 'failed', failureCode: 'answer_failed', notifyServer: true, message: 'The call negotiation failed.' });
+                finishCall({ outcome: 'failed', failureCode: 'answer_failed', notifyServer: true, message: translateUiText("The call negotiation failed.") });
             }
         };
         const onCandidate = async data => {
@@ -1003,9 +1006,9 @@ export const CallProvider = ({ children }) => {
                 message: `${call.partnerName || partnerDisplayName} declined the call.`,
             });
         };
-        const onCancelled = remoteFinish({ outcome: 'cancelled', message: 'The call was cancelled.' });
-        const onMissed = remoteFinish({ outcome: 'missed', failureCode: 'ring_timeout', message: 'The call was not answered.' });
-        const onEnded = remoteFinish({ outcome: 'ended', failureCode: 'remote_ended', message: 'The call ended.' });
+        const onCancelled = remoteFinish({ outcome: 'cancelled', message: translateUiText("The call was cancelled.") });
+        const onMissed = remoteFinish({ outcome: 'missed', failureCode: 'ring_timeout', message: translateUiText("The call was not answered.") });
+        const onEnded = remoteFinish({ outcome: 'ended', failureCode: 'remote_ended', message: translateUiText("The call ended.") });
 
         socket.on('call:rejected', onRejected);
         socket.on('call:cancelled', onCancelled);

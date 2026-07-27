@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { formatRelativeTime, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const CameraIcon = () => (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
@@ -12,14 +13,14 @@ const CameraIcon = () => (
 
 const timeLabel = (value) => {
     const timestamp = new Date(value).getTime();
-    if (!Number.isFinite(timestamp)) return 'just now';
+    if (!Number.isFinite(timestamp)) return formatRelativeTime(0, 'minute');
     const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1) return formatRelativeTime(0, 'minute');
+    if (minutes < 60) return formatRelativeTime(-minutes, 'minute');
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return formatRelativeTime(-hours, 'hour');
     const days = Math.floor(hours / 24);
-    return days === 1 ? 'yesterday' : `${days}d ago`;
+    return formatRelativeTime(-days, 'day');
 };
 
 const CouplePhotoCard = ({
@@ -65,12 +66,12 @@ const CouplePhotoCard = ({
             {showCopy && (
                 <View style={styles.widgetCopy}>
                     <Text style={styles.widgetTitle} numberOfLines={1}>
-                        {displayPhoto ? `From ${partnerName}` : (myPhoto ? `Sent to ${partnerName}` : 'Partner Photo')}
+                        {displayPhoto ? translateUiTemplate("From {{0}}", [partnerName]) : (myPhoto ? translateUiTemplate("Sent to {{0}}", [partnerName]) : translateUiText("Partner Photo"))}
                     </Text>
                     <Text style={styles.widgetSubtitle} numberOfLines={1}>
                         {(displayPhoto || myPhoto)
                             ? timeLabel((displayPhoto || myPhoto).updatedAt)
-                            : (hasPartner ? 'Tap to send' : 'Connect partner')}
+                            : (hasPartner ? translateUiText("Tap to send") : translateUiText("Connect partner"))}
                     </Text>
                 </View>
             )}

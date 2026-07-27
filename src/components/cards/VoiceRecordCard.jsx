@@ -28,6 +28,7 @@ import { spacing } from '../../theme';
 import { uploadAudioToS3 } from '../../utils/uploadApi';
 import { useCall } from '../../calling/CallContext';
 import { CALL_STATE } from '../../calling/callConstants';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 const WAVEFORM_BAR_HEIGHTS = [
     0.38, 0.64, 0.46, 0.82, 0.58, 0.94, 0.52, 0.74,
@@ -203,11 +204,11 @@ const VoiceRecordCard = React.memo(({
         } else {
             // Start recording
             if (callActive) {
-                Alert.alert('Call in progress', 'End the call before recording a voice answer.');
+                Alert.alert(translateUiText("Call in progress"), translateUiText("End the call before recording a voice answer."));
                 return;
             }
             if (!hasPermission) {
-                Alert.alert('Microphone Needed', 'Microphone access is needed to record voice messages.');
+                Alert.alert(translateUiText("Microphone Needed"), translateUiText("Microphone access is needed to record voice messages."));
                 if (Platform.OS === 'android') {
                     requestPermissions();
                 }
@@ -244,7 +245,7 @@ const VoiceRecordCard = React.memo(({
                 setRecordingUri(null);
             } catch (error) {
                 setHasPermission(false);
-                Alert.alert('Microphone Needed', 'Microphone access is needed to record voice messages.');
+                Alert.alert(translateUiText("Microphone Needed"), translateUiText("Microphone access is needed to record voice messages."));
             }
         }
     };
@@ -338,7 +339,7 @@ const VoiceRecordCard = React.memo(({
             }
         } catch (error) {
             console.error('🎙️ [VoiceRecordCard] Upload failed:', error);
-            Alert.alert('Upload Failed', 'Could not upload voice recording. Please try again.');
+            Alert.alert(translateUiText("Upload Failed"), translateUiText("Could not upload voice recording. Please try again."));
             setIsSubmitting(false);
         }
     };
@@ -356,7 +357,7 @@ const VoiceRecordCard = React.memo(({
                 <View style={styles.answeredOverlay}>
                     <View style={styles.answeredBadge}>
                         <Text style={styles.answeredEmoji}>🎙️</Text>
-                        <Text style={styles.answeredTitle}>Voice Message Sent</Text>
+                        <Text style={styles.answeredTitle}>{translateUiText("Voice Message Sent")}</Text>
                     </View>
                 </View>
             )}
@@ -369,7 +370,7 @@ const VoiceRecordCard = React.memo(({
                             <Path d="M12 2a4 4 0 00-4 4v6a4 4 0 008 0V6a4 4 0 00-4-4z" fill="#FF8FA3" />
                             <Path d="M19 11a7 7 0 01-14 0M12 18v4M8 22h8" stroke="#FF8FA3" strokeWidth={2.4} strokeLinecap="round" />
                         </Svg>
-                        <Text style={voiceStyles.categoryText}>{config.label}</Text>
+                        <Text style={voiceStyles.categoryText}>{translateUiText(config.label)}</Text>
                     </View>
                 </View>
 
@@ -404,7 +405,7 @@ const VoiceRecordCard = React.memo(({
                             </TouchableOpacity>
 
                             <Text style={voiceStyles.instructionText}>
-                                {isRecording ? 'Tap to stop' : 'Tap to record'}
+                                {isRecording ? translateUiText("Tap to stop") : translateUiText("Tap to record")}
                             </Text>
 
                             {isRecording && (
@@ -479,7 +480,7 @@ const VoiceRecordCard = React.memo(({
                                             strokeLinejoin="round"
                                         />
                                     </Svg>
-                                    <Text style={voiceStyles.discardText}>Discard</Text>
+                                    <Text style={voiceStyles.discardText}>{translateUiText("Discard")}</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
@@ -502,7 +503,7 @@ const VoiceRecordCard = React.memo(({
                                                         strokeLinejoin="round"
                                                     />
                                                 </Svg>
-                                                <Text style={voiceStyles.submitText}>✓  Submit</Text>
+                                                <Text style={voiceStyles.submitText}>{translateUiText("✓ Submit")}</Text>
                                             </>
                                         )}
                                     </View>
@@ -519,7 +520,7 @@ const VoiceRecordCard = React.memo(({
                             style={[voiceStyles.idleSubmitButton, !recordingUri && voiceStyles.idleSubmitDisabled]}
                             disabled={!recordingUri}
                         >
-                            <Text style={voiceStyles.idleSubmitText}>✓  Submit</Text>
+                            <Text style={voiceStyles.idleSubmitText}>{translateUiText("✓ Submit")}</Text>
                         </TouchableOpacity>
                     </View>
                 )}

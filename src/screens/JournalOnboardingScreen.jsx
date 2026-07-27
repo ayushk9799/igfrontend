@@ -4,6 +4,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const TimelineDate = ({ month, day, year }) => (
     <View style={styles.dateCard}>
@@ -93,7 +94,7 @@ const JournalOnboardingScreen = ({ onComplete }) => {
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <View style={[styles.page, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 14 }]}>
                 <Animated.View style={[styles.intro, { opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}> 
-                    <Text style={styles.title}>Save your story <Text style={styles.heart}>♥</Text></Text>
+                    <Text style={styles.title}>{translateUiText("Save your story")}<Text style={styles.heart}>♥</Text></Text>
                 </Animated.View>
 
                 <ScrollView
@@ -110,8 +111,8 @@ const JournalOnboardingScreen = ({ onComplete }) => {
                         <View style={[styles.milestoneCard, styles.metEvent]}>
                             <Text style={styles.milestoneEmoji}>👋</Text>
                             <View style={styles.milestoneCopy}>
-                                <Text style={styles.cardTitle}>We Met</Text>
-                                <Text style={styles.cardMeta}>A simple hello started our story.</Text>
+                                <Text style={styles.cardTitle}>{translateUiText("We Met")}</Text>
+                                <Text style={styles.cardMeta}>{translateUiText("A simple hello started our story.")}</Text>
                             </View>
                         </View>
                     </Animated.View>
@@ -121,8 +122,8 @@ const JournalOnboardingScreen = ({ onComplete }) => {
                         <View style={[styles.milestoneCard, styles.firstDateEvent]}>
                             <Text style={styles.milestoneEmoji}>☕</Text>
                             <View style={styles.milestoneCopy}>
-                                <Text style={styles.cardTitle}>Our First Date</Text>
-                                <Text style={styles.cardMeta}>Coffee, nervous smiles, and hours of conversation.</Text>
+                                <Text style={styles.cardTitle}>{translateUiText("Our First Date")}</Text>
+                                <Text style={styles.cardMeta}>{translateUiText("Coffee, nervous smiles, and hours of conversation.")}</Text>
                             </View>
                         </View>
                     </Animated.View>
@@ -133,8 +134,8 @@ const JournalOnboardingScreen = ({ onComplete }) => {
                             <Image source={require('../../assets/onbording/roadtrip.png')} style={styles.memoryPhoto} resizeMode="cover" />
                             <View style={styles.photoBadges}><Text style={styles.photoBadge}>▣ 5</Text></View>
                             <View style={styles.photoCopy}>
-                                <Text style={styles.photoTitle}>Weekend Getaway</Text>
-                                <Text style={styles.cardBody} numberOfLines={1}>Our first road trip. Still one of our favorites.</Text>
+                                <Text style={styles.photoTitle}>{translateUiText("Weekend Getaway")}</Text>
+                                <Text style={styles.cardBody} numberOfLines={1}>{translateUiText("Our first road trip. Still one of our favorites.")}</Text>
                             </View>
                         </View>
                     </Animated.View>
@@ -144,8 +145,8 @@ const JournalOnboardingScreen = ({ onComplete }) => {
                         <View style={[styles.milestoneCard, styles.movedInEvent]}>
                             <Text style={styles.milestoneEmoji}>🏡</Text>
                             <View style={styles.milestoneCopy}>
-                                <Text style={styles.cardTitle}>Moved In Together</Text>
-                                <Text style={styles.cardMeta}>Our first place, finally feeling like home.</Text>
+                                <Text style={styles.cardTitle}>{translateUiText("Moved In Together")}</Text>
+                                <Text style={styles.cardMeta}>{translateUiText("Our first place, finally feeling like home.")}</Text>
                             </View>
                         </View>
                     </Animated.View>
@@ -156,15 +157,15 @@ const JournalOnboardingScreen = ({ onComplete }) => {
                             <View style={[styles.milestoneCard, styles.officialCard]}>
                                 <Text style={styles.milestoneEmoji}>💍</Text>
                                 <View style={styles.milestoneCopy}>
-                                    <Text style={styles.cardTitle}>Engaged</Text>
-                                    <Text style={styles.cardMeta}>The easiest “Yes” of our lives.</Text>
+                                    <Text style={styles.cardTitle}>{translateUiText("Engaged")}</Text>
+                                    <Text style={styles.cardMeta}>{translateUiText("The easiest “Yes” of our lives.")}</Text>
                                 </View>
                             </View>
                         </View>
                         <View style={styles.storyEnding}>
                             <View style={styles.storyLine} />
                             <Text style={styles.storyHeart}>♥</Text>
-                            <Text style={styles.continuesText}>The story continues…</Text>
+                            <Text style={styles.continuesText}>{translateUiText("The story continues…")}</Text>
                             <View style={styles.storyLine} />
                         </View>
                     </Animated.View>
@@ -173,7 +174,7 @@ const JournalOnboardingScreen = ({ onComplete }) => {
                 <View style={styles.footer}>
                     <TouchableOpacity onPress={finish} activeOpacity={0.86} style={styles.buttonShadow}>
                         <LinearGradient colors={['#FF72AD', '#FF477C']} style={styles.continueButton}>
-                            <Text style={styles.continueText}>Continue</Text><Text style={styles.continueArrow}>→</Text>
+                            <Text style={styles.continueText}>{translateUiText("Continue")}</Text><Text style={styles.continueArrow}>→</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                     <View style={styles.progress}>

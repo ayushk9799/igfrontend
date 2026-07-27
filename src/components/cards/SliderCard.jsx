@@ -17,6 +17,7 @@ import {
     spacing
 } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
+import { translateUiTemplate, translateUiText } from '../../i18n/uiTranslation';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -172,9 +173,8 @@ const SliderCard = React.memo(({
                 <View style={cardStyles.answeredOverlay}>
                     <View style={cardStyles.answeredBadge}>
                         <Text style={cardStyles.answeredEmoji}>✅</Text>
-                        <Text style={cardStyles.answeredTitle}>Already Answered</Text>
-                        <Text style={cardStyles.answeredText}>
-                            You rated: {previousAnswer} / {maxValue}
+                        <Text style={cardStyles.answeredTitle}>{translateUiText("Already Answered")}</Text>
+                        <Text style={cardStyles.answeredText}>{translateUiTemplate("You rated: {{0}} / {{1}}", [previousAnswer, maxValue])}
                         </Text>
                     </View>
                 </View>
@@ -192,7 +192,7 @@ const SliderCard = React.memo(({
                         <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
                             <Path d="M12 2L14.95 8.02L21.6 8.98L16.8 13.66L17.93 20.28L12 17.16L6.07 20.28L7.2 13.66L2.4 8.98L9.05 8.02L12 2Z" fill="#16B98F" />
                         </Svg>
-                        <Text style={styles.categoryText}>Rate It</Text>
+                        <Text style={styles.categoryText}>{translateUiText("Rate It")}</Text>
                     </View>
                 </View>
 
@@ -275,7 +275,7 @@ const SliderCard = React.memo(({
                             (!hasInteracted || locked) && styles.submitButtonDisabled
                         ]}
                     >
-                        <Text style={styles.submitText}>✓  Submit</Text>
+                        <Text style={styles.submitText}>{translateUiText("✓ Submit")}</Text>
                     </TouchableOpacity>
                 </View>
 

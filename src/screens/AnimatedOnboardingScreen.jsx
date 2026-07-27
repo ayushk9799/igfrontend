@@ -15,6 +15,7 @@ import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop, Text as SvgText
 import { fontFamily, fontWeight } from '../constants/fonts';
 
 import * as Haptics from 'expo-haptics';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -89,7 +90,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         ]}
                     >
                         <View style={styles.titleBlock}>
-                            <Text style={styles.titlePrimary}>Stay close,</Text>
+                            <Text style={styles.titlePrimary}>{translateUiText("Stay close,")}</Text>
                             <Svg height={width < 380 ? 42 : 50} width={width - 40} style={styles.gradientTitle}>
                                 <Defs>
                                     <SvgGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
@@ -108,9 +109,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                                     textAnchor="middle"
                                     x={(width - 40) / 2}
                                     y={width < 380 ? 32 : 38}
-                                >
-                                    even on busy days.
-                                </SvgText>
+                                >{translateUiText("even on busy days.")}</SvgText>
                             </Svg>
                             <View style={styles.titleDivider}>
                                 <View style={styles.dividerLine} />
@@ -153,16 +152,15 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                         <View style={styles.badgeRow}>
                             <View style={styles.moodBadge}>
                                 <Text style={styles.badgeIcon}>💗</Text>
-                                <Text style={[styles.badgeText, styles.badgeTextYou]}>You: Cuddly</Text>
+                                <Text style={[styles.badgeText, styles.badgeTextYou]}>{translateUiText("You: Cuddly")}</Text>
                             </View>
                             <View style={styles.moodBadge}>
                                 <Text style={styles.badgeIcon}>🌸</Text>
-                                <Text style={[styles.badgeText, styles.badgeTextPartner]}>Partner: Relaxed</Text>
+                                <Text style={[styles.badgeText, styles.badgeTextPartner]}>{translateUiText("Partner: Relaxed")}</Text>
                             </View>
                         </View>
 
-                        <Text style={styles.copyText}>
-                            Share how you feel and understand{'\n'}each other better, every day. <Text style={styles.copyHeart}>💜</Text>
+                        <Text style={styles.copyText}>{translateUiTemplate("Share how you feel and understand{{0}}each other better, every day.", ['\n'])}<Text style={styles.copyHeart}>💜</Text>
                         </Text>
                     </Animated.View>
 
@@ -174,7 +172,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                                 end={{ x: 1, y: 1 }}
                                 style={styles.nextButton}
                             >
-                                <Text style={styles.nextText}>Next</Text>
+                                <Text style={styles.nextText}>{translateUiText("Next")}</Text>
                             </LinearGradient>
                         </TouchableOpacity>
 

@@ -40,7 +40,14 @@ class CouplePhotoWidgetProvider : AppWidgetProvider() {
             views.setImageViewBitmap(R.id.couple_photo_image, bitmap)
             views.setViewVisibility(R.id.couple_photo_image, View.VISIBLE)
             views.setViewVisibility(R.id.couple_photo_empty, View.GONE)
-            views.setTextViewText(R.id.couple_photo_sender, "From ${prefs.getString(KEY_SENDER_NAME, "Your partner")}")
+            val senderName = prefs.getString(
+                KEY_SENDER_NAME,
+                context.getString(R.string.widget_your_partner)
+            )
+            views.setTextViewText(
+                R.id.couple_photo_sender,
+                context.getString(R.string.widget_from_partner, senderName)
+            )
             views.setViewVisibility(R.id.couple_photo_sender, View.VISIBLE)
         } else {
             views.setViewVisibility(R.id.couple_photo_image, View.GONE)

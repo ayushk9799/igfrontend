@@ -27,6 +27,7 @@ import { useSocketContext } from '../context/SocketContext';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const FREE_TICTACTOE_GAME_LIMIT = 5;
 const SparkleStar = ({ size = 20, color = '#EC4899', style }) => (
@@ -207,7 +208,7 @@ const TicTacToeScreen = ({
     // Show inline status message that auto-clears after 3 seconds
     const showStatus = useCallback((message, type = 'error') => {
         if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
-        setStatusMessage({ text: message, type });
+        setStatusMessage({ text: translateUiText(message), type });
         statusTimerRef.current = setTimeout(() => setStatusMessage(null), 3000);
     }, []);
 
@@ -338,7 +339,7 @@ const TicTacToeScreen = ({
         if (countdownIntervalRef.current) {
             clearInterval(countdownIntervalRef.current);
         }
-        setGameStartMessage(message);
+        setGameStartMessage(translateUiText(message));
         gameStartingRef.current = true;
         setIsGameStarting(true);
         setCountdown(3);
@@ -849,12 +850,12 @@ const TicTacToeScreen = ({
         }
 
         Alert.alert(
-            'Restart this game?',
-            'This will clear the current board for both you and your partner.',
+            translateUiText("Restart this game?"),
+            translateUiText("This will clear the current board for both you and your partner."),
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: translateUiText("Cancel"), style: 'cancel' },
                 {
-                    text: 'Restart',
+                    text: translateUiText("Restart"),
                     style: 'destructive',
                     onPress: restartCurrentGame,
                 },
@@ -981,7 +982,7 @@ const TicTacToeScreen = ({
         const now = Date.now();
         if (now - lastNotifyTime < 5 * 60 * 1000) {
             const remaining = Math.ceil((5 * 60 * 1000 - (now - lastNotifyTime)) / 60000);
-            showStatus(`You can notify again in ${remaining} minute(s)`, 'info');
+            showStatus(translateUiTemplate("You can notify again in {{0}} minute(s)", [remaining]), 'info');
             return;
         }
 
@@ -995,7 +996,7 @@ const TicTacToeScreen = ({
             const data = await response.json();
             if (data.success) {
                 setLastNotifyTime(now);
-                showStatus(`${partnerName} has been notified ✓`, 'success');
+                showStatus(translateUiTemplate("{{0}} has been notified ✓", [partnerName]), 'success');
             } else {
                 showStatus('Failed to send notification');
             }
@@ -1021,13 +1022,13 @@ const TicTacToeScreen = ({
     const rightSymbolOpacity = rightActive || isGameOver ? 1.0 : 0.55;
 
     const getStatusText = () => {
-        if (loading) return 'Loading...';
-        if (isGameStarting) return `${gameStartMessage}\n${countdown > 0 ? countdown : 'GO!'}`;
-        if (isNewGame) return 'Tap to start game!';
-        if (status === 'draw') return "It's a draw! 🤝";
-        if (didIWin) return `🎉 You won! 💜`;
-        if (didTheyWin) return `🎉 ${partnerName} won! 💜`;
-        return isMyTurn ? 'Your turn' : `${partnerName}'s turn`;
+        if (loading) return translateUiText("Loading...");
+        if (isGameStarting) return `${gameStartMessage}\n${countdown > 0 ? countdown : translateUiText("GO!")}`;
+        if (isNewGame) return translateUiText("Tap to start game!");
+        if (status === 'draw') return translateUiText("It's a draw! 🤝");
+        if (didIWin) return translateUiText("🎉 You won! 💜");
+        if (didTheyWin) return translateUiTemplate("🎉 {{0}} won! 💜", [partnerName]);
+        return isMyTurn ? translateUiText("Your turn") : translateUiTemplate("{{0}}'s turn", [partnerName]);
     };
 
     const winningLine = React.useMemo(() => {
@@ -1231,7 +1232,7 @@ const TicTacToeScreen = ({
                     activeOpacity={0.7}
                     style={styles.cellButton}
                     accessibilityRole="button"
-                    accessibilityLabel={`Row ${Math.floor(index / 3) + 1}, column ${(index % 3) + 1}${value ? `, ${value}` : ', empty'}`}
+                    accessibilityLabel={translateUiTemplate("Row {{0}}, column {{1}}{{2}}", [Math.floor(index / 3) + 1, (index % 3) + 1, value ? `, ${value}` : ', empty'])}
                     accessibilityState={{ disabled: !canTap }}
                 >
                     {value !== null && (
@@ -1248,7 +1249,7 @@ const TicTacToeScreen = ({
                 <SafeAreaView style={styles.container}>
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.primary} />
-                        <Text style={styles.loadingText}>Setting up game...</Text>
+                        <Text style={styles.loadingText}>{translateUiText("Setting up game...")}</Text>
                     </View>
                 </SafeAreaView>
             </GradientBackground>
@@ -1269,7 +1270,7 @@ const TicTacToeScreen = ({
                             style={styles.backButton}
                             onPress={() => navigationRef.current?.goBack?.()}
                             accessibilityRole="button"
-                            accessibilityLabel="Back to games"
+                            accessibilityLabel={translateUiText("Back to games")}
                         >
                             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                                 <Path
@@ -1282,19 +1283,19 @@ const TicTacToeScreen = ({
                             </Svg>
                         </TouchableOpacity>
                         <View style={styles.headerCopy}>
-                            <Text style={styles.headerTitle} numberOfLines={1}>Tic Tac Toe</Text>
+                            <Text style={styles.headerTitle} numberOfLines={1}>{translateUiText("Tic Tac Toe")}</Text>
                         </View>
                     </View>
                     <View style={styles.headerRight}>
                         {partnerOnline ? (
                             <View style={styles.onlineIndicator}>
                                 <View style={styles.onlineDot} />
-                                <Text style={styles.onlineText}>Online</Text>
+                                <Text style={styles.onlineText}>{translateUiText("Online")}</Text>
                             </View>
                         ) : (
                             <View style={styles.offlineIndicator}>
                                 <View style={styles.offlineDot} />
-                                <Text style={styles.offlineText}>Offline</Text>
+                                <Text style={styles.offlineText}>{translateUiText("Offline")}</Text>
                             </View>
                         )}
                         {gameId && !isGameOver && (
@@ -1307,7 +1308,7 @@ const TicTacToeScreen = ({
                                 disabled={!partnerId || isGameStarting || isGameActionPending}
                                 activeOpacity={0.8}
                                 accessibilityRole="button"
-                                accessibilityLabel="Restart game"
+                                accessibilityLabel={translateUiText("Restart game")}
                                 accessibilityState={{
                                     disabled: !partnerId || isGameStarting || isGameActionPending,
                                 }}
@@ -1353,13 +1354,13 @@ const TicTacToeScreen = ({
                         </Animated.View>
                         <View style={[styles.playerLabel, leftActive && styles.activePlayerLabel]}>
                             <Text style={[styles.playerLabelText, leftActive && styles.activePlayerLabelText]}>
-                                {leftActive ? 'YOUR TURN' : 'YOU'}
+                                {leftActive ? translateUiText("YOUR TURN") : translateUiText("YOU")}
                             </Text>
                         </View>
                     </View>
 
                     <View style={styles.vsBadge}>
-                        <Text style={styles.vsBadgeText}>vs</Text>
+                        <Text style={styles.vsBadgeText}>{translateUiText("vs")}</Text>
                     </View>
 
                     {/* Right Card: Partner */}
@@ -1384,7 +1385,7 @@ const TicTacToeScreen = ({
                         <Text style={styles.partnerNameText} numberOfLines={1}>{partnerName}</Text>
                         {rightActive && (
                             <View style={[styles.playerLabel, styles.activePlayerLabel]}>
-                                <Text style={[styles.playerLabelText, styles.activePlayerLabelText]}>THEIR TURN</Text>
+                                <Text style={[styles.playerLabelText, styles.activePlayerLabelText]}>{translateUiText("THEIR TURN")}</Text>
                             </View>
                         )}
                     </View>
@@ -1404,7 +1405,7 @@ const TicTacToeScreen = ({
                             styles.statusEyebrowText,
                             isMyTurn && !isGameOver && styles.statusEyebrowTextActive,
                         ]}>
-                            {isGameOver ? 'MATCH COMPLETE' : isMyTurn ? 'MAKE YOUR MOVE' : 'WAITING FOR PARTNER'}
+                            {isGameOver ? translateUiText("MATCH COMPLETE") : isMyTurn ? translateUiText("MAKE YOUR MOVE") : translateUiText("WAITING FOR PARTNER")}
                         </Text>
                     </View>
                     {isGameOver && (revealGameOverText || status === 'draw') ? (
@@ -1506,7 +1507,7 @@ const TicTacToeScreen = ({
                                 ]}
                                 disabled={isGameActionPending || checkingPremium || !playAgainReady}
                                 accessibilityRole="button"
-                                accessibilityLabel="Play again"
+                                accessibilityLabel={translateUiText("Play again")}
                                 accessibilityState={{
                                     disabled: isGameActionPending || checkingPremium || !playAgainReady,
                                 }}
@@ -1514,9 +1515,7 @@ const TicTacToeScreen = ({
                                 {isGameActionPending || checkingPremium ? (
                                     <ActivityIndicator color="#D84F86" />
                                 ) : (
-                                    <Text style={styles.restartGameButtonText}>
-                                        Play Again
-                                    </Text>
+                                    <Text style={styles.restartGameButtonText}>{translateUiText("Play Again")}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -1531,11 +1530,10 @@ const TicTacToeScreen = ({
                         activeOpacity={0.8}
                         disabled={checkingPremium}
                         accessibilityRole="button"
-                        accessibilityLabel="Retry free-game limit check"
+                        accessibilityLabel={translateUiText("Retry free-game limit check")}
                     >
                         <Text style={styles.limitCheckErrorText}>
-                            {limitCheckError} Tap to retry.
-                        </Text>
+                                    {translateUiTemplate("{{0}} Tap to retry.", [translateUiText(limitCheckError)])}</Text>
                     </TouchableOpacity>
                 )}
 
@@ -1544,7 +1542,7 @@ const TicTacToeScreen = ({
                     {!isGameOver && gameId && !(isMyTurn || partnerOnline) ? (
                         <View style={styles.notifyButtonContainer}>
                             <Button
-                                title={`Nudge ${partnerName}`}
+                                title={translateUiTemplate("Nudge {{0}}", [partnerName])}
                                 onPress={notifyPartner}
                                 variant="primary"
                                 size="md"
@@ -1571,7 +1569,7 @@ const TicTacToeScreen = ({
                 {!partnerId && (
                     <View style={styles.linkPartnerContainer}>
                         <Button
-                            title="Link Partner to Play 🔗"
+                            title={translateUiText("Link Partner to Play 🔗")}
                             onPress={() => navigation?.navigate?.('PartnerLink')}
                             variant="primary"
                             size="xl"

@@ -2,6 +2,7 @@ import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { API_BASE } from '../constants/Api';
 import { getUser, updateUser as updateStoredUser } from './authStorage';
 import { reportWidgetIntent, syncNativeWidgetStatus } from '../api/widgetStatusApi';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const getUserId = (user) => user?._id || user?.id || null;
 
@@ -103,8 +104,8 @@ const ensureAndroidLocationPermission = async () => {
     }
 
     const result = await PermissionsAndroid.request(finePermission, {
-        title: 'Location Permission',
-        message: 'Location access is needed to show the distance between you and your partner.',
+        title: translateUiText("Location Permission"),
+        message: translateUiText("Location access is needed to show the distance between you and your partner."),
         buttonPositive: 'Allow',
         buttonNegative: 'Not Now',
     });
@@ -145,8 +146,8 @@ const ensureAndroidBackgroundLocationPermission = async () => {
     }
 
     const result = await PermissionsAndroid.request(backgroundPermission, {
-        title: 'Background Location Permission',
-        message: 'Allow location all the time so the Distance widget can update when the app is closed.',
+        title: translateUiText("Background Location Permission"),
+        message: translateUiText("Allow location all the time so the Distance widget can update when the app is closed."),
         buttonPositive: 'Allow',
         buttonNegative: 'Not Now',
     });

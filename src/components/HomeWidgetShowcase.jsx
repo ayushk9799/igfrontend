@@ -12,6 +12,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import CouplePhotoCard from './CouplePhotoCard';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const DISTANCE_STEPS = [
     'Our distance: 1,000 km',
@@ -80,10 +81,10 @@ const getTogetherDuration = (startDate, now = Date.now()) => {
     const twoDigits = value => String(value).padStart(2, '0');
 
     return [
-        { value: days, label: 'days' },
-        { value: twoDigits(hours), label: 'hr' },
-        { value: twoDigits(minutes), label: 'min' },
-        { value: twoDigits(seconds), label: 'sec' },
+        { value: days, label: translateUiText("days") },
+        { value: twoDigits(hours), label: translateUiText("hr") },
+        { value: twoDigits(minutes), label: translateUiText("min") },
+        { value: twoDigits(seconds), label: translateUiText("sec") },
     ];
 };
 
@@ -157,12 +158,12 @@ export const DistanceShowcaseCard = ({ isLocationSetup = false }) => {
             style={[styles.widgetShowcaseCard, styles.distanceShowcaseCard]}
         >
             <View style={styles.distanceHeader}>
-                <WidgetShowcaseHeader>Our Distance</WidgetShowcaseHeader>
+                <WidgetShowcaseHeader>{translateUiText("Our Distance")}</WidgetShowcaseHeader>
             </View>
             <View style={[styles.cardHeaderDivider, styles.distanceHeaderDivider]} />
             <View style={styles.distanceShowcaseCenterTrack}>
                 <ShowcaseText style={styles.distanceShowcaseValue} numberOfLines={1}>
-                    {isLocationSetup ? distanceText : 'See how close you are'}
+                    {isLocationSetup ? distanceText : translateUiText("See how close you are")}
                 </ShowcaseText>
                 <View style={styles.distanceShowcaseTrack}>
                     <Animated.View style={[styles.distanceShowcaseDash, { left: dashLeft, right: dashRight }]} />
@@ -177,7 +178,7 @@ export const DistanceShowcaseCard = ({ isLocationSetup = false }) => {
                     </Animated.View>
                 </View>
                 {!isLocationSetup && (
-                    <ShowcaseText style={styles.distanceSetupText}>Tap to set up</ShowcaseText>
+                    <ShowcaseText style={styles.distanceSetupText}>{translateUiText("Tap to set up")}</ShowcaseText>
                 )}
             </View>
         </LinearGradient>
@@ -200,7 +201,7 @@ export const TimeTogetherShowcaseCard = ({ relationshipStartDate, daysTogether =
             <View style={styles.togetherComposition}>
                 <View style={styles.togetherDurationPlate}>
                     <View style={styles.togetherDurationHeading}>
-                        <ShowcaseText style={styles.togetherDurationEyebrow}>together for</ShowcaseText>
+                        <ShowcaseText style={styles.togetherDurationEyebrow}>{translateUiText("together for")}</ShowcaseText>
                         <HeartIcon size={17} color="#FFFFFF" />
                     </View>
                     {durationParts ? (
@@ -208,18 +209,18 @@ export const TimeTogetherShowcaseCard = ({ relationshipStartDate, daysTogether =
                             {durationParts.map(part => (
                                 <View key={part.label} style={styles.togetherDurationColumn}>
                                     <ShowcaseText style={styles.togetherDurationValue}>{part.value}</ShowcaseText>
-                                    <ShowcaseText style={styles.togetherDaysLabel}>{part.label}</ShowcaseText>
+                                    <ShowcaseText style={styles.togetherDaysLabel}>{translateUiText(part.label)}</ShowcaseText>
                                 </View>
                             ))}
                         </View>
                     ) : (
-                        <ShowcaseText style={styles.togetherDurationValue}>Start your story</ShowcaseText>
+                        <ShowcaseText style={styles.togetherDurationValue}>{translateUiText("Start your story")}</ShowcaseText>
                     )}
                 </View>
                 <View style={styles.togetherDaysOrb}>
                     <ShowcaseText style={styles.togetherDaysValue}>{daysTogether || elapsedDays}</ShowcaseText>
                     <View style={styles.togetherDaysLabelRow}>
-                        <ShowcaseText style={styles.togetherDaysLabel}>days</ShowcaseText>
+                        <ShowcaseText style={styles.togetherDaysLabel}>{translateUiText("days")}</ShowcaseText>
                         <HeartIcon size={10} color="#FFFFFF" />
                     </View>
                 </View>
@@ -262,7 +263,7 @@ const HomeWidgetShowcase = ({
                 onPress={onDistancePress || onPress}
                 style={[styles.widgetShowcasePressable, styles.distanceShowcaseShadow]}
                 accessibilityRole="button"
-                accessibilityLabel={isLocationSetup ? 'Open distance widgets' : 'Set up location for Our Distance'}
+                accessibilityLabel={isLocationSetup ? translateUiText("Open distance widgets") : translateUiText("Set up location for Our Distance")}
             >
                 <DistanceShowcaseCard isLocationSetup={isLocationSetup} />
             </TouchableOpacity>

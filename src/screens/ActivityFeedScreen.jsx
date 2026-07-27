@@ -16,6 +16,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { getActivityByDate } from '../utils/answerApi';
+import { formatRelativeTime, getUiLocale, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 /**
  * ActivityFeedScreen - Shows who completed today's challenge
@@ -59,10 +60,10 @@ export default function ActivityFeedScreen({ onBack = () => { }, onViewUser }) {
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
 
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        return date.toLocaleDateString();
+        if (diffMins < 1) return formatRelativeTime(0, 'minute');
+        if (diffMins < 60) return formatRelativeTime(-diffMins, 'minute');
+        if (diffHours < 24) return formatRelativeTime(-diffHours, 'hour');
+        return date.toLocaleDateString(getUiLocale());
     };
 
     const renderActivityItem = ({ item }) => (
@@ -88,15 +89,13 @@ export default function ActivityFeedScreen({ onBack = () => { }, onViewUser }) {
                 </View>
             </View>
             <View style={styles.activityContent}>
-                <Text style={styles.userName}>{item.userId?.name || 'Anonymous'}</Text>
-                <Text style={styles.activityText}>
-                    Completed today's challenge
-                </Text>
+                <Text style={styles.userName}>{item.userId?.name || translateUiText("Anonymous")}</Text>
+                <Text style={styles.activityText}>{translateUiText("Completed today's challenge")}</Text>
                 <Text style={styles.timeText}>{formatTime(item.completedAt)}</Text>
             </View>
             <View style={styles.statsContainer}>
                 <Text style={styles.statsNumber}>{item.tasksCompleted}</Text>
-                <Text style={styles.statsLabel}>tasks</Text>
+                <Text style={styles.statsLabel}>{translateUiText("tasks")}</Text>
             </View>
         </TouchableOpacity>
     );
@@ -104,10 +103,8 @@ export default function ActivityFeedScreen({ onBack = () => { }, onViewUser }) {
     const renderEmptyState = () => (
         <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>🌙</Text>
-            <Text style={styles.emptyTitle}>No Activity Yet</Text>
-            <Text style={styles.emptyText}>
-                Be the first to complete today's challenge!
-            </Text>
+            <Text style={styles.emptyTitle}>{translateUiText("No Activity Yet")}</Text>
+            <Text style={styles.emptyText}>{translateUiText("Be the first to complete today's challenge!")}</Text>
         </View>
     );
 
@@ -137,10 +134,11 @@ export default function ActivityFeedScreen({ onBack = () => { }, onViewUser }) {
                     </Svg>
                 </TouchableOpacity>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>Today's Activity</Text>
+                    <Text style={styles.headerTitle}>{translateUiText("Today's Activity")}</Text>
                     <Text style={styles.headerSubtitle}>
-                        {activity.length} {activity.length === 1 ? 'person' : 'people'} completed
-                    </Text>
+                        {activity.length === 1
+                            ? translateUiTemplate("{{0}} person completed", [activity.length])
+                            : translateUiTemplate("{{0}} people completed", [activity.length])}</Text>
                 </View>
             </View>
 

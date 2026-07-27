@@ -17,6 +17,7 @@ import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
 
 import { requestNotificationPermission, registerFCMToken } from '../utils/pushNotifications';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -210,14 +211,12 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                             <View style={styles.titleBurstContainer}>
                                 <TitleBurst />
                             </View>
-                            <Text style={styles.title}>Stay Connected</Text>
+                            <Text style={styles.title}>{translateUiText("Stay Connected")}</Text>
                             <View style={styles.titleHeartContainer}>
                                 <TinyHeart color="#FF8FAB" />
                             </View>
                         </View>
-                        <Text style={styles.subtitle}>
-                            Get notified when your partner sends you love notes, scribbles, and game invites.
-                        </Text>
+                        <Text style={styles.subtitle}>{translateUiText("Get notified when your partner sends you love notes, scribbles, and game invites.")}</Text>
                     </Animated.View>
 
                     {/* Simulated Mobile Mockup with Notifications */}
@@ -238,7 +237,7 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                         <View style={styles.notificationsOverlay}>
                             <View style={styles.lockScreenClock}>
                                 <Text style={styles.lockScreenTime}>9:41</Text>
-                                <Text style={styles.lockScreenDate}>Sunday, July 19</Text>
+                                <Text style={styles.lockScreenDate}>{translateUiText("Sunday, July 19")}</Text>
                             </View>
 
                             {/* Notification 1 */}
@@ -248,10 +247,10 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                                 </View>
                                 <View style={styles.notifTextContainer}>
                                     <View style={styles.notifTitleRow}>
-                                        <Text style={styles.notifTitle}>Partner Message</Text>
-                                        <Text style={styles.notifTime}>now</Text>
+                                        <Text style={styles.notifTitle}>{translateUiText("Partner Message")}</Text>
+                                        <Text style={styles.notifTime}>{translateUiText("now")}</Text>
                                     </View>
-                                    <Text style={styles.notifBody}>Can't wait to see you today! 🥰</Text>
+                                    <Text style={styles.notifBody}>{translateUiText("Can't wait to see you today! 🥰")}</Text>
                                 </View>
                             </Animated.View>
 
@@ -262,10 +261,10 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                                 </View>
                                 <View style={styles.notifTextContainer}>
                                     <View style={styles.notifTitleRow}>
-                                        <Text style={styles.notifTitle}>New Scribble</Text>
-                                        <Text style={styles.notifTime}>now</Text>
+                                        <Text style={styles.notifTitle}>{translateUiText("New Scribble")}</Text>
+                                        <Text style={styles.notifTime}>{translateUiText("now")}</Text>
                                     </View>
-                                    <Text style={styles.notifBody}>Alex sent you a cute drawing 🐾</Text>
+                                    <Text style={styles.notifBody}>{translateUiText("Alex sent you a cute drawing 🐾")}</Text>
                                 </View>
                             </Animated.View>
 
@@ -276,10 +275,10 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                                 </View>
                                 <View style={styles.notifTextContainer}>
                                     <View style={styles.notifTitleRow}>
-                                        <Text style={styles.notifTitle}>Game Invite</Text>
-                                        <Text style={styles.notifTime}>now</Text>
+                                        <Text style={styles.notifTitle}>{translateUiText("Game Invite")}</Text>
+                                        <Text style={styles.notifTime}>{translateUiText("now")}</Text>
                                     </View>
-                                    <Text style={styles.notifBody}>Let's play Tic-Tac-Toe! 🎮✨</Text>
+                                    <Text style={styles.notifBody}>{translateUiText("Let's play Tic-Tac-Toe! 🎮✨")}</Text>
                                 </View>
                             </Animated.View>
                         </View>
@@ -311,13 +310,13 @@ const NotificationPermissionScreen = ({ onComplete }) => {
                                     style={styles.allowButtonGradient}
                                 >
                                     <BellIcon />
-                                    <Text style={styles.allowButtonText}>Allow Notifications</Text>
+                                    <Text style={styles.allowButtonText}>{translateUiText("Allow Notifications")}</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
 
                         <TouchableOpacity onPress={handleSkip} activeOpacity={0.7} style={styles.skipButton}>
-                            <Text style={styles.skipText}>Maybe Later →</Text>
+                            <Text style={styles.skipText}>{translateUiText("Maybe Later →")}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

@@ -28,6 +28,7 @@ import { submitAnswer, getCoupleTodayChallenge } from '../utils/answerApi';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/userSlice';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 const CARD_HEIGHT = height * 0.7;
@@ -396,9 +397,9 @@ export default function DailyChallengeScreen({
         <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
         <GradientBackground variant="light" showOrbs={true}>
           <View style={[styles.center, { paddingTop: insets.top, paddingHorizontal: spacing.lg }]}>
-            <Text style={styles.emptyText}>No Challenge Today</Text>
+            <Text style={styles.emptyText}>{translateUiText("No Challenge Today")}</Text>
             <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-              <Text style={styles.backBtnText}>← Back Home</Text>
+              <Text style={styles.backBtnText}>{translateUiText("← Back Home")}</Text>
             </TouchableOpacity>
           </View>
         </GradientBackground>
@@ -431,12 +432,18 @@ export default function DailyChallengeScreen({
             const json = await response.json();
 
             if (json.success) {
-              Alert.alert('Reminder Sent!', `${partnerName} will get a notification 💕`);
+              Alert.alert(
+                translateUiText("Reminder Sent!"),
+                translateUiTemplate("{{0}} will get a notification 💕", [partnerName]),
+              );
             } else {
-              Alert.alert('Reminder Not Sent', json.message || 'Could not send reminder');
+              Alert.alert(
+                translateUiText("Reminder Not Sent"),
+                json.message || translateUiText("Could not send reminder"),
+              );
             }
           } catch (error) {
-            Alert.alert('Error', 'Could not send reminder. Try again later.');
+            Alert.alert(translateUiText("Error"), translateUiText("Could not send reminder. Try again later."));
           }
         }}
       />
@@ -457,7 +464,7 @@ export default function DailyChallengeScreen({
                 </Svg>
               </TouchableOpacity>
               <View style={styles.headerContent}>
-                <Text style={styles.headerTitle}>Today's Challenge</Text>
+                <Text style={styles.headerTitle}>{translateUiText("Today's Challenge")}</Text>
               </View>
               <View style={{ width: 48 }} />
             </View>

@@ -23,6 +23,7 @@ import { fontFamily, fontWeight } from '../constants/fonts';
 import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
 import { getPremiumEntitlement, mapSubscriptionAccessToUser, refreshSubscription } from '../api/subscriptionApi';
 import { updateUser as updateUserStorage } from '../utils/authStorage';
+import { getUiLocale, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const ONBOARDING_OFFERING_ID = 'onbording';
 
@@ -148,12 +149,12 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
     const features = useMemo(
         () => [
-            { label: 'One premium covers both of you' },
-            { label: '2000+ couple questions' },
-            { label: 'Unlimited Games' },
-            { label: 'Unlimited Memories' },
-            { label: 'Live drawing' },
-            { label: 'Widgets' },
+            { label: translateUiText("One premium covers both of you") },
+            { label: translateUiText("2000+ couple questions") },
+            { label: translateUiText("Unlimited Games") },
+            { label: translateUiText("Unlimited Memories") },
+            { label: translateUiText("Live drawing") },
+            { label: translateUiText("Widgets") },
         ],
         [],
     );
@@ -310,25 +311,25 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
     const planLabelFromId = (id) => {
         try {
-            if (!id) return 'Active subscription';
+            if (!id) return translateUiText("Active subscription");
             const lower = String(id).toLowerCase();
-            if (lower.includes('week')) return 'Weekly Plan';
-            if (lower.includes('month')) return 'Monthly Plan';
-            if (lower.includes('year') || lower.includes('annual')) return 'Annual Plan';
-            if (lower.includes('life')) return 'Lifetime';
-            return 'Active subscription';
+            if (lower.includes('week')) return translateUiText("Weekly Plan");
+            if (lower.includes('month')) return translateUiText("Monthly Plan");
+            if (lower.includes('year') || lower.includes('annual')) return translateUiText("Annual Plan");
+            if (lower.includes('life')) return translateUiText("Lifetime");
+            return translateUiText("Active subscription");
         } catch {
-            return 'Active subscription';
+            return translateUiText("Active subscription");
         }
     };
 
     const formatDate = (iso) => {
         try {
-            if (!iso) return 'Active';
+            if (!iso) return translateUiText("Active");
             const d = new Date(iso);
-            return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            return d.toLocaleDateString(getUiLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
         } catch {
-            return 'Active';
+            return translateUiText("Active");
         }
     };
 
@@ -344,7 +345,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
         try {
             if (!price || !currencyCode) return '';
             const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
-            return new Intl.NumberFormat(undefined, {
+            return new Intl.NumberFormat(getUiLocale(), {
                 style: 'currency',
                 currency: currencyCode,
                 minimumFractionDigits: 2,
@@ -410,7 +411,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 activeOpacity={0.8}
             >
                 <Text style={styles.restoreButtonText}>
-                    {restoring ? 'Restoring...' : 'Restore'}
+                    {restoring ? translateUiText("Restoring...") : translateUiText("Restore")}
                 </Text>
             </TouchableOpacity>
 
@@ -450,15 +451,15 @@ export default function OnboardingPremiumScreen({ onBack }) {
                     <View style={styles.headerTextContainer}>
                         <Text style={styles.headingTitle}>
                             {purchaseSucceeded ? (
-                                <>You're <Text style={styles.premiumText}>Premium!</Text></>
+                                <>{translateUiText("You're")}<Text style={styles.premiumText}>{translateUiText("Premium!")}</Text></>
                             ) : (
-                                <>Go <Text style={styles.premiumText}>Premium</Text></>
+                                <>{translateUiText("Go")}<Text style={styles.premiumText}>{translateUiText("Premium")}</Text></>
                             )}
                         </Text>
                         <Text style={styles.headingSubtitle}>
                             {purchaseSucceeded
-                                ? 'Your partner is included'
-                                : 'Your partner doesn\'t pay anything'}
+                                ? translateUiText("Your partner is included")
+                                : translateUiText("Your partner doesn't pay anything")}
                         </Text>
                     </View>
 
@@ -481,9 +482,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                     />
                                 </Svg>
                             </Animated.View>
-                            <Text style={styles.purchaseSuccessText}>
-                                Premium is now active for both of you
-                            </Text>
+                            <Text style={styles.purchaseSuccessText}>{translateUiText("Premium is now active for both of you")}</Text>
                         </View>
                     ) : isPremium && (
                         <View style={styles.premiumStatusContainer}>
@@ -492,18 +491,18 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                     <Svg width={20} height={20} viewBox="0 0 24 24" fill="#FFB500">
                                         <Path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm0 3h14v2H5v-2z" />
                                     </Svg>
-                                    <Text style={styles.premiumStatusTitle}>You're Premium</Text>
+                                    <Text style={styles.premiumStatusTitle}>{translateUiText("You're Premium")}</Text>
                                 </View>
                                 <View style={styles.premiumStatusDetails}>
                                     <View>
-                                        <Text style={styles.premiumStatusLabel}>Plan</Text>
+                                        <Text style={styles.premiumStatusLabel}>{translateUiText("Plan")}</Text>
                                         <Text style={styles.premiumStatusValue}>
                                             {planLabelFromId(premiumPlan)}
                                         </Text>
                                     </View>
                                     <View style={{ alignItems: 'flex-end' }}>
                                         <Text style={styles.premiumStatusLabel}>
-                                            {premiumIsCancelled ? 'Access until' : 'Renews/Expires'}
+                                            {premiumIsCancelled ? translateUiText("Access until") : translateUiText("Renews/Expires")}
                                         </Text>
                                         <Text style={styles.premiumStatusValue}>
                                             {formatDate(premiumExpiresAt)}
@@ -512,8 +511,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 </View>
                                 {premiumIsCancelled && (
                                     <View style={styles.premiumCancellationNotice}>
-                                        <Text style={styles.premiumCancellationText}>
-                                            Premium cancelled — access continues until {formatDate(premiumExpiresAt)}
+                                        <Text style={styles.premiumCancellationText}>{translateUiTemplate("Premium cancelled — access continues until {{0}}", [formatDate(premiumExpiresAt)])}
                                         </Text>
                                     </View>
                                 )}
@@ -567,13 +565,11 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 ]}
                             >
                                 <View style={styles.planDetailsCol}>
-                                    <Text style={styles.planTitleText}>Yearly</Text>
+                                    <Text style={styles.planTitleText}>{translateUiText("Yearly")}</Text>
                                     <Text style={styles.planPriceText}>
-                                        {formattedAnnualMonthlyEquivalent} / month <Text style={styles.planSubText}>per couple</Text>
+                                        {translateUiTemplate("{{0}} / month", [formattedAnnualMonthlyEquivalent])}<Text style={styles.planSubText}> {translateUiText("per couple")}</Text>
                                     </Text>
-                                    <Text style={styles.planTrialText}>
-                                        7 days free, then {formattedAnnualPrice} / year
-                                    </Text>
+                                    <Text style={styles.planTrialText}>{translateUiTemplate("7 days free, then {{0}} / year", [formattedAnnualPrice])}</Text>
                                 </View>
                                 <View style={styles.planRadioCol}>
                                     {selectedPlan === 'annual' && <RadioCircleChecked />}
@@ -581,7 +577,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
                                 {savingsPercent !== null && (
                                     <View style={styles.saveBadge}>
-                                        <Text style={styles.saveBadgeText}>SAVE {savingsPercent}%</Text>
+                                        <Text style={styles.saveBadgeText}>{translateUiTemplate("SAVE {{0}}%", [savingsPercent])}</Text>
                                     </View>
                                 )}
                             </Pressable>
@@ -597,9 +593,9 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 ]}
                             >
                                 <View style={styles.planDetailsCol}>
-                                    <Text style={styles.planTitleText}>Monthly</Text>
+                                    <Text style={styles.planTitleText}>{translateUiText("Monthly")}</Text>
                                     <Text style={styles.planPriceText}>
-                                        {formattedMonthlyPrice} / month <Text style={styles.planSubText}>per couple</Text>
+                                        {translateUiTemplate("{{0}} / month", [formattedMonthlyPrice])}<Text style={styles.planSubText}> {translateUiText("per couple")}</Text>
                                     </Text>
                                 </View>
                                 <View style={styles.planRadioCol}>
@@ -630,17 +626,17 @@ export default function OnboardingPremiumScreen({ onBack }) {
                             >
                                 <Text style={styles.subscribeButtonText}>
                                     {purchasing
-                                        ? 'Processing...'
+                                        ? translateUiText("Processing...")
                                         : selectedPlan === 'annual'
-                                            ? 'Try free for 7 days'
-                                            : 'Start now'}
+                                            ? translateUiText("Try free for 7 days")
+                                            : translateUiText("Start now")}
                                 </Text>
                             </LinearGradient>
                         </TouchableOpacity>
                         <Text style={styles.paymentNoteText}>
                             {selectedPlan === 'annual'
-                                ? 'No payment due now'
-                                : 'Cancel anytime, no commitment'}
+                                ? translateUiText("No payment due now")
+                                : translateUiText("Cancel anytime, no commitment")}
                         </Text>
                     </View>
                 )}
@@ -657,7 +653,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                             end={{ x: 1, y: 0 }}
                             style={styles.subscribeButton}
                         >
-                            <Text style={styles.subscribeButtonText}>Continue</Text>
+                            <Text style={styles.subscribeButtonText}>{translateUiText("Continue")}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 )}
@@ -668,16 +664,12 @@ export default function OnboardingPremiumScreen({ onBack }) {
                         <Text
                             style={styles.termsLink}
                             onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/terms-of-service.html')}
-                        >
-                            Terms of Use
-                        </Text>
+                        >{translateUiText("Terms of Use")}</Text>
                         {' • '}
                         <Text
                             style={styles.termsLink}
                             onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/privacy-policy.html')}
-                        >
-                            Privacy Policy
-                        </Text>
+                        >{translateUiText("Privacy Policy")}</Text>
                     </Text>
                 </View>
             </View>
@@ -688,8 +680,8 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 <View style={styles.processingOverlay}>
                     <View style={styles.processingCard}>
                         <ActivityIndicator size="large" color={colors.primary} />
-                        <Text style={styles.processingText}>Processing purchase…</Text>
-                        <Text style={styles.processingSubtext}>Please wait while we activate your premium.</Text>
+                        <Text style={styles.processingText}>{translateUiText("Processing purchase…")}</Text>
+                        <Text style={styles.processingSubtext}>{translateUiText("Please wait while we activate your premium.")}</Text>
                     </View>
                 </View>
             )}

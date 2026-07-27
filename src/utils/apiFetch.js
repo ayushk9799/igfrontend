@@ -1,5 +1,6 @@
 // API Fetch wrapper with authentication error handling
 import { API_BASE } from '../constants/Api';
+import { getContentLanguage } from '../i18n/uiTranslation';
 
 // Global auth error handler reference
 let globalAuthErrorHandler = null;
@@ -35,6 +36,7 @@ export const apiFetch = async (url, options = {}) => {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
+                'Accept-Language': getContentLanguage(),
                 ...options.headers,
             },
         });

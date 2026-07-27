@@ -14,4 +14,23 @@
     <string name="couple_photo_widget_label">Partner Photo</string>
     <string name="couple_photo_widget_description">See the latest photo from your partner</string>
     <string name="couple_photo_empty">Send each other a moment</string>
+    <string name="couple_photo_my_image_description">My latest sent photo</string>
+    <string name="widget_your_partner">Your partner</string>
+    <string name="widget_your_love">Your Love</string>
+    <string name="widget_from_partner">From %1$s</string>
+    <string name="widget_set_date">Set date</string>
+    <string name="widget_set_anniversary">Set anniversary</string>
+    <string name="widget_days">days</string>
+    <string name="widget_together_for">together for</string>
+    <string name="widget_hours_short">hr</string>
+    <string name="widget_minutes_short">min</string>
+    <string name="widget_seconds_short">sec</string>
+    <string name="widget_together">We\'re together!</string>
+    <string name="widget_partner_location_off">Partner location off</string>
+    <string name="widget_connect_partner">Connect partner</string>
+    <string name="widget_open_app_sync">Open app to sync</string>
+    <string name="widget_share_location">Share location</string>
+    <string name="widget_distance_format">Our distance: %1$s km</string>
+    <string name="widget_premium">Premium widget</string>
+    <string name="widget_open_app_unlock">Open app to unlock</string>
 </resources>

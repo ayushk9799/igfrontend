@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Penguin Couple</string>
+    <string name="default_notification_channel_id">partner-updates</string>
+    <string name="widget_scribble_label">Zeichnung</string>
+    <string name="widget_description">Zeichnungen von deinem Lieblingsmenschen ansehen</string>
+    <string name="widget_scribble_description">Zeichnung deines Partners</string>
+    <string name="together_days_widget_label">Gemeinsame Tage</string>
+    <string name="together_countdown_widget_label">Gemeinsame Zeit</string>
+    <string name="distance_widget_label">Unsere Entfernung</string>
+    <string name="relationship_widget_description">Vorschau des Paar-Widgets</string>
+    <string name="together_days_widget_description">Eure gemeinsamen Tage anzeigen</string>
+    <string name="together_countdown_widget_description">Eure gemeinsame Zeit anzeigen</string>
+    <string name="distance_widget_description">Die Entfernung zu deinem Partner anzeigen</string>
+    <string name="couple_photo_widget_label">Partnerfoto</string>
+    <string name="couple_photo_widget_description">Das neueste Foto deines Partners ansehen</string>
+    <string name="couple_photo_empty">Sendet euch einen Moment</string>
+    <string name="couple_photo_my_image_description">Mein zuletzt gesendetes Foto</string>
+    <string name="widget_your_partner">Dein Partner</string>
+    <string name="widget_your_love">Deine Liebe</string>
+    <string name="widget_from_partner">Von %1$s</string>
+    <string name="widget_set_date">Datum festlegen</string>
+    <string name="widget_set_anniversary">Jahrestag festlegen</string>
+    <string name="widget_days">Tage</string>
+    <string name="widget_together_for">zusammen seit</string>
+    <string name="widget_hours_short">Std.</string>
+    <string name="widget_minutes_short">Min.</string>
+    <string name="widget_seconds_short">Sek.</string>
+    <string name="widget_together">Wir sind zusammen!</string>
+    <string name="widget_partner_location_off">Standort des Partners deaktiviert</string>
+    <string name="widget_connect_partner">Partner verbinden</string>
+    <string name="widget_open_app_sync">App zum Synchronisieren öffnen</string>
+    <string name="widget_share_location">Standort teilen</string>
+    <string name="widget_distance_format">Unsere Entfernung: %1$s km</string>
+    <string name="widget_premium">Premium-Widget</string>
+    <string name="widget_open_app_unlock">App zum Freischalten öffnen</string>
+</resources>

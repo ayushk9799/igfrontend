@@ -1,0 +1,7 @@
+"CFBundleDisplayName" = "Penguin Couple";
+"NSCameraUsageDescription" = "Penguin utilise votre caméra pour les appels vidéo et pour prendre des photos lors des défis quotidiens.";
+"NSPhotoLibraryUsageDescription" = "Penguin a besoin d’accéder à votre photothèque pour sélectionner des photos lors des défis quotidiens.";
+"NSLocationWhenInUseUsageDescription" = "Penguin Couple utilise votre position pour afficher la distance avec votre partenaire dans le widget Distance.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Penguin utilise votre position en arrière-plan uniquement pour maintenir le widget Distance à jour lorsque vous vous déplacez de manière significative.";
+"NSLocationAlwaysUsageDescription" = "Penguin utilise votre position en arrière-plan uniquement pour maintenir le widget Distance à jour lorsque vous vous déplacez de manière significative.";
+"NSMicrophoneUsageDescription" = "Penguin utilise votre microphone pour les appels et les messages vocaux avec votre partenaire.";

@@ -34,6 +34,7 @@ import { borderRadius, spacing } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import WeeklyStreakStrip from '../components/WeeklyStreakStrip';
 import FlameStreakAnimation from '../components/FlameStreakAnimation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const { width } = Dimensions.get('window');
 const BUTTON_WIDTH = Math.min(width - 40, 340);

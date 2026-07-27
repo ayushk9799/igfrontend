@@ -1,4 +1,5 @@
 import { API_BASE } from '../constants/Api';
+import { apiFetch } from '../utils/apiFetch';
 
 const QUESTIONS_V2_BASE = `${API_BASE}/api/v2/questions`;
 const QUESTION_CHATS_V2_BASE = `${API_BASE}/api/v2/question-chats`;
@@ -29,7 +30,7 @@ const buildQuery = (params = {}) => {
 export const QuestionsV2Api = {
     getTopics: async () => {
         try {
-            const response = await fetch(`${QUESTIONS_V2_BASE}/topics`);
+            const response = await apiFetch(`${QUESTIONS_V2_BASE}/topics`);
             return parseJson(response);
         } catch (error) {
             return { success: false, error: error.message };
@@ -39,7 +40,7 @@ export const QuestionsV2Api = {
     getSets: async (topicId, userId) => {
         try {
             const query = buildQuery({ userId });
-            const response = await fetch(`${QUESTIONS_V2_BASE}/topic/${topicId}/sets${query}`);
+            const response = await apiFetch(`${QUESTIONS_V2_BASE}/topic/${topicId}/sets${query}`);
             return parseJson(response);
         } catch (error) {
             return { success: false, error: error.message };
@@ -49,7 +50,7 @@ export const QuestionsV2Api = {
     getSetQuestions: async ({ topicId, setId, userId, cursor = 0, limit = 10 }) => {
         try {
             const query = buildQuery({ userId, cursor, limit });
-            const response = await fetch(`${QUESTIONS_V2_BASE}/topic/${topicId}/sets/${setId}${query}`);
+            const response = await apiFetch(`${QUESTIONS_V2_BASE}/topic/${topicId}/sets/${setId}${query}`);
             return parseJson(response);
         } catch (error) {
             return { success: false, error: error.message };
@@ -58,7 +59,7 @@ export const QuestionsV2Api = {
 
     saveProgress: async ({ userId, topicId, setId, questionId, action, cursor }) => {
         try {
-            const response = await fetch(`${QUESTIONS_V2_BASE}/progress`, {
+            const response = await apiFetch(`${QUESTIONS_V2_BASE}/progress`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, topicId, setId, questionId, action, cursor }),
@@ -71,7 +72,7 @@ export const QuestionsV2Api = {
 
     submitAnswer: async ({ userId, topicId, setId, questionId, answer, answerType = 'text', cursor }) => {
         try {
-            const response = await fetch(`${QUESTIONS_V2_BASE}/answer`, {
+            const response = await apiFetch(`${QUESTIONS_V2_BASE}/answer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, topicId, setId, questionId, answer, answerType, cursor }),
@@ -85,7 +86,7 @@ export const QuestionsV2Api = {
     getSetReport: async ({ topicId, setId, userId }) => {
         try {
             const query = buildQuery({ userId });
-            const response = await fetch(`${QUESTIONS_V2_BASE}/topic/${topicId}/sets/${setId}/report${query}`);
+            const response = await apiFetch(`${QUESTIONS_V2_BASE}/topic/${topicId}/sets/${setId}/report${query}`);
             return parseJson(response);
         } catch (error) {
             return { success: false, error: error.message };
@@ -97,7 +98,7 @@ export const QuestionChatsV2Api = {
     getChats: async (userId) => {
         try {
             const query = buildQuery({ userId });
-            const response = await fetch(`${QUESTION_CHATS_V2_BASE}${query}`);
+            const response = await apiFetch(`${QUESTION_CHATS_V2_BASE}${query}`);
             return parseJson(response);
         } catch (error) {
             return { success: false, error: error.message };
@@ -107,7 +108,7 @@ export const QuestionChatsV2Api = {
     getChat: async ({ chatId, userId, limit = 50 }) => {
         try {
             const query = buildQuery({ userId, limit });
-            const response = await fetch(`${QUESTION_CHATS_V2_BASE}/${chatId}${query}`);
+            const response = await apiFetch(`${QUESTION_CHATS_V2_BASE}/${chatId}${query}`);
             return parseJson(response);
         } catch (error) {
             return { success: false, error: error.message };
@@ -117,7 +118,7 @@ export const QuestionChatsV2Api = {
     getChatByQuestion: async ({ userId, topicId, setId, questionId }) => {
         try {
             const query = buildQuery({ userId, topicId, setId, questionId });
-            const response = await fetch(`${QUESTION_CHATS_V2_BASE}/by-question${query}`);
+            const response = await apiFetch(`${QUESTION_CHATS_V2_BASE}/by-question${query}`);
             return parseJson(response);
         } catch (error) {
             return { success: false, error: error.message };
@@ -126,7 +127,7 @@ export const QuestionChatsV2Api = {
 
     sendMessage: async ({ chatId, senderId, content, messageType = 'text' }) => {
         try {
-            const response = await fetch(`${QUESTION_CHATS_V2_BASE}/${chatId}/messages`, {
+            const response = await apiFetch(`${QUESTION_CHATS_V2_BASE}/${chatId}/messages`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ senderId, content, messageType }),

@@ -46,7 +46,8 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
                 jsonArray.put(jsonObj)
             }
             
-            val senderName = metadata.getString("senderName") ?: "Your Love"
+            val senderName = metadata.getString("senderName")
+                ?: reactContext.getString(com.thousandways.love.R.string.widget_your_love)
             val canvasWidth = if (metadata.hasKey("canvasWidth")) metadata.getDouble("canvasWidth") else 350.0
             val canvasHeight = if (metadata.hasKey("canvasHeight")) metadata.getDouble("canvasHeight") else canvasWidth
             
@@ -155,7 +156,11 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
                     .apply()
                 if (fileName == CouplePhotoWidgetProvider.PHOTO_FILE_NAME) {
                     prefs.edit()
-                        .putString(CouplePhotoWidgetProvider.KEY_SENDER_NAME, metadata.getString("senderName") ?: "Your partner")
+                        .putString(
+                            CouplePhotoWidgetProvider.KEY_SENDER_NAME,
+                            metadata.getString("senderName")
+                                ?: reactContext.getString(com.thousandways.love.R.string.widget_your_partner)
+                        )
                         .apply()
                 }
                 refreshProvider(CouplePhotoWidgetProvider::class.java)

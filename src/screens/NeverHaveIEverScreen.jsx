@@ -16,6 +16,7 @@ import GradientBackground from '../components/GradientBackground';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { colors, spacing, borderRadius } from '../theme';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -246,14 +247,14 @@ export const NeverHaveIEverScreen = ({
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
                         <View style={styles.headerRow}>
-                            <Text style={styles.headerTitle}>Never Have I Ever</Text>
+                            <Text style={styles.headerTitle}>{translateUiText("Never Have I Ever")}</Text>
                             <View style={styles.progressBadge}>
                                 <Text style={styles.progressText}>
                                     #{currentQuestion.number}/{currentQuestion.total}
                                 </Text>
                             </View>
                         </View>
-                        <Text style={styles.headerSubtitle}>Confess your secrets!</Text>
+                        <Text style={styles.headerSubtitle}>{translateUiText("Confess your secrets!")}</Text>
                     </View>
                 </Animated.View>
 
@@ -282,7 +283,7 @@ export const NeverHaveIEverScreen = ({
 
                         {/* Question Text */}
                         <View style={styles.questionTextContainer}>
-                            <Text style={styles.prefixText}>Never have I ever...</Text>
+                            <Text style={styles.prefixText}>{translateUiText("Never have I ever...")}</Text>
                             <Text style={styles.questionText}>"{currentQuestion.statement}"</Text>
                         </View>
 
@@ -294,20 +295,18 @@ export const NeverHaveIEverScreen = ({
                         <View style={styles.submittedSection}>
                             <View style={styles.submittedBadge}>
                                 <Text style={styles.submittedIcon}>✓</Text>
-                                <Text style={styles.submittedText}>Answer Locked!</Text>
+                                <Text style={styles.submittedText}>{translateUiText("Answer Locked!")}</Text>
                             </View>
 
                             <View style={styles.partnerSection}>
-                                <Text style={styles.partnerSectionTitle}>{partnerName}'s Answer</Text>
+                                <Text style={styles.partnerSectionTitle}>{translateUiTemplate("{{0}}'s Answer", [partnerName])}</Text>
                                 <Card variant="glass" padding="lg">
                                     <View style={styles.lockedContent}>
                                         <View style={styles.lockIcon}>
                                             <Text style={styles.lockEmoji}>🔒</Text>
                                         </View>
-                                        <Text style={styles.lockTitle}>Waiting...</Text>
-                                        <Text style={styles.lockText}>
-                                            You'll see their answer once they respond
-                                        </Text>
+                                        <Text style={styles.lockTitle}>{translateUiText("Waiting...")}</Text>
+                                        <Text style={styles.lockText}>{translateUiText("You'll see their answer once they respond")}</Text>
                                     </View>
                                 </Card>
                             </View>
@@ -321,7 +320,7 @@ export const NeverHaveIEverScreen = ({
                 <View style={styles.bottomSection}>
                     {/* Choice Cards */}
                     <View style={styles.choicesContainer}>
-                        <Text style={styles.choicesTitle}>Your answer:</Text>
+                        <Text style={styles.choicesTitle}>{translateUiText("Your answer:")}</Text>
                         <View style={styles.choicesRow}>
                             {options.map((choice, index) => (
                                 <ChoiceCard
@@ -345,7 +344,7 @@ export const NeverHaveIEverScreen = ({
                             ]}
                         >
                             <Button
-                                title={selectedAnswer ? "Confess! 🤫" : "Select your answer"}
+                                title={selectedAnswer ? translateUiText("Confess! 🤫") : translateUiText("Select your answer")}
                                 onPress={handleSubmit}
                                 variant="primary"
                                 size="lg"

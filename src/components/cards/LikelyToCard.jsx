@@ -5,6 +5,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { categoryConfig } from './categoryConfig';
 import { spacing } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
+import { translateUiText } from '../../i18n/uiTranslation';
 
 
 /**
@@ -92,7 +93,7 @@ const LikelyToCard = React.memo(({
                 <View style={styles.topRow}>
                     <View style={styles.categoryBadge}>
                         <Text style={styles.badgeEmoji}>❤️</Text>
-                        <Text style={styles.categoryText}>{config.label}</Text>
+                        <Text style={styles.categoryText}>{translateUiText(config.label)}</Text>
                     </View>
                 </View>
 
@@ -119,7 +120,7 @@ const LikelyToCard = React.memo(({
                         <Text style={[
                             styles.choiceLabel,
                             selectedAnswer === 'partner' ? { color: '#C2185B' } : { color: '#FFFFFF' }
-                        ]}>You</Text>
+                        ]}>{translateUiText("You")}</Text>
                        
                     </TouchableOpacity>
 
@@ -137,7 +138,7 @@ const LikelyToCard = React.memo(({
                         <Text style={[
                             styles.choiceLabel,
                             selectedAnswer === 'you' ? { color: '#6D28D9' } : { color: '#FFFFFF' }
-                        ]}>ME</Text>
+                        ]}>{translateUiText("ME")}</Text>
                        
                     </TouchableOpacity>
                 </View>

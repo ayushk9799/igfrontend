@@ -14,13 +14,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
+import { translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 
 const FEATURES = [
     {
         id: 'mood',
-        title: 'Mood',
+        title: "Mood",
         copy: 'Share your vibe\nwith penguin moods',
         icon: '♥',
         iconColor: '#7855D9',
@@ -28,7 +29,7 @@ const FEATURES = [
     },
     {
         id: 'scribble',
-        title: 'Scribble',
+        title: "Scribble",
         copy: 'Send cute scribbles\nand love notes.',
         icon: '✎',
         iconColor: '#F15F70',
@@ -36,7 +37,7 @@ const FEATURES = [
     },
     {
         id: 'games',
-        title: 'Games',
+        title: "Games",
         copy: 'Wordle, TicTacToe,\nJigsaw and more.',
         icon: '⌘',
         iconColor: '#FF844B',
@@ -44,7 +45,7 @@ const FEATURES = [
     },
     {
         id: 'questions',
-        title: 'Questions',
+        title: "Questions",
         copy: 'Answer daily questions\nand go deeper.',
         icon: '?',
         iconColor: '#8060D7',
@@ -116,7 +117,7 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                         ]}
                     >
                         <View style={styles.titleBlock}>
-                            <Text style={styles.titlePrimary}>Share little</Text>
+                            <Text style={styles.titlePrimary}>{translateUiText("Share little")}</Text>
                             <Svg height={width < 380 ? 42 : 50} width={width - 40} style={styles.gradientTitle}>
                                 <Defs>
                                     <SvgGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
@@ -135,9 +136,7 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                                     textAnchor="middle"
                                     x={(width - 40) / 2}
                                     y={width < 380 ? 32 : 38}
-                                >
-                                    moments together.
-                                </SvgText>
+                                >{translateUiText("moments together.")}</SvgText>
                             </Svg>
                             <View style={styles.titleDivider}>
                                 <View style={styles.dividerLine} />
@@ -179,8 +178,8 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                                                 resizeMode="contain"
                                             />
                                         </View>
-                                        <Text style={styles.featureTitle}>{feature.title}</Text>
-                                        <Text style={styles.featureCopy}>{feature.copy}</Text>
+                                        <Text style={styles.featureTitle}>{translateUiText(feature.title)}</Text>
+                                        <Text style={styles.featureCopy}>{translateUiText(feature.copy)}</Text>
                                     </Animated.View>
                                 ))}
                             </View>
@@ -195,7 +194,7 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                                 end={{ x: 1, y: 1 }}
                                 style={styles.nextButton}
                             >
-                                <Text style={styles.nextText}>Next</Text>
+                                <Text style={styles.nextText}>{translateUiText("Next")}</Text>
                             </LinearGradient>
                         </TouchableOpacity>
 

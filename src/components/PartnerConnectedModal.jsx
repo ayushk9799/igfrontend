@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { fontFamily, fontWeight } from '../constants/fonts';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const ProfileCircle = ({ name, avatar, accent }) => {
     const initial = name?.trim()?.charAt(0)?.toUpperCase() || '?';
@@ -60,7 +61,7 @@ const PartnerConnectedModal = ({
                         <Text style={[styles.decorativeHeart, styles.heartThree]}>♥</Text>
 
                         <View style={styles.connectedBadge}>
-                            <Text style={styles.connectedBadgeText}>A PERFECT MATCH</Text>
+                            <Text style={styles.connectedBadgeText}>{translateUiText("A PERFECT MATCH")}</Text>
                         </View>
 
                         <View style={styles.profilesRow}>
@@ -84,20 +85,19 @@ const PartnerConnectedModal = ({
                             />
                         </View>
 
-                        <Text style={styles.title}>You’re connected!</Text>
+                        <Text style={styles.title}>{translateUiText("You’re connected!")}</Text>
                         <Text style={styles.message}>
-                            <Text style={styles.partnerName}>{displayPartnerName}</Text>
-                            {' is now your partner on Penguin Couple.'}
+                            {translateUiTemplate("{{0}} is now your partner on Penguin Couple.", [displayPartnerName])}
                         </Text>
 
                         <View style={styles.journeyPill}>
                             <Text style={styles.journeyHeart}>💕</Text>
-                            <Text style={styles.journeyText}>Your couple journey starts here</Text>
+                            <Text style={styles.journeyText}>{translateUiText("Your couple journey starts here")}</Text>
                         </View>
 
                         <Pressable
                             accessibilityRole="button"
-                            accessibilityLabel="Start together"
+                            accessibilityLabel={translateUiText("Start together")}
                             onPress={onClose}
                             style={({ pressed }) => [styles.buttonWrap, pressed && styles.buttonPressed]}
                         >
@@ -107,7 +107,7 @@ const PartnerConnectedModal = ({
                                 end={{ x: 1, y: 0.5 }}
                                 style={styles.button}
                             >
-                                <Text style={styles.buttonText}>Start Together</Text>
+                                <Text style={styles.buttonText}>{translateUiText("Start Together")}</Text>
                                 <Text style={styles.buttonArrow}>→</Text>
                             </LinearGradient>
                         </Pressable>
