@@ -402,7 +402,7 @@ export const WidgetsLibraryScreen = ({
             if (result?.backgroundUpdatesError && ['ios', 'android'].includes(Platform.OS)) {
                 Alert.alert(
                     translateUiText("Allow Always Location"),
-                    result.backgroundUpdatesError.message || 'Background distance updates need Location set to Always in Settings.',
+                    translateUiText(result.backgroundUpdatesError.message || "Background distance updates need Location set to Always in Settings."),
                     [
                         { text: translateUiText("Later"), style: 'cancel' },
                         {
@@ -424,10 +424,10 @@ export const WidgetsLibraryScreen = ({
                 });
             } else {
                 setCustomAlert({
-                    title: isAlreadyEnabled ? 'Location Synced ✓' : 'Location Enabled ✓',
+                    title: isAlreadyEnabled ? translateUiText("Location Synced ✓") : translateUiText("Location Enabled ✓"),
                     message: isAlreadyEnabled
-                        ? 'Your latest coordinates have been synced and the widget updated!'
-                        : 'Distance widget is now active! Add it to your lock screen.',
+                        ? translateUiText("Your latest coordinates have been synced and the widget updated!")
+                        : translateUiText("Distance widget is now active! Add it to your lock screen."),
                     type: 'success',
                 });
             }
@@ -436,7 +436,7 @@ export const WidgetsLibraryScreen = ({
             if (isLocationSettingsError(error)) {
                 Alert.alert(
                     translateUiText("Location Permission Needed"),
-                    error?.message || 'Please enable location access in Settings.',
+                    translateUiText(error?.message || "Please enable location access in Settings."),
                     [
                         { text: translateUiText("Cancel"), style: 'cancel' },
                         {
@@ -452,7 +452,7 @@ export const WidgetsLibraryScreen = ({
             }
             setCustomAlert({
                 title: translateUiText("Could Not Enable"),
-                message: error?.message || 'Failed to enable location sharing. Please try again.',
+                message: translateUiText(error?.message || "Failed to enable location sharing. Please try again."),
                 type: 'error',
             });
         } finally {

@@ -118,8 +118,8 @@ export default function YearlyOfferBottomSheet({
         return Math.round(((regularAmount - offerAmount) / regularAmount) * 100);
     }, [regularYearlyPackage, yearlyPackage]);
     const discountLabel = discountPercentage
-        ? `Save ${discountPercentage}%`
-        : 'Yearly offer';
+        ? translateUiTemplate("Save {{0}}%", [discountPercentage])
+        : translateUiText("Yearly offer");
     const offerReady = visible && !!yearlyPackage && !loadFailed;
     const remainingOfferMs = offerEndsAt
         ? Math.max(0, offerEndsAt - countdownNow)
@@ -267,7 +267,10 @@ export default function YearlyOfferBottomSheet({
         } catch (error) {
             if (!error?.userCancelled) {
                 console.error('Yearly offer purchase failed:', error);
-                Alert.alert(translateUiText("Purchase unavailable"), error?.message || 'Please try again in a moment.');
+                Alert.alert(
+                    translateUiText("Purchase unavailable"),
+                    translateUiText(error?.message || "Please try again in a moment."),
+                );
             }
         } finally {
             setPurchasing(false);

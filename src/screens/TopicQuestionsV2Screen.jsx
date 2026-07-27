@@ -24,7 +24,7 @@ import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import { selectIsPremium, selectUser } from '../store/slices/userSlice';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const PAGE_SIZE = 10;
 const { height } = Dimensions.get('window');
@@ -542,6 +542,7 @@ export default function TopicQuestionsV2Screen({
                 taskstatement: question.prompt,
                 category: selectedSet?.format || 'deep',
                 options: question.options || [],
+                optionItems: question.optionItems || [],
                 minValue: question.minValue,
                 maxValue: question.maxValue,
                 minLabel: question.minLabel,
@@ -635,6 +636,7 @@ export default function TopicQuestionsV2Screen({
             taskstatement: singleQuestionToAnswer.prompt,
             category: selectedSet?.format || 'deep',
             options: singleQuestionToAnswer.options || [],
+            optionItems: singleQuestionToAnswer.optionItems || [],
             minValue: singleQuestionToAnswer.minValue,
             maxValue: singleQuestionToAnswer.maxValue,
             minLabel: singleQuestionToAnswer.minLabel,
@@ -694,7 +696,7 @@ export default function TopicQuestionsV2Screen({
                     }}
                     activeOpacity={0.82}
                 >
-                    <Text style={styles.viewAnswersButtonText}>View Answers</Text>
+                    <Text style={styles.viewAnswersButtonText}>{translateUiText("View Answers")}</Text>
                 </TouchableOpacity>
             ) : (
                 <View style={styles.headerSpacer} />
@@ -707,7 +709,9 @@ export default function TopicQuestionsV2Screen({
             return (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={styles.loadingText}>{translateUiText("Loading")}{topicTitle}</Text>
+                    <Text style={styles.loadingText}>
+                        {translateUiTemplate("Loading {{0}}", [topicTitle])}
+                    </Text>
                 </View>
             );
         }
@@ -715,7 +719,7 @@ export default function TopicQuestionsV2Screen({
         if (error) {
             return (
                 <View style={styles.center}>
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={styles.errorText}>{translateUiText(error)}</Text>
                     <TouchableOpacity style={styles.primaryButton} onPress={fetchSets}>
                         <Text style={styles.primaryButtonText}>{translateUiText("Try Again")}</Text>
                     </TouchableOpacity>
@@ -834,7 +838,7 @@ export default function TopicQuestionsV2Screen({
         if (error && tasks.length === 0) {
             return (
                 <View style={styles.center}>
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={styles.errorText}>{translateUiText(error)}</Text>
                     <TouchableOpacity style={styles.primaryButton} onPress={() => fetchQuestions({ set: selectedSet, cursor: 0, append: false })}>
                         <Text style={styles.primaryButtonText}>{translateUiText("Try Again")}</Text>
                     </TouchableOpacity>

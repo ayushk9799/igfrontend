@@ -9,6 +9,8 @@ import {
     ActivityIndicator,
     Image,
     Alert,
+    Modal,
+    Pressable,
     Platform,
     Linking,
     AppState,
@@ -31,6 +33,15 @@ import { changeAppLanguage } from '../i18n';
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
 const navy = '#050E3E';
+const LANGUAGE_OPTIONS = [
+    { code: 'en', label: 'English' },
+    { code: 'fr', label: 'Français' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'es', label: 'Español' },
+    { code: 'it', label: 'Italiano' },
+    { code: 'ja', label: '日本語' },
+    { code: 'ko', label: '한국어' },
+];
 
 const formatRelationshipDuration = (startDate, t) => {
     if (!startDate) return null;
@@ -142,7 +153,7 @@ const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
 };
 
 import { Animated } from 'react-native';
-import { translateUiText } from '../i18n/uiTranslation';
+import { getUiLocale, translateUiText } from '../i18n/uiTranslation';
 
 // Settings menu item
 const MenuItem = ({ title, subtitle, onPress, danger = false }) => {
@@ -196,7 +207,7 @@ export const AccountScreen = ({
     );
     const premiumEndDate = premiumExpiresAt
         ? new Date(premiumExpiresAt).toLocaleDateString(
-            i18n.resolvedLanguage === 'fr' ? 'fr-FR' : 'en-US',
+            getUiLocale(),
             {
             month: 'short',
             day: 'numeric',
@@ -218,6 +229,7 @@ export const AccountScreen = ({
 
     // Notification permission state
     const [notificationEnabled, setNotificationEnabled] = useState(true); // default true to hide button until checked
+    const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
 
     const checkNotificationPermission = useCallback(async () => {
         try {
@@ -334,25 +346,22 @@ export const AccountScreen = ({
     };
 
     const handleLanguagePress = () => {
-        Alert.alert(
-            t('account.language'),
-            t('account.chooseLanguage'),
-            [
-                {
-                    text: t('account.english'),
-                    onPress: () => changeAppLanguage('en'),
-                },
-                {
-                    text: t('account.french'),
-                    onPress: () => changeAppLanguage('fr'),
-                },
-                {
-                    text: t('common.cancel'),
-                    style: 'cancel',
-                },
-            ],
-        );
+        setLanguageSheetVisible(true);
     };
+    const handleLanguageSelect = async (language) => {
+        setLanguageSheetVisible(false);
+        await changeAppLanguage(language);
+    };
+    const currentLanguageCode = i18n.resolvedLanguage?.split('-')[0] ?? 'en';
+    const currentLanguageLabel = {
+        en: t('account.english'),
+        fr: t('account.french'),
+        de: t('account.german'),
+        es: t('account.spanish'),
+        it: t('account.italian'),
+        ja: t('account.japanese'),
+        ko: t('account.korean'),
+    }[currentLanguageCode] ?? t('account.english');
 
     return (
         <View style={styles.root}>
@@ -653,9 +662,7 @@ export const AccountScreen = ({
                         <Text style={styles.sectionTitle}>{t('account.language')}</Text>
                         <MenuItem
                             title={t('account.language')}
-                            subtitle={i18n.resolvedLanguage === 'fr'
-                                ? t('account.french')
-                                : t('account.english')}
+                            subtitle={currentLanguageLabel}
                             onPress={handleLanguagePress}
                         />
                     </View>
@@ -707,6 +714,114 @@ export const AccountScreen = ({
                     </View>
                 </ScrollView>
             </LinearGradient>
+
+            <Modal
+                visible={languageSheetVisible}
+                transparent
+                animationType="slide"
+                statusBarTranslucent
+                navigationBarTranslucent
+                onRequestClose={() => setLanguageSheetVisible(false)}
+            >
+                <View style={styles.languageModalRoot}>
+                    <Pressable
+                        style={styles.languageBackdrop}
+                        onPress={() => setLanguageSheetVisible(false)}
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText("Close")}
+                    />
+                    <View
+                        style={[
+                            styles.languageSheet,
+                            { paddingBottom: Math.max(insets.bottom, 18) },
+                        ]}
+                        accessibilityViewIsModal
+                    >
+                        <View style={styles.languageSheetHandle} />
+                        <View style={styles.languageSheetHeader}>
+                            <View style={styles.languageSheetHeaderCopy}>
+                                <Text style={styles.languageSheetTitle}>{t('account.language')}</Text>
+                                <Text style={styles.languageSheetSubtitle}>
+                                    {t('account.chooseLanguage')}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.languageSheetClose}
+                                onPress={() => setLanguageSheetVisible(false)}
+                                activeOpacity={0.7}
+                                accessibilityRole="button"
+                                accessibilityLabel={translateUiText("Close")}
+                            >
+                                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                                    <Path
+                                        d="M6 6l12 12M18 6 6 18"
+                                        stroke={navy}
+                                        strokeWidth={2.4}
+                                        strokeLinecap="round"
+                                    />
+                                </Svg>
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView
+                            style={styles.languageOptionsScroll}
+                            contentContainerStyle={styles.languageOptions}
+                            showsVerticalScrollIndicator={false}
+                            bounces={false}
+                        >
+                            {LANGUAGE_OPTIONS.map((language) => {
+                                const isSelected = currentLanguageCode === language.code;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={language.code}
+                                        style={[
+                                            styles.languageOption,
+                                            isSelected && styles.languageOptionSelected,
+                                        ]}
+                                        onPress={() => handleLanguageSelect(language.code)}
+                                        activeOpacity={0.75}
+                                        accessibilityRole="radio"
+                                        accessibilityState={{ checked: isSelected }}
+                                    >
+                                        <View
+                                            style={[
+                                                styles.languageCodeBadge,
+                                                isSelected && styles.languageCodeBadgeSelected,
+                                            ]}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.languageCodeText,
+                                                    isSelected && styles.languageCodeTextSelected,
+                                                ]}
+                                            >
+                                                {language.code.toUpperCase()}
+                                            </Text>
+                                        </View>
+                                        <Text
+                                            style={[
+                                                styles.languageOptionLabel,
+                                                isSelected && styles.languageOptionLabelSelected,
+                                            ]}
+                                        >
+                                            {language.label}
+                                        </Text>
+                                        <View
+                                            style={[
+                                                styles.languageSelectionCircle,
+                                                isSelected && styles.languageSelectionCircleSelected,
+                                            ]}
+                                        >
+                                            {isSelected && <CheckCircleIcon />}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -717,6 +832,134 @@ const styles = StyleSheet.create({
     },
     gradient: {
         flex: 1,
+    },
+    languageModalRoot: {
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+    languageBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(5, 14, 62, 0.42)',
+    },
+    languageSheet: {
+        width: '100%',
+        maxHeight: height * 0.85,
+        paddingTop: 10,
+        paddingHorizontal: 22,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        backgroundColor: '#FFF9FC',
+        shadowColor: '#050E3E',
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.16,
+        shadowRadius: 20,
+        elevation: 18,
+    },
+    languageSheetHandle: {
+        alignSelf: 'center',
+        width: 42,
+        height: 5,
+        borderRadius: 3,
+        marginBottom: 18,
+        backgroundColor: '#E7C8D8',
+    },
+    languageSheetHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 20,
+    },
+    languageSheetHeaderCopy: {
+        flex: 1,
+        paddingRight: 16,
+    },
+    languageSheetTitle: {
+        color: navy,
+        fontSize: 22,
+        lineHeight: 28,
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.extraBold,
+    },
+    languageSheetSubtitle: {
+        color: '#7380A1',
+        fontSize: 13,
+        lineHeight: 19,
+        fontWeight: fontWeight('600'),
+        fontFamily: fontFamily.medium,
+        marginTop: 4,
+    },
+    languageSheetClose: {
+        width: 36,
+        height: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 18,
+        backgroundColor: '#F5E4ED',
+    },
+    languageOptions: {
+        gap: 10,
+    },
+    languageOptionsScroll: {
+        maxHeight: Math.min(580, height * 0.72),
+    },
+    languageOption: {
+        minHeight: 66,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderWidth: 1.5,
+        borderColor: '#F0DCE6',
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+    },
+    languageOptionSelected: {
+        borderColor: '#FF6FA5',
+        backgroundColor: '#FFF0F6',
+    },
+    languageCodeBadge: {
+        width: 42,
+        height: 42,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 13,
+        backgroundColor: '#F5EAF0',
+    },
+    languageCodeBadgeSelected: {
+        backgroundColor: '#FF6FA5',
+    },
+    languageCodeText: {
+        color: '#875A70',
+        fontSize: 12,
+        letterSpacing: 0.8,
+        fontWeight: fontWeight('800'),
+        fontFamily: fontFamily.bold,
+    },
+    languageCodeTextSelected: {
+        color: '#FFFFFF',
+    },
+    languageOptionLabel: {
+        flex: 1,
+        color: navy,
+        fontSize: 16,
+        fontWeight: fontWeight('700'),
+        fontFamily: fontFamily.bold,
+        marginLeft: 14,
+    },
+    languageOptionLabelSelected: {
+        color: '#B32963',
+    },
+    languageSelectionCircle: {
+        width: 22,
+        height: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#D9C3CF',
+        borderRadius: 11,
+    },
+    languageSelectionCircleSelected: {
+        borderWidth: 0,
+        backgroundColor: '#FF5E97',
     },
     scrollView: {
         flex: 1,

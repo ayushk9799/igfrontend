@@ -209,11 +209,11 @@ const PermissionIssue = ({ compact = false }) => {
     const partnerName = activeCall?.partnerName || 'Partner';
 
     const title = permissionIssue === 'microphone'
-        ? 'Microphone access is off'
-        : 'Camera access is off';
+        ? translateUiText("Microphone access is off")
+        : translateUiText("Camera access is off");
     const body = permissionIssue === 'microphone'
-        ? `Enable it in Settings when you want ${partnerName} to hear you.`
-        : `Enable it in Settings when you want ${partnerName} to see you.`;
+        ? translateUiTemplate("Enable it in Settings when you want {{0}} to hear you.", [partnerName])
+        : translateUiTemplate("Enable it in Settings when you want {{0}} to see you.", [partnerName]);
 
     return (
         <View style={[styles.permissionBanner, compact && styles.compactPermissionBanner]}>
@@ -233,7 +233,7 @@ const PermissionIssue = ({ compact = false }) => {
                 onPress={() => openPermissionSettings(permissionIssue)}
                 style={styles.permissionSettings}
                 accessibilityRole="button"
-                accessibilityLabel={translateUiTemplate("Open {{0}} settings", [permissionIssue])}
+                accessibilityLabel={translateUiTemplate("Open {{0}} settings", [translateUiText(permissionIssue)])}
             >
                 <Text style={styles.permissionSettingsText}>{translateUiText("Settings")}</Text>
             </TouchableOpacity>
@@ -755,7 +755,7 @@ const ErrorToast = ({ message }) => {
             accessibilityLiveRegion="assertive"
             pointerEvents="none"
         >
-            <Text style={styles.errorToastText}>{message}</Text>
+            <Text style={styles.errorToastText}>{translateUiText(message)}</Text>
         </View>
     );
 };
@@ -765,7 +765,7 @@ const FailedCall = ({ message, onClose }) => (
         <View style={styles.failedCard} accessibilityRole="alert">
             <PhoneOff color="#D84F68" size={30} strokeWidth={2.3} />
             <Text style={styles.failedTitle}>{translateUiText("Call ended")}</Text>
-            <Text style={styles.failedMessage}>{message || translateUiText("The video call could not be connected.")}</Text>
+            <Text style={styles.failedMessage}>{translateUiText(message || "The video call could not be connected.")}</Text>
             <TouchableOpacity
                 style={styles.failedCloseButton}
                 onPress={onClose}

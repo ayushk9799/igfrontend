@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Penguin Couple</string>
+    <string name="default_notification_channel_id">partner-updates</string>
+    <string name="widget_scribble_label">お絵描き</string>
+    <string name="widget_description">大切な人から届いた絵を見る</string>
+    <string name="widget_scribble_description">パートナーから届いた絵</string>
+    <string name="together_days_widget_label">一緒に過ごした日数</string>
+    <string name="together_countdown_widget_label">一緒に過ごした時間</string>
+    <string name="distance_widget_label">ふたりの距離</string>
+    <string name="relationship_widget_description">カップルウィジェットのプレビュー</string>
+    <string name="together_days_widget_description">一緒に過ごした日数を表示</string>
+    <string name="together_countdown_widget_description">一緒に過ごした時間を表示</string>
+    <string name="distance_widget_description">パートナーとの距離を表示</string>
+    <string name="couple_photo_widget_label">パートナーの写真</string>
+    <string name="couple_photo_widget_description">パートナーの最新写真を見る</string>
+    <string name="couple_photo_empty">ふたりの瞬間を送り合おう</string>
+    <string name="couple_photo_my_image_description">最後に送信した写真</string>
+    <string name="widget_your_partner">あなたのパートナー</string>
+    <string name="widget_your_love">大切な人</string>
+    <string name="widget_from_partner">%1$sから</string>
+    <string name="widget_set_date">日付を設定</string>
+    <string name="widget_set_anniversary">記念日を設定</string>
+    <string name="widget_days">日</string>
+    <string name="widget_together_for">一緒になって</string>
+    <string name="widget_hours_short">時間</string>
+    <string name="widget_minutes_short">分</string>
+    <string name="widget_seconds_short">秒</string>
+    <string name="widget_together">ふたりは一緒！</string>
+    <string name="widget_partner_location_off">パートナーの位置情報がオフです</string>
+    <string name="widget_connect_partner">パートナーとつながる</string>
+    <string name="widget_open_app_sync">アプリを開いて同期</string>
+    <string name="widget_share_location">位置情報を共有</string>
+    <string name="widget_distance_format">ふたりの距離：%1$s km</string>
+    <string name="widget_premium">プレミアムウィジェット</string>
+    <string name="widget_open_app_unlock">アプリを開いてアンロック</string>
+</resources>

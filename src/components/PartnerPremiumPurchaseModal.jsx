@@ -10,7 +10,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const PartnerPremiumPurchaseModal = ({ visible, partnerName, onClose }) => {
     const displayName = partnerName?.trim() || 'Your partner';
@@ -50,8 +50,7 @@ const PartnerPremiumPurchaseModal = ({ visible, partnerName, onClose }) => {
                         <Text style={styles.eyebrow}>{translateUiText("PENGUIN COUPLE PREMIUM")}</Text>
                         <Text style={styles.title}>{translateUiText("Premium for both of you!")}</Text>
                         <Text style={styles.message}>
-                            <Text style={styles.partnerName}>{displayName}</Text>
-                            {translateUiText(" just purchased Premium. Everything is now unlocked for your couple.")}
+                            {translateUiTemplate("{{0}} just purchased Premium. Everything is now unlocked for your couple.", [displayName])}
                         </Text>
 
                         <View style={styles.unlockedPill}>

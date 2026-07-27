@@ -23,7 +23,7 @@ import { fontFamily, fontWeight } from '../constants/fonts';
 import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
 import { getPremiumEntitlement, mapSubscriptionAccessToUser, refreshSubscription } from '../api/subscriptionApi';
 import { updateUser as updateUserStorage } from '../utils/authStorage';
-import { getUiLocale, translateUiText } from '../i18n/uiTranslation';
+import { getUiLocale, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const ONBOARDING_OFFERING_ID = 'onbording';
 
@@ -311,25 +311,25 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
     const planLabelFromId = (id) => {
         try {
-            if (!id) return 'Active subscription';
+            if (!id) return translateUiText("Active subscription");
             const lower = String(id).toLowerCase();
-            if (lower.includes('week')) return 'Weekly Plan';
-            if (lower.includes('month')) return 'Monthly Plan';
-            if (lower.includes('year') || lower.includes('annual')) return 'Annual Plan';
-            if (lower.includes('life')) return 'Lifetime';
-            return 'Active subscription';
+            if (lower.includes('week')) return translateUiText("Weekly Plan");
+            if (lower.includes('month')) return translateUiText("Monthly Plan");
+            if (lower.includes('year') || lower.includes('annual')) return translateUiText("Annual Plan");
+            if (lower.includes('life')) return translateUiText("Lifetime");
+            return translateUiText("Active subscription");
         } catch {
-            return 'Active subscription';
+            return translateUiText("Active subscription");
         }
     };
 
     const formatDate = (iso) => {
         try {
-            if (!iso) return 'Active';
+            if (!iso) return translateUiText("Active");
             const d = new Date(iso);
             return d.toLocaleDateString(getUiLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
         } catch {
-            return 'Active';
+            return translateUiText("Active");
         }
     };
 
@@ -345,7 +345,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
         try {
             if (!price || !currencyCode) return '';
             const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
-            return new Intl.NumberFormat(undefined, {
+            return new Intl.NumberFormat(getUiLocale(), {
                 style: 'currency',
                 currency: currencyCode,
                 minimumFractionDigits: 2,
@@ -511,7 +511,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 </View>
                                 {premiumIsCancelled && (
                                     <View style={styles.premiumCancellationNotice}>
-                                        <Text style={styles.premiumCancellationText}>{translateUiText("Premium cancelled — access continues until")}{formatDate(premiumExpiresAt)}
+                                        <Text style={styles.premiumCancellationText}>{translateUiTemplate("Premium cancelled — access continues until {{0}}", [formatDate(premiumExpiresAt)])}
                                         </Text>
                                     </View>
                                 )}
@@ -567,9 +567,9 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 <View style={styles.planDetailsCol}>
                                     <Text style={styles.planTitleText}>{translateUiText("Yearly")}</Text>
                                     <Text style={styles.planPriceText}>
-                                        {formattedAnnualMonthlyEquivalent}{translateUiText("/ month")}<Text style={styles.planSubText}>{translateUiText("per couple")}</Text>
+                                        {translateUiTemplate("{{0}} / month", [formattedAnnualMonthlyEquivalent])}<Text style={styles.planSubText}> {translateUiText("per couple")}</Text>
                                     </Text>
-                                    <Text style={styles.planTrialText}>{translateUiText("7 days free, then")}{formattedAnnualPrice}{translateUiText("/ year")}</Text>
+                                    <Text style={styles.planTrialText}>{translateUiTemplate("7 days free, then {{0}} / year", [formattedAnnualPrice])}</Text>
                                 </View>
                                 <View style={styles.planRadioCol}>
                                     {selectedPlan === 'annual' && <RadioCircleChecked />}
@@ -577,7 +577,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
                                 {savingsPercent !== null && (
                                     <View style={styles.saveBadge}>
-                                        <Text style={styles.saveBadgeText}>{translateUiText("SAVE")}{savingsPercent}%</Text>
+                                        <Text style={styles.saveBadgeText}>{translateUiTemplate("SAVE {{0}}%", [savingsPercent])}</Text>
                                     </View>
                                 )}
                             </Pressable>
@@ -595,7 +595,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 <View style={styles.planDetailsCol}>
                                     <Text style={styles.planTitleText}>{translateUiText("Monthly")}</Text>
                                     <Text style={styles.planPriceText}>
-                                        {formattedMonthlyPrice}{translateUiText("/ month")}<Text style={styles.planSubText}>{translateUiText("per couple")}</Text>
+                                        {translateUiTemplate("{{0}} / month", [formattedMonthlyPrice])}<Text style={styles.planSubText}> {translateUiText("per couple")}</Text>
                                     </Text>
                                 </View>
                                 <View style={styles.planRadioCol}>

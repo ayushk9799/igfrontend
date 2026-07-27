@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const ArrowRightIcon = () => (
     <Svg width={24} height={24} viewBox="0 0 28 28" fill="none">
@@ -115,7 +115,7 @@ const FreeScreen = ({ onContinue, onClose }) => {
                                     <Text style={styles.freeBadgeText}>{translateUiText("7 Days Free")}</Text>
                                 </LinearGradient>
                             </View>
-                            <Text style={styles.offerSubtitle}>{translateUiText("so every couple can get")}{`\n`}{translateUiText("closer with Penguin")}</Text>
+                            <Text style={styles.offerSubtitle}>{translateUiTemplate("so every couple can get{{0}}closer with Penguin", ['\n'])}</Text>
                         </View>
                     </View>
                 </View>

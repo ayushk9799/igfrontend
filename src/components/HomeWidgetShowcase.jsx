@@ -163,7 +163,7 @@ export const DistanceShowcaseCard = ({ isLocationSetup = false }) => {
             <View style={[styles.cardHeaderDivider, styles.distanceHeaderDivider]} />
             <View style={styles.distanceShowcaseCenterTrack}>
                 <ShowcaseText style={styles.distanceShowcaseValue} numberOfLines={1}>
-                    {isLocationSetup ? distanceText : 'See how close you are'}
+                    {isLocationSetup ? distanceText : translateUiText("See how close you are")}
                 </ShowcaseText>
                 <View style={styles.distanceShowcaseTrack}>
                     <Animated.View style={[styles.distanceShowcaseDash, { left: dashLeft, right: dashRight }]} />

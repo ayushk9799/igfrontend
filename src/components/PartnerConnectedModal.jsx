@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const ProfileCircle = ({ name, avatar, accent }) => {
     const initial = name?.trim()?.charAt(0)?.toUpperCase() || '?';
@@ -87,8 +87,7 @@ const PartnerConnectedModal = ({
 
                         <Text style={styles.title}>{translateUiText("You’re connected!")}</Text>
                         <Text style={styles.message}>
-                            <Text style={styles.partnerName}>{displayPartnerName}</Text>
-                            {translateUiText(" is now your partner on Penguin Couple.")}
+                            {translateUiTemplate("{{0}} is now your partner on Penguin Couple.", [displayPartnerName])}
                         </Text>
 
                         <View style={styles.journeyPill}>

@@ -190,7 +190,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
             });
 
         } catch (e) {
-            Alert.alert(translateUiText("Error"), e.message);
+            Alert.alert(translateUiText("Error"), translateUiText(e.message));
         } finally {
             isProcessingRef.current = false;
         }
@@ -277,7 +277,10 @@ const AvatarSelectionScreen = ({ onComplete }) => {
             if (result.success) {
                 onComplete();
             } else {
-                Alert.alert(translateUiText("Upload Failed"), result.error || 'Could not upload avatar');
+                Alert.alert(
+                    translateUiText("Upload Failed"),
+                    translateUiText(result.error || "Could not upload avatar"),
+                );
             }
         } catch (error) {
             console.error('Avatar upload error:', error);

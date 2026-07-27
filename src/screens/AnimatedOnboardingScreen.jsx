@@ -15,7 +15,7 @@ import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop, Text as SvgText
 import { fontFamily, fontWeight } from '../constants/fonts';
 
 import * as Haptics from 'expo-haptics';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -160,7 +160,7 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                             </View>
                         </View>
 
-                        <Text style={styles.copyText}>{translateUiText("Share how you feel and understand")}{'\n'}{translateUiText("each other better, every day.")}<Text style={styles.copyHeart}>💜</Text>
+                        <Text style={styles.copyText}>{translateUiTemplate("Share how you feel and understand{{0}}each other better, every day.", ['\n'])}<Text style={styles.copyHeart}>💜</Text>
                         </Text>
                     </Animated.View>
 

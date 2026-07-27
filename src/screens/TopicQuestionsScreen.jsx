@@ -35,6 +35,7 @@ import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { useSelector } from 'react-redux';
 import { selectUser, selectIsPremium } from '../store/slices/userSlice';
 import { translateUiText } from '../i18n/uiTranslation';
+import { apiFetch } from '../utils/apiFetch';
 
 const { width } = Dimensions.get('window');
 
@@ -166,7 +167,7 @@ export default function TopicQuestionsScreen({
             }
 
             const url = `${API_BASE}/api/questions/topic/${topic}?userId=${effectiveUserId || ''}&limit=20`;
-            const res = await fetch(url);
+            const res = await apiFetch(url);
             const json = await res.json();
 
             if (json.success && json.data?.questions) {
@@ -312,6 +313,7 @@ export default function TopicQuestionsScreen({
             taskstatement: q.taskstatement || q.question,
             category: q.category || q.visualType,  // Fallback to visualType if category not set
             options: q.options || [],
+            optionItems: q.optionItems || [],
             minValue: q.minValue,
             maxValue: q.maxValue,
             minLabel: q.minLabel,

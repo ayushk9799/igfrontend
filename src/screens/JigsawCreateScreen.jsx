@@ -101,7 +101,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             if (!granted) {
                 setScreenMessage({
                     tone: 'warning',
-                    text: 'Camera access is needed for photos. You can still choose one from Gallery.',
+                    text: translateUiText("Camera access is needed for photos. You can still choose one from Gallery."),
                 });
             }
             return granted;
@@ -112,7 +112,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
         if (!granted) {
             setScreenMessage({
                 tone: 'warning',
-                text: 'Camera access is needed for photos. You can still choose one from Gallery.',
+                text: translateUiText("Camera access is needed for photos. You can still choose one from Gallery."),
             });
         }
         return granted;
@@ -160,7 +160,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
             setShowCamera(false);
         } catch (e) {
-            setScreenMessage({ tone: 'error', text: 'Could not capture the photo. Please try again.' });
+            setScreenMessage({ tone: 'error', text: translateUiText("Could not capture the photo. Please try again.") });
         } finally {
             isProcessingRef.current = false;
         }
@@ -172,7 +172,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             if (!perm.granted) {
                 setScreenMessage({
                     tone: 'warning',
-                    text: 'Photo library access is needed to choose a puzzle photo.',
+                    text: translateUiText("Photo library access is needed to choose a puzzle photo."),
                 });
                 return;
             }
@@ -243,19 +243,21 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                 requestReviewForMoment(REVIEW_MOMENTS.PUZZLE_SENT);
                 setScreenMessage({
                     tone: 'success',
-                    text: `Puzzle sent — ${partnerName || 'your partner'} can solve it now.`,
+                    text: translateUiTemplate("Puzzle sent — {{0}} can solve it now.", [
+                        partnerName || translateUiText("your partner"),
+                    ]),
                 });
                 setTimeout(() => navigation.goBack(), 1200);
             } else {
                 setScreenMessage({
                     tone: 'error',
-                    text: result.error || 'Failed to send the puzzle. Please try again.',
+                    text: translateUiText("Failed to send the puzzle. Please try again."),
                 });
             }
         } catch (error) {
             setScreenMessage({
                 tone: 'error',
-                text: 'Failed to send the puzzle. Please try again.',
+                text: translateUiText("Failed to send the puzzle. Please try again."),
             });
         }
         setIsSending(false);

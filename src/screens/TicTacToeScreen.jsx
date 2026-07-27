@@ -208,7 +208,7 @@ const TicTacToeScreen = ({
     // Show inline status message that auto-clears after 3 seconds
     const showStatus = useCallback((message, type = 'error') => {
         if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
-        setStatusMessage({ text: message, type });
+        setStatusMessage({ text: translateUiText(message), type });
         statusTimerRef.current = setTimeout(() => setStatusMessage(null), 3000);
     }, []);
 
@@ -339,7 +339,7 @@ const TicTacToeScreen = ({
         if (countdownIntervalRef.current) {
             clearInterval(countdownIntervalRef.current);
         }
-        setGameStartMessage(message);
+        setGameStartMessage(translateUiText(message));
         gameStartingRef.current = true;
         setIsGameStarting(true);
         setCountdown(3);
@@ -982,7 +982,7 @@ const TicTacToeScreen = ({
         const now = Date.now();
         if (now - lastNotifyTime < 5 * 60 * 1000) {
             const remaining = Math.ceil((5 * 60 * 1000 - (now - lastNotifyTime)) / 60000);
-            showStatus(`You can notify again in ${remaining} minute(s)`, 'info');
+            showStatus(translateUiTemplate("You can notify again in {{0}} minute(s)", [remaining]), 'info');
             return;
         }
 
@@ -996,7 +996,7 @@ const TicTacToeScreen = ({
             const data = await response.json();
             if (data.success) {
                 setLastNotifyTime(now);
-                showStatus(`${partnerName} has been notified ✓`, 'success');
+                showStatus(translateUiTemplate("{{0}} has been notified ✓", [partnerName]), 'success');
             } else {
                 showStatus('Failed to send notification');
             }
@@ -1022,13 +1022,13 @@ const TicTacToeScreen = ({
     const rightSymbolOpacity = rightActive || isGameOver ? 1.0 : 0.55;
 
     const getStatusText = () => {
-        if (loading) return 'Loading...';
-        if (isGameStarting) return `${gameStartMessage}\n${countdown > 0 ? countdown : 'GO!'}`;
-        if (isNewGame) return 'Tap to start game!';
-        if (status === 'draw') return "It's a draw! 🤝";
-        if (didIWin) return `🎉 You won! 💜`;
-        if (didTheyWin) return `🎉 ${partnerName} won! 💜`;
-        return isMyTurn ? 'Your turn' : `${partnerName}'s turn`;
+        if (loading) return translateUiText("Loading...");
+        if (isGameStarting) return `${gameStartMessage}\n${countdown > 0 ? countdown : translateUiText("GO!")}`;
+        if (isNewGame) return translateUiText("Tap to start game!");
+        if (status === 'draw') return translateUiText("It's a draw! 🤝");
+        if (didIWin) return translateUiText("🎉 You won! 💜");
+        if (didTheyWin) return translateUiTemplate("🎉 {{0}} won! 💜", [partnerName]);
+        return isMyTurn ? translateUiText("Your turn") : translateUiTemplate("{{0}}'s turn", [partnerName]);
     };
 
     const winningLine = React.useMemo(() => {
@@ -1533,7 +1533,7 @@ const TicTacToeScreen = ({
                         accessibilityLabel={translateUiText("Retry free-game limit check")}
                     >
                         <Text style={styles.limitCheckErrorText}>
-                            {limitCheckError}{translateUiText("Tap to retry.")}</Text>
+                                    {translateUiTemplate("{{0}} Tap to retry.", [translateUiText(limitCheckError)])}</Text>
                     </TouchableOpacity>
                 )}
 

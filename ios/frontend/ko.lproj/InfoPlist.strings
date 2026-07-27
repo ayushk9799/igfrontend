@@ -1,0 +1,7 @@
+"CFBundleDisplayName" = "Penguin Couple";
+"NSCameraUsageDescription" = "Penguin은 영상 통화와 데일리 챌린지 사진 촬영에 카메라를 사용합니다.";
+"NSPhotoLibraryUsageDescription" = "Penguin은 데일리 챌린지에서 사진을 선택하기 위해 사진 보관함 접근 권한이 필요합니다.";
+"NSLocationWhenInUseUsageDescription" = "Penguin Couple은 거리 위젯에 파트너와의 거리를 표시하기 위해 위치 정보를 사용합니다.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Penguin은 위치가 크게 변경될 때 거리 위젯을 최신 상태로 유지하기 위한 목적으로만 백그라운드 위치 정보를 사용합니다.";
+"NSLocationAlwaysUsageDescription" = "Penguin은 위치가 크게 변경될 때 거리 위젯을 최신 상태로 유지하기 위한 목적으로만 백그라운드 위치 정보를 사용합니다.";
+"NSMicrophoneUsageDescription" = "Penguin은 파트너와의 통화 및 음성 메시지에 마이크를 사용합니다.";

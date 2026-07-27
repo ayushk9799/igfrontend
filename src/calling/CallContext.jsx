@@ -21,7 +21,7 @@ import { useSocketContext } from '../context/SocketContext';
 import { selectUser } from '../store/slices/userSlice';
 import { CALL_STATE, ICE_FAILURE_TIMEOUT_MS, STUN_URLS } from './callConstants';
 import { collectSanitizedStats, getCandidateType } from './callDiagnostics';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const CallContext = createContext(null);
 const RemoteAudioLevelContext = createContext(0);
@@ -101,7 +101,7 @@ export const CallProvider = ({ children }) => {
 
     const notifyError = useCallback((message) => {
         if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-        setErrorMessage(message);
+        setErrorMessage(translateUiText(message));
         errorTimerRef.current = setTimeout(() => {
             errorTimerRef.current = null;
             setErrorMessage(null);
@@ -349,7 +349,9 @@ export const CallProvider = ({ children }) => {
             const status = await permissions.query({ name: device }).catch(() => permissions.RESULT.DENIED);
             setPermissionState(current => ({ ...current, [device]: status }));
             if (status === permissions.RESULT.DENIED) setPermissionIssue(device);
-            else notifyError(`Unable to start the ${device}. Please try again.`);
+            else notifyError(translateUiTemplate("Unable to start the {{0}}. Please try again.", [
+                translateUiText(device),
+            ]));
             return false;
         } finally {
             setRequestingDevice(null);

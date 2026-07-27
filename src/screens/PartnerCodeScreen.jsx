@@ -24,7 +24,7 @@ import Svg, { Path } from 'react-native-svg';
 import { API_BASE } from '../constants/Api';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const navy = '#050E3E';
 const decorativeStyles = StyleSheet.create({
@@ -259,7 +259,7 @@ export const PartnerCodeScreen = ({
                             <Text style={styles.connectedTitle}>{translateUiText("You're Connected!")}</Text>
                             {partnerUsername && (
                                 <Text style={styles.connectedSubtitle}>
-                                    {partnerUsername}{translateUiText("just paired with you")}</Text>
+                                    {translateUiTemplate("{{0}} just paired with you", [partnerUsername])}</Text>
                             )}
                         </Animated.View>
                     </View>
@@ -294,7 +294,7 @@ export const PartnerCodeScreen = ({
                         <Animated.View style={[styles.connectedContent, { transform: [{ scale: pairedScale }] }]}>
                             <Text style={styles.connectedEmoji}>💕</Text>
                             <Text style={styles.connectedTitle}>{translateUiText("You're Connected!")}</Text>
-                            <Text style={styles.connectedSubtitle}>{translateUiText("You're now paired with")}{pairedPartner.name}
+                            <Text style={styles.connectedSubtitle}>{translateUiTemplate("You're now paired with {{0}}", [pairedPartner.name])}
                             </Text>
                         </Animated.View>
                     </View>
@@ -316,7 +316,10 @@ export const PartnerCodeScreen = ({
         try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             await Share.share({
-                message: `Join me on Penguin Couple\n\nMy invitation code is ${partnerCode}\n\nhttps://penguincouples.com/`,
+                message: translateUiTemplate("Join me on Penguin Couple{{0}}{{0}}My invitation code is {{1}}{{0}}{{0}}https://penguincouples.com/", [
+                    '\n',
+                    partnerCode,
+                ]),
             });
         } catch (error) {
             console.error('Error sharing code:', error);
@@ -379,7 +382,10 @@ export const PartnerCodeScreen = ({
                     onPaired(data.partner);
                 }, 3000);
             } else {
-                Alert.alert(translateUiText("Pairing Failed"), data?.error || 'Could not connect with this code');
+                Alert.alert(
+                    translateUiText("Pairing Failed"),
+                    translateUiText(data?.error || "Could not connect with this code"),
+                );
             }
         } catch (error) {
             if (error?.name === 'AbortError') return;

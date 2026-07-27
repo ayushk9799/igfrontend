@@ -22,7 +22,7 @@ import { fontFamily, fontWeight } from '../constants/fonts';
 import HomeWidgetShowcase from '../components/HomeWidgetShowcase';
 import HomeYearlyOfferCard from '../components/HomeYearlyOfferCard';
 import { getUser, storage } from '../utils/authStorage';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const SCRIBBLE_PREVIEW_PADDING = 26;
@@ -86,7 +86,7 @@ const getTimeUntilLabel = (targetDate, now) => {
 
     const diffMs = targetTime - now;
     if (diffMs <= 0) {
-        return 'ending soon';
+        return translateUiText("ending soon");
     }
 
     const totalMinutes = Math.ceil(diffMs / (60 * 1000));
@@ -94,14 +94,14 @@ const getTimeUntilLabel = (targetDate, now) => {
     const minutes = totalMinutes % 60;
 
     if (hours <= 0) {
-        return `${minutes}m left`;
+        return translateUiTemplate("{{0}}m left", [minutes]);
     }
 
     if (minutes === 0) {
-        return `${hours}h left`;
+        return translateUiTemplate("{{0}}h left", [hours]);
     }
 
-    return `${hours}h ${minutes}m left`;
+    return translateUiTemplate("{{0}}h {{1}}m left", [hours, minutes]);
 };
 
 const getHeartSymbol = (heartState) => {
@@ -428,7 +428,9 @@ const HomeScreen = ({
                                         <View style={styles.videoCallGuide} accessibilityRole="alert">
                                             <View style={styles.videoCallGuideArrow} />
                                             <HomeText style={styles.videoCallGuideTitle}>{translateUiText("Start a video call")}</HomeText>
-                                            <HomeText style={styles.videoCallGuideText}>{translateUiText("Tap here to call")}{partnerName}{translateUiText(". If they’re away, we’ll notify them.")}</HomeText>
+                                            <HomeText style={styles.videoCallGuideText}>
+                                                {translateUiTemplate("Tap here to call {{0}}. If they’re away, we’ll notify them.", [partnerName])}
+                                            </HomeText>
                                             <TouchableOpacity
                                                 style={styles.videoCallGuideButton}
                                                 onPress={dismissVideoCallGuide}
@@ -489,7 +491,9 @@ const HomeScreen = ({
                                 }
                             ]}>
                                 <HomeText style={styles.moodNudgeText}>
-                                    {yourMood?.updatedAt ? 'Mood is old. Tap to refresh 💛' : 'How are you feeling? Tap here 💛'}
+                                    {yourMood?.updatedAt
+                                        ? translateUiText("Mood is old. Tap to refresh 💛")
+                                        : translateUiText("How are you feeling? Tap here 💛")}
                                 </HomeText>
                             </Animated.View>
                         )}
@@ -569,8 +573,12 @@ const HomeScreen = ({
                                         <View style={styles.paperTape} />
                                         <HomeText style={styles.ritualQuestion} numberOfLines={3}>
                                             {heartState === 'full'
-                                                ? `Both done today. ${ritualTimeLeft || 'Next ritual soon'}`
-                                                : `You finished. Waiting for partner. ${ritualTimeLeft || ''}`}
+                                                ? translateUiTemplate("Both done today. {{0}}", [
+                                                    ritualTimeLeft || translateUiText("Next ritual soon"),
+                                                ])
+                                                : translateUiTemplate("You finished. Waiting for partner. {{0}}", [
+                                                    ritualTimeLeft || '',
+                                                ])}
                                         </HomeText>
                                     </View>
                                     <ArrowCircle color="#FF4568" />

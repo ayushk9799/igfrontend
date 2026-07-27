@@ -4,9 +4,14 @@ import { getLocales } from 'expo-localization';
 import { storage } from '../utils/authStorage';
 import en from './locales/en.json';
 import fr from './locales/fr.json';
+import de from './locales/de.json';
+import es from './locales/es.json';
+import it from './locales/it.json';
+import ja from './locales/ja.json';
+import ko from './locales/ko.json';
 
 const LANGUAGE_STORAGE_KEY = 'app_language';
-const SUPPORTED_LANGUAGES = ['en', 'fr'];
+const SUPPORTED_LANGUAGES = ['en', 'fr', 'de', 'es', 'it', 'ja', 'ko'];
 
 const savedLanguage = storage.getString(LANGUAGE_STORAGE_KEY);
 const deviceLanguage = getLocales()[0]?.languageCode ?? 'en';
@@ -19,6 +24,11 @@ i18n
         resources: {
             en: { translation: en },
             fr: { translation: fr },
+            de: { translation: de },
+            es: { translation: es },
+            it: { translation: it },
+            ja: { translation: ja },
+            ko: { translation: ko },
         },
         lng: initialLanguage,
         fallbackLng: 'en',

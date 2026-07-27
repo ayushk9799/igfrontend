@@ -12,7 +12,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const LiveCallOnboardingScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
@@ -62,7 +62,7 @@ const LiveCallOnboardingScreen = ({ onComplete }) => {
                     ]}
                 >
                     <View style={styles.header}>
-                        <Text style={styles.title}>{translateUiText("Never miss")}{'\n'}{translateUiText("their face")}</Text>
+                        <Text style={styles.title}>{translateUiTemplate("Never miss{{0}}their face", ['\n'])}</Text>
                        
                     </View>
 

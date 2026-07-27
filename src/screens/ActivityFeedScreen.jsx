@@ -16,7 +16,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { getActivityByDate } from '../utils/answerApi';
-import { formatRelativeTime, getUiLocale, translateUiText } from '../i18n/uiTranslation';
+import { formatRelativeTime, getUiLocale, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 /**
  * ActivityFeedScreen - Shows who completed today's challenge
@@ -136,7 +136,9 @@ export default function ActivityFeedScreen({ onBack = () => { }, onViewUser }) {
                 <View style={styles.headerContent}>
                     <Text style={styles.headerTitle}>{translateUiText("Today's Activity")}</Text>
                     <Text style={styles.headerSubtitle}>
-                        {activity.length} {activity.length === 1 ? translateUiText("person") : translateUiText("people")}{translateUiText("completed")}</Text>
+                        {activity.length === 1
+                            ? translateUiTemplate("{{0}} person completed", [activity.length])
+                            : translateUiTemplate("{{0}} people completed", [activity.length])}</Text>
                 </View>
             </View>
 

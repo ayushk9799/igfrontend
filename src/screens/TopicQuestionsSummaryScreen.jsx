@@ -143,16 +143,18 @@ export default function TopicQuestionsSummaryScreen({
     const formatAnswer = (ans, formatType) => {
         if (ans === null || ans === undefined) return '—';
         if (formatType === 'likelyto') {
-            return ans === 'you' ? 'Me' : ans === 'partner' ? partnerName : ans;
+            return ans === 'you' ? translateUiText("Me") : ans === 'partner' ? partnerName : translateUiText(ans);
         }
         if (formatType === 'neverhaveiever') {
-            return ans === 'have' || ans === 'I have' ? 'I Have 🙋' : 'Never 🙅';
+            return ans === 'have' || ans === 'I have'
+                ? translateUiText("I Have 🙋")
+                : translateUiText("Never 🙅");
         }
         if (formatType === 'takephoto') {
-            return 'Captured Photo 📸';
+            return translateUiText("Captured Photo 📸");
         }
         if (formatType === 'voicerecord') {
-            return 'Voice Note 🎙️';
+            return translateUiText("Voice Note 🎙️");
         }
         return String(ans);
     };
@@ -199,7 +201,7 @@ export default function TopicQuestionsSummaryScreen({
     if (error) {
         return (
             <View style={styles.center}>
-                <Text style={styles.errorText}>{error}</Text>
+                <Text style={styles.errorText}>{translateUiText(error)}</Text>
                 <TouchableOpacity
                     style={[styles.primaryButton, { backgroundColor: setColors.primary }]}
                     onPress={fetchReport}

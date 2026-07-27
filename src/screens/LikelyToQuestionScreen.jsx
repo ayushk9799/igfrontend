@@ -18,7 +18,7 @@ import GradientBackground from '../components/GradientBackground';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import { colors, spacing, borderRadius } from '../theme';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -397,7 +397,7 @@ export const ComparisonQuestionScreen = ({
                             </View>
 
                             <View style={styles.partnerSection}>
-                                <Text style={styles.partnerSectionTitle}>{partnerName}{translateUiText("'s Answer")}</Text>
+                                <Text style={styles.partnerSectionTitle}>{translateUiTemplate("{{0}}'s Answer", [partnerName])}</Text>
                                 <Card variant="glass" padding="lg">
                                     <View style={styles.lockedContent}>
                                         <View style={styles.lockIcon}>

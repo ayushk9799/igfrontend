@@ -217,20 +217,24 @@ const GamesScreen = ({
         {
             key: 'puzzle',
             title: pendingPuzzle?.status === 'in_progress'
-                ? (isPuzzleCreator ? `${partnerName} is solving!` : 'Puzzle in progress')
+                ? (isPuzzleCreator ? translateUiTemplate("{{0}} is solving!", [partnerName]) : translateUiText("Puzzle in progress"))
                 : pendingPuzzle
-                    ? (isPuzzleCreator ? 'Puzzle sent 🧩' : 'Puzzle waiting')
-                    : 'Create puzzle',
+                    ? (isPuzzleCreator ? translateUiText("Puzzle sent 🧩") : translateUiText("Puzzle waiting"))
+                    : translateUiText("Create puzzle"),
             subtitle: pendingPuzzle?.status === 'in_progress'
-                ? (isPuzzleCreator ? `⏱ ${puzzleTimeLabel} remaining · Watch live` : `⏱ ${puzzleTimeLabel} remaining`)
+                ? (isPuzzleCreator
+                    ? translateUiTemplate("⏱ {{0}} remaining · Watch live", [puzzleTimeLabel])
+                    : translateUiTemplate("⏱ {{0}} remaining", [puzzleTimeLabel]))
                 : pendingPuzzle
-                    ? (isPuzzleCreator ? `Waiting for ${partnerName} to start.` : 'Your 5-minute timer starts after the preview.')
-                    : 'A tiny photo challenge for two.',
+                    ? (isPuzzleCreator
+                        ? translateUiTemplate("Waiting for {{0}} to start.", [partnerName])
+                        : translateUiText("Your 5-minute timer starts after the preview."))
+                    : translateUiText("A tiny photo challenge for two."),
             buttonLabel: pendingPuzzle?.status === 'in_progress'
-                ? (isPuzzleCreator ? 'Watch live 👀' : 'Continue')
+                ? (isPuzzleCreator ? translateUiText("Watch live 👀") : translateUiText("Continue"))
                 : pendingPuzzle
-                    ? (isPuzzleCreator ? 'View' : 'Start')
-                    : "Let's play",
+                    ? (isPuzzleCreator ? translateUiText("View") : translateUiText("Start"))
+                    : translateUiText("Let's play"),
             gradient: ['#FFA852', '#FF6D26'],
             accent: '#FF9833',
             icon: 'puzzle',
@@ -241,9 +245,13 @@ const GamesScreen = ({
         },
         {
             key: 'tictactoe',
-            title: pendingTicTacToe ? 'Your turn' : activeTicTacToe ? `${partnerName}'s turn` : 'Tic tac toe',
+            title: pendingTicTacToe
+                ? translateUiText("Your turn")
+                : activeTicTacToe
+                    ? translateUiTemplate("{{0}}'s turn", [partnerName])
+                    : translateUiText("Tic tac toe"),
             subtitle: translateUiText("Play a quick little duel."),
-            buttonLabel: pendingTicTacToe || activeTicTacToe ? 'Resume' : 'Start game',
+            buttonLabel: pendingTicTacToe || activeTicTacToe ? translateUiText("Resume") : translateUiText("Start game"),
             gradient: ['#9A85FF', '#5C3AF5'],
             accent: '#7C61F8',
             icon: 'gamepad',
@@ -255,9 +263,13 @@ const GamesScreen = ({
         },
         {
             key: 'wordle',
-            title: pendingWordle ? 'Guess the word' : activeWordle ? `${partnerName}'s turn` : 'Wordle',
+            title: pendingWordle
+                ? translateUiText("Guess the word")
+                : activeWordle
+                    ? translateUiTemplate("{{0}}'s turn", [partnerName])
+                    : translateUiText("Wordle"),
             subtitle: translateUiText("Set a secret word."),
-            buttonLabel: pendingWordle || activeWordle ? 'Resume' : 'Play now',
+            buttonLabel: pendingWordle || activeWordle ? translateUiText("Resume") : translateUiText("Play now"),
             gradient: ['#5CE5D2', '#32A292'],
             accent: '#48BFAE',
             icon: 'letter',
@@ -339,7 +351,9 @@ const GamesScreen = ({
                                 <View style={styles.videoCallGuide} accessibilityRole="alert">
                                     <View style={styles.videoCallGuideArrow} />
                                     <Text style={styles.videoCallGuideTitle}>{translateUiText("Play together on a call")}</Text>
-                                    <Text style={styles.videoCallGuideText}>{translateUiText("Start a call with")}{partnerName}{translateUiText("and keep talking while you play.")}</Text>
+                                    <Text style={styles.videoCallGuideText}>
+                                        {translateUiTemplate("Start a call with {{0}} and keep talking while you play.", [partnerName])}
+                                    </Text>
                                     <TouchableOpacity
                                         style={styles.videoCallGuideButton}
                                         onPress={dismissVideoCallGuide}

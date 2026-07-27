@@ -736,7 +736,7 @@ const WordleScreen = ({
 
             if (response.ok && data.success) {
                 setGameId(data.data.gameId);
-                setSuccessMessage(`Word set! ${partnerName} has been notified.`);
+                setSuccessMessage(translateUiTemplate("Word set! {{0}} has been notified.", [partnerName]));
                 setMode('complete');
 
                 // One event is enough to update the partner's screen and pending-game state.
@@ -938,7 +938,7 @@ const WordleScreen = ({
         const now = Date.now();
         if (now - lastNotifyTime < 5 * 60 * 1000) {
             const remaining = Math.ceil((5 * 60 * 1000 - (now - lastNotifyTime)) / 60000);
-            setNotifyMessage(`Wait ${remaining} min to notify again`);
+            setNotifyMessage(translateUiTemplate("Wait {{0}} min to notify again", [remaining]));
             if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
             messageTimerRef.current = setTimeout(() => setNotifyMessage(''), 3000);
             return;
@@ -956,7 +956,7 @@ const WordleScreen = ({
 
             if (response.ok && data.success) {
                 setLastNotifyTime(now);
-                setNotifyMessage(`${partnerName} notified!`);
+                setNotifyMessage(translateUiTemplate("{{0}} notified!", [partnerName]));
             } else {
                 setNotifyMessage(data.message || 'Failed to notify');
             }
@@ -1156,7 +1156,7 @@ const WordleScreen = ({
 
                     {/* Message slots stay mounted so validation feedback does not shift the grid. */}
                     <View style={styles.notifyMessageContainer}>
-                        <Text style={styles.notifyMessageText}>{notifyMessage}</Text>
+                        <Text style={styles.notifyMessageText}>{translateUiText(notifyMessage)}</Text>
                     </View>
 
 
@@ -1192,7 +1192,7 @@ const WordleScreen = ({
                         {mode === 'error' && (
                             <View style={styles.loadErrorCard}>
                                 <Text style={styles.loadErrorTitle}>{translateUiText("Couldn’t load Wordle")}</Text>
-                                <Text style={styles.loadErrorText}>{loadError}</Text>
+                                <Text style={styles.loadErrorText}>{translateUiText(loadError)}</Text>
                                 <TouchableOpacity
                                     onPress={retryLoadGame}
                                     activeOpacity={0.8}
@@ -1234,7 +1234,7 @@ const WordleScreen = ({
                                 {guesses.length > 0 && (
                                     <View style={styles.creatorGuessesContainer}>
                                         <Text style={styles.creatorGuessesTitle}>
-                                            {partnerName}{translateUiText("'s guesses:")}</Text>
+                                            {translateUiTemplate("{{0}}'s guesses:", [partnerName])}</Text>
                                         {guesses.map((guess, i) => renderGuessRow(guess, i))}
                                     </View>
                                 )}
@@ -1250,10 +1250,14 @@ const WordleScreen = ({
                         {/* Status Text Rendered at the Bottom of the Grid */}
                         <View style={[styles.statusContainer, styles.statusContainerSpacing]}>
                             {mode === 'create' && (
-                                <Text style={styles.statusText}>{translateUiText("Set a word for")}{partnerName}{translateUiText("to guess")}</Text>
+                                <Text style={styles.statusText}>{translateUiTemplate("Set a word for {{0}} to guess", [partnerName])}</Text>
                             )}
                             {mode === 'guess' && (
-                                <Text style={styles.statusText}>{translateUiText("Guess the word! (")}{attemptsRemaining}{translateUiText("attempts left)")}</Text>
+                                <Text style={styles.statusText}>
+                                    {attemptsRemaining === 1
+                                        ? translateUiTemplate("Guess the word! ({{0}} attempt left)", [attemptsRemaining])
+                                        : translateUiTemplate("Guess the word! ({{0}} attempts left)", [attemptsRemaining])}
+                                </Text>
                             )}
                             {/* Creator views - different states */}
                             {mode === 'complete' && isCreator && successMessage && status === 'pending' && (
@@ -1262,28 +1266,35 @@ const WordleScreen = ({
                                 </Text>
                             )}
                             {mode === 'complete' && isCreator && !successMessage && status === 'pending' && (
-                                <Text style={styles.statusText}>{translateUiText("Waiting for")}{partnerName}{translateUiText("to start guessing...")}</Text>
+                                <Text style={styles.statusText}>{translateUiTemplate("Waiting for {{0}} to start guessing...", [partnerName])}</Text>
                             )}
                             {mode === 'complete' && isCreator && status === 'in_progress' && (
                                 <Text style={styles.statusText}>
-                                    {partnerName}{translateUiText("is guessing... (")}{guesses.length}/{maxAttempts}{translateUiText("tries used)")}</Text>
+                                    {translateUiTemplate("{{0}} is guessing... ({{1}}/{{2}} tries used)", [partnerName, guesses.length, maxAttempts])}</Text>
                             )}
                             {mode === 'complete' && isCreator && status === 'won' && (
                                 <Text style={[styles.statusText, styles.statusWin]}>
-                                    {partnerName}{translateUiText("guessed it in")}{guesses.length} {guesses.length === 1 ? translateUiText("try") : translateUiText("tries")}!
+                                    {guesses.length === 1
+                                        ? translateUiTemplate("{{0}} guessed it in {{1}} try!", [partnerName, guesses.length])
+                                        : translateUiTemplate("{{0}} guessed it in {{1}} tries!", [partnerName, guesses.length])}
                                 </Text>
                             )}
                             {mode === 'complete' && isCreator && status === 'lost' && (
                                 <Text style={[styles.statusText, styles.statusLose]}>
-                                    {partnerName}{translateUiText("couldn't guess \"")}{secretWord}"
+                                    {translateUiTemplate("{{0}} couldn't guess “{{1}}”", [partnerName, secretWord])}
                                 </Text>
                             )}
                             {/* Guesser views */}
                             {mode === 'complete' && !isCreator && status === 'won' && (
-                                <Text style={[styles.statusText, styles.statusWin]}>{translateUiText("You Won in")}{guesses.length} {guesses.length === 1 ? translateUiText("try") : translateUiText("tries")}!</Text>
+                                <Text style={[styles.statusText, styles.statusWin]}>
+                                    {guesses.length === 1
+                                        ? translateUiTemplate("You won in {{0}} try!", [guesses.length])
+                                        : translateUiTemplate("You won in {{0}} tries!", [guesses.length])}
+                                </Text>
                             )}
                             {mode === 'complete' && !isCreator && status === 'lost' && (
-                                <Text style={[styles.statusText, styles.statusLose]}>{translateUiText("Game Over - The word was \"")}{revealedWord}"
+                                <Text style={[styles.statusText, styles.statusLose]}>
+                                    {translateUiTemplate("Game over — the word was “{{0}}”", [revealedWord])}
                                 </Text>
                             )}
                         </View>
@@ -1298,7 +1309,7 @@ const WordleScreen = ({
                                 accessibilityLabel={translateUiText("Retry free-game limit check")}
                             >
                                 <Text style={styles.limitCheckErrorText}>
-                                    {limitCheckError}{translateUiText("Tap to retry.")}</Text>
+                                    {translateUiTemplate("{{0}} Tap to retry.", [translateUiText(limitCheckError)])}</Text>
                             </TouchableOpacity>
                         )}
                     </ScrollView>
@@ -1388,7 +1399,7 @@ const WordleScreen = ({
                             }
                         ]}
                     >
-                        <Text style={styles.floatingErrorText}>{errorMessage}</Text>
+                        <Text style={styles.floatingErrorText}>{translateUiText(errorMessage)}</Text>
                     </Animated.View>
                 </KeyboardAvoidingView>
             </SafeAreaView>

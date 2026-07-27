@@ -50,7 +50,7 @@ import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedAp
 import { cancelPartnerInviteReminders, clearPendingLocalNotificationRoute, getInitialLocalNotification, getPendingLocalNotificationRoute, onLocalNotificationPress, schedulePartnerInviteReminders, showLocalNotification } from '../utils/localNotifications';
 import { API_BASE } from '../constants/Api';
 import { QuestionChatsV2Api } from '../api/questionsV2Api';
-import { setAuthErrorHandler } from '../utils/apiFetch';
+import { apiFetch, setAuthErrorHandler } from '../utils/apiFetch';
 import { getDeviceInfo } from '../utils/deviceInfo';
 import { disableDistanceLocationSharing, getDistanceLocationPermissionStatus, refreshDistanceWidgetSnapshot, saveLockedDistanceWidgetData, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 import { configureNativeWidgetTracking, syncNativeWidgetStatus } from '../api/widgetStatusApi';
@@ -60,7 +60,7 @@ import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
-import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { getContentLanguage, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const UPDATE_CHECK_TIMEOUT_MS = 8000;
 
@@ -336,8 +336,8 @@ export const AppNavigator = () => {
 
         forceUpdateAlertVisibleRef.current = true;
         Alert.alert(
-            versionGate.policy?.title || 'Penguin Couple has a new update',
-            versionGate.policy?.message || 'Please update it to continue.',
+            translateUiText(versionGate.policy?.title || "Penguin Couple has a new update"),
+            translateUiText(versionGate.policy?.message || "Please update it to continue."),
             [
                 {
                     text: translateUiText("Update now"),
@@ -513,6 +513,7 @@ export const AppNavigator = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId,
+                    preferredLanguage: getContentLanguage(),
                     ...deviceInfo,
                 }),
             });
@@ -996,7 +997,7 @@ export const AppNavigator = () => {
         };
 
         const fetchJson = async (url) => {
-            const response = await fetch(url);
+            const response = await apiFetch(url);
             return response.json();
         };
 
@@ -1279,8 +1280,11 @@ export const AppNavigator = () => {
                 ? data.questionText
                 : data.senderName || partnerName;
             const body = data.isAnswer
-                ? `${data.senderName || partnerName}: ${data.preview || 'Answered a question'}`
-                : data.preview || 'Sent you a message';
+                ? translateUiTemplate("{{0}}: {{1}}", [
+                    data.senderName || partnerName,
+                    data.preview || translateUiText("Answered a question"),
+                ])
+                : data.preview || translateUiText("Sent you a message");
 
             showRoutedLocalNotification({
                 title,
@@ -2156,7 +2160,10 @@ export const AppNavigator = () => {
                     setCurrentScreen('login');
                 });
             } else {
-                Alert.alert(translateUiText("Error"), data.error || 'Failed to delete account');
+                Alert.alert(
+                    translateUiText("Error"),
+                    translateUiText(data.error || "Failed to delete account"),
+                );
             }
         } catch (error) {
             console.error('🗑️ [DELETE] Error deleting account:', error);

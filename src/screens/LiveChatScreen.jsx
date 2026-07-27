@@ -1375,7 +1375,7 @@ export default function LiveChatScreen({
 
                     {toastVisible && visibleError && (
                         <View style={styles.errorCard}>
-                            <Text style={styles.errorText}>{visibleError}</Text>
+                            <Text style={styles.errorText}>{translateUiText(visibleError)}</Text>
                             {cameraDenied && !error && (
                                 <TouchableOpacity
                                     onPress={() => Linking.openSettings()}

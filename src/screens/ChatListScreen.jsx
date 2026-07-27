@@ -259,7 +259,9 @@ export default function ChatListScreen({
         <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>💬</Text>
             <Text style={styles.emptyTitle}>{translateUiText("No chats yet")}</Text>
-            <Text style={styles.emptyText}>{translateUiText("Answer questions with")}{partnerName}{translateUiText("to start discussions!")}</Text>
+            <Text style={styles.emptyText}>
+                {translateUiTemplate("Answer questions with {{0}} to start discussions!", [partnerName])}
+            </Text>
         </View>
     );
 
@@ -288,7 +290,7 @@ export default function ChatListScreen({
                     disabled={liveChatDisabled || !onLiveChatPress}
                     activeOpacity={0.84}
                     accessibilityRole="button"
-                    accessibilityLabel={translateUiText("Open Live Chat Mode")}
+                    accessibilityLabel={translateUiText("Open Video Chat")}
                 >
                     <LinearGradient
                         colors={liveChatDisabled ? ['#D9D3D8', '#C8C1C8'] : ['#F94E82', '#D83C73']}
@@ -300,7 +302,7 @@ export default function ChatListScreen({
                     </LinearGradient>
                     <View style={styles.liveChatCopy}>
                         <View style={styles.liveChatTitleRow}>
-                            <Text style={styles.liveChatTitle}>{translateUiText("Live Chat Mode")}</Text>
+                            <Text style={styles.liveChatTitle}>{translateUiText("Video Chat")}</Text>
                             <View style={styles.liveBadge}>
                                 <Text style={styles.liveBadgeText}>{translateUiText("LIVE")}</Text>
                             </View>
@@ -321,7 +323,7 @@ export default function ChatListScreen({
                 {/* Error state */}
                 {error && (
                     <View style={styles.errorContainer}>
-                        <Text style={styles.errorText}>{error}</Text>
+                        <Text style={styles.errorText}>{translateUiText(error)}</Text>
                         <TouchableOpacity style={styles.retryButton} onPress={fetchChats}>
                             <Text style={styles.retryText}>{translateUiText("Try Again")}</Text>
                         </TouchableOpacity>

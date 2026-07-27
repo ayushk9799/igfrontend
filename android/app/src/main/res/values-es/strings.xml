@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Penguin Couple</string>
+    <string name="default_notification_channel_id">partner-updates</string>
+    <string name="widget_scribble_label">Dibujo</string>
+    <string name="widget_description">Mira los dibujos de tu pareja</string>
+    <string name="widget_scribble_description">Dibujo de tu pareja</string>
+    <string name="together_days_widget_label">Días juntos</string>
+    <string name="together_countdown_widget_label">Tiempo juntos</string>
+    <string name="distance_widget_label">Nuestra distancia</string>
+    <string name="relationship_widget_description">Vista previa del widget de pareja</string>
+    <string name="together_days_widget_description">Muestra vuestros días juntos</string>
+    <string name="together_countdown_widget_description">Muestra vuestro tiempo juntos</string>
+    <string name="distance_widget_description">Muestra la distancia con tu pareja</string>
+    <string name="couple_photo_widget_label">Foto de tu pareja</string>
+    <string name="couple_photo_widget_description">Mira la foto más reciente de tu pareja</string>
+    <string name="couple_photo_empty">Enviaos un momento</string>
+    <string name="couple_photo_my_image_description">Mi última foto enviada</string>
+    <string name="widget_your_partner">Tu pareja</string>
+    <string name="widget_your_love">Tu amor</string>
+    <string name="widget_from_partner">De %1$s</string>
+    <string name="widget_set_date">Elegir fecha</string>
+    <string name="widget_set_anniversary">Elegir aniversario</string>
+    <string name="widget_days">días</string>
+    <string name="widget_together_for">juntos desde hace</string>
+    <string name="widget_hours_short">h</string>
+    <string name="widget_minutes_short">min</string>
+    <string name="widget_seconds_short">s</string>
+    <string name="widget_together">¡Estamos juntos!</string>
+    <string name="widget_partner_location_off">Ubicación de tu pareja desactivada</string>
+    <string name="widget_connect_partner">Conectar con tu pareja</string>
+    <string name="widget_open_app_sync">Abre la app para sincronizar</string>
+    <string name="widget_share_location">Compartir ubicación</string>
+    <string name="widget_distance_format">Nuestra distancia: %1$s km</string>
+    <string name="widget_premium">Widget Premium</string>
+    <string name="widget_open_app_unlock">Abre la app para desbloquear</string>
+</resources>

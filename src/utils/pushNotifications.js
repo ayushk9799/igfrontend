@@ -20,6 +20,7 @@ import {
 import { getUser } from './authStorage';
 import { API_BASE } from '../constants/Api';
 import { getDeviceInfo } from './deviceInfo';
+import { getContentLanguage } from '../i18n/uiTranslation';
 
 /**
  * Check if notification permission is already granted (silent - no dialog)
@@ -125,6 +126,7 @@ export const registerFCMToken = async () => {
             body: JSON.stringify({
                 userId: user.id,
                 fcmToken: token,
+                preferredLanguage: getContentLanguage(),
                 ...deviceInfo,
             }),
         });

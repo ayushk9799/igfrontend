@@ -836,7 +836,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 if (memory?.imageUrl) Image.prefetch(memory.imageUrl).catch(() => {});
             });
         } catch (error) {
-            Alert.alert(translateUiText("Memories unavailable"), error.message || 'Could not load memories.');
+            Alert.alert(
+                translateUiText("Memories unavailable"),
+                translateUiText(error.message || "Could not load memories."),
+            );
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
@@ -923,7 +926,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 height: asset.height,
             });
         } catch (error) {
-            Alert.alert(translateUiText("Could not open photos"), error.message || 'Please try again.');
+            Alert.alert(
+                translateUiText("Could not open photos"),
+                translateUiText(error.message || "Please try again."),
+            );
         }
     }, []);
 
@@ -983,7 +989,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             setModalVisible(false);
             resetDraft();
         } catch (error) {
-            Alert.alert(translateUiText("Memory not saved"), error.message || 'Please try again.');
+            Alert.alert(
+                translateUiText("Memory not saved"),
+                translateUiText(error.message || "Please try again."),
+            );
         } finally {
             setPhase('');
         }

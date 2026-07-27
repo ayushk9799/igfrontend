@@ -17,7 +17,7 @@ import {
     spacing
 } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
-import { translateUiText } from '../../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../../i18n/uiTranslation';
 
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -173,7 +173,7 @@ const SliderCard = React.memo(({
                     <View style={cardStyles.answeredBadge}>
                         <Text style={cardStyles.answeredEmoji}>✅</Text>
                         <Text style={cardStyles.answeredTitle}>{translateUiText("Already Answered")}</Text>
-                        <Text style={cardStyles.answeredText}>{translateUiText("You rated:")}{previousAnswer} / {maxValue}
+                        <Text style={cardStyles.answeredText}>{translateUiTemplate("You rated: {{0}} / {{1}}", [previousAnswer, maxValue])}
                         </Text>
                     </View>
                 </View>

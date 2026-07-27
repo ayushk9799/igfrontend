@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
@@ -23,8 +23,6 @@ const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
 const navy = '#050E3E';
 const today = new Date();
-const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 const padDatePart = (value) => String(value).padStart(2, '0');
 
 const toDateOnlyString = (date) => {
@@ -51,10 +49,6 @@ const RelationshipStartDateScreen = ({ onComplete, onBack, initialDate }) => {
     const insets = useSafeAreaInsets();
 
     const isValid = selectedDate <= today;
-    const selectedDateLabel = useMemo(() => {
-        return `${padDatePart(selectedDate.getDate())} ${monthLabels[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
-    }, [selectedDate]);
-
     const handleContinue = async () => {
         if (!isValid || isSubmitting) return;
 

@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { House, Gamepad2, MessageCircle, Notebook } from 'lucide-react-native';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const getLiquidGlassModule = () => {
     if (Platform.OS !== 'ios') return null;
@@ -170,7 +170,9 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0, reduceMotion = 
     };
 
     const badgeLabel = badge > 0
-        ? `, ${badge} unread ${badge === 1 ? 'message' : 'messages'}`
+        ? badge === 1
+            ? translateUiTemplate(", {{0}} unread message", [badge])
+            : translateUiTemplate(", {{0}} unread messages", [badge])
         : '';
 
     return (
@@ -181,7 +183,7 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0, reduceMotion = 
             onPressOut={handlePressOut}
             activeOpacity={0.9}
             accessibilityRole="tab"
-            accessibilityLabel={`${label}${badgeLabel}`}
+            accessibilityLabel={`${translateUiText(label)}${badgeLabel}`}
             accessibilityState={{ selected: isActive }}
         >
             <Animated.View

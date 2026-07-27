@@ -16,7 +16,7 @@ import { FlipType, manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const normalizeUri = (value) => {
     if (!value) return null;
@@ -82,7 +82,10 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
             if (!source) throw new Error('No image captured');
             setPreviewAsset(await makeSquareAsset(source, cameraType === 'front'));
         } catch (error) {
-            Alert.alert(translateUiText("Couldn’t take photo"), error?.message || 'Please try again.');
+            Alert.alert(
+                translateUiText("Couldn’t take photo"),
+                translateUiText(error?.message || "Please try again."),
+            );
         } finally {
             capturingRef.current = false;
         }
@@ -105,7 +108,10 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
                 setPreviewAsset(await makeSquareAsset(result.assets[0].uri));
             }
         } catch (error) {
-            Alert.alert(translateUiText("Couldn’t open photo"), error?.message || 'Please try again.');
+            Alert.alert(
+                translateUiText("Couldn’t open photo"),
+                translateUiText(error?.message || "Please try again."),
+            );
         }
     }, []);
 
@@ -122,7 +128,10 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
             await onSendPhoto?.(previewAsset);
             onBack?.();
         } catch (error) {
-            Alert.alert(translateUiText("Couldn’t send photo"), error?.message || 'Please try again.');
+            Alert.alert(
+                translateUiText("Couldn’t send photo"),
+                translateUiText(error?.message || "Please try again."),
+            );
         } finally {
             setIsSending(false);
         }
@@ -142,7 +151,9 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
                     <TouchableOpacity onPress={onBack} activeOpacity={0.8} style={styles.backButton}><BackIcon /></TouchableOpacity>
                     <View style={styles.headerCopy}>
                         <Text style={styles.eyebrow}>{translateUiText("PARTNER PHOTO")}</Text>
-                        <Text style={styles.headerTitle}>{translateUiText("A moment for")}{partnerName}</Text>
+                        <Text style={styles.headerTitle}>
+                            {translateUiTemplate("A moment for {{0}}", [partnerName])}
+                        </Text>
                     </View>
                     <View style={styles.headerSpacer} />
                 </View>
@@ -196,7 +207,7 @@ const CouplePhotoCaptureScreen = ({ partnerName = 'Your partner', onBack, onSend
                                             adjustsFontSizeToFit
                                             minimumFontScale={0.8}
                                             style={styles.sendText}
-                                        >{translateUiText("Send to")}{partnerName}
+                                        >{translateUiTemplate("Send to {{0}}", [partnerName])}
                                         </Text>
                                     )}
                                 </LinearGradient>

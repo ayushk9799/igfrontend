@@ -12,11 +12,13 @@ import { translateUiText } from '../../i18n/uiTranslation';
  * ChoiceButton - Clean, soft-colored choice button for Never Have I Ever
  */
 const ChoiceButton = ({ choice, isSelected, onPress, disabled }) => {
+    const value = choice && typeof choice === 'object' ? choice.value : choice;
+    const label = choice && typeof choice === 'object' ? (choice.label ?? choice.value) : choice;
     const choiceConfig = {
         'I have': { bg: 'rgba(255, 255, 255, 0.12)', border: 'rgba(255, 255, 255, 0.22)', textColor: '#FFFFFF', selectedBg: '#FFFFFF', selectedTextColor: '#D84315' },
         'Never': { bg: 'rgba(255, 255, 255, 0.12)', border: 'rgba(255, 255, 255, 0.22)', textColor: '#FFFFFF', selectedBg: '#FFFFFF', selectedTextColor: '#2E8B7A' },
     };
-    const cfg = choiceConfig[choice] || { bg: 'rgba(255,255,255,0.12)', border: 'rgba(255,255,255,0.22)', textColor: '#FFFFFF', selectedBg: '#FFFFFF', selectedTextColor: '#333333' };
+    const cfg = choiceConfig[value] || { bg: 'rgba(255,255,255,0.12)', border: 'rgba(255,255,255,0.22)', textColor: '#FFFFFF', selectedBg: '#FFFFFF', selectedTextColor: '#333333' };
 
     return (
         <TouchableOpacity
@@ -25,7 +27,7 @@ const ChoiceButton = ({ choice, isSelected, onPress, disabled }) => {
                 { backgroundColor: cfg.bg, borderColor: cfg.border },
                 isSelected && { backgroundColor: cfg.selectedBg, borderColor: '#FFFFFF', borderWidth: 2.5 },
             ]}
-            onPress={() => onPress(choice)}
+            onPress={() => onPress(value)}
             activeOpacity={0.8}
             disabled={disabled}
         >
@@ -33,7 +35,7 @@ const ChoiceButton = ({ choice, isSelected, onPress, disabled }) => {
                 styles.choiceLabel,
                 { color: isSelected ? cfg.selectedTextColor : cfg.textColor },
                 isSelected && { fontWeight: '900' },
-            ]}>{translateUiText(choice)}</Text>
+            ]}>{translateUiText(label)}</Text>
             {isSelected && (
                 <View style={[styles.choiceCheckBadge, { backgroundColor: cfg.selectedTextColor }]}>
                     <Text style={[styles.choiceCheck, { color: '#FFFFFF' }]}>✓</Text>
@@ -71,7 +73,9 @@ const NeverHaveIEverCard = React.memo(({
     const [locked, setLocked] = useState(isAnswered);
     const lastTaskIdRef = useRef(task._id);
 
-    const options = task.options?.length > 0 ? task.options : ['I have', 'Never'];
+    const options = task.optionItems?.length > 0
+        ? task.optionItems
+        : (task.options?.length > 0 ? task.options : ['I have', 'Never']);
 
     useEffect(() => {
         if (lastTaskIdRef.current !== task._id) {
@@ -139,15 +143,18 @@ const NeverHaveIEverCard = React.memo(({
 
                 {/* Choice Buttons */}
                 <View style={styles.choicesRow}>
-                    {options.map((choice) => (
+                    {options.map((choice) => {
+                        const value = choice && typeof choice === 'object' ? choice.value : choice;
+                        return (
                         <ChoiceButton
-                            key={choice}
+                            key={String(value)}
                             choice={choice}
-                            isSelected={selectedAnswer === choice}
+                            isSelected={selectedAnswer === value}
                             onPress={handleChoiceSelect}
                             disabled={locked || isAnswered}
                         />
-                    ))}
+                        );
+                    })}
                 </View>
 
             </View>

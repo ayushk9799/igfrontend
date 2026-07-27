@@ -23,7 +23,7 @@ import { spacing } from '../theme';
 import { API_BASE } from '../constants/Api';
 import { getDeviceInfo } from '../utils/deviceInfo';
 import * as Haptics from 'expo-haptics';
-import { translateUiText } from '../i18n/uiTranslation';
+import { getContentLanguage, translateUiText } from '../i18n/uiTranslation';
 
 const { width, height } = Dimensions.get('window');
 const isCompactHeight = height < 760;
@@ -280,6 +280,7 @@ export const LoginScreen = ({
                 },
                 body: JSON.stringify({
                     token: idToken,
+                    preferredLanguage: getContentLanguage(),
                     ...deviceInfo,
                 })
             });
@@ -299,7 +300,10 @@ export const LoginScreen = ({
             }
         } catch (error) {
             console.error('Google sign-in failed:', error);
-            Alert.alert(translateUiText("Sign In Failed"), error.message || 'Please try again');
+            Alert.alert(
+                translateUiText("Sign In Failed"),
+                translateUiText(error.message || "Please try again"),
+            );
         } finally {
             setIsGoogleLoading(false);
         }
@@ -330,6 +334,7 @@ export const LoginScreen = ({
                     idToken: appleCredential.idToken,
                     displayName: appleCredential.displayName,
                     email: appleCredential.email,
+                    preferredLanguage: getContentLanguage(),
                     ...deviceInfo,
                 }),
             });
@@ -343,7 +348,10 @@ export const LoginScreen = ({
             }
         } catch (error) {
             console.error('Apple sign-in failed:', error);
-            Alert.alert(translateUiText("Sign In Failed"), error.message || 'Please try again');
+            Alert.alert(
+                translateUiText("Sign In Failed"),
+                translateUiText(error.message || "Please try again"),
+            );
         } finally {
             setIsAppleLoading(false);
         }

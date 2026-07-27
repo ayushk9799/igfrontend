@@ -906,7 +906,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             } else {
                 setScreenMessage({
                     tone: 'error',
-                    text: 'Couldn’t start the puzzle. Check your connection and open it again.',
+                    text: translateUiText("Couldn’t start the puzzle. Check your connection and open it again."),
                 });
             }
         }, 5000);
@@ -973,7 +973,10 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             setLeaveWarningShown(true);
             setScreenMessage({
                 tone: 'warning',
-                text: `Puzzle still running — ${minutesPart}:${secondsPart} left. Your timer continues if you leave. Tap back again to leave.`,
+                text: translateUiTemplate("Puzzle still running — {{0}}:{{1}} left. Your timer continues if you leave. Tap back again to leave.", [
+                    minutesPart,
+                    secondsPart,
+                ]),
             });
             return;
         }
@@ -1495,7 +1498,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             if (status !== 'granted') {
                 setScreenMessage({
                     tone: 'error',
-                    text: 'Photo library access is needed to choose an image.',
+                    text: translateUiText("Photo library access is needed to choose an image."),
                 });
                 return;
             }
@@ -2094,7 +2097,11 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                             }
                         ]}>
                             <Text style={styles.celebrateTitle}>{translateUiText("You made it whole ✨")}</Text>
-                            <Text style={styles.celebrateSubtitle}>{translateUiText("Every piece found its place in")}{moveCount}{translateUiText("moves.")}</Text>
+                            <Text style={styles.celebrateSubtitle}>
+                                {moveCount === 1
+                                    ? translateUiTemplate("Every piece found its place in {{0}} move.", [moveCount])
+                                    : translateUiTemplate("Every piece found its place in {{0}} moves.", [moveCount])}
+                            </Text>
                             <TouchableOpacity
                                 onPress={() => navigation.goBack()}
                                 activeOpacity={0.8}
@@ -2114,7 +2121,11 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                             },
                         ]}>
                             <Text style={styles.celebrateTitle}>{translateUiText("Time’s up")}</Text>
-                            <Text style={styles.celebrateSubtitle}>{translateUiText("You made")}{moveCount} {moveCount === 1 ? translateUiText("move") : translateUiText("moves")}{translateUiText("before the timer ended.")}</Text>
+                            <Text style={styles.celebrateSubtitle}>
+                                {moveCount === 1
+                                    ? translateUiTemplate("You made {{0}} move before the timer ended.", [moveCount])
+                                    : translateUiTemplate("You made {{0}} moves before the timer ended.", [moveCount])}
+                            </Text>
                             <TouchableOpacity
                                 onPress={() => navigation.goBack()}
                                 activeOpacity={0.8}

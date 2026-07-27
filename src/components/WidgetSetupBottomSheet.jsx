@@ -14,7 +14,7 @@ import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-g
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const ActionButton = ({ children, onPress, disabled = false, secondary = false }) => (
     <TouchableOpacity
@@ -288,7 +288,7 @@ const WidgetSetupBottomSheet = ({
         setIsRemindLoading(true);
         try {
             await onRemindPartner?.();
-            setReminderSentText(`Reminder sent to ${partnerName}! 📬`);
+            setReminderSentText(translateUiTemplate("Reminder sent to {{0}}! 📬", [partnerName]));
             setTimeout(() => setReminderSentText(''), 4000);
         } catch {
             // No-op.
@@ -342,20 +342,22 @@ const WidgetSetupBottomSheet = ({
         : isCheckingPartner
             ? 'Checking partner status...'
         : isWaitingForPartner
-            ? `Waiting for ${partnerName} ⏳`
-            : 'Location is on';
+            ? translateUiTemplate("Waiting for {{0}} ⏳", [partnerName])
+            : translateUiText("Location is on");
 
     const locationCopy = !hasForegroundLocation
-        ? `Give us access to your location so we can show the distance between you and ${hasPartner ? partnerName : 'your partner'}.`
+        ? translateUiTemplate("Give us access to your location so we can show the distance between you and {{0}}.", [
+            hasPartner ? partnerName : translateUiText("your partner"),
+        ])
         : !hasBackgroundLocation
             ? 'Allow location access all the time so your distance stays updated even when Penguin is closed.'
         : !hasPartner
             ? 'Your location is ready. Connect with your partner to see the distance between you.'
         : isCheckingPartner
-            ? `Connecting to check location sharing with ${partnerName}...`
+            ? translateUiTemplate("Connecting to check location sharing with {{0}}...", [partnerName])
         : isWaitingForPartner
-            ? `${partnerName} still needs to enable location. Your distance will appear automatically once you’re both sharing.`
-            : `Your location is ready. We’ll use it to keep the distance between you and ${partnerName} updated.`;
+            ? translateUiTemplate("{{0}} still needs to enable location. Your distance will appear automatically once you’re both sharing.", [partnerName])
+            : translateUiTemplate("Your location is ready. We’ll use it to keep the distance between you and {{0}} updated.", [partnerName]);
 
     useEffect(() => {
         if (visible) {
@@ -430,9 +432,13 @@ const WidgetSetupBottomSheet = ({
                                 <View style={styles.partnerNoticeCard}>
                                     <View style={styles.partnerNoticeHeader}>
                                         <Text style={styles.partnerNoticeIcon}>📍</Text>
-                                        <Text style={styles.partnerNoticeTitle}>{partnerName}{translateUiText("needs to turn on location")}</Text>
+                                        <Text style={styles.partnerNoticeTitle}>
+                                            {translateUiTemplate("{{0}} needs to turn on location", [partnerName])}
+                                        </Text>
                                     </View>
-                                    <Text style={styles.partnerNoticeText}>{translateUiText("Your location is active!")}{partnerName}{translateUiText("must also enable location in Penguin so your distance widget can calculate distance.")}</Text>
+                                    <Text style={styles.partnerNoticeText}>
+                                        {translateUiTemplate("Your location is active! {{0}} must also enable location in Penguin so your distance widget can calculate distance.", [partnerName])}
+                                    </Text>
                                 </View>
                             ) : (
                                 <Text style={styles.locationCopy}>{locationCopy}</Text>
@@ -443,21 +449,25 @@ const WidgetSetupBottomSheet = ({
                                 <PermissionRow icon="▣" label={Platform.OS === 'ios' ? translateUiText("Always allow") : translateUiText("Allow in background")} complete={hasBackgroundLocation} />
                             </View>
 
-                            {!!locationMessage && <Text style={styles.inlineMessage}>{locationMessage}</Text>}
-                            {!!reminderSentText && <Text style={styles.successMessage}>{reminderSentText}</Text>}
+                            {!!locationMessage && <Text style={styles.inlineMessage}>{translateUiText(locationMessage)}</Text>}
+                            {!!reminderSentText && <Text style={styles.successMessage}>{translateUiText(reminderSentText)}</Text>}
 
                             {locationAccessBlocked ? (
                                 <ActionButton onPress={onOpenSettings}>{translateUiText("Open Settings")}</ActionButton>
                             ) : !hasCompleteLocationAccess ? (
                                 <ActionButton disabled={isLocationLoading} onPress={onEnableLocation}>
-                                    {hasForegroundLocation ? 'Enable Always Access' : 'Enable Location'}
+                                    {hasForegroundLocation
+                                        ? translateUiText("Enable Always Access")
+                                        : translateUiText("Enable Location")}
                                 </ActionButton>
                             ) : !hasPartner ? (
                                 <ActionButton onPress={onConnectPartner}>{translateUiText("Connect Partner")}</ActionButton>
                             ) : isWaitingForPartner ? (
                                 <>
                                     <ActionButton disabled={isRemindLoading} onPress={handleRemindPress}>
-                                        {isRemindLoading ? 'Sending...' : `Remind ${partnerName}`}
+                                        {isRemindLoading
+                                            ? translateUiText("Sending...")
+                                            : translateUiTemplate("Remind {{0}}", [partnerName])}
                                     </ActionButton>
                                     <ActionButton secondary onPress={onHowToAdd}>{translateUiText("How to add widget")}</ActionButton>
                                 </>
@@ -494,9 +504,11 @@ const WidgetSetupBottomSheet = ({
                             {!cameraMessage && (
                                 <Text style={styles.inlineMessage}>{translateUiText("Allow camera access to take a photo and share the moment with your partner.")}</Text>
                             )}
-                            {!!cameraMessage && <Text style={styles.inlineMessage}>{cameraMessage}</Text>}
+                            {!!cameraMessage && <Text style={styles.inlineMessage}>{translateUiText(cameraMessage)}</Text>}
                             <ActionButton onPress={cameraMessage ? onOpenSettings : onAllowCamera}>
-                                {cameraMessage ? 'Open Settings' : 'Allow Camera'}
+                                {cameraMessage
+                                    ? translateUiText("Open Settings")
+                                    : translateUiText("Allow Camera")}
                             </ActionButton>
                             <TouchableOpacity onPress={onClose} style={styles.quietAction}><Text style={styles.quietActionText}>{translateUiText("Not now")}</Text></TouchableOpacity>
                         </>
