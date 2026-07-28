@@ -361,6 +361,7 @@ export const WidgetsLibraryScreen = ({
     isPremium = false,
     onBack,
     onNavigateToPremium,
+    onRequestDistanceSetup,
     openDistanceSetup = false,
     onDistanceSetupHandled,
 }) => {
@@ -474,6 +475,11 @@ export const WidgetsLibraryScreen = ({
     }, [handleConfirmLocation]);
 
     const handleEnableDistance = useCallback(() => {
+        if (onRequestDistanceSetup) {
+            onRequestDistanceSetup();
+            return;
+        }
+
         if (!isPremium) {
             if (onNavigateToPremium) {
                 onNavigateToPremium();
@@ -495,7 +501,7 @@ export const WidgetsLibraryScreen = ({
         } else {
             setDistanceModalVisible(true);
         }
-    }, [isPremium, onNavigateToPremium, userData, handleConfirmLocation]);
+    }, [isPremium, onNavigateToPremium, onRequestDistanceSetup, userData, handleConfirmLocation]);
 
     useEffect(() => {
         if (!openDistanceSetup) return;

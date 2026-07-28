@@ -48,6 +48,9 @@ RCT_EXTERN_METHOD(clearTogetherStartDate:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(requestCurrentLocation:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(requestAlwaysLocationAuthorization:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(getLocationAuthorizationStatus:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
