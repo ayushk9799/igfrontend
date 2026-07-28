@@ -17,7 +17,7 @@ import Svg, { Path, Image as SvgImage, ClipPath, Defs, Text as SvgText } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { createSafeAudioPlayer } from '../utils/safeAudioPlayer';
 
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
@@ -665,7 +665,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     const legacyStartAttemptedRef = useRef(false);
 
     useEffect(() => {
-        audioPlayerRef.current = new AudioRecorderPlayer();
+        audioPlayerRef.current = createSafeAudioPlayer();
         const soundAsset = require('../../assets/sounds/jigsaw.mp3');
         jigsawSoundUriRef.current = Image.resolveAssetSource(soundAsset).uri;
 

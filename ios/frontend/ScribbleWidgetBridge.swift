@@ -15,6 +15,7 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     private var locationRejecter: RCTPromiseRejectBlock?
     private var backgroundStartResolver: RCTPromiseResolveBlock?
     private var backgroundStartRejecter: RCTPromiseRejectBlock?
+    private var backgroundStartShouldTrack = false
     private let trackingUserIdKey = "distance_widget_tracking_user_id"
     private let trackingApiBaseKey = "distance_widget_tracking_api_base"
     private let trackingEnabledKey = "distance_widget_background_tracking_enabled"
@@ -346,8 +347,10 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
         if manager === backgroundLocationManager {
             switch manager.authorizationStatus {
             case .authorizedAlways:
-                UserDefaults(suiteName: appGroupIdentifier)?.set(true, forKey: trackingEnabledKey)
-                manager.startMonitoringSignificantLocationChanges()
+                if backgroundStartShouldTrack {
+                    UserDefaults(suiteName: appGroupIdentifier)?.set(true, forKey: trackingEnabledKey)
+                    manager.startMonitoringSignificantLocationChanges()
+                }
                 backgroundStartResolver?(true)
                 clearBackgroundStartPromise()
             case .authorizedWhenInUse:
@@ -404,6 +407,7 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     private func clearBackgroundStartPromise() {
         backgroundStartResolver = nil
         backgroundStartRejecter = nil
+        backgroundStartShouldTrack = false
     }
 
     private func rejectBackgroundStartIfPendingAfterDelay() {
@@ -413,8 +417,10 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             }
 
             if self.backgroundLocationManager?.authorizationStatus == .authorizedAlways {
-                UserDefaults(suiteName: self.appGroupIdentifier)?.set(true, forKey: self.trackingEnabledKey)
-                self.backgroundLocationManager?.startMonitoringSignificantLocationChanges()
+                if self.backgroundStartShouldTrack {
+                    UserDefaults(suiteName: self.appGroupIdentifier)?.set(true, forKey: self.trackingEnabledKey)
+                    self.backgroundLocationManager?.startMonitoringSignificantLocationChanges()
+                }
                 self.backgroundStartResolver?(true)
             } else {
                 self.backgroundStartRejecter?(
@@ -528,6 +534,38 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
         resolver(true)
     }
 
+    /// Ask iOS to upgrade When In Use permission to Always without starting tracking.
+    @objc
+    func requestAlwaysLocationAuthorization(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+        DispatchQueue.main.async {
+            guard CLLocationManager.locationServicesEnabled() else {
+                rejecter("LOCATION_DISABLED", "Location services are disabled.", nil)
+                return
+            }
+
+            self.configureBackgroundLocationManager()
+            guard let manager = self.backgroundLocationManager else {
+                rejecter("LOCATION_UNKNOWN", "Unable to create the location manager.", nil)
+                return
+            }
+
+            switch manager.authorizationStatus {
+            case .notDetermined, .authorizedWhenInUse:
+                self.backgroundStartResolver = resolver
+                self.backgroundStartRejecter = rejecter
+                self.backgroundStartShouldTrack = false
+                manager.requestAlwaysAuthorization()
+                self.rejectBackgroundStartIfPendingAfterDelay()
+            case .authorizedAlways:
+                resolver(true)
+            case .denied, .restricted:
+                rejecter("LOCATION_DENIED", "Location permission is not granted.", nil)
+            @unknown default:
+                rejecter("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
+            }
+        }
+    }
+
     /// Start battery-friendly background refresh for the Distance widget.
     @objc
     func startDistanceBackgroundUpdates(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
@@ -547,11 +585,13 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             case .notDetermined:
                 self.backgroundStartResolver = resolver
                 self.backgroundStartRejecter = rejecter
+                self.backgroundStartShouldTrack = true
                 manager.requestAlwaysAuthorization()
                 self.rejectBackgroundStartIfPendingAfterDelay()
             case .authorizedWhenInUse:
                 self.backgroundStartResolver = resolver
                 self.backgroundStartRejecter = rejecter
+                self.backgroundStartShouldTrack = true
                 manager.requestAlwaysAuthorization()
                 self.rejectBackgroundStartIfPendingAfterDelay()
             case .authorizedAlways:

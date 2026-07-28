@@ -1,0 +1,2449 @@
+diff --git a/node_modules/expo/android/.gradle/8.9/checksums/checksums.lock b/node_modules/expo/android/.gradle/8.9/checksums/checksums.lock
+new file mode 100644
+index 0000000..67fed71
+Binary files /dev/null and b/node_modules/expo/android/.gradle/8.9/checksums/checksums.lock differ
+diff --git a/node_modules/expo/android/.gradle/8.9/dependencies-accessors/gc.properties b/node_modules/expo/android/.gradle/8.9/dependencies-accessors/gc.properties
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/expo/android/.gradle/8.9/fileChanges/last-build.bin b/node_modules/expo/android/.gradle/8.9/fileChanges/last-build.bin
+new file mode 100644
+index 0000000..f76dd23
+Binary files /dev/null and b/node_modules/expo/android/.gradle/8.9/fileChanges/last-build.bin differ
+diff --git a/node_modules/expo/android/.gradle/8.9/fileHashes/fileHashes.lock b/node_modules/expo/android/.gradle/8.9/fileHashes/fileHashes.lock
+new file mode 100644
+index 0000000..313a9ca
+Binary files /dev/null and b/node_modules/expo/android/.gradle/8.9/fileHashes/fileHashes.lock differ
+diff --git a/node_modules/expo/android/.gradle/8.9/gc.properties b/node_modules/expo/android/.gradle/8.9/gc.properties
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/expo/android/.gradle/buildOutputCleanup/buildOutputCleanup.lock b/node_modules/expo/android/.gradle/buildOutputCleanup/buildOutputCleanup.lock
+new file mode 100644
+index 0000000..79da937
+Binary files /dev/null and b/node_modules/expo/android/.gradle/buildOutputCleanup/buildOutputCleanup.lock differ
+diff --git a/node_modules/expo/android/.gradle/buildOutputCleanup/cache.properties b/node_modules/expo/android/.gradle/buildOutputCleanup/cache.properties
+new file mode 100644
+index 0000000..3f769b9
+--- /dev/null
++++ b/node_modules/expo/android/.gradle/buildOutputCleanup/cache.properties
+@@ -0,0 +1,2 @@
++#Mon Jul 27 15:39:23 IST 2026
++gradle.version=8.9
+diff --git a/node_modules/expo/android/.gradle/vcs-1/gc.properties b/node_modules/expo/android/.gradle/vcs-1/gc.properties
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/expo/android/.project b/node_modules/expo/android/.project
+new file mode 100644
+index 0000000..b317822
+--- /dev/null
++++ b/node_modules/expo/android/.project
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<projectDescription>
++	<name>expo</name>
++	<comment>Project expo created by Buildship.</comment>
++	<projects>
++	</projects>
++	<buildSpec>
++		<buildCommand>
++			<name>org.eclipse.jdt.core.javabuilder</name>
++			<arguments>
++			</arguments>
++		</buildCommand>
++		<buildCommand>
++			<name>org.eclipse.buildship.core.gradleprojectbuilder</name>
++			<arguments>
++			</arguments>
++		</buildCommand>
++	</buildSpec>
++	<natures>
++		<nature>org.eclipse.jdt.core.javanature</nature>
++		<nature>org.eclipse.buildship.core.gradleprojectnature</nature>
++	</natures>
++	<filteredResources>
++		<filter>
++			<id>1783690884086</id>
++			<name></name>
++			<type>30</type>
++			<matcher>
++				<id>org.eclipse.core.resources.regexFilterMatcher</id>
++				<arguments>node_modules|\.git|__CREATED_BY_JAVA_LANGUAGE_SERVER__</arguments>
++			</matcher>
++		</filter>
++	</filteredResources>
++</projectDescription>
+diff --git a/node_modules/expo/android/bin/.gradle/8.9/checksums/checksums.lock b/node_modules/expo/android/bin/.gradle/8.9/checksums/checksums.lock
+new file mode 100644
+index 0000000..67fed71
+Binary files /dev/null and b/node_modules/expo/android/bin/.gradle/8.9/checksums/checksums.lock differ
+diff --git a/node_modules/expo/android/bin/.gradle/8.9/dependencies-accessors/gc.properties b/node_modules/expo/android/bin/.gradle/8.9/dependencies-accessors/gc.properties
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/expo/android/bin/.gradle/8.9/fileChanges/last-build.bin b/node_modules/expo/android/bin/.gradle/8.9/fileChanges/last-build.bin
+new file mode 100644
+index 0000000..f76dd23
+Binary files /dev/null and b/node_modules/expo/android/bin/.gradle/8.9/fileChanges/last-build.bin differ
+diff --git a/node_modules/expo/android/bin/.gradle/8.9/fileHashes/fileHashes.lock b/node_modules/expo/android/bin/.gradle/8.9/fileHashes/fileHashes.lock
+new file mode 100644
+index 0000000..313a9ca
+Binary files /dev/null and b/node_modules/expo/android/bin/.gradle/8.9/fileHashes/fileHashes.lock differ
+diff --git a/node_modules/expo/android/bin/.gradle/8.9/gc.properties b/node_modules/expo/android/bin/.gradle/8.9/gc.properties
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/expo/android/bin/.gradle/buildOutputCleanup/buildOutputCleanup.lock b/node_modules/expo/android/bin/.gradle/buildOutputCleanup/buildOutputCleanup.lock
+new file mode 100644
+index 0000000..79da937
+Binary files /dev/null and b/node_modules/expo/android/bin/.gradle/buildOutputCleanup/buildOutputCleanup.lock differ
+diff --git a/node_modules/expo/android/bin/.gradle/buildOutputCleanup/cache.properties b/node_modules/expo/android/bin/.gradle/buildOutputCleanup/cache.properties
+new file mode 100644
+index 0000000..3f769b9
+--- /dev/null
++++ b/node_modules/expo/android/bin/.gradle/buildOutputCleanup/cache.properties
+@@ -0,0 +1,2 @@
++#Mon Jul 27 15:39:23 IST 2026
++gradle.version=8.9
+diff --git a/node_modules/expo/android/bin/.gradle/vcs-1/gc.properties b/node_modules/expo/android/bin/.gradle/vcs-1/gc.properties
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/expo/android/bin/.project b/node_modules/expo/android/bin/.project
+new file mode 100644
+index 0000000..b317822
+--- /dev/null
++++ b/node_modules/expo/android/bin/.project
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<projectDescription>
++	<name>expo</name>
++	<comment>Project expo created by Buildship.</comment>
++	<projects>
++	</projects>
++	<buildSpec>
++		<buildCommand>
++			<name>org.eclipse.jdt.core.javabuilder</name>
++			<arguments>
++			</arguments>
++		</buildCommand>
++		<buildCommand>
++			<name>org.eclipse.buildship.core.gradleprojectbuilder</name>
++			<arguments>
++			</arguments>
++		</buildCommand>
++	</buildSpec>
++	<natures>
++		<nature>org.eclipse.jdt.core.javanature</nature>
++		<nature>org.eclipse.buildship.core.gradleprojectnature</nature>
++	</natures>
++	<filteredResources>
++		<filter>
++			<id>1783690884086</id>
++			<name></name>
++			<type>30</type>
++			<matcher>
++				<id>org.eclipse.core.resources.regexFilterMatcher</id>
++				<arguments>node_modules|\.git|__CREATED_BY_JAVA_LANGUAGE_SERVER__</arguments>
++			</matcher>
++		</filter>
++	</filteredResources>
++</projectDescription>
+diff --git a/node_modules/expo/android/bin/build.gradle b/node_modules/expo/android/bin/build.gradle
+new file mode 100644
+index 0000000..8a2d045
+--- /dev/null
++++ b/node_modules/expo/android/bin/build.gradle
+@@ -0,0 +1,112 @@
++apply plugin: 'com.android.library'
++apply plugin: 'expo-module-gradle-plugin'
++
++import expo.modules.plugin.gradle.ExpoModuleExtension
++import expo.modules.plugin.Version
++
++// TODO(@lukmccall): Remove when we drop support for SDK 52
++def useLegacyAutolinking = false
++try {
++  apply plugin: "expo-autolinking"
++} catch (e) {
++  useLegacyAutolinking = true
++}
++
++if (useLegacyAutolinking) {
++  // Import autolinking script
++  apply from: "../scripts/autolinking.gradle"
++}
++
++if (useLegacyAutolinking) {
++  ensureDependeciesWereEvaluated(project)
++}
++
++
++buildscript {
++  // Simple helper that allows the root project to override versions declared by this library.
++  ext.safeExtGet = { prop, fallback ->
++    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
++  }
++}
++
++def reactNativeVersion = project.extensions.getByType(ExpoModuleExtension).reactNativeVersion
++
++group = 'host.exp.exponent'
++version = '54.0.36'
++
++expoModule {
++  // We can't prebuild the module because it depends on the generated files.
++  canBePublished false
++}
++
++android {
++  namespace "expo.core"
++  defaultConfig {
++    versionCode 1
++    versionName "54.0.36"
++    consumerProguardFiles("proguard-rules.pro")
++  }
++  testOptions {
++    unitTests.includeAndroidResources = true
++  }
++
++  if (useLegacyAutolinking) {
++    sourceSets {
++      main {
++        java {
++          srcDirs += new File(project.buildDir, generatedFilesSrcDir)
++        }
++      }
++    }
++  }
++
++  buildTypes {
++    create("debugOptimized") {
++      initWith(buildTypes.release)
++      matchingFallbacks += ["release"]
++    }
++  }
++
++  sourceSets {
++    debugOptimized {
++      setRoot 'src/release'
++    }
++  }
++}
++
++dependencies { dependencyHandler ->
++  implementation 'com.facebook.react:react-android'
++
++  testImplementation 'junit:junit:4.13.2'
++  testImplementation 'androidx.test:core:1.5.0'
++  testImplementation "com.google.truth:truth:1.1.2"
++  testImplementation 'io.mockk:mockk:1.13.5'
++  testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
++  testImplementation 'org.robolectric:robolectric:4.15.1'
++
++  if (useLegacyAutolinking) {
++    // Link expo modules as dependencies of the adapter. It uses `api` configuration so they all will be visible for the app as well.
++    // A collection of the dependencies depends on the options passed to `useExpoModules` in your project's `settings.gradle`.
++    addExpoModulesDependencies(dependencyHandler, project)
++  }
++}
++
++if (useLegacyAutolinking) {
++  // A task generating a package list of expo modules.
++  task generateExpoModulesPackageListTask {
++    def modulesConfig = getModulesConfig()
++    def outputPath = getGenerateExpoModulesPackagesListPath()
++    if (modulesConfig) {
++      outputs.file(file(outputPath))
++      inputs.property("modulesConfig", modulesConfig)
++    }
++
++    // TOOD(@lukmccall): fix not working with configuration cache enabled
++    doLast {
++      generateExpoModulesPackageList()
++    }
++  }
++
++// Run that task during prebuilding phase.
++  preBuild.dependsOn "generateExpoModulesPackageListTask"
++}
+diff --git a/node_modules/expo/android/bin/proguard-rules.pro b/node_modules/expo/android/bin/proguard-rules.pro
+new file mode 100644
+index 0000000..b7eb6ee
+--- /dev/null
++++ b/node_modules/expo/android/bin/proguard-rules.pro
+@@ -0,0 +1,31 @@
++# For ReactActivityDelegateWrapper
++-keepclassmembers public class com.facebook.react.ReactActivityDelegate {
++  public *;
++  protected *;
++  private ReactDelegate mReactDelegate;
++}
++# Remove this after react-native 0.74.1
++-keepclassmembers public class expo.modules.ReactActivityDelegateWrapper {
++  protected ReactDelegate getReactDelegate();
++}
++-keepclassmembers public class com.facebook.react.ReactActivity {
++  private final ReactActivityDelegate mDelegate;
++}
++
++# For ReactNativeHostWrapper
++-keepclassmembers public class com.facebook.react.ReactNativeHost {
++  protected *;
++}
++
++# For ExpoModulesPackage autolinking
++-keepclassmembers public class expo.modules.ExpoModulesPackageList {
++  public *;
++}
++
++-keepnames class * extends expo.modules.core.BasePackage
++-keepnames class * implements expo.modules.core.interfaces.Package
++
++# For React Native WindowUtilKt edge-to-edge support
++-keep class com.facebook.react.views.view.WindowUtilKt {
++  *;
++}
+diff --git a/node_modules/expo/android/bin/src/main/AndroidManifest.xml b/node_modules/expo/android/bin/src/main/AndroidManifest.xml
+new file mode 100644
+index 0000000..c4e83de
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/AndroidManifest.xml
+@@ -0,0 +1,3 @@
++<manifest>
++
++</manifest>
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/ApplicationLifecycleDispatcher.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/ApplicationLifecycleDispatcher.kt
+new file mode 100644
+index 0000000..cafc594
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/ApplicationLifecycleDispatcher.kt
+@@ -0,0 +1,27 @@
++package expo.modules
++
++import android.app.Application
++import android.content.res.Configuration
++import androidx.annotation.UiThread
++import expo.modules.core.interfaces.ApplicationLifecycleListener
++
++object ApplicationLifecycleDispatcher {
++  private var listeners: List<ApplicationLifecycleListener>? = null
++
++  @UiThread
++  private fun getCachedListeners(application: Application): List<ApplicationLifecycleListener> {
++    return listeners ?: ExpoModulesPackage.packageList
++      .flatMap { it.createApplicationLifecycleListeners(application) }
++      .also { listeners = it }
++  }
++
++  @JvmStatic
++  fun onApplicationCreate(application: Application) {
++    getCachedListeners(application).forEach { it.onCreate(application) }
++  }
++
++  @JvmStatic
++  fun onConfigurationChanged(application: Application, newConfig: Configuration) {
++    getCachedListeners(application).forEach { it.onConfigurationChanged(newConfig) }
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/ExpoModulesPackage.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/ExpoModulesPackage.kt
+new file mode 100644
+index 0000000..533674e
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/ExpoModulesPackage.kt
+@@ -0,0 +1,41 @@
++package expo.modules
++
++import android.util.Log
++
++import com.facebook.react.ReactPackage
++import com.facebook.react.bridge.NativeModule
++import com.facebook.react.bridge.ReactApplicationContext
++import com.facebook.react.uimanager.ViewManager
++
++import expo.modules.adapters.react.ModuleRegistryAdapter
++import expo.modules.core.ModulePriorities
++import expo.modules.core.interfaces.Package
++
++import java.lang.Exception
++
++class ExpoModulesPackage : ReactPackage {
++  val moduleRegistryAdapter = ModuleRegistryAdapter(packageList)
++
++  companion object {
++    @Suppress("unchecked_cast")
++    val packageList: List<Package> by lazy {
++      try {
++        val expoModules = Class.forName("expo.modules.ExpoModulesPackageList")
++        val getPackageList = expoModules.getMethod("getPackageList")
++        (getPackageList.invoke(null) as List<Package>)
++          .sortedByDescending { ModulePriorities.get(it::class.qualifiedName) }
++      } catch (e: Exception) {
++        Log.e("ExpoModulesPackage", "Couldn't get expo package list.", e)
++        emptyList()
++      }
++    }
++  }
++
++  override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
++    return moduleRegistryAdapter.createNativeModules(reactContext)
++  }
++
++  override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
++    return moduleRegistryAdapter.createViewManagers(reactContext)
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/ExpoReactHostFactory.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/ExpoReactHostFactory.kt
+new file mode 100644
+index 0000000..a1da771
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/ExpoReactHostFactory.kt
+@@ -0,0 +1,120 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules
++
++import android.content.Context
++import com.facebook.react.ReactHost
++import com.facebook.react.ReactInstanceEventListener
++import com.facebook.react.ReactNativeHost
++import com.facebook.react.ReactPackage
++import com.facebook.react.ReactPackageTurboModuleManagerDelegate
++import com.facebook.react.bridge.JSBundleLoader
++import com.facebook.react.bridge.ReactContext
++import com.facebook.react.common.annotations.UnstableReactNativeAPI
++import com.facebook.react.defaults.DefaultComponentsRegistry
++import com.facebook.react.defaults.DefaultTurboModuleManagerDelegate
++import com.facebook.react.fabric.ComponentFactory
++import com.facebook.react.runtime.BindingsInstaller
++import com.facebook.react.runtime.JSRuntimeFactory
++import com.facebook.react.runtime.ReactHostDelegate
++import com.facebook.react.runtime.ReactHostImpl
++import com.facebook.react.runtime.hermes.HermesInstance
++import java.lang.ref.WeakReference
++
++object ExpoReactHostFactory {
++  private var reactHost: ReactHost? = null
++
++  @UnstableReactNativeAPI
++  private class ExpoReactHostDelegate(
++    private val weakContext: WeakReference<Context>,
++    private val reactNativeHostWrapper: ReactNativeHostWrapper,
++    override val bindingsInstaller: BindingsInstaller? = null,
++    override val turboModuleManagerDelegateBuilder: ReactPackageTurboModuleManagerDelegate.Builder =
++      DefaultTurboModuleManagerDelegate.Builder()
++  ) : ReactHostDelegate {
++
++    // Keeps this `_jsBundleLoader` backing property for DevLauncher to replace its internal value
++    private var _jsBundleLoader: JSBundleLoader? = null
++    override val jsBundleLoader: JSBundleLoader
++      get() {
++        val backingJSBundleLoader = _jsBundleLoader
++        if (backingJSBundleLoader != null) {
++          return backingJSBundleLoader
++        }
++        val context = weakContext.get() ?: throw IllegalStateException("Unable to get concrete Context")
++        reactNativeHostWrapper.jsBundleFile?.let { jsBundleFile ->
++          if (jsBundleFile.startsWith("assets://")) {
++            return JSBundleLoader.createAssetLoader(context, jsBundleFile, true)
++          }
++          return JSBundleLoader.createFileLoader(jsBundleFile)
++        }
++        val jsBundleAssetPath = reactNativeHostWrapper.bundleAssetName
++        return JSBundleLoader.createAssetLoader(context, "assets://$jsBundleAssetPath", true)
++      }
++
++    override val jsMainModulePath: String
++      get() = reactNativeHostWrapper.jsMainModuleName
++
++    override val jsRuntimeFactory: JSRuntimeFactory
++      get() = HermesInstance()
++
++    override val reactPackages: List<ReactPackage>
++      get() = reactNativeHostWrapper.packages
++
++    override fun handleInstanceException(error: Exception) {
++      val handlers = reactNativeHostWrapper.reactNativeHostHandlers
++      if (handlers.isEmpty()) {
++        throw error
++      }
++      val useDeveloperSupport = reactNativeHostWrapper.useDeveloperSupport
++      handlers.forEach { handler ->
++        handler.onReactInstanceException(useDeveloperSupport, error)
++      }
++    }
++  }
++
++  @OptIn(UnstableReactNativeAPI::class)
++  @JvmStatic
++  fun createFromReactNativeHost(
++    context: Context,
++    reactNativeHost: ReactNativeHost
++  ): ReactHost {
++    require(reactNativeHost is ReactNativeHostWrapper) {
++      "You can call createFromReactNativeHost only with instances of ReactNativeHostWrapper"
++    }
++    if (reactHost == null) {
++      val useDeveloperSupport = reactNativeHost.useDeveloperSupport
++      val reactHostDelegate = ExpoReactHostDelegate(WeakReference(context), reactNativeHost)
++      val componentFactory = ComponentFactory()
++      DefaultComponentsRegistry.register(componentFactory)
++
++      reactNativeHost.reactNativeHostHandlers.forEach { handler ->
++        handler.onWillCreateReactInstance(useDeveloperSupport)
++      }
++
++      val reactHostImpl =
++        ReactHostImpl(
++          context,
++          reactHostDelegate,
++          componentFactory,
++          true,
++          useDeveloperSupport
++        )
++
++      reactNativeHost.reactNativeHostHandlers.forEach { handler ->
++        handler.onDidCreateDevSupportManager(reactHostImpl.devSupportManager)
++      }
++
++      reactHostImpl.addReactInstanceEventListener(object : ReactInstanceEventListener {
++        override fun onReactContextInitialized(context: ReactContext) {
++          reactNativeHost.reactNativeHostHandlers.forEach { handler ->
++            handler.onDidCreateReactInstance(useDeveloperSupport, context)
++          }
++        }
++      })
++
++      reactHost = reactHostImpl
++    }
++    return reactHost as ReactHost
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/ReactActivityDelegateWrapper.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/ReactActivityDelegateWrapper.kt
+new file mode 100644
+index 0000000..afe50f9
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/ReactActivityDelegateWrapper.kt
+@@ -0,0 +1,504 @@
++package expo.modules
++
++import android.annotation.SuppressLint
++import android.app.Activity
++import android.content.Context
++import android.content.Intent
++import android.content.pm.ActivityInfo
++import android.content.res.Configuration
++import android.os.Build
++import android.os.Build.VERSION
++import android.os.Bundle
++import android.util.Log
++import android.view.KeyEvent
++import android.view.ViewGroup
++import androidx.annotation.VisibleForTesting
++import androidx.collection.ArrayMap
++import androidx.lifecycle.lifecycleScope
++import com.facebook.react.ReactActivity
++import com.facebook.react.ReactActivityDelegate
++import com.facebook.react.ReactDelegate
++import com.facebook.react.ReactHost
++import com.facebook.react.ReactInstanceEventListener
++import com.facebook.react.ReactInstanceManager
++import com.facebook.react.ReactNativeHost
++import com.facebook.react.ReactRootView
++import com.facebook.react.bridge.ReactContext
++import com.facebook.react.modules.core.PermissionListener
++import expo.modules.core.interfaces.ReactActivityHandler.DelayLoadAppHandler
++import expo.modules.core.interfaces.ReactActivityLifecycleListener
++import expo.modules.kotlin.Utils
++import expo.modules.rncompatibility.ReactNativeFeatureFlags
++import kotlinx.coroutines.CompletableDeferred
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.CoroutineStart
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.sync.Mutex
++import kotlinx.coroutines.sync.withLock
++import java.lang.reflect.Field
++import java.lang.reflect.Method
++import java.lang.reflect.Modifier
++import kotlin.coroutines.resume
++import kotlin.coroutines.suspendCoroutine
++
++class ReactActivityDelegateWrapper(
++  private val activity: ReactActivity,
++  private val isNewArchitectureEnabled: Boolean,
++  @get:VisibleForTesting internal var delegate: ReactActivityDelegate
++) : ReactActivityDelegate(activity, null) {
++  constructor(activity: ReactActivity, delegate: ReactActivityDelegate) :
++    this(activity, false, delegate)
++
++  private val reactActivityLifecycleListeners = ExpoModulesPackage.packageList
++    .flatMap { it.createReactActivityLifecycleListeners(activity) }
++  private val reactActivityHandlers = ExpoModulesPackage.packageList
++    .flatMap { it.createReactActivityHandlers(activity) }
++  private val methodMap: ArrayMap<String, Method> = ArrayMap()
++  private val _reactNativeHost: ReactNativeHost by lazy {
++    invokeDelegateMethod("getReactNativeHost")
++  }
++  private val _reactHost: ReactHost? by lazy {
++    delegate.reactHost
++  }
++  private val delayLoadAppHandler: DelayLoadAppHandler? by lazy {
++    reactActivityHandlers.asSequence()
++      .mapNotNull { it.getDelayLoadAppHandler(activity, reactNativeHost) }
++      .firstOrNull()
++  }
++
++  /**
++   * A deferred that indicates when the app loading is ready
++   */
++  private val loadAppReady = CompletableDeferred<Unit>()
++
++  /**
++   * A mutex to ensure all coroutines in a scope are running in atomic way.
++   *
++   * This is to act like [Activity] lifecycle,
++   * e.g. all work in [onResume] should be executed after all work in [onCreate] finished.
++   */
++  private val mutex = Mutex()
++
++  /**
++   * A [CoroutineScope] that binds its lifecycle as [ReactActivityDelegateWrapper].
++   * This is used for [onDestroy] because we need a longer lifecycle scope to call [onDestroy]
++   */
++  private val applicationCoroutineScope: CoroutineScope by lazy {
++    CoroutineScope(Dispatchers.Main)
++  }
++
++  //region ReactActivityDelegate
++
++  override fun getLaunchOptions(): Bundle? {
++    return invokeDelegateMethod("getLaunchOptions")
++  }
++
++  override fun createRootView(): ReactRootView? {
++    return invokeDelegateMethod("createRootView")
++  }
++
++  override fun getReactDelegate(): ReactDelegate? {
++    return invokeDelegateMethod("getReactDelegate")
++  }
++
++  override fun getReactNativeHost(): ReactNativeHost {
++    return _reactNativeHost
++  }
++
++  override fun getReactHost(): ReactHost? {
++    return _reactHost
++  }
++
++  override fun getReactInstanceManager(): ReactInstanceManager {
++    return delegate.reactInstanceManager
++  }
++
++  override fun getMainComponentName(): String? {
++    return delegate.mainComponentName
++  }
++
++  override fun loadApp(appKey: String?) {
++    launchLifecycleScopeWithLock(start = CoroutineStart.UNDISPATCHED) {
++      loadAppImpl(appKey, supportsDelayLoad = true)
++    }
++  }
++
++  @SuppressLint("DiscouragedPrivateApi")
++  override fun onCreate(savedInstanceState: Bundle?) {
++    // Give handlers a chance as early as possible to replace the wrapped delegate object.
++    // If they do, we call the new wrapped delegate's `onCreate` instead of overriding it here.
++    val newDelegate = reactActivityHandlers.asSequence()
++      .mapNotNull { it.onDidCreateReactActivityDelegate(activity, this) }
++      .firstOrNull()
++    if (newDelegate != null && newDelegate != this) {
++      val mDelegateField = ReactActivity::class.java.getDeclaredField("mDelegate")
++      mDelegateField.isAccessible = true
++      val modifiers = Field::class.java.getDeclaredField("accessFlags")
++      modifiers.isAccessible = true
++      modifiers.setInt(mDelegateField, mDelegateField.modifiers and Modifier.FINAL.inv())
++      mDelegateField.set(activity, newDelegate)
++      delegate = newDelegate
++
++      delegate.onCreate(savedInstanceState)
++    } else {
++      // Since we just wrap `ReactActivityDelegate` but not inherit it, in its `onCreate`,
++      // the calls to `createRootView()` or `getMainComponentName()` have no chances to be our wrapped methods.
++      // Instead we intercept `ReactActivityDelegate.onCreate` and replace the `mReactDelegate` with our version.
++      // That's not ideal but works.
++
++      launchLifecycleScopeWithLock(start = CoroutineStart.UNDISPATCHED) {
++        awaitDelayLoadAppWhenReady(delayLoadAppHandler)
++        loadAppReady.complete(Unit)
++
++        if (VERSION.SDK_INT >= Build.VERSION_CODES.O && isWideColorGamutEnabled) {
++          activity.window.colorMode = ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT
++        }
++
++        val launchOptions = composeLaunchOptions()
++        val reactDelegate: ReactDelegate
++        if (ReactNativeFeatureFlags.enableBridgelessArchitecture) {
++          reactDelegate = ReactDelegate(
++            plainActivity,
++            reactHost,
++            mainComponentName,
++            launchOptions
++          )
++        } else {
++          reactDelegate = object : ReactDelegate(
++            plainActivity,
++            reactNativeHost,
++            mainComponentName,
++            launchOptions,
++            isFabricEnabled
++          ) {
++            override fun createRootView(): ReactRootView? {
++              return this@ReactActivityDelegateWrapper.createRootView() ?: super.createRootView()
++            }
++          }
++        }
++
++        val mReactDelegate = ReactActivityDelegate::class.java.getDeclaredField("mReactDelegate")
++        mReactDelegate.isAccessible = true
++        mReactDelegate.set(delegate, reactDelegate)
++        if (mainComponentName != null) {
++          loadAppImpl(mainComponentName, supportsDelayLoad = false)
++        }
++      }
++    }
++
++    reactActivityLifecycleListeners.forEach { listener ->
++      listener.onCreate(activity, savedInstanceState)
++    }
++  }
++
++  override fun onResume() {
++    launchLifecycleScopeWithLock {
++      loadAppReady.await()
++      delegate.onResume()
++      reactActivityLifecycleListeners.forEach { listener ->
++        listener.onResume(activity)
++      }
++    }
++  }
++
++  override fun onPause() {
++    launchLifecycleScopeWithLock {
++      loadAppReady.await()
++      reactActivityLifecycleListeners.forEach { listener ->
++        listener.onPause(activity)
++      }
++      if (delayLoadAppHandler != null) {
++        try {
++          // For the delay load case, we may enter a different call flow than react-native.
++          // For example, Activity stopped before delay load finished.
++          // We stop before the ReactActivityDelegate gets a chance to set up.
++          // In this case, we should catch the exceptions.
++          delegate.onPause()
++        } catch (e: Exception) {
++          Log.e(TAG, "Exception occurred during onPause with delayed app loading", e)
++        }
++      } else {
++        delegate.onPause()
++      }
++    }
++  }
++
++  override fun onUserLeaveHint() {
++    launchLifecycleScopeWithLock {
++      loadAppReady.await()
++      reactActivityLifecycleListeners.forEach { listener ->
++        listener.onUserLeaveHint(activity)
++      }
++      delegate.onUserLeaveHint()
++    }
++  }
++
++  override fun onDestroy() {
++    // Note: use our `coroutineScope` for onDestroy here
++    // because the lifecycleScope destroyed before the executions.
++    applicationCoroutineScope.launch {
++      mutex.withLock {
++        loadAppReady.await()
++        reactActivityLifecycleListeners.forEach { listener ->
++          listener.onDestroy(activity)
++        }
++        if (delayLoadAppHandler != null) {
++          try {
++            // For the delay load case, we may enter a different call flow than react-native.
++            // For example, Activity stopped before delay load finished.
++            // We stop before the ReactActivityDelegate gets a chance to set up.
++            // In this case, we should catch the exceptions.
++            delegate.onDestroy()
++          } catch (e: Exception) {
++            Log.e(TAG, "Exception occurred during onDestroy with delayed app loading", e)
++          }
++        } else {
++          delegate.onDestroy()
++        }
++      }
++    }
++  }
++
++  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
++    /**
++     * Workaround for a problem when results from [onActivityResult] are not properly delivered to modules.
++     * It happens when Android kills the [Activity] upon low memory scenario and recreates it later on.
++     *
++     * In [com.facebook.react.ReactInstanceManager.onActivityResult] you can see that if
++     * [com.facebook.react.bridge.ReactContext] is null then React would not broadcast the result to the modules
++     * and thus [expo.modules.kotlin.AppContext] would not be triggered properly.
++     *
++     * If [com.facebook.react.bridge.ReactContext] is not available when [onActivityResult] is called then
++     * let us wait for it and invoke [onActivityResult] once it's available.
++     *
++     * TODO (@bbarthec): fix it upstream?
++     */
++    launchLifecycleScopeWithLock {
++      loadAppReady.await()
++      if (!ReactNativeFeatureFlags.enableBridgelessArchitecture && delegate.reactInstanceManager.currentReactContext == null) {
++        val reactContextListener = object : ReactInstanceEventListener {
++          override fun onReactContextInitialized(context: ReactContext) {
++            delegate.reactInstanceManager.removeReactInstanceEventListener(this)
++            delegate.onActivityResult(requestCode, resultCode, data)
++          }
++        }
++        return@launchLifecycleScopeWithLock delegate.reactInstanceManager.addReactInstanceEventListener(
++          reactContextListener
++        )
++      }
++
++      delegate.onActivityResult(requestCode, resultCode, data)
++    }
++  }
++
++  override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
++    if (!loadAppReady.isCompleted) {
++      return false
++    }
++    // if any of the handlers return true, intentionally consume the event instead of passing it
++    // through to the delegate
++    return reactActivityHandlers
++      .map { it.onKeyDown(keyCode, event) }
++      .fold(false) { accu, current -> accu || current } || delegate.onKeyDown(keyCode, event)
++  }
++
++  override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
++    if (!loadAppReady.isCompleted) {
++      return false
++    }
++    // if any of the handlers return true, intentionally consume the event instead of passing it
++    // through to the delegate
++    return reactActivityHandlers
++      .map { it.onKeyUp(keyCode, event) }
++      .fold(false) { accu, current -> accu || current } || delegate.onKeyUp(keyCode, event)
++  }
++
++  override fun onKeyLongPress(keyCode: Int, event: KeyEvent): Boolean {
++    if (!loadAppReady.isCompleted) {
++      return false
++    }
++    // if any of the handlers return true, intentionally consume the event instead of passing it
++    // through to the delegate
++    return reactActivityHandlers
++      .map { it.onKeyLongPress(keyCode, event) }
++      .fold(false) { accu, current -> accu || current } || delegate.onKeyLongPress(keyCode, event)
++  }
++
++  override fun onBackPressed(): Boolean {
++    if (!loadAppReady.isCompleted) {
++      return false
++    }
++    val listenerResult = reactActivityLifecycleListeners
++      .map(ReactActivityLifecycleListener::onBackPressed)
++      .fold(false) { accu, current -> accu || current }
++    val delegateResult = delegate.onBackPressed()
++    return listenerResult || delegateResult
++  }
++
++  override fun onNewIntent(intent: Intent?): Boolean {
++    if (!loadAppReady.isCompleted) {
++      return false
++    }
++    val listenerResult = reactActivityLifecycleListeners
++      .map { it.onNewIntent(intent) }
++      .fold(false) { accu, current -> accu || current }
++    val delegateResult = delegate.onNewIntent(intent)
++    return listenerResult || delegateResult
++  }
++
++  override fun onWindowFocusChanged(hasFocus: Boolean) {
++    launchLifecycleScopeWithLock {
++      loadAppReady.await()
++      delegate.onWindowFocusChanged(hasFocus)
++    }
++  }
++
++  override fun requestPermissions(permissions: Array<out String>, requestCode: Int, listener: PermissionListener?) {
++    launchLifecycleScopeWithLock {
++      loadAppReady.await()
++      delegate.requestPermissions(permissions, requestCode, listener)
++    }
++  }
++
++  override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
++    launchLifecycleScopeWithLock {
++      loadAppReady.await()
++      delegate.onRequestPermissionsResult(requestCode, permissions, grantResults)
++    }
++  }
++
++  override fun getContext(): Context {
++    return invokeDelegateMethod("getContext")
++  }
++
++  override fun getPlainActivity(): Activity {
++    return invokeDelegateMethod("getPlainActivity")
++  }
++
++  override fun isFabricEnabled(): Boolean {
++    return invokeDelegateMethod("isFabricEnabled")
++  }
++
++  override fun isWideColorGamutEnabled(): Boolean {
++    return invokeDelegateMethod("isWideColorGamutEnabled")
++  }
++
++  override fun composeLaunchOptions(): Bundle? {
++    return invokeDelegateMethod("composeLaunchOptions")
++  }
++
++  override fun onConfigurationChanged(newConfig: Configuration) {
++    launchLifecycleScopeWithLock {
++      loadAppReady.await()
++      delegate.onConfigurationChanged(newConfig)
++    }
++  }
++
++  //endregion
++
++  //region Internals
++
++  @Suppress("UNCHECKED_CAST")
++  private fun <T> invokeDelegateMethod(name: String): T {
++    var method = methodMap[name]
++    if (method == null) {
++      method = ReactActivityDelegate::class.java.getDeclaredMethod(name)
++      method.isAccessible = true
++      methodMap[name] = method
++    }
++    return method!!.invoke(delegate) as T
++  }
++
++  @VisibleForTesting
++  @Suppress("UNCHECKED_CAST")
++  internal fun <T, A> invokeDelegateMethod(
++    name: String,
++    argTypes: Array<Class<*>>,
++    args: Array<A>
++  ): T {
++    var method = methodMap[name]
++    if (method == null) {
++      method = ReactActivityDelegate::class.java.getDeclaredMethod(name, *argTypes)
++      method.isAccessible = true
++      methodMap[name] = method
++    }
++    return method!!.invoke(delegate, *args) as T
++  }
++
++  private suspend fun loadAppImpl(appKey: String?, supportsDelayLoad: Boolean) {
++    // Give modules a chance to wrap the ReactRootView in a container ViewGroup. If some module
++    // wants to do this, we override the functionality of `loadApp` and call `setContentView` with
++    // the new container view instead.
++    val rootViewContainer = reactActivityHandlers.asSequence()
++      .mapNotNull { it.createReactRootViewContainer(activity) }
++      .firstOrNull()
++    if (rootViewContainer != null) {
++      val mReactDelegate = ReactActivityDelegate::class.java.getDeclaredField("mReactDelegate")
++      mReactDelegate.isAccessible = true
++      val reactDelegate = mReactDelegate[delegate] as ReactDelegate
++
++      reactDelegate.loadApp(requireNotNull(appKey))
++      val reactRootView = reactDelegate.reactRootView
++      (reactRootView?.parent as? ViewGroup)?.removeView(reactRootView)
++      rootViewContainer.addView(reactRootView, ViewGroup.LayoutParams.MATCH_PARENT)
++      activity.setContentView(rootViewContainer)
++      reactActivityLifecycleListeners.forEach { listener ->
++        listener.onContentChanged(activity)
++      }
++      return
++    }
++
++    if (supportsDelayLoad) {
++      awaitDelayLoadAppWhenReady(delayLoadAppHandler)
++      invokeDelegateMethod<Unit, String?>("loadApp", arrayOf(String::class.java), arrayOf(appKey))
++      reactActivityLifecycleListeners.forEach { listener ->
++        listener.onContentChanged(activity)
++      }
++      return
++    }
++
++    invokeDelegateMethod<Unit, String?>("loadApp", arrayOf(String::class.java), arrayOf(appKey))
++    reactActivityLifecycleListeners.forEach { listener ->
++      listener.onContentChanged(activity)
++    }
++  }
++
++  private suspend fun awaitDelayLoadAppWhenReady(delayLoadAppHandler: DelayLoadAppHandler?) {
++    if (delayLoadAppHandler == null) {
++      return
++    }
++    suspendCoroutine { continuation ->
++      delayLoadAppHandler.whenReady {
++        Utils.assertMainThread()
++        continuation.resume(Unit)
++      }
++    }
++  }
++
++  private fun launchLifecycleScopeWithLock(
++    start: CoroutineStart = CoroutineStart.DEFAULT,
++    block: suspend CoroutineScope.() -> Unit
++  ) {
++    activity.lifecycleScope.launch(start = start) {
++      mutex.withLock {
++        block()
++      }
++    }
++  }
++
++  /**
++   * Set the [loadAppReady] to completed state.
++   * This is only for unit tests when a test setups mocks and skips the [Activity] lifecycle.
++   */
++  @VisibleForTesting
++  internal fun setLoadAppReadyForTesting() {
++    loadAppReady.complete(Unit)
++  }
++
++  //endregion
++
++  companion object {
++    private val TAG = ReactActivityDelegate::class.simpleName
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/ReactNativeHostWrapper.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/ReactNativeHostWrapper.kt
+new file mode 100644
+index 0000000..c886f8c
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/ReactNativeHostWrapper.kt
+@@ -0,0 +1,51 @@
++package expo.modules
++
++import android.app.Application
++import android.content.Context
++import com.facebook.react.ReactHost
++import com.facebook.react.ReactNativeHost
++import com.facebook.react.ReactPackageTurboModuleManagerDelegate
++import com.facebook.react.bridge.UIManagerProvider
++import com.facebook.react.common.SurfaceDelegateFactory
++import com.facebook.react.devsupport.DevSupportManagerFactory
++import com.facebook.react.devsupport.interfaces.RedBoxHandler
++
++class ReactNativeHostWrapper(
++  application: Application,
++  host: ReactNativeHost
++) : ReactNativeHostWrapperBase(application, host) {
++  override fun getDevSupportManagerFactory(): DevSupportManagerFactory? {
++    return reactNativeHostHandlers
++      .asSequence()
++      .mapNotNull { it.devSupportManagerFactory }
++      .firstOrNull() as DevSupportManagerFactory?
++      ?: invokeDelegateMethod("getDevSupportManagerFactory")
++  }
++
++  override fun getReactPackageTurboModuleManagerDelegateBuilder(): ReactPackageTurboModuleManagerDelegate.Builder? {
++    return invokeDelegateMethod("getReactPackageTurboModuleManagerDelegateBuilder")
++  }
++
++  override fun getUIManagerProvider(): UIManagerProvider? {
++    return invokeDelegateMethod("getUIManagerProvider")
++  }
++
++  override fun getShouldRequireActivity(): Boolean {
++    return host.shouldRequireActivity
++  }
++
++  override fun getSurfaceDelegateFactory(): SurfaceDelegateFactory {
++    return host.surfaceDelegateFactory
++  }
++
++  override fun getRedBoxHandler(): RedBoxHandler? {
++    return invokeDelegateMethod("getRedBoxHandler")
++  }
++
++  companion object {
++    @JvmStatic
++    fun createReactHost(context: Context, reactNativeHost: ReactNativeHost): ReactHost {
++      return ExpoReactHostFactory.createFromReactNativeHost(context, reactNativeHost)
++    }
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/ReactNativeHostWrapperBase.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/ReactNativeHostWrapperBase.kt
+new file mode 100644
+index 0000000..051092d
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/ReactNativeHostWrapperBase.kt
+@@ -0,0 +1,107 @@
++package expo.modules
++
++import android.app.Application
++import androidx.collection.ArrayMap
++import com.facebook.react.ReactInstanceEventListener
++import com.facebook.react.ReactInstanceManager
++import com.facebook.react.ReactNativeHost
++import com.facebook.react.ReactPackage
++import com.facebook.react.bridge.JavaScriptExecutorFactory
++import com.facebook.react.bridge.ReactContext
++import com.facebook.react.defaults.DefaultReactNativeHost
++import java.lang.reflect.Method
++
++open class ReactNativeHostWrapperBase(
++  application: Application,
++  protected val host: ReactNativeHost
++) : DefaultReactNativeHost(application) {
++
++  val reactNativeHostHandlers = ExpoModulesPackage.packageList
++    .flatMap { it.createReactNativeHostHandlers(application) }
++  private val methodMap: ArrayMap<String, Method> = ArrayMap()
++
++  override fun createReactInstanceManager(): ReactInstanceManager {
++    val developerSupport = useDeveloperSupport
++    reactNativeHostHandlers.forEach { handler ->
++      handler.onWillCreateReactInstance(developerSupport)
++    }
++
++    val result = super.createReactInstanceManager()
++
++    reactNativeHostHandlers.forEach { handler ->
++      handler.onDidCreateDevSupportManager(result.devSupportManager)
++    }
++
++    result.addReactInstanceEventListener(object : ReactInstanceEventListener {
++      override fun onReactContextInitialized(context: ReactContext) {
++        reactNativeHostHandlers.forEach { handler ->
++          handler.onDidCreateReactInstance(developerSupport, context)
++        }
++      }
++    })
++
++    injectHostReactInstanceManager(result)
++
++    return result
++  }
++
++  override fun getJavaScriptExecutorFactory(): JavaScriptExecutorFactory? {
++    return reactNativeHostHandlers.asSequence()
++      .mapNotNull { it.javaScriptExecutorFactory }
++      .firstOrNull() ?: invokeDelegateMethod("getJavaScriptExecutorFactory")
++  }
++
++  public override fun getJSMainModuleName(): String {
++    return invokeDelegateMethod("getJSMainModuleName")
++  }
++
++  public override fun getJSBundleFile(): String? {
++    return reactNativeHostHandlers.asSequence()
++      .mapNotNull { it.getJSBundleFile(useDeveloperSupport) }
++      .firstOrNull() ?: invokeDelegateMethod("getJSBundleFile")
++  }
++
++  public override fun getBundleAssetName(): String? {
++    return reactNativeHostHandlers.asSequence()
++      .mapNotNull { it.getBundleAssetName(useDeveloperSupport) }
++      .firstOrNull() ?: invokeDelegateMethod("getBundleAssetName")
++  }
++
++  override fun getUseDeveloperSupport(): Boolean {
++    return reactNativeHostHandlers.asSequence()
++      .mapNotNull { it.useDeveloperSupport }
++      .firstOrNull() ?: host.useDeveloperSupport
++  }
++
++  public override fun getPackages(): MutableList<ReactPackage> {
++    return invokeDelegateMethod("getPackages")
++  }
++
++  //endregion
++
++  //region Internals
++
++  // this is to call the methods as overridden in MainApplication.kt
++  @Suppress("UNCHECKED_CAST")
++  internal fun <T> invokeDelegateMethod(name: String): T {
++    var method = methodMap[name]
++    if (method == null) {
++      method = ReactNativeHost::class.java.getDeclaredMethod(name)
++      method.isAccessible = true
++      methodMap[name] = method
++    }
++    return method!!.invoke(host) as T
++  }
++
++  /**
++   * Inject the @{ReactInstanceManager} from the wrapper to the wrapped host.
++   * In case the wrapped host to call `getReactInstanceManager` inside its methods.
++   */
++  private fun injectHostReactInstanceManager(reactInstanceManager: ReactInstanceManager) {
++    val mReactInstanceManagerField = ReactNativeHost::class.java.getDeclaredField("mReactInstanceManager")
++    mReactInstanceManagerField.isAccessible = true
++    mReactInstanceManagerField.set(host, reactInstanceManager)
++  }
++
++  //endregion
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/ExpoFetchModule.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/ExpoFetchModule.kt
+new file mode 100644
+index 0000000..7c23ce4
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/ExpoFetchModule.kt
+@@ -0,0 +1,149 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++import android.util.Log
++import com.facebook.react.bridge.ReactContext
++import com.facebook.react.modules.network.CookieJarContainer
++import com.facebook.react.modules.network.ForwardingCookieHandler
++import com.facebook.react.modules.network.OkHttpClientProvider
++import expo.modules.core.errors.ModuleDestroyedException
++import expo.modules.kotlin.Promise
++import expo.modules.kotlin.exception.Exceptions
++import expo.modules.kotlin.exception.toCodedException
++import expo.modules.kotlin.modules.Module
++import expo.modules.kotlin.modules.ModuleDefinition
++import kotlinx.coroutines.CoroutineName
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.cancel
++import okhttp3.JavaNetCookieJar
++import java.net.URL
++
++@Suppress("unused")
++class ExpoFetchModule : Module() {
++  private val client by lazy {
++    OkHttpClientProvider.createClient(reactContext)
++      .newBuilder()
++      .addInterceptor(OkHttpFileUrlInterceptor(reactContext))
++      .build()
++  }
++  private val cookieHandler by lazy { ForwardingCookieHandler(reactContext) }
++  private val cookieJarContainer by lazy { client.cookieJar as CookieJarContainer }
++
++  private val reactContext: ReactContext
++    get() = appContext.reactContext as? ReactContext ?: throw Exceptions.ReactContextLost()
++
++  private val moduleCoroutineScope by lazy {
++    CoroutineScope(
++      appContext.modulesQueue.coroutineContext +
++        CoroutineName("expo.modules.fetch.CoroutineScope")
++    )
++  }
++
++  override fun definition() = ModuleDefinition {
++    Name("ExpoFetchModule")
++
++    OnCreate {
++      cookieJarContainer.setCookieJar(JavaNetCookieJar(cookieHandler))
++    }
++
++    OnDestroy {
++      cookieHandler.destroy()
++      cookieJarContainer.removeCookieJar()
++
++      try {
++        moduleCoroutineScope.cancel(ModuleDestroyedException())
++      } catch (e: IllegalStateException) {
++        Log.e(TAG, "The scope does not have a job in it")
++      }
++    }
++
++    Class(NativeResponse::class) {
++      Constructor {
++        return@Constructor NativeResponse(appContext, moduleCoroutineScope)
++      }
++
++      AsyncFunction("startStreaming") { response: NativeResponse ->
++        return@AsyncFunction response.startStreaming()
++      }
++
++      AsyncFunction("cancelStreaming") { response: NativeResponse, _: String ->
++        response.cancelStreaming()
++      }
++
++      Property("bodyUsed") { response: NativeResponse ->
++        response.bodyUsed
++      }
++
++      Property("_rawHeaders") { response: NativeResponse ->
++        response.responseInit?.headers ?: emptyList()
++      }
++
++      Property("status") { response: NativeResponse ->
++        response.responseInit?.status ?: -1
++      }
++
++      Property("statusText") { response: NativeResponse ->
++        response.responseInit?.statusText ?: ""
++      }
++
++      Property("url") { response: NativeResponse ->
++        response.responseInit?.url ?: ""
++      }
++
++      Property("redirected") { response: NativeResponse ->
++        response.responseInit?.redirected ?: false
++      }
++
++      AsyncFunction("arrayBuffer") { response: NativeResponse, promise: Promise ->
++        response.waitForStates(listOf(ResponseState.BODY_COMPLETED)) {
++          val data = response.sink.finalize()
++          promise.resolve(data)
++        }
++      }
++
++      AsyncFunction("text") { response: NativeResponse, promise: Promise ->
++        response.waitForStates(listOf(ResponseState.BODY_COMPLETED)) {
++          val data = response.sink.finalize()
++          val text = data.toString(Charsets.UTF_8)
++          promise.resolve(text)
++        }
++      }
++    }
++
++    Class(NativeRequest::class) {
++      Constructor { response: NativeResponse ->
++        return@Constructor NativeRequest(appContext, response)
++      }
++
++      AsyncFunction("start") {
++          request: NativeRequest,
++          url: URL,
++          requestInit: NativeRequestInit,
++          requestBody: ByteArray?,
++          promise: Promise ->
++        request.start(client, url, requestInit, requestBody)
++        request.response.waitForStates(
++          listOf(
++            ResponseState.RESPONSE_RECEIVED,
++            ResponseState.ERROR_RECEIVED
++          )
++        ) { state ->
++          if (state == ResponseState.RESPONSE_RECEIVED) {
++            promise.resolve()
++          } else if (state == ResponseState.ERROR_RECEIVED) {
++            promise.reject(request.response.error?.toCodedException() ?: FetchUnknownException())
++          }
++        }
++      }
++
++      AsyncFunction("cancel") { request: NativeRequest ->
++        request.cancel()
++      }
++    }
++  }
++
++  companion object {
++    private val TAG = ExpoFetchModule::class.java.simpleName
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/FetchExceptions.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/FetchExceptions.kt
+new file mode 100644
+index 0000000..05c9b15
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/FetchExceptions.kt
+@@ -0,0 +1,17 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++import expo.modules.kotlin.exception.CodedException
++
++internal class FetchUnknownException :
++  CodedException("Unknown error")
++
++internal class FetchRequestCanceledException :
++  CodedException("Fetch request has been canceled")
++
++internal class FetchAndroidContextLostException :
++  CodedException("The Android context has been lost")
++
++internal class FetchRedirectException :
++  CodedException("Redirect is not allowed when redirect mode is 'error'")
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequest.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequest.kt
+new file mode 100644
+index 0000000..b2993ed
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequest.kt
+@@ -0,0 +1,67 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++import expo.modules.kotlin.AppContext
++import expo.modules.kotlin.sharedobjects.SharedObject
++import okhttp3.Call
++import okhttp3.CookieJar
++import okhttp3.MediaType.Companion.toMediaTypeOrNull
++import okhttp3.OkHttpClient
++import okhttp3.Request
++import okhttp3.RequestBody.Companion.toRequestBody
++import java.net.URL
++
++private data class RequestHolder(var request: Request?)
++
++internal val METHODS_REQUIRING_BODY = arrayOf("POST", "PUT", "PATCH")
++
++internal class NativeRequest(appContext: AppContext, internal val response: NativeResponse) :
++  SharedObject(appContext) {
++  private val requestHolder = RequestHolder(null)
++  private var task: Call? = null
++
++  fun start(client: OkHttpClient, url: URL, requestInit: NativeRequestInit, requestBody: ByteArray?) {
++    val clientBuilder = client.newBuilder()
++    if (requestInit.credentials != NativeRequestCredentials.INCLUDE) {
++      clientBuilder.cookieJar(CookieJar.NO_COOKIES)
++    }
++    if (requestInit.redirect != NativeRequestRedirect.FOLLOW) {
++      clientBuilder.followRedirects(false)
++      clientBuilder.followSslRedirects(false)
++    }
++
++    val newClient = clientBuilder.build()
++    response.redirectMode = requestInit.redirect
++
++    val headers = requestInit.headers.toHeaders()
++    val mediaType = headers["Content-Type"]?.toMediaTypeOrNull()
++    val reqBody = requestBody?.toRequestBody(mediaType) ?: run {
++      // OkHttp requires a non-null body for POST, PATCH, and PUT requests.
++      // WinterTC fetch, however, does not have this limitation.
++      // Provide an empty body to make OkHttp behave like WinterTC fetch.
++      // Ref: https://github.com/expo/expo/issues/35950#issuecomment-3245173248
++      if (requestInit.method in METHODS_REQUIRING_BODY) {
++        byteArrayOf(0).toRequestBody(mediaType)
++      } else {
++        null
++      }
++    }
++    val request = Request.Builder()
++      .headers(headers)
++      .method(requestInit.method, reqBody)
++      .url(OkHttpFileUrlInterceptor.handleFileUrl(url))
++      .build()
++    this.requestHolder.request = request
++
++    this.task = newClient.newCall(request)
++    this.task?.enqueue(this.response)
++    response.onStarted()
++  }
++
++  fun cancel() {
++    val task = this.task ?: return
++    task.cancel()
++    response.emitRequestCanceled()
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequestCredentials.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequestCredentials.kt
+new file mode 100644
+index 0000000..648b7a4
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequestCredentials.kt
+@@ -0,0 +1,10 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++import expo.modules.kotlin.types.Enumerable
++
++internal enum class NativeRequestCredentials(val value: String) : Enumerable {
++  INCLUDE("include"),
++  OMIT("omit")
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequestInit.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequestInit.kt
+new file mode 100644
+index 0000000..9c4b180
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequestInit.kt
+@@ -0,0 +1,13 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++import expo.modules.kotlin.records.Field
++import expo.modules.kotlin.records.Record
++
++internal data class NativeRequestInit(
++  @Field val credentials: NativeRequestCredentials = NativeRequestCredentials.INCLUDE,
++  @Field val headers: List<Pair<String, String>> = emptyList(),
++  @Field val method: String = "GET",
++  @Field val redirect: NativeRequestRedirect = NativeRequestRedirect.FOLLOW
++) : Record
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequestRedirect.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequestRedirect.kt
+new file mode 100644
+index 0000000..fdfc745
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeRequestRedirect.kt
+@@ -0,0 +1,9 @@
++package expo.modules.fetch
++
++import expo.modules.kotlin.types.Enumerable
++
++internal enum class NativeRequestRedirect(val value: String) : Enumerable {
++  FOLLOW("follow"),
++  ERROR("error"),
++  MANUAL("manual")
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeResponse.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeResponse.kt
+new file mode 100644
+index 0000000..2ee5cc1
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeResponse.kt
+@@ -0,0 +1,220 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++import android.util.Log
++import expo.modules.core.logging.localizedMessageWithCauseLocalizedMessage
++import expo.modules.kotlin.AppContext
++import expo.modules.kotlin.sharedobjects.SharedObject
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.launch
++import okhttp3.Call
++import okhttp3.Callback
++import okhttp3.Response
++import okio.BufferedSource
++import java.io.IOException
++
++internal class NativeResponse(appContext: AppContext, private val coroutineScope: CoroutineScope) :
++  SharedObject(appContext), Callback {
++  val sink = ResponseSink()
++  private var state: ResponseState = ResponseState.INITIALIZED
++    get() = synchronized(this) { field }
++    private set(value) {
++      synchronized(this) {
++        field = value
++      }
++      coroutineScope.launch {
++        this@NativeResponse.stateChangeOnceListeners.removeAll { it(value) }
++      }
++    }
++  private val stateChangeOnceListeners: MutableList<StateChangeListener> = mutableListOf()
++
++  var responseInit: NativeResponseInit? = null
++    private set
++  var error: Exception? = null
++    private set
++  var redirectMode: NativeRequestRedirect? = null
++
++  val bodyUsed: Boolean
++    get() = this.sink.bodyUsed
++
++  override fun deallocate() {
++    this.sink.finalize()
++    super.deallocate()
++  }
++
++  fun onStarted() {
++    if (isInvalidState(ResponseState.INITIALIZED)) {
++      return
++    }
++    state = ResponseState.STARTED
++  }
++
++  fun startStreaming(): ByteArray? {
++    if (isInvalidState(ResponseState.RESPONSE_RECEIVED, ResponseState.BODY_COMPLETED)) {
++      return null
++    }
++    if (state == ResponseState.RESPONSE_RECEIVED) {
++      state = ResponseState.BODY_STREAMING_STARTED
++      val queuedData = this.sink.finalize()
++      emit("didReceiveResponseData", queuedData)
++    } else if (state == ResponseState.BODY_COMPLETED) {
++      val queuedData = this.sink.finalize()
++      return queuedData
++    }
++    return null
++  }
++
++  fun cancelStreaming() {
++    if (isInvalidState(ResponseState.BODY_STREAMING_STARTED)) {
++      return
++    }
++    state = ResponseState.BODY_STREAMING_CANCELED
++  }
++
++  fun emitRequestCanceled() {
++    val error = FetchRequestCanceledException()
++    this.error = error
++    if (state == ResponseState.BODY_STREAMING_STARTED) {
++      emit("didFailWithError", error.localizedMessageWithCauseLocalizedMessage())
++    }
++    state = ResponseState.ERROR_RECEIVED
++  }
++
++  fun waitForStates(states: List<ResponseState>, callback: (ResponseState) -> Unit) {
++    if (states.contains(state)) {
++      callback(state)
++      return
++    }
++    stateChangeOnceListeners.add { newState ->
++      if (states.contains(newState)) {
++        callback(newState)
++        return@add true
++      }
++      return@add false
++    }
++  }
++
++  //region Callback implementations
++
++  override fun onFailure(call: Call, e: IOException) {
++    // Canceled request should be handled by emitRequestCanceled
++    if (e.message == "Canceled") {
++      return
++    }
++
++    if (isInvalidState(
++        ResponseState.STARTED,
++        ResponseState.RESPONSE_RECEIVED,
++        ResponseState.BODY_STREAMING_STARTED,
++        ResponseState.BODY_STREAMING_CANCELED
++      )
++    ) {
++      return
++    }
++
++    if (state == ResponseState.BODY_STREAMING_STARTED) {
++      emit("didFailWithError", e.localizedMessageWithCauseLocalizedMessage())
++    }
++    error = e
++    state = ResponseState.ERROR_RECEIVED
++    emit("readyForJSFinalization")
++  }
++
++  override fun onResponse(call: Call, response: Response) {
++    if (response.isRedirect && redirectMode == NativeRequestRedirect.ERROR) {
++      response.close()
++      val error = FetchRedirectException()
++      this.error = error
++      if (state == ResponseState.BODY_STREAMING_STARTED) {
++        emit("didFailWithError", error.localizedMessageWithCauseLocalizedMessage())
++      }
++      state = ResponseState.ERROR_RECEIVED
++      emit("readyForJSFinalization")
++      return
++    }
++
++    responseInit = createResponseInit(response)
++    state = ResponseState.RESPONSE_RECEIVED
++
++    coroutineScope.launch(Dispatchers.IO) {
++      val stream = response.body?.source() ?: return@launch
++      pumpResponseBodyStream(stream)
++      response.close()
++
++      if (this@NativeResponse.state == ResponseState.BODY_STREAMING_STARTED) {
++        emit("didComplete")
++      }
++      this@NativeResponse.state = ResponseState.BODY_COMPLETED
++      emit("readyForJSFinalization")
++    }
++  }
++
++  //endregion Callback implementations
++
++  //region Internals
++
++  private fun isInvalidState(vararg validStates: ResponseState): Boolean {
++    if (validStates.contains(state)) {
++      return false
++    }
++
++    val validStatesString = validStates.joinToString(",") { it.intValue.toString() }
++    Log.w(TAG, "Invalid state - currentState[${state.intValue}] validStates[$validStatesString]")
++    return true
++  }
++
++  private fun createResponseInit(response: Response): NativeResponseInit {
++    val status = response.code
++    val statusText = response.message
++    val headers = response.headers.map { header ->
++      header.first to header.second
++    }
++    val redirected = response.isRedirect
++    val url = response.request.url.toString()
++    return NativeResponseInit(
++      headers = headers,
++      status = status,
++      statusText = statusText,
++      url = url,
++      redirected = redirected
++    )
++  }
++
++  private fun pumpResponseBodyStream(stream: BufferedSource) {
++    try {
++      while (!stream.exhausted()) {
++        if (isInvalidState(
++            ResponseState.RESPONSE_RECEIVED,
++            ResponseState.BODY_STREAMING_STARTED,
++            ResponseState.BODY_STREAMING_CANCELED
++          )
++        ) {
++          break
++        }
++        if (state == ResponseState.RESPONSE_RECEIVED) {
++          sink.appendBufferBody(stream.buffer.readByteArray())
++        } else if (state == ResponseState.BODY_STREAMING_STARTED) {
++          emit("didReceiveResponseData", stream.buffer.readByteArray())
++        } else {
++          break
++        }
++      }
++    } catch (e: IOException) {
++      this.error = e
++      if (state == ResponseState.BODY_STREAMING_STARTED) {
++        emit("didFailWithError", e.localizedMessageWithCauseLocalizedMessage())
++      }
++      state = ResponseState.ERROR_RECEIVED
++    }
++  }
++
++  //endregion Internals
++
++  companion object {
++    private val TAG = NativeResponse::class.java.simpleName
++  }
++}
++
++private typealias StateChangeListener = (ResponseState) -> Boolean
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeResponseInit.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeResponseInit.kt
+new file mode 100644
+index 0000000..8db8fa5
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/NativeResponseInit.kt
+@@ -0,0 +1,11 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++internal data class NativeResponseInit(
++  val headers: List<Pair<String, String>>,
++  val status: Int,
++  val statusText: String,
++  val url: String,
++  val redirected: Boolean
++)
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/OkHttpFileUrlInterceptor.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/OkHttpFileUrlInterceptor.kt
+new file mode 100644
+index 0000000..5f9832d
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/OkHttpFileUrlInterceptor.kt
+@@ -0,0 +1,115 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++import android.content.Context
++import okhttp3.HttpUrl
++import okhttp3.Interceptor
++import okhttp3.MediaType
++import okhttp3.MediaType.Companion.toMediaType
++import okhttp3.MediaType.Companion.toMediaTypeOrNull
++import okhttp3.Protocol
++import okhttp3.Request
++import okhttp3.Response
++import okhttp3.ResponseBody
++import okhttp3.ResponseBody.Companion.asResponseBody
++import okhttp3.ResponseBody.Companion.toResponseBody
++import okio.buffer
++import okio.source
++import java.io.File
++import java.io.IOException
++import java.lang.ref.WeakReference
++import java.net.URL
++import java.net.URLConnection
++
++private const val fakeHttpUrlPrefix = "http://filesystem.local"
++private const val assetUrl = "file:///android_asset/"
++private const val fileScheme = "file://"
++
++/**
++ * OkHttp does not support `file://` scheme under the hood.
++ * We add fake "http://filesystem.local" prefix to the URL
++ * and use this interceptor to support local file.
++ */
++internal class OkHttpFileUrlInterceptor(context: Context) : Interceptor {
++  private val context: WeakReference<Context> = WeakReference(context)
++
++  override fun intercept(chain: Interceptor.Chain): Response {
++    val request: Request = chain.request()
++    val url = restoreFileUrl(request.url)
++
++    if (!url.startsWith(fileScheme)) {
++      return chain.proceed(request)
++    }
++
++    if (url.startsWith(assetUrl)) {
++      val fileName = url.removePrefix(assetUrl)
++      val context = context.get() ?: throw FetchAndroidContextLostException()
++      try {
++        val responseBody = createAssetResponseBody(context, fileName)
++        return Response.Builder()
++          .request(request)
++          .protocol(Protocol.HTTP_1_1)
++          .code(200)
++          .message("OK")
++          .body(responseBody)
++          .build()
++      } catch (_: IOException) {
++        return createFileNotFoundResponse(request)
++      }
++    }
++
++    val filePath = url.substring(fileScheme.length)
++    val file = File(filePath)
++
++    if (!file.exists()) {
++      return createFileNotFoundResponse(request)
++    }
++
++    val responseBody = file.source().buffer().asResponseBody(
++      createMediaType(file.name),
++      file.length()
++    )
++    return Response.Builder()
++      .request(request)
++      .protocol(Protocol.HTTP_1_1)
++      .code(200)
++      .message("OK")
++      .body(responseBody)
++      .build()
++  }
++
++  private fun restoreFileUrl(url: HttpUrl): String {
++    val urlString = url.toString()
++    return urlString.replaceFirst(fakeHttpUrlPrefix, fileScheme)
++  }
++
++  private fun createFileNotFoundResponse(request: Request): Response {
++    return Response.Builder()
++      .request(request)
++      .protocol(Protocol.HTTP_1_1)
++      .code(404)
++      .message("File not found")
++      .body("File not found".toResponseBody("text/plain".toMediaType()))
++      .build()
++  }
++
++  private fun createMediaType(fileName: String): MediaType {
++    val defaultType = "application/octet-stream"
++    val mimeType = URLConnection.guessContentTypeFromName(fileName) ?: defaultType
++    return mimeType.toMediaTypeOrNull() ?: defaultType.toMediaType()
++  }
++
++  @Throws(IOException::class)
++  fun createAssetResponseBody(context: Context, fileName: String): ResponseBody {
++    val assetManager = context.assets
++    val inputStream = assetManager.open(fileName)
++    return inputStream.source().buffer().asResponseBody(createMediaType(fileName))
++  }
++
++  companion object {
++    fun handleFileUrl(url: URL): URL {
++      return if (url.protocol == "file") URL(fakeHttpUrlPrefix + url.path) else url
++    }
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/RequestUtils.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/RequestUtils.kt
+new file mode 100644
+index 0000000..ed1569d
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/RequestUtils.kt
+@@ -0,0 +1,16 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++import okhttp3.Headers
++
++/**
++ * An extension to convert list of header pair to [Headers]
++ */
++internal fun List<Pair<String, String>>.toHeaders(): Headers {
++  val builder = Headers.Builder()
++  for (pair in this) {
++    builder.add(pair.first, pair.second)
++  }
++  return builder.build()
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/ResponseSink.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/ResponseSink.kt
+new file mode 100644
+index 0000000..3a8b26b
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/ResponseSink.kt
+@@ -0,0 +1,29 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++import java.nio.ByteBuffer
++
++internal class ResponseSink {
++  private val bodyQueue: MutableList<ByteArray> = mutableListOf()
++  private var isFinalized = false
++  var bodyUsed = false
++    private set
++
++  internal fun appendBufferBody(data: ByteArray) {
++    bodyUsed = true
++    bodyQueue.add(data)
++  }
++
++  fun finalize(): ByteArray {
++    val size = bodyQueue.sumOf { it.size }
++    val byteBuffer = ByteBuffer.allocate(size)
++    for (byteArray in bodyQueue) {
++      byteBuffer.put(byteArray)
++    }
++    bodyQueue.clear()
++    bodyUsed = true
++    isFinalized = true
++    return byteBuffer.array()
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/ResponseState.kt b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/ResponseState.kt
+new file mode 100644
+index 0000000..9965ef5
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/main/java/expo/modules/fetch/ResponseState.kt
+@@ -0,0 +1,13 @@
++// Copyright 2015-present 650 Industries. All rights reserved.
++
++package expo.modules.fetch
++
++internal enum class ResponseState(val intValue: Int) {
++  INITIALIZED(0),
++  STARTED(1),
++  RESPONSE_RECEIVED(2),
++  BODY_COMPLETED(3),
++  BODY_STREAMING_STARTED(4),
++  BODY_STREAMING_CANCELED(5),
++  ERROR_RECEIVED(6)
++}
+diff --git a/node_modules/expo/android/bin/src/test/AndroidManifest.xml b/node_modules/expo/android/bin/src/test/AndroidManifest.xml
+new file mode 100644
+index 0000000..5af0770
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/test/AndroidManifest.xml
+@@ -0,0 +1,17 @@
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++          xmlns:tools="http://schemas.android.com/tools">
++    <application>
++
++        <!-- Fix unit test manifestMerger build error from expo -> autolinked expo-app-auth -> net.openid.appauth -->
++        <activity
++	    android:name="net.openid.appauth.RedirectUriReceiverActivity"
++            android:exported="true" tools:node="replace">
++            <intent-filter>
++                <action android:name="android.intent.action.VIEW" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="android.intent.category.BROWSABLE" />
++                <data android:scheme="test" />
++            </intent-filter>
++        </activity>
++    </application>
++</manifest>
+diff --git a/node_modules/expo/android/bin/src/test/java/expo/modules/ReactActivityDelegateWrapperDelayLoadTest.kt b/node_modules/expo/android/bin/src/test/java/expo/modules/ReactActivityDelegateWrapperDelayLoadTest.kt
+new file mode 100644
+index 0000000..5a2a5a7
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/test/java/expo/modules/ReactActivityDelegateWrapperDelayLoadTest.kt
+@@ -0,0 +1,282 @@
++package expo.modules
++
++import android.app.Activity
++import android.app.Application
++import android.content.Context
++import com.facebook.react.ReactActivity
++import com.facebook.react.ReactActivityDelegate
++import com.facebook.react.ReactApplication
++import com.facebook.react.ReactHost
++import com.facebook.react.ReactNativeHost
++import com.facebook.react.ReactRootView
++import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
++import com.facebook.react.defaults.DefaultReactActivityDelegate
++import com.facebook.react.interfaces.fabric.ReactSurface
++import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags
++import com.facebook.soloader.SoLoader
++import expo.modules.core.interfaces.Package
++import expo.modules.core.interfaces.ReactActivityHandler
++import expo.modules.core.interfaces.ReactActivityHandler.DelayLoadAppHandler
++import expo.modules.core.interfaces.ReactActivityLifecycleListener
++import io.mockk.MockKAnnotations
++import io.mockk.every
++import io.mockk.impl.annotations.RelaxedMockK
++import io.mockk.mockk
++import io.mockk.mockkObject
++import io.mockk.mockkStatic
++import io.mockk.slot
++import io.mockk.spyk
++import io.mockk.unmockkAll
++import io.mockk.verify
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.ExperimentalCoroutinesApi
++import kotlinx.coroutines.test.UnconfinedTestDispatcher
++import kotlinx.coroutines.test.runTest
++import kotlinx.coroutines.test.setMain
++import org.junit.After
++import org.junit.Before
++import org.junit.Test
++import org.junit.runner.RunWith
++import org.robolectric.Robolectric
++import org.robolectric.RobolectricTestRunner
++import org.robolectric.android.controller.ActivityController
++import org.robolectric.annotation.Config
++
++@RunWith(RobolectricTestRunner::class)
++@Config(application = MockApplication::class)
++internal class ReactActivityDelegateWrapperDelayLoadTest {
++  @RelaxedMockK
++  private lateinit var delayLoadAppHandler: DelayLoadAppHandler
++
++  private lateinit var mockPackageWithDelay: MockPackageWithDelayHandler
++  private lateinit var mockPackageWithoutDelay: MockPackageWithoutDelayHandler
++  private lateinit var activityController: ActivityController<MockActivity>
++  private val activity: MockActivity
++    get() = activityController.get()
++
++  @OptIn(ExperimentalCoroutinesApi::class)
++  @Before
++  fun setUp() {
++    SoLoader.setInTestMode()
++    mockkObject(ExpoModulesPackage.Companion)
++    mockkStatic(ReactNativeFeatureFlags::class)
++    every { ReactNativeFeatureFlags.enableBridgelessArchitecture() } returns true
++    every { ReactNativeFeatureFlags.enableFabricRenderer() } returns true
++    Dispatchers.setMain(UnconfinedTestDispatcher())
++
++    MockKAnnotations.init(this)
++
++    mockPackageWithDelay = MockPackageWithDelayHandler(delayLoadAppHandler)
++    mockPackageWithoutDelay = MockPackageWithoutDelayHandler()
++  }
++
++  @After
++  fun tearDown() {
++    unmockkAll()
++  }
++
++  @Test
++  fun `should proceed loadApp immediately when no delayLoadAppHandler`() = runTest {
++    every { ExpoModulesPackage.Companion.packageList } returns listOf(mockPackageWithoutDelay)
++
++    activityController = Robolectric.buildActivity(MockActivity::class.java)
++      .also {
++        val activity = it.get()
++        (activity.application as MockApplication).bindCurrentActivity(activity)
++      }
++      .setup()
++    val spyDelegateWrapper = activity.reactActivityDelegate as ReactActivityDelegateWrapper
++    verify { spyDelegateWrapper.invokeDelegateMethod("loadApp", arrayOf(String::class.java), arrayOf("main")) }
++  }
++
++  @Test
++  fun `should block loadApp until delayLoadAppHandler finished`() = runTest {
++    every { ExpoModulesPackage.Companion.packageList } returns listOf(mockPackageWithDelay)
++
++    val callbackSlot = slot<Runnable>()
++    every { delayLoadAppHandler.whenReady(capture(callbackSlot)) } answers {
++      // Don't call the callback immediately to simulate delay
++    }
++
++    activityController = Robolectric.buildActivity(MockActivity::class.java)
++      .also {
++        val activity = it.get()
++        (activity.application as MockApplication).bindCurrentActivity(activity)
++      }
++      .setup()
++
++    val spyDelegateWrapper = activity.reactActivityDelegate as ReactActivityDelegateWrapper
++
++    verify(exactly = 0) { spyDelegateWrapper.invokeDelegateMethod("loadApp", arrayOf(String::class.java), arrayOf("main")) }
++    callbackSlot.captured.run()
++    verify(exactly = 1) { spyDelegateWrapper.invokeDelegateMethod("loadApp", arrayOf(String::class.java), arrayOf("main")) }
++  }
++
++  @Test
++  fun `should call lifecycle methods in correct order with delay load`() = runTest {
++    every { ExpoModulesPackage.Companion.packageList } returns listOf(mockPackageWithDelay)
++
++    val callbackSlot = slot<Runnable>()
++    every { delayLoadAppHandler.whenReady(capture(callbackSlot)) } answers {
++      // Don't call the callback immediately to simulate delay
++    }
++
++    activityController = Robolectric.buildActivity(MockActivity::class.java)
++      .also {
++        val activity = it.get()
++        (activity.application as MockApplication).bindCurrentActivity(activity)
++      }
++      .setup()
++    val spyDelegateWrapper = activity.reactActivityDelegate as ReactActivityDelegateWrapper
++    val spyDelegate = spyDelegateWrapper.delegate
++
++    verify(exactly = 1) { spyDelegateWrapper.onCreate(any()) }
++    verify(exactly = 1) { spyDelegateWrapper.onResume() }
++    verify(exactly = 0) { spyDelegate.onResume() }
++
++    callbackSlot.captured.run()
++    verify(exactly = 1) { spyDelegateWrapper.onResume() }
++    verify(exactly = 1) { spyDelegate.onResume() }
++    verify(exactly = 0) { spyDelegateWrapper.onPause() }
++    verify(exactly = 0) { spyDelegateWrapper.onDestroy() }
++    verify(exactly = 0) { spyDelegate.onPause() }
++    verify(exactly = 0) { spyDelegate.onDestroy() }
++
++    activityController.pause().stop().destroy()
++    verify(exactly = 1) { spyDelegateWrapper.onPause() }
++    verify(exactly = 1) { spyDelegateWrapper.onDestroy() }
++    verify(exactly = 1) { spyDelegate.onPause() }
++    verify(exactly = 1) { spyDelegate.onDestroy() }
++  }
++
++  @Test
++  fun `should have normal lifecycle when no delayLoadHandler`() = runTest {
++    every { ExpoModulesPackage.Companion.packageList } returns listOf(mockPackageWithoutDelay)
++
++    activityController = Robolectric.buildActivity(MockActivity::class.java)
++      .also {
++        val activity = it.get()
++        (activity.application as MockApplication).bindCurrentActivity(activity)
++      }
++      .setup()
++    val spyDelegateWrapper = activity.reactActivityDelegate as ReactActivityDelegateWrapper
++    val spyDelegate = spyDelegateWrapper.delegate
++
++    verify(exactly = 1) { spyDelegateWrapper.onCreate(any()) }
++    verify(exactly = 1) { spyDelegateWrapper.onResume() }
++    verify(exactly = 1) { spyDelegate.onResume() }
++
++    activityController.pause().stop().destroy()
++    verify(exactly = 1) { spyDelegateWrapper.onPause() }
++    verify(exactly = 1) { spyDelegateWrapper.onDestroy() }
++    verify(exactly = 1) { spyDelegate.onPause() }
++    verify(exactly = 1) { spyDelegate.onDestroy() }
++  }
++
++  @Test
++  fun `should cancel pending resume if activity destroy before delay load finished`() = runTest {
++    every { ExpoModulesPackage.Companion.packageList } returns listOf(mockPackageWithDelay)
++
++    val callbackSlot = slot<Runnable>()
++    every { delayLoadAppHandler.whenReady(capture(callbackSlot)) } answers {
++      // Don't call the callback immediately to simulate delay
++    }
++
++    activityController = Robolectric.buildActivity(MockActivity::class.java)
++      .also {
++        val activity = it.get()
++        (activity.application as MockApplication).bindCurrentActivity(activity)
++      }
++      .setup()
++    val spyDelegateWrapper = activity.reactActivityDelegate as ReactActivityDelegateWrapper
++    val spyDelegate = spyDelegateWrapper.delegate
++
++    verify(exactly = 1) { spyDelegateWrapper.onCreate(any()) }
++    verify(exactly = 1) { spyDelegateWrapper.onResume() }
++    verify(exactly = 0) { spyDelegate.onResume() }
++
++    activityController.pause().stop().destroy()
++    callbackSlot.captured.run()
++    verify(exactly = 0) { spyDelegate.onResume() }
++  }
++}
++
++internal class MockPackageWithDelayHandler(delayHandler: DelayLoadAppHandler) : Package {
++  private val reactActivityLifecycleListener = mockk<ReactActivityLifecycleListener>(relaxed = true)
++  private val reactActivityHandler = mockk<ReactActivityHandler>(relaxed = true)
++
++  init {
++    every { reactActivityHandler.createReactRootViewContainer(any()) } returns null
++    every { reactActivityHandler.onDidCreateReactActivityDelegate(any(), any()) } returns null
++    every { reactActivityHandler.getDelayLoadAppHandler(any(), any()) } returns delayHandler
++  }
++
++  override fun createReactActivityLifecycleListeners(activityContext: Context?): List<ReactActivityLifecycleListener> {
++    return listOf(reactActivityLifecycleListener)
++  }
++
++  override fun createReactActivityHandlers(activityContext: Context?): List<ReactActivityHandler> {
++    return listOf(reactActivityHandler)
++  }
++}
++
++internal class MockPackageWithoutDelayHandler : Package {
++  private val reactActivityLifecycleListener = mockk<ReactActivityLifecycleListener>(relaxed = true)
++  private val reactActivityHandler = mockk<ReactActivityHandler>(relaxed = true)
++
++  init {
++    every { reactActivityHandler.createReactRootViewContainer(any()) } returns null
++    every { reactActivityHandler.onDidCreateReactActivityDelegate(any(), any()) } returns null
++    every { reactActivityHandler.getDelayLoadAppHandler(any(), any()) } returns null
++  }
++
++  override fun createReactActivityLifecycleListeners(activityContext: Context?): List<ReactActivityLifecycleListener> {
++    return listOf(reactActivityLifecycleListener)
++  }
++
++  override fun createReactActivityHandlers(activityContext: Context?): List<ReactActivityHandler> {
++    return listOf(reactActivityHandler)
++  }
++}
++
++internal class MockApplication : Application(), ReactApplication {
++  private var currentActivity: Activity? = null
++
++  override fun onCreate() {
++    super.onCreate()
++    setTheme(androidx.appcompat.R.style.Theme_AppCompat)
++  }
++
++  internal fun bindCurrentActivity(activity: Activity?) {
++    currentActivity = activity
++  }
++
++  override val reactNativeHost: ReactNativeHost = mockk<ReactNativeHost>(relaxed = true)
++
++  override val reactHost: ReactHost by lazy {
++    mockk<ReactHost>(relaxed = true)
++      .also {
++        val mockReactSurface = mockk<ReactSurface>(relaxed = true)
++        every { mockReactSurface.view } returns ReactRootView(currentActivity)
++        every { it.createSurface(any(), any(), any()) } returns mockReactSurface
++      }
++  }
++}
++
++internal class MockActivity : ReactActivity() {
++  override fun getMainComponentName(): String = "main"
++
++  override fun createReactActivityDelegate(): ReactActivityDelegate = spyk(
++    ReactActivityDelegateWrapper(
++      this,
++      BuildConfig.IS_NEW_ARCHITECTURE_ENABLED,
++      spyk(
++        object : DefaultReactActivityDelegate(
++          this,
++          mainComponentName,
++          fabricEnabled
++        ) {}
++      )
++    )
++  )
++}
+diff --git a/node_modules/expo/android/bin/src/test/java/expo/modules/ReactActivityDelegateWrapperTest.kt b/node_modules/expo/android/bin/src/test/java/expo/modules/ReactActivityDelegateWrapperTest.kt
+new file mode 100644
+index 0000000..ba9a317
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/test/java/expo/modules/ReactActivityDelegateWrapperTest.kt
+@@ -0,0 +1,113 @@
++package expo.modules
++
++import android.content.Context
++import android.content.Intent
++import com.facebook.react.ReactActivity
++import com.facebook.react.ReactActivityDelegate
++import com.google.common.truth.Truth.assertThat
++import expo.modules.core.interfaces.Package
++import expo.modules.core.interfaces.ReactActivityHandler
++import expo.modules.core.interfaces.ReactActivityLifecycleListener
++import io.mockk.MockKAnnotations
++import io.mockk.every
++import io.mockk.impl.annotations.RelaxedMockK
++import io.mockk.mockk
++import io.mockk.mockkObject
++import io.mockk.unmockkAll
++import io.mockk.verify
++import org.junit.After
++import org.junit.Before
++import org.junit.Test
++
++internal class ReactActivityDelegateWrapperTest {
++  private lateinit var mockPackage0: MockPackage
++
++  private lateinit var mockPackage1: MockPackage
++
++  @RelaxedMockK
++  lateinit var activity: ReactActivity
++
++  @RelaxedMockK
++  lateinit var delegate: ReactActivityDelegate
++
++  @Before
++  fun setUp() {
++    mockPackage0 = MockPackage()
++    mockPackage1 = MockPackage()
++    MockKAnnotations.init(this)
++    mockkObject(ExpoModulesPackage.Companion)
++    every { ExpoModulesPackage.Companion.packageList } returns listOf(mockPackage0, mockPackage1)
++  }
++
++  @After
++  fun tearDown() {
++    unmockkAll()
++  }
++
++  @Test
++  fun `onBackPressed should call each handler's callback just once`() {
++    val delegateWrapper = ReactActivityDelegateWrapper(activity, delegate)
++    delegateWrapper.setLoadAppReadyForTesting()
++    every { mockPackage0.reactActivityLifecycleListener.onBackPressed() } returns true
++
++    delegateWrapper.onBackPressed()
++
++    verify(exactly = 1) { mockPackage0.reactActivityLifecycleListener.onBackPressed() }
++    verify(exactly = 1) { mockPackage1.reactActivityLifecycleListener.onBackPressed() }
++    verify(exactly = 1) { delegate.onBackPressed() }
++  }
++
++  @Test
++  fun `onBackPressed should return true if someone returns true`() {
++    val delegateWrapper = ReactActivityDelegateWrapper(activity, delegate)
++    delegateWrapper.setLoadAppReadyForTesting()
++    every { mockPackage0.reactActivityLifecycleListener.onBackPressed() } returns false
++    every { mockPackage1.reactActivityLifecycleListener.onBackPressed() } returns true
++    every { delegate.onBackPressed() } returns false
++
++    val result = delegateWrapper.onBackPressed()
++    assertThat(result).isTrue()
++  }
++
++  @Test
++  fun `onNewIntent should call each handler's callback just once`() {
++    val intent = mockk<Intent>()
++    val delegateWrapper = ReactActivityDelegateWrapper(activity, delegate)
++    delegateWrapper.setLoadAppReadyForTesting()
++    every { mockPackage0.reactActivityLifecycleListener.onNewIntent(intent) } returns false
++    every { mockPackage1.reactActivityLifecycleListener.onNewIntent(intent) } returns true
++    every { delegate.onNewIntent(intent) } returns false
++
++    delegateWrapper.onNewIntent(intent)
++
++    verify(exactly = 1) { mockPackage0.reactActivityLifecycleListener.onNewIntent(any()) }
++    verify(exactly = 1) { mockPackage1.reactActivityLifecycleListener.onNewIntent(any()) }
++    verify(exactly = 1) { delegate.onNewIntent(any()) }
++  }
++
++  @Test
++  fun `onNewIntent should return true if someone returns true`() {
++    val intent = mockk<Intent>()
++    val delegateWrapper = ReactActivityDelegateWrapper(activity, delegate)
++    delegateWrapper.setLoadAppReadyForTesting()
++    every { mockPackage0.reactActivityLifecycleListener.onNewIntent(intent) } returns false
++    every { mockPackage1.reactActivityLifecycleListener.onNewIntent(intent) } returns true
++    every { delegate.onNewIntent(intent) } returns false
++
++    val result = delegateWrapper.onNewIntent(intent)
++    assertThat(result).isTrue()
++  }
++}
++
++internal class MockPackage : Package {
++  val reactActivityLifecycleListener = mockk<ReactActivityLifecycleListener>(relaxed = true)
++  private val reactActivityHandler = mockk<ReactActivityHandler>(relaxed = true)
++
++  override fun createReactActivityLifecycleListeners(activityContext: Context?): List<ReactActivityLifecycleListener> {
++    return listOf(reactActivityLifecycleListener)
++  }
++
++  override fun createReactActivityHandlers(activityContext: Context?): List<ReactActivityHandler> {
++    return listOf(reactActivityHandler)
++  }
++}
+diff --git a/node_modules/expo/android/bin/src/test/resources/robolectric.properties b/node_modules/expo/android/bin/src/test/resources/robolectric.properties
+new file mode 100644
+index 0000000..38e89b2
+--- /dev/null
++++ b/node_modules/expo/android/bin/src/test/resources/robolectric.properties
+@@ -0,0 +1 @@
++sdk=35
+\ No newline at end of file
+diff --git a/node_modules/expo/src/async-require/messageSocket.native.ts b/node_modules/expo/src/async-require/messageSocket.native.ts
+index 55b3c43..4aa4e85 100644
+--- a/node_modules/expo/src/async-require/messageSocket.native.ts
++++ b/node_modules/expo/src/async-require/messageSocket.native.ts
+@@ -6,35 +6,41 @@ declare namespace globalThis {
+ }
+ 
+ if (__DEV__) {
+-  const socket: WebSocket = (() => {
+-    const devServer = getDevServer();
+-    if (!devServer.bundleLoadedFromServer) {
+-      throw new Error('Cannot create devtools websocket connections in embedded environments.');
+-    }
++  const socket: WebSocket | null = (() => {
++    try {
++      const devServer = getDevServer();
++      if (!devServer?.bundleLoadedFromServer) {
++        return null;
++      }
+ 
+-    const devServerUrl = new URL(devServer.url);
+-    const serverScheme = devServerUrl.protocol === 'https:' ? 'wss' : 'ws';
+-    return new WebSocket(`${serverScheme}://${devServerUrl.host}/message`);
++      const devServerUrl = new URL(devServer.url);
++      const serverScheme = devServerUrl.protocol === 'https:' ? 'wss' : 'ws';
++      return new WebSocket(`${serverScheme}://${devServerUrl.host}/message`);
++    } catch {
++      return null;
++    }
+   })();
+ 
+-  socket.onmessage = (message: { data: any }) => {
+-    const data = JSON.parse(String(message.data));
+-    switch (data.method) {
+-      case 'sendDevCommand':
+-        switch (data.params.name) {
+-          case 'rsc-reload':
+-            if (data.params.platform && data.params.platform !== process.env.EXPO_OS) {
+-              return;
+-            }
+-            if (!globalThis.__EXPO_RSC_RELOAD_LISTENERS__) {
+-              // server function-only mode
+-            } else {
+-              globalThis.__EXPO_RSC_RELOAD_LISTENERS__?.forEach((l) => l());
+-            }
+-            break;
+-        }
+-        break;
+-      // NOTE: All other cases are handled in the native runtime.
+-    }
+-  };
++  if (socket) {
++    socket.onmessage = (message: { data: any }) => {
++      const data = JSON.parse(String(message.data));
++      switch (data.method) {
++        case 'sendDevCommand':
++          switch (data.params.name) {
++            case 'rsc-reload':
++              if (data.params.platform && data.params.platform !== process.env.EXPO_OS) {
++                return;
++              }
++              if (!globalThis.__EXPO_RSC_RELOAD_LISTENERS__) {
++                // server function-only mode
++              } else {
++                globalThis.__EXPO_RSC_RELOAD_LISTENERS__?.forEach((l) => l());
++              }
++              break;
++          }
++          break;
++        // NOTE: All other cases are handled in the native runtime.
++      }
++    };
++  }
+ }

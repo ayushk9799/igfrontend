@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle } from 'react-native-svg';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { createSafeAudioPlayer } from '../utils/safeAudioPlayer';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { colors } from '../theme';
@@ -178,7 +178,7 @@ const TicTacToeScreen = ({
 
     // Initialize audio player on mount
     useEffect(() => {
-        audioPlayerRef.current = new AudioRecorderPlayer();
+        audioPlayerRef.current = createSafeAudioPlayer();
         return () => {
             if (audioPlayerRef.current) {
                 audioPlayerRef.current.stopPlayer().catch(() => {});

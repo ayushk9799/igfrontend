@@ -272,7 +272,6 @@ const WidgetSetupBottomSheet = ({
     relationshipStartDate,
 }) => {
     const insets = useSafeAreaInsets();
-    const [isMounted, setIsMounted] = useState(visible);
     const [isRemindLoading, setIsRemindLoading] = useState(false);
     const [reminderSentText, setReminderSentText] = useState('');
     const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -336,7 +335,7 @@ const WidgetSetupBottomSheet = ({
     const locationStatusLabel = !hasForegroundLocation
         ? 'Not active'
         : !hasBackgroundLocation
-            ? 'Always access needed'
+            ? (Platform.OS === 'ios' ? 'Always access needed' : 'Background access needed')
         : !hasPartner
             ? 'Partner needed'
         : isCheckingPartner
@@ -360,47 +359,45 @@ const WidgetSetupBottomSheet = ({
             : translateUiTemplate("Your location is ready. We’ll use it to keep the distance between you and {{0}} updated.", [partnerName]);
 
     useEffect(() => {
-        if (visible) {
-            setIsMounted(true);
-            backdropOpacity.setValue(0);
-            sheetTranslateY.setValue(500);
-            requestAnimationFrame(() => {
-                Animated.parallel([
-                    Animated.timing(backdropOpacity, {
-                        toValue: 1,
-                        duration: 180,
-                        useNativeDriver: true,
-                    }),
-                    Animated.spring(sheetTranslateY, {
-                        toValue: 0,
-                        tension: 72,
-                        friction: 12,
-                        useNativeDriver: true,
-                    }),
-                ]).start();
-            });
+        let animation;
+        let animationFrame;
+
+        backdropOpacity.stopAnimation();
+        sheetTranslateY.stopAnimation();
+
+        if (!visible) {
             return undefined;
         }
 
-        Animated.parallel([
-            Animated.timing(backdropOpacity, {
-                toValue: 0,
-                duration: 160,
-                useNativeDriver: true,
-            }),
-            Animated.timing(sheetTranslateY, {
-                toValue: 500,
-                duration: 190,
-                useNativeDriver: true,
-            }),
-        ]).start(({ finished }) => {
-            if (finished) setIsMounted(false);
+        backdropOpacity.setValue(0);
+        sheetTranslateY.setValue(500);
+        animationFrame = requestAnimationFrame(() => {
+            animation = Animated.parallel([
+                Animated.timing(backdropOpacity, {
+                    toValue: 1,
+                    duration: 180,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(sheetTranslateY, {
+                    toValue: 0,
+                    tension: 72,
+                    friction: 12,
+                    useNativeDriver: true,
+                }),
+            ]);
+            animation.start();
         });
-        return undefined;
+
+        return () => {
+            if (animationFrame !== undefined) {
+                cancelAnimationFrame(animationFrame);
+            }
+            animation?.stop();
+        };
     }, [backdropOpacity, sheetTranslateY, visible]);
 
     return (
-        <Modal visible={isMounted} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+        <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
             <GestureHandlerRootView style={styles.modalRoot}>
                 <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]} />
                 <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
@@ -453,11 +450,23 @@ const WidgetSetupBottomSheet = ({
                             {!!reminderSentText && <Text style={styles.successMessage}>{translateUiText(reminderSentText)}</Text>}
 
                             {locationAccessBlocked ? (
-                                <ActionButton onPress={onOpenSettings}>{translateUiText("Open Settings")}</ActionButton>
+                                <ActionButton onPress={onOpenSettings}>
+                                    {translateUiText(
+                                        Platform.OS === 'android' && hasForegroundLocation && !hasBackgroundLocation
+                                            ? 'Open Settings to "Allow all the time"'
+                                            : "Open Settings"
+                                    )}
+                                </ActionButton>
                             ) : !hasCompleteLocationAccess ? (
                                 <ActionButton disabled={isLocationLoading} onPress={onEnableLocation}>
                                     {hasForegroundLocation
-                                        ? translateUiText("Enable Always Access")
+                                        ? translateUiText(
+                                            Platform.OS === 'ios'
+                                                ? "Enable Always Access"
+                                                : Number(Platform.Version) >= 30
+                                                    ? 'Open Settings to "Allow all the time"'
+                                                    : "Allow all the time"
+                                        )
                                         : translateUiText("Enable Location")}
                                 </ActionButton>
                             ) : !hasPartner ? (

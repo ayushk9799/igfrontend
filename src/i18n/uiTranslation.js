@@ -64,10 +64,52 @@ export const getUiLocale = () => UI_LOCALES[getLanguageCode()] ?? UI_LOCALES.en;
 
 export const getContentLanguage = getLanguageCode;
 
-export const formatRelativeTime = (value, unit, options = {}) => (
-    new Intl.RelativeTimeFormat(getUiLocale(), {
+const RELATIVE_TIME_SHORT_UNITS = {
+    second: 'sec',
+    minute: 'min',
+    hour: 'hr',
+    day: 'day',
+    week: 'wk',
+    month: 'mo',
+    quarter: 'qtr',
+    year: 'yr',
+};
+
+const formatRelativeTimeFallback = (value, unit, style) => {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return '';
+    if (numericValue === 0) return 'now';
+
+    const amount = Math.abs(numericValue);
+    const normalizedUnit = String(unit).replace(/s$/, '');
+    const label = style === 'long'
+        ? `${normalizedUnit}${amount === 1 ? '' : 's'}`
+        : (RELATIVE_TIME_SHORT_UNITS[normalizedUnit] || normalizedUnit);
+    const relativeValue = `${amount} ${label}`;
+
+    return numericValue < 0 ? `${relativeValue} ago` : `in ${relativeValue}`;
+};
+
+export const formatRelativeTime = (value, unit, options = {}) => {
+    const formatterOptions = {
         numeric: 'auto',
         style: 'short',
         ...options,
-    }).format(value, unit)
-);
+    };
+    const RelativeTimeFormat = typeof Intl !== 'undefined'
+        ? Intl.RelativeTimeFormat
+        : undefined;
+
+    // Some Hermes release runtimes do not include RelativeTimeFormat. Babel's
+    // transpiled constructor reads `.prototype`, so calling an absent formatter
+    // crashes the entire React Native list row instead of throwing locally.
+    if (typeof RelativeTimeFormat === 'function') {
+        try {
+            return new RelativeTimeFormat(getUiLocale(), formatterOptions).format(value, unit);
+        } catch (error) {
+            console.warn('Intl.RelativeTimeFormat failed; using fallback:', error);
+        }
+    }
+
+    return formatRelativeTimeFallback(value, unit, formatterOptions.style);
+};

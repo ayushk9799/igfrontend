@@ -1,7 +1,7 @@
 // Main Tab Navigator - Home with Bottom Tabs
 // Now uses Redux for global state instead of prop drilling
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, PanResponder, Alert, AppState, Linking } from 'react-native';
+import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, PanResponder, Alert, AppState, Linking, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
@@ -32,7 +32,15 @@ import { getCoupleTodayChallenge } from '../utils/answerApi';
 import { useCall } from '../calling/CallContext';
 import { CALL_STATE } from '../calling/callConstants';
 import { sendCurrentCouplePhoto } from '../api/couplePhotoApi';
-import { disableDistanceLocationSharing, getDistanceLocationPermissionStatus, isLocationSettingsError, refreshDistanceWidgetSnapshot, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
+import {
+    disableDistanceLocationSharing,
+    getDistanceLocationPermissionStatus,
+    isLocationSettingsError,
+    refreshDistanceWidgetSnapshot,
+    requestDistanceBackgroundLocationPermission,
+    requestDistanceForegroundLocation,
+    syncDistanceWidgetLocation,
+} from '../utils/distanceWidgetSync';
 import { reportWidgetIntent, sendPartnerLocationReminder, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import * as ImagePicker from 'expo-image-picker';
 import { storage } from '../utils/authStorage';
@@ -318,18 +326,88 @@ export const MainTabNavigator = ({
     }, [hasPartner, hasPremiumAccess, refreshLocationPermissionStatus, userData]);
 
     const handleEnableDistance = useCallback(async () => {
-        if (!hasPremiumAccess) {
-            setWidgetSheet(null);
-            onPremiumPress?.();
-            return;
-        }
         if (locationSyncing) return;
 
         setLocationSyncing(true);
-        setLocationMessage('');
-        reportWidgetIntent('distance', userData).catch(() => { });
-        syncNativeWidgetStatus(userData).catch(() => { });
+            setLocationMessage('');
         try {
+            if (['ios', 'android'].includes(Platform.OS)) {
+                let permission = await getDistanceLocationPermissionStatus();
+
+                if (permission?.foregroundGranted !== true) {
+                    await requestDistanceForegroundLocation({
+                        onPermissionGranted: () => {
+                            setLocationPermissionStatus({
+                                status: 'whenInUse',
+                                foregroundGranted: true,
+                                backgroundGranted: false,
+                                servicesEnabled: true,
+                            });
+                        },
+                    });
+                    permission = await getDistanceLocationPermissionStatus();
+                    if (permission) {
+                        setLocationPermissionStatus(permission);
+                    }
+                    if (permission?.backgroundGranted !== true) {
+                        setLocationMessage(
+                            Platform.OS === 'ios'
+                                ? 'Location is enabled while using the app. Tap Enable Always Access to continue.'
+                                : Number(Platform.Version) >= 30
+                                    ? 'Location is enabled while using the app. Open Settings and choose Allow all the time.'
+                                    : 'Location is enabled while using the app. Tap Allow all the time to continue.'
+                        );
+                        return;
+                    }
+                }
+
+                if (permission?.backgroundGranted !== true) {
+                    setLocationPermissionStatus(permission);
+                    if (Platform.OS === 'android' && Number(Platform.Version) >= 30) {
+                        setLocationMessage('In Location permissions, choose Allow all the time, then return to Penguin.');
+                        locationSettingsPendingRef.current = true;
+                        await Linking.openSettings();
+                        return;
+                    }
+
+                    try {
+                        await requestDistanceBackgroundLocationPermission();
+                        const upgradedPermission = await getDistanceLocationPermissionStatus();
+                        if (upgradedPermission) {
+                            setLocationPermissionStatus(upgradedPermission);
+                        }
+                        if (upgradedPermission?.backgroundGranted !== true) {
+                            setLocationMessage(
+                                Platform.OS === 'ios'
+                                    ? 'iOS did not grant Always access. Tap Open Settings to enable it manually.'
+                                    : 'Android did not grant background location. Tap Open Settings and choose Allow all the time.'
+                            );
+                            return;
+                        }
+                    } catch (error) {
+                        if (isLocationSettingsError(error)) {
+                            setLocationMessage(
+                                Platform.OS === 'ios'
+                                    ? 'iOS did not show or grant the Always prompt. Tap Open Settings to enable it manually.'
+                                    : 'On Android 11 and newer, choose Allow all the time from Settings.'
+                            );
+                            return;
+                        }
+                        throw error;
+                    }
+                }
+            }
+
+            // Location permission is independent of the subscription. Free
+            // users must be allowed to grant it before the premium gate.
+            if (!hasPremiumAccess) {
+                setWidgetSheet(null);
+                onPremiumPress?.();
+                return;
+            }
+
+            reportWidgetIntent('distance', userData).catch(() => { });
+            syncNativeWidgetStatus(userData).catch(() => { });
             const result = await syncDistanceWidgetLocation({
                 user: userData,
                 enableSharing: true,
@@ -378,7 +456,26 @@ export const MainTabNavigator = ({
                 setTimeout(refreshLocationPermissionStatus, 1000);
                 if (locationSettingsPendingRef.current) {
                     locationSettingsPendingRef.current = false;
-                    setTimeout(handleEnableDistance, 450);
+                    setTimeout(async () => {
+                        try {
+                            const status = await getDistanceLocationPermissionStatus();
+                            if (status) {
+                                setLocationPermissionStatus(status);
+                            }
+                            if (status?.backgroundGranted) {
+                                setLocationMessage('');
+                                handleEnableDistance();
+                            } else {
+                                setLocationMessage(
+                                    Platform.OS === 'android'
+                                        ? 'Background access is still needed. Open Settings and choose Allow all the time.'
+                                        : 'Always access is still needed. Tap Enable Always Access to open Settings.'
+                                );
+                            }
+                        } catch {
+                            setLocationMessage('Could not refresh location access. Please try again.');
+                        }
+                    }, 450);
                 }
             }
         });
@@ -736,6 +833,7 @@ export const MainTabNavigator = ({
                         userData={userData}
                         isPremium={hasPremiumAccess}
                         onNavigateToPremium={onPremiumPress}
+                        onRequestDistanceSetup={() => openWidgetSheet('distance')}
                         onBack={() => {
                             handleBottomTabChange('home');
                             if (shouldReturnToAccountFromTab) {

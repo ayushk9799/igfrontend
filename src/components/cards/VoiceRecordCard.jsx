@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import { createSafeAudioPlayer } from '../../utils/safeAudioPlayer';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -67,12 +67,7 @@ const VoiceRecordCard = React.memo(({
 
     // Initialize the audio recorder player on mount
     useEffect(() => {
-        try {
-            const player = new AudioRecorderPlayer();
-            audioRecorderPlayerRef.current = player;
-        } catch (error) {
-            console.error('🎙️ [VoiceRecordCard] Failed to initialize AudioRecorderPlayer:', error);
-        }
+            audioRecorderPlayerRef.current = createSafeAudioPlayer();
 
         return () => {
             if (audioRecorderPlayerRef.current) {

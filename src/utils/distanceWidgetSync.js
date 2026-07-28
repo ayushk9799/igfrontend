@@ -4,6 +4,8 @@ import { getUser, updateUser as updateStoredUser } from './authStorage';
 import { reportWidgetIntent, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import { translateUiText } from '../i18n/uiTranslation';
 
+const CURRENT_LOCATION_TIMEOUT_MS = 12000;
+
 const getUserId = (user) => user?._id || user?.id || null;
 
 const getInitial = (...values) => {
@@ -168,6 +170,73 @@ const ensureLocationPermission = async () => {
     }
 
     return true;
+};
+
+const requestCurrentLocationWithTimeout = async (bridge) => {
+    let timeoutId;
+    try {
+        return await Promise.race([
+            bridge.requestCurrentLocation(),
+            new Promise((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    reject(createLocationPermissionError(
+                        'LOCATION_TIMEOUT',
+                        'Location request timed out. Please try again.'
+                    ));
+                }, CURRENT_LOCATION_TIMEOUT_MS);
+            }),
+        ]);
+    } finally {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+    }
+};
+
+export const requestDistanceForegroundLocation = async ({
+    onPermissionGranted,
+} = {}) => {
+    if (Platform.OS === 'android') {
+        await ensureAndroidLocationPermission();
+        onPermissionGranted?.();
+        return true;
+    }
+
+    const { ScribbleWidgetBridge } = NativeModules;
+    if (!ScribbleWidgetBridge?.requestCurrentLocation) {
+        throw new Error('Distance widget location bridge is not available. Rebuild the app.');
+    }
+
+    await ensureLocationPermission();
+
+    try {
+        const location = await requestCurrentLocationWithTimeout(ScribbleWidgetBridge);
+        onPermissionGranted?.();
+        return location;
+    } catch (error) {
+        throw normalizeLocationPermissionError(error);
+    }
+};
+
+export const requestDistanceBackgroundLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+        return ensureAndroidBackgroundLocationPermission();
+    }
+
+    if (Platform.OS !== 'ios') {
+        return true;
+    }
+
+    const { ScribbleWidgetBridge } = NativeModules;
+    if (!ScribbleWidgetBridge?.requestAlwaysLocationAuthorization) {
+        throw new Error('Always location permission bridge is not available. Rebuild the app.');
+    }
+
+    try {
+        return await ScribbleWidgetBridge.requestAlwaysLocationAuthorization();
+    } catch (error) {
+        throw normalizeLocationPermissionError(error);
+    }
 };
 
 const readJsonResponse = async (response, fallbackMessage) => {
@@ -347,7 +416,7 @@ export const syncDistanceWidgetLocation = async ({
 
     let location;
     try {
-        location = await ScribbleWidgetBridge.requestCurrentLocation();
+        location = await requestCurrentLocationWithTimeout(ScribbleWidgetBridge);
         onForegroundPermissionGranted?.();
     } catch (error) {
         throw normalizeLocationPermissionError(error);
