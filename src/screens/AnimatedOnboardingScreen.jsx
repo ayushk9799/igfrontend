@@ -3,6 +3,7 @@ import {
     Animated,
     Dimensions,
     Image,
+    Platform,
     StatusBar,
     StyleSheet,
     Text,
@@ -16,6 +17,7 @@ import { fontFamily, fontWeight } from '../constants/fonts';
 
 import * as Haptics from 'expo-haptics';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 const { width, height } = Dimensions.get('window');
 
@@ -23,11 +25,12 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const floatAnim = useRef(new Animated.Value(0)).current;
+    const reducedMotion = useReducedMotion();
 
     useEffect(() => {
         Animated.timing(fadeAnim, {
             toValue: 1,
-            duration: 400,
+            duration: reducedMotion ? 0 : 400,
             useNativeDriver: true,
         }).start();
 
@@ -46,10 +49,10 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
             ])
         );
 
-        floatLoop.start();
+        if (!reducedMotion) floatLoop.start();
 
         return () => floatLoop.stop();
-    }, [fadeAnim, floatAnim]);
+    }, [fadeAnim, floatAnim, reducedMotion]);
 
     const handleNext = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -66,7 +69,16 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                 end={{ x: 0.75, y: 1 }}
                 style={styles.page}
             >
-                <View style={[styles.card, { paddingTop: insets.top + 4, paddingBottom: insets.bottom + 16 }]}>
+                <View
+                    style={[
+                        styles.card,
+                        {
+                            paddingTop: insets.top + 4,
+                            paddingBottom: insets.bottom + 16
+                                + (Platform.OS === 'android' ? 12 : 0),
+                        },
+                    ]}
+                >
                     <View style={styles.header}>
                         <Image
                             source={require('../../assets/images/penguin-text-logo.png')}
@@ -176,10 +188,6 @@ const AnimatedOnboardingScreen = ({ onComplete }) => {
                             </LinearGradient>
                         </TouchableOpacity>
 
-                        <View style={styles.progressRow}>
-                            <View style={[styles.progressSegment, styles.progressSegmentActive]} />
-                            <View style={styles.progressSegment} />
-                        </View>
                     </View>
                 </View>
             </LinearGradient>
@@ -388,7 +396,7 @@ const styles = StyleSheet.create({
         color: '#7B55D9',
     },
     footer: {
-        paddingHorizontal: 38,
+        paddingHorizontal: 26,
         alignItems: 'center',
         paddingTop: 8,
     },
@@ -423,21 +431,6 @@ const styles = StyleSheet.create({
         fontSize: 24,
         lineHeight: 26,
         fontWeight: fontWeight('300'),
-    },
-    progressRow: {
-        marginTop: 24,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 10,
-    },
-    progressSegment: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#E5DDF2',
-    },
-    progressSegmentActive: {
-        backgroundColor: '#F95B72',
     },
 });
 

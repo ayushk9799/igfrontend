@@ -1,12 +1,11 @@
 // Account Screen - User profile and settings
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
     StyleSheet,
     Text,
     View,
     ScrollView,
     TouchableOpacity,
-    ActivityIndicator,
     Image,
     Alert,
     Modal,
@@ -20,7 +19,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { useAvatarUpload } from '../hooks/useAvatarUpload';
 import { requestNotificationPermission, registerFCMToken } from '../utils/pushNotifications';
 import { getApp } from '@react-native-firebase/app';
 import { getMessaging, AuthorizationStatus } from '@react-native-firebase/messaging';
@@ -131,6 +129,13 @@ const PeopleIcon = () => (
 
 const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
     const opacity = useRef(new Animated.Value(0)).current;
+    const animatedStyle = useMemo(() => ({
+        position: 'absolute',
+        left: x,
+        top: y,
+        opacity,
+        zIndex: 1,
+    }), [opacity, x, y]);
     useEffect(() => {
         const animate = Animated.loop(
             Animated.sequence([
@@ -144,7 +149,7 @@ const Sparkle = ({ x, y, size = 8, delay = 0 }) => {
         return () => animate.stop();
     }, [opacity, delay]);
     return (
-        <Animated.View style={{ position: 'absolute', left: x, top: y, opacity, zIndex: 1 }}>
+        <Animated.View style={animatedStyle}>
             <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
                 <Path d="M8 0C8 4.418 4.418 8 0 8C4.418 8 8 11.582 8 16C8 11.582 11.582 8 16 8C11.582 8 8 4.418 8 0Z" fill="#FFB5D0" />
             </Svg>
@@ -188,9 +193,8 @@ export const AccountScreen = ({
     premiumSource = null,
     subscriptionStatus = null,
     onLogout,
-    onAvatarPress,
+    onEditProfile,
     onFindPartner,
-    onDeleteAccount,
     onNavigateToPremium,
     onWidgetsPress,
     onBack,
@@ -198,9 +202,15 @@ export const AccountScreen = ({
 }) => {
     const insets = useSafeAreaInsets();
     const { t, i18n } = useTranslation();
+    const insetStyles = useMemo(() => ({
+        header: { marginTop: insets.top + 10 },
+        scrollContent: {
+            paddingTop: onBack ? 16 : (insets.top + 16),
+            paddingBottom: 0,
+        },
+    }), [insets.top, onBack]);
 
     const [localAvatar, setLocalAvatar] = useState(userData.avatarThumbnail || userData.avatar || null);
-    const { isUploading, uploadProgress, error, uploadAvatar, clearError } = useAvatarUpload();
     const relationshipDuration = formatRelationshipDuration(
         userData.relationshipStartDate || userData.connectionDate,
         t,
@@ -292,37 +302,11 @@ export const AccountScreen = ({
 
 
 
-    // Handle avatar selection via parent navigation
-    const handleAvatarPress = () => {
-        if (onAvatarPress) {
-            onAvatarPress();
-        }
-    };
-
     const handleLogout = () => {
         // Directly logout without confirmation
         if (onLogout) {
             onLogout();
         }
-    };
-
-    const handleDeleteAccount = () => {
-        Alert.alert(
-            t('account.deleteAccount'),
-            t('account.deleteAccountMessage'),
-            [
-                { text: t('common.cancel'), style: 'cancel' },
-                {
-                    text: t('common.delete'),
-                    style: 'destructive',
-                    onPress: () => {
-                        if (onDeleteAccount) {
-                            onDeleteAccount();
-                        }
-                    },
-                },
-            ]
-        );
     };
 
     const handleRateApp = async () => {
@@ -379,7 +363,7 @@ export const AccountScreen = ({
                 <Sparkle x={width * 0.9} y={height * 0.4} size={7} delay={1200} />
 
                 {onBack && (
-                    <View style={[styles.headerBar, { marginTop: insets.top + 10 }]}>
+                    <View style={[styles.headerBar, insetStyles.header]}>
                         <TouchableOpacity
                             style={styles.backButton}
                             onPress={onBack}
@@ -390,7 +374,7 @@ export const AccountScreen = ({
                         <View style={styles.headerTitleWrap}>
                             <Text style={styles.headerTitle}>{t('account.settings')}</Text>
                         </View>
-                        <View style={{ width: 42 }} />
+                        <View style={styles.headerSpacer} />
                     </View>
                 )}
 
@@ -398,18 +382,22 @@ export const AccountScreen = ({
                     style={styles.scrollView}
                     contentContainerStyle={[
                         styles.scrollContent,
-                        { paddingTop: onBack ? 16 : (insets.top + 16), paddingBottom: 0 }
+                        insetStyles.scrollContent,
                     ]}
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Profile identity */}
                     <View style={styles.profileSection}>
-                        <View style={styles.profileIdentityCard}>
-                            <TouchableOpacity
+                        <TouchableOpacity
+                            style={styles.profileIdentityCard}
+                            onPress={onEditProfile}
+                            disabled={!onEditProfile}
+                            activeOpacity={0.76}
+                            accessibilityRole="button"
+                            accessibilityLabel={translateUiText("Edit Account")}
+                        >
+                            <View
                                 style={styles.avatarContainer}
-                                onPress={handleAvatarPress}
-                                disabled={isUploading}
-                                activeOpacity={0.8}
                             >
                                 <View style={styles.avatarRing}>
                                     {localAvatar ? (
@@ -430,21 +418,9 @@ export const AccountScreen = ({
                                 </View>
                                 {/* Camera edit badge */}
                                 <View style={styles.avatarEditBadge}>
-                                    {isUploading ? (
-                                        <ActivityIndicator size="small" color="#FFFFFF" />
-                                    ) : (
-                                        <CameraIcon />
-                                    )}
+                                    <CameraIcon />
                                 </View>
-                                {/* Upload progress overlay */}
-                                {isUploading && (
-                                    <View style={styles.uploadProgressOverlay}>
-                                        <Text style={styles.uploadProgressText}>
-                                            {Math.round(uploadProgress)}%
-                                        </Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
+                            </View>
                             <View style={styles.profileIdentityCopy}>
                                 <Text style={styles.profileName} numberOfLines={2}>
                                     {userData.nickname || userData.name || translateUiText("Penguin Couple")}
@@ -453,7 +429,8 @@ export const AccountScreen = ({
                                     {userData.email || ''}
                                 </Text>
                             </View>
-                        </View>
+                            <ChevronRight color="#CF86A4" />
+                        </TouchableOpacity>
 
                         {hasPartner && (
                             <TouchableOpacity
@@ -547,7 +524,7 @@ export const AccountScreen = ({
                                             {formatPremiumPlan(premiumPlan, t)}
                                         </Text>
                                     </View>
-                                    <View style={{ alignItems: 'flex-end' }}>
+                                    <View style={styles.premiumDetailsRight}>
                                         <Text style={styles.premiumCardLabel}>
                                             {premiumIsCancelled || premiumIsPaused
                                                 ? t('account.accessUntil')
@@ -694,12 +671,6 @@ export const AccountScreen = ({
                         <MenuItem
                             title={t('account.logout')}
                             onPress={handleLogout}
-                            danger
-                        />
-                        <MenuItem
-                            title={t('account.deleteAccount')}
-                            subtitle={t('account.deleteAccountSubtitle')}
-                            onPress={handleDeleteAccount}
                             danger
                         />
                     </View>
@@ -1286,6 +1257,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
     },
+    premiumDetailsRight: {
+        alignItems: 'flex-end',
+    },
     premiumCardLabel: {
         fontSize: 12,
         fontWeight: '600',
@@ -1490,6 +1464,9 @@ const styles = StyleSheet.create({
     headerTitleWrap: {
         flex: 1,
         alignItems: 'center',
+    },
+    headerSpacer: {
+        width: 42,
     },
     headerTitle: {
         fontSize: 20,

@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
+import { apiFetch } from '../utils/apiFetch';
 
 /**
  * Custom hook for puzzle operations
@@ -34,7 +35,7 @@ export const usePuzzle = () => {
             const fileType = imageAsset.mimeType || 'image/jpeg';
 
             // Step 1: Get presigned URL
-            const presignedResponse = await fetch(`${API_BASE}/api/upload/presigned-url`, {
+            const presignedResponse = await apiFetch(`${API_BASE}/api/upload/presigned-url`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

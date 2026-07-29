@@ -38,6 +38,7 @@ class DistanceWidgetSyncWorker(
         )
         val userId = prefs.getString(WidgetStatusReporter.KEY_TRACKING_USER_ID, null) ?: return Result.success()
         val apiBase = prefs.getString(WidgetStatusReporter.KEY_TRACKING_API_BASE, null)?.trimEnd('/') ?: return Result.success()
+        val authToken = prefs.getString(WidgetStatusReporter.KEY_TRACKING_AUTH_TOKEN, null) ?: return Result.success()
 
         if (!hasLocationPermission()) {
             return Result.success()
@@ -46,8 +47,8 @@ class DistanceWidgetSyncWorker(
         val location = getLastKnownLocation() ?: return Result.retry()
 
         return try {
-            putLocation(apiBase, userId, location.latitude, location.longitude)
-            val distancePayload = getDistance(apiBase, userId)
+            putLocation(apiBase, authToken, userId, location.latitude, location.longitude)
+            val distancePayload = getDistance(apiBase, authToken, userId)
             prefs.edit()
                 .putString(RelationshipWidgetRenderer.KEY_DISTANCE_DATA, distancePayload.toString())
                 .apply()
@@ -92,7 +93,7 @@ class DistanceWidgetSyncWorker(
         return location
     }
 
-    private fun putLocation(apiBase: String, userId: String, latitude: Double, longitude: Double) {
+    private fun putLocation(apiBase: String, authToken: String, userId: String, latitude: Double, longitude: Double) {
         val payload = JSONObject().apply {
             put("userId", userId)
             put("latitude", latitude)
@@ -100,7 +101,7 @@ class DistanceWidgetSyncWorker(
             put("sharingEnabled", true)
         }
 
-        val connection = openJsonConnection("$apiBase/api/user/location", "PUT")
+        val connection = openJsonConnection("$apiBase/api/user/location", "PUT", authToken)
         OutputStreamWriter(connection.outputStream).use { writer ->
             writer.write(payload.toString())
         }
@@ -111,8 +112,8 @@ class DistanceWidgetSyncWorker(
         connection.disconnect()
     }
 
-    private fun getDistance(apiBase: String, userId: String): JSONObject {
-        val connection = openJsonConnection("$apiBase/api/user/distance/$userId", "GET")
+    private fun getDistance(apiBase: String, authToken: String, userId: String): JSONObject {
+        val connection = openJsonConnection("$apiBase/api/user/distance/$userId", "GET", authToken)
         val text = connection.inputStream.bufferedReader().use { it.readText() }
         connection.disconnect()
         val response = JSONObject(text)
@@ -131,12 +132,13 @@ class DistanceWidgetSyncWorker(
             timeZone = TimeZone.getTimeZone("UTC")
         }.format(Date())
 
-    private fun openJsonConnection(url: String, method: String): HttpURLConnection =
+    private fun openJsonConnection(url: String, method: String, authToken: String): HttpURLConnection =
         (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 10000
             readTimeout = 10000
             setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Authorization", "Bearer $authToken")
             if (method != "GET") {
                 doOutput = true
             }

@@ -3,6 +3,7 @@ import {
     Animated,
     Dimensions,
     Easing,
+    Platform,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -16,6 +17,7 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { translateUiText } from '../i18n/uiTranslation';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_COMPACT = SCREEN_HEIGHT < 760;
@@ -118,7 +120,6 @@ const LockScreenSurface = ({ children }) => (
         <View style={styles.hillMiddle} />
         <View style={styles.hillFront} />
         <View style={styles.wallpaperShade} />
-        <View pointerEvents="none" style={styles.lockInnerBorder} />
         <View style={styles.lockStatusRow}>
             <Text style={styles.lockStatusTime}>9:41</Text>
             <LockStatusIcons />
@@ -129,11 +130,16 @@ const LockScreenSurface = ({ children }) => (
     </LinearGradient>
 );
 
-const DistanceWidget = () => {
+const DistanceWidget = ({ reducedMotion }) => {
     const progress = useMemo(() => new Animated.Value(0), []);
     const [status, setStatus] = useState('1,240 km apart');
 
     useEffect(() => {
+        if (reducedMotion) {
+            progress.setValue(0);
+            setStatus('1,240 km apart');
+            return undefined;
+        }
         const listener = progress.addListener(({ value }) => {
             if (value > 0.92) setStatus("We're together!");
             else if (value > 0.72) setStatus('42 km apart');
@@ -153,7 +159,7 @@ const DistanceWidget = () => {
             animation.stop();
             progress.removeListener(listener);
         };
-    }, [progress]);
+    }, [progress, reducedMotion]);
 
     const leftMove = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 7] });
     const rightMove = progress.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
@@ -221,7 +227,7 @@ const TogetherWidget = ({ relationshipStartDate }) => {
     );
 };
 
-const CanvasWidget = ({ isActive }) => {
+const CanvasWidget = ({ isActive, reducedMotion }) => {
     const animationRef = useRef(null);
     const placement = useRef(new Animated.Value(0)).current;
     const phoneOpacity = useRef(new Animated.Value(0)).current;
@@ -232,10 +238,15 @@ const CanvasWidget = ({ isActive }) => {
             phoneOpacity.stopAnimation();
             placement.setValue(0);
             phoneOpacity.setValue(0);
-            animationRef.current?.reset();
-            animationRef.current?.play();
+            if (reducedMotion) {
+                placement.setValue(1);
+                phoneOpacity.setValue(1);
+            } else {
+                animationRef.current?.reset();
+                animationRef.current?.play();
+            }
         }
-    }, [isActive, phoneOpacity, placement]);
+    }, [isActive, phoneOpacity, placement, reducedMotion]);
 
     const placeWidgetOnPhone = () => {
         if (!isActive) return;
@@ -243,13 +254,13 @@ const CanvasWidget = ({ isActive }) => {
         Animated.parallel([
             Animated.timing(phoneOpacity, {
                 toValue: 1,
-                duration: 1350,
+                duration: reducedMotion ? 0 : 1350,
                 easing: Easing.out(Easing.cubic),
                 useNativeDriver: true,
             }),
             Animated.timing(placement, {
                 toValue: 1,
-                duration: 1350,
+                duration: reducedMotion ? 0 : 1350,
                 easing: Easing.inOut(Easing.cubic),
                 useNativeDriver: true,
             }),
@@ -293,14 +304,14 @@ const CanvasWidget = ({ isActive }) => {
     );
 };
 
-const PartnerPhotoPreview = ({ isActive }) => {
+const PartnerPhotoPreview = ({ isActive, reducedMotion }) => {
     const photoIndexRef = useRef(0);
     const photoOpacities = useRef(
         partnerPhotoPreviews.map((_, index) => new Animated.Value(index === 0 ? 1 : 0))
     ).current;
 
     useEffect(() => {
-        if (!isActive) return undefined;
+        if (!isActive || reducedMotion) return undefined;
 
         photoIndexRef.current = 0;
         photoOpacities.forEach((opacity, index) => {
@@ -336,7 +347,7 @@ const PartnerPhotoPreview = ({ isActive }) => {
             clearInterval(interval);
             photoOpacities.forEach(opacity => opacity.stopAnimation());
         };
-    }, [isActive, photoOpacities]);
+    }, [isActive, photoOpacities, reducedMotion]);
 
     return (
         <View style={styles.partnerPhotoPreview}>
@@ -361,9 +372,10 @@ const RealWidget = ({
     type,
     relationshipStartDate,
     isActive,
+    reducedMotion,
 }) => {
     if (type === 'distance') {
-        return <DistanceWidget />;
+        return <DistanceWidget reducedMotion={reducedMotion} />;
     }
 
     if (type === 'together') {
@@ -371,10 +383,10 @@ const RealWidget = ({
     }
 
     if (type === 'canvas') {
-        return <CanvasWidget isActive={isActive} />;
+        return <CanvasWidget isActive={isActive} reducedMotion={reducedMotion} />;
     }
 
-    return <PartnerPhotoPreview isActive={isActive} />;
+    return <PartnerPhotoPreview isActive={isActive} reducedMotion={reducedMotion} />;
 };
 
 const WidgetOnboardingScreen = ({
@@ -388,8 +400,39 @@ const WidgetOnboardingScreen = ({
 }) => {
     const insets = useSafeAreaInsets();
     const pagerRef = useRef(null);
+    const titleEntrance = useRef(new Animated.Value(0)).current;
+    const showcaseEntrance = useRef(new Animated.Value(0)).current;
+    const buttonEntrance = useRef(new Animated.Value(0)).current;
     const [activeIndex, setActiveIndex] = useState(0);
+    const reducedMotion = useReducedMotion();
     const activeSlide = slides[activeIndex];
+
+    useEffect(() => {
+        if (reducedMotion) {
+            titleEntrance.setValue(1);
+            showcaseEntrance.setValue(1);
+            buttonEntrance.setValue(1);
+            return;
+        }
+
+        Animated.stagger(110, [
+            Animated.timing(titleEntrance, {
+                toValue: 1,
+                duration: 380,
+                useNativeDriver: true,
+            }),
+            Animated.timing(showcaseEntrance, {
+                toValue: 1,
+                duration: 380,
+                useNativeDriver: true,
+            }),
+            Animated.timing(buttonEntrance, {
+                toValue: 1,
+                duration: 380,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [buttonEntrance, reducedMotion, showcaseEntrance, titleEntrance]);
 
     const selectSlide = index => {
         setActiveIndex(index);
@@ -422,13 +465,39 @@ const WidgetOnboardingScreen = ({
             style={styles.container}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <View style={[styles.page, { paddingTop: insets.top + 8 }]}> 
-                <View style={styles.intro}>
+            <View style={[styles.page, { paddingTop: insets.top + 52 }]}>
+                <Animated.View
+                    style={[
+                        styles.intro,
+                        {
+                            opacity: titleEntrance,
+                            transform: [{
+                                translateY: titleEntrance.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [18, 0],
+                                }),
+                            }],
+                        },
+                    ]}
+                >
                     <Text style={styles.headlineMuted}>{translateUiText("Stay Updated,")}</Text>
                     <Text style={styles.headline}>{translateUiText("With Widgets")}</Text>
-                </View>
+                </Animated.View>
 
-                <View style={styles.middleContent}>
+                <Animated.View
+                    style={[
+                        styles.middleContent,
+                        {
+                            opacity: showcaseEntrance,
+                            transform: [{
+                                translateY: showcaseEntrance.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [18, 0],
+                                }),
+                            }],
+                        },
+                    ]}
+                >
                     <View style={styles.showcaseArea}>
                         <ScrollView
                             ref={pagerRef}
@@ -443,10 +512,27 @@ const WidgetOnboardingScreen = ({
                         >
                             {slides.map(slide => (
                                 <View key={slide.key} style={styles.slide}>
-                                    <RealWidget type={slide.key} isActive={slide.key === activeSlide.key} {...widgetProps} />
+                                    <RealWidget
+                                        type={slide.key}
+                                        isActive={slide.key === activeSlide.key}
+                                        reducedMotion={reducedMotion}
+                                        {...widgetProps}
+                                    />
                                 </View>
                             ))}
                         </ScrollView>
+                    </View>
+
+                    <View style={styles.widgetPagination} pointerEvents="none">
+                        {slides.map((slide, index) => (
+                            <View
+                                key={slide.key}
+                                style={[
+                                    styles.widgetPaginationDot,
+                                    index === activeIndex && styles.widgetPaginationDotActive,
+                                ]}
+                            />
+                        ))}
                     </View>
 
                     <View style={styles.showcaseCopy}>
@@ -455,19 +541,36 @@ const WidgetOnboardingScreen = ({
                             <Text style={styles.showcaseCaptionStrong}>{translateUiText(activeSlide.captionStrong)}</Text>
                         </Text>
                     </View>
-                </View>
+                </Animated.View>
 
-                <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}> 
-                    <View style={styles.pagination}>
-                        {slides.map((slide, index) => <View key={slide.key} style={[styles.dot, index === activeIndex && styles.dotActive]} />)}
-                    </View>
+                <Animated.View
+                    style={[
+                        styles.footer,
+                        {
+                            paddingBottom: insets.bottom + 12
+                                + (Platform.OS === 'android' ? 12 : 0),
+                            opacity: buttonEntrance,
+                            transform: [{
+                                translateY: buttonEntrance.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [18, 0],
+                                }),
+                            }],
+                        },
+                    ]}
+                >
                     <TouchableOpacity onPress={continueFlow} activeOpacity={0.86} style={styles.buttonShadow}>
-                        <View style={styles.continueButton}>
+                        <LinearGradient
+                            colors={['#FF6B82', '#F45170']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.continueButton}
+                        >
                             <Text style={styles.continueText}>{activeIndex === slides.length - 1 ? translateUiText("Get started") : translateUiText("Continue")}</Text>
-                            <Text style={styles.continueArrow}>→</Text>
-                        </View>
+                        </LinearGradient>
                     </TouchableOpacity>
-                </View>
+
+                </Animated.View>
             </View>
         </LinearGradient>
     );
@@ -491,8 +594,7 @@ const styles = StyleSheet.create({
     partnerPhotoImage: { width: '100%', height: '100%' },
     partnerPhotoCaption: { position: 'absolute', left: 12, bottom: 12, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.48)' },
     partnerPhotoCaptionText: { color: '#FFFFFF', fontFamily: fontFamily.medium, fontWeight: fontWeight('500'), fontSize: 12, lineHeight: 15 },
-    distanceWidget: { width: DISTANCE_WIDGET_WIDTH, height: DISTANCE_WIDGET_HEIGHT, borderRadius: 31, overflow: 'hidden', borderWidth: 4, borderColor: '#7169E8', shadowColor: '#6759D6', shadowOpacity: 0.34, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
-    lockInnerBorder: { position: 'absolute', left: 3, right: 3, top: 3, bottom: 3, borderRadius: 26, borderWidth: 1, borderColor: 'rgba(205,199,255,0.72)' },
+    distanceWidget: { width: DISTANCE_WIDGET_WIDTH, height: DISTANCE_WIDGET_HEIGHT, borderRadius: 31, overflow: 'hidden', shadowColor: '#6759D6', shadowOpacity: 0.34, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
     nightGlow: { position: 'absolute', width: 220, height: 180, borderRadius: 110, right: -36, top: 5, backgroundColor: 'rgba(132,119,246,0.22)' },
     nightStar: { position: 'absolute', width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF', shadowColor: '#FFFFFF', shadowOpacity: 0.9, shadowRadius: 3 },
     nightStarOne: { left: 42, top: 59 },
@@ -513,7 +615,7 @@ const styles = StyleSheet.create({
     distanceAccessory: { position: 'absolute', left: 34, right: 34, bottom: 22, alignItems: 'center' },
     distanceTitle: { width: '100%', color: '#FFFFFF', fontFamily: fontFamily.bold, fontWeight: fontWeight('700'), fontSize: 13, lineHeight: 16, marginBottom: 6, textAlign: 'center' },
     distanceTrack: { height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    distanceInitial: { width: 31, height: 31, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1.2, borderColor: 'rgba(255,255,255,0.42)', alignItems: 'center', justifyContent: 'center' },
+    distanceInitial: { width: 31, height: 31, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
     distanceInitialText: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 16 },
     distanceDots: { height: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' },
     distanceDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF' },
@@ -527,17 +629,16 @@ const styles = StyleSheet.create({
     togetherColumn: { flex: 1, minWidth: 0, alignItems: 'center' },
     togetherValue: { width: '100%', color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontWeight: fontWeight('900'), fontSize: 20, lineHeight: 24, textAlign: 'center' },
     togetherLabel: { marginTop: 1, color: 'rgba(255,255,255,0.9)', fontFamily: fontFamily.bold, fontSize: 10, lineHeight: 12 },
+    widgetPagination: { height: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    widgetPaginationDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#D8CAD4' },
+    widgetPaginationDotActive: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#F95B72' },
     showcaseCopy: { alignItems: 'center', paddingHorizontal: 34, paddingTop: 9 },
     showcaseCaption: { color: '#8A7185', fontFamily: fontFamily.medium, fontSize: 13, lineHeight: 17, textAlign: 'center' },
     showcaseCaptionStrong: { color: '#4A3047', fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },
-    footer: { minHeight: 92, paddingHorizontal: 24, paddingTop: 10, justifyContent: 'flex-end', alignItems: 'center' },
-    pagination: { flexDirection: 'row', gap: 7, marginBottom: 12 },
-    dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#E4C9D9' },
-    dotActive: { width: 22, backgroundColor: '#FF5D91' },
-    buttonShadow: { width: '100%', shadowColor: '#E83C78', shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
-    continueButton: { height: 52, borderRadius: 18, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF4F87' },
-    continueText: { color: '#FFFFFF', fontFamily: fontFamily.bold, fontSize: 17 },
-    continueArrow: { position: 'absolute', right: 22, color: '#FFFFFF', fontSize: 23 },
+    footer: { minHeight: 92, paddingHorizontal: 26, paddingTop: 10, justifyContent: 'flex-end', alignItems: 'center' },
+    buttonShadow: { width: '100%', borderRadius: 24, shadowColor: '#F45170', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+    continueButton: { height: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    continueText: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, fontWeight: fontWeight('800') },
 });
 
 export default WidgetOnboardingScreen;

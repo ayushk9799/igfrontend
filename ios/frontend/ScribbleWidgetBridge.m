@@ -66,6 +66,7 @@ RCT_EXTERN_METHOD(isWidgetAvailable:(RCTPromiseResolveBlock)resolve
 
 RCT_EXTERN_METHOD(setWidgetTrackingContext:(NSString *)userId
                   apiBase:(NSString *)apiBase
+                  authToken:(NSString *)authToken
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 

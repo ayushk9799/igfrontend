@@ -37,8 +37,27 @@ const VoiceBubble = ({ audioUri, isSent = false }) => {
     const waveformOpacity = useSharedValue(0.4);
     const progressAnim = useSharedValue(0);
 
-    // Individual bar animations for playing state
-    const barAnimations = Array.from({ length: 16 }, () => useSharedValue(1));
+    // Hooks must be invoked deterministically; keep the stable collection in a ref.
+    const bar0 = useSharedValue(1);
+    const bar1 = useSharedValue(1);
+    const bar2 = useSharedValue(1);
+    const bar3 = useSharedValue(1);
+    const bar4 = useSharedValue(1);
+    const bar5 = useSharedValue(1);
+    const bar6 = useSharedValue(1);
+    const bar7 = useSharedValue(1);
+    const bar8 = useSharedValue(1);
+    const bar9 = useSharedValue(1);
+    const bar10 = useSharedValue(1);
+    const bar11 = useSharedValue(1);
+    const bar12 = useSharedValue(1);
+    const bar13 = useSharedValue(1);
+    const bar14 = useSharedValue(1);
+    const bar15 = useSharedValue(1);
+    const barAnimations = useRef([
+        bar0, bar1, bar2, bar3, bar4, bar5, bar6, bar7,
+        bar8, bar9, bar10, bar11, bar12, bar13, bar14, bar15,
+    ]).current;
 
     // Initialize audio player
     useEffect(() => {
@@ -59,7 +78,7 @@ const VoiceBubble = ({ audioUri, isSent = false }) => {
             // Cancel all animations
             barAnimations.forEach(anim => cancelAnimation(anim));
         };
-    }, []);
+    }, [barAnimations]);
 
     // Stop playback when audioUri changes
     useEffect(() => {
@@ -71,16 +90,17 @@ const VoiceBubble = ({ audioUri, isSent = false }) => {
             setProgress(0);
             progressAnim.value = 0;
         }
-    }, [audioUri]);
+    }, [audioUri, progressAnim]);
 
     // Animate waveform bars when playing
     useEffect(() => {
+        const timers = [];
         if (isPlaying) {
             waveformOpacity.value = withTiming(1, { duration: 200 });
             // Animate each bar with different timing for organic feel
             barAnimations.forEach((anim, index) => {
                 const delay = index * 30;
-                setTimeout(() => {
+                const timer = setTimeout(() => {
                     anim.value = withRepeat(
                         withSequence(
                             withTiming(1.3, { duration: 200 + Math.random() * 100 }),
@@ -91,6 +111,7 @@ const VoiceBubble = ({ audioUri, isSent = false }) => {
                         true
                     );
                 }, delay);
+                timers.push(timer);
             });
         } else {
             waveformOpacity.value = withTiming(0.5, { duration: 300 });
@@ -99,7 +120,8 @@ const VoiceBubble = ({ audioUri, isSent = false }) => {
                 anim.value = withSpring(1, { damping: 15 });
             });
         }
-    }, [isPlaying]);
+        return () => timers.forEach(clearTimeout);
+    }, [barAnimations, isPlaying, waveformOpacity]);
 
     const formatTime = useCallback((ms) => {
         if (!ms || isNaN(ms)) return '0:00';

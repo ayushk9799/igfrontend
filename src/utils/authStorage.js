@@ -8,6 +8,7 @@ export const storage = new MMKV();
 const KEYS = {
     USER: 'auth_user',
     IS_AUTHENTICATED: 'auth_is_authenticated',
+    AUTH_TOKEN: 'auth_session_token',
     IS_ONBOARDED: 'auth_is_onboarded',
     HAS_SEEN_ONBOARDING: 'has_seen_onboarding', // First-launch intro screens
     HAS_SEEN_ONBOARDING_PREMIUM: 'has_seen_onboarding_premium',
@@ -58,6 +59,16 @@ export const saveUser = (user) => {
         storage.set(KEYS.IS_AUTHENTICATED, true);
     } catch (error) {
         console.error('Error saving user to storage:', error);
+    }
+};
+
+export const getAuthToken = () => storage.getString(KEYS.AUTH_TOKEN) || null;
+
+export const setAuthToken = (token) => {
+    if (token) {
+        storage.set(KEYS.AUTH_TOKEN, token);
+    } else {
+        storage.delete(KEYS.AUTH_TOKEN);
     }
 };
 
@@ -123,6 +134,7 @@ export const clearAuth = () => {
         clearLiveChatActive();
         storage.delete(KEYS.USER);
         storage.delete(KEYS.IS_AUTHENTICATED);
+        storage.delete(KEYS.AUTH_TOKEN);
         storage.delete(KEYS.IS_ONBOARDED);
     } catch (error) {
         console.error('Error clearing auth:', error);
@@ -199,6 +211,8 @@ export default {
     clearLiveChatActive,
     shouldResumeLiveChat,
     saveUser,
+    getAuthToken,
+    setAuthToken,
     isAuthenticated,
     isOnboarded,
     setOnboarded,

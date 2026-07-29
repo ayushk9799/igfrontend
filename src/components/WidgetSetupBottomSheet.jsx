@@ -1,17 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    BottomSheetBackdrop,
+    BottomSheetModal,
+    BottomSheetView,
+} from '@gorhom/bottom-sheet';
+import {
     ActivityIndicator,
     Animated,
-    Modal,
+    BackHandler,
     Platform,
     StyleSheet,
     Text,
     TouchableOpacity,
-    useWindowDimensions,
     View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
@@ -273,14 +276,11 @@ const WidgetSetupBottomSheet = ({
     relationshipStartDate,
 }) => {
     const insets = useSafeAreaInsets();
-    const { height: screenHeight } = useWindowDimensions();
-    const offscreenDistance = Math.max(screenHeight, 500);
-    const [isMounted, setIsMounted] = useState(visible);
+    const bottomSheetRef = useRef(null);
+    const hasPresentedRef = useRef(false);
     const [displayKind, setDisplayKind] = useState(kind);
     const [isRemindLoading, setIsRemindLoading] = useState(false);
     const [reminderSentText, setReminderSentText] = useState('');
-    const backdropOpacity = useRef(new Animated.Value(0)).current;
-    const sheetTranslateY = useRef(new Animated.Value(500)).current;
     const onCloseRef = useRef(onClose);
     const visibleRef = useRef(visible);
     visibleRef.current = visible;
@@ -296,7 +296,9 @@ const WidgetSetupBottomSheet = ({
     }, [kind, visible]);
 
     const requestClose = useCallback(() => {
-        onCloseRef.current?.();
+        if (hasPresentedRef.current) {
+            bottomSheetRef.current?.dismiss();
+        }
     }, []);
 
     const handleRemindPress = useCallback(async () => {
@@ -312,29 +314,6 @@ const WidgetSetupBottomSheet = ({
             setIsRemindLoading(false);
         }
     }, [isRemindLoading, onRemindPartner, partnerName]);
-
-    const handleSheetGesture = ({ nativeEvent }) => {
-        sheetTranslateY.setValue(Math.max(0, nativeEvent.translationY));
-    };
-
-    const handleSheetGestureState = ({ nativeEvent }) => {
-        if (nativeEvent.state === State.BEGAN) {
-            sheetTranslateY.stopAnimation();
-            return;
-        }
-        if (![State.END, State.CANCELLED, State.FAILED].includes(nativeEvent.state)) return;
-
-        if (nativeEvent.translationY > 100 || nativeEvent.velocityY > 850) {
-            requestClose();
-            return;
-        }
-        Animated.spring(sheetTranslateY, {
-            toValue: 0,
-            tension: 75,
-            friction: 11,
-            useNativeDriver: true,
-        }).start();
-    };
 
     const locationServicesEnabled = locationPermissionStatus?.servicesEnabled !== false;
     const hasForegroundLocation = locationServicesEnabled && locationPermissionStatus?.foregroundGranted === true;
@@ -376,86 +355,60 @@ const WidgetSetupBottomSheet = ({
             : translateUiTemplate("Your location is ready. We’ll use it to keep the distance between you and {{0}} updated.", [partnerName]);
 
     useEffect(() => {
-        let animation;
-        let animationFrame;
-        let closeFallback;
-
-        backdropOpacity.stopAnimation();
-        sheetTranslateY.stopAnimation();
-
         if (visible) {
-            backdropOpacity.setValue(0);
-            sheetTranslateY.setValue(offscreenDistance);
-            setIsMounted(true);
-            animationFrame = requestAnimationFrame(() => {
-                animation = Animated.parallel([
-                    Animated.timing(backdropOpacity, {
-                        toValue: 1,
-                        duration: 180,
-                        useNativeDriver: true,
-                    }),
-                    Animated.spring(sheetTranslateY, {
-                        toValue: 0,
-                        tension: 72,
-                        friction: 12,
-                        useNativeDriver: true,
-                    }),
-                ]);
-                animation.start();
+            const animationFrame = requestAnimationFrame(() => {
+                hasPresentedRef.current = true;
+                bottomSheetRef.current?.present();
             });
-        } else {
-            animation = Animated.parallel([
-                Animated.timing(backdropOpacity, {
-                    toValue: 0,
-                    duration: 160,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(sheetTranslateY, {
-                    toValue: offscreenDistance,
-                    duration: 220,
-                    useNativeDriver: true,
-                }),
-            ]);
-            const finishClose = () => {
-                if (!visibleRef.current) {
-                    setIsMounted(false);
-                }
-            };
-            animation.start(finishClose);
-            closeFallback = setTimeout(finishClose, 320);
+            return () => cancelAnimationFrame(animationFrame);
         }
 
-        return () => {
-            if (animationFrame !== undefined) {
-                cancelAnimationFrame(animationFrame);
-            }
-            if (closeFallback !== undefined) {
-                clearTimeout(closeFallback);
-            }
-            animation?.stop();
-        };
-    }, [backdropOpacity, offscreenDistance, sheetTranslateY, visible]);
+        if (hasPresentedRef.current) {
+            requestClose();
+        }
+        return undefined;
+    }, [requestClose, visible]);
+
+    useEffect(() => {
+        if (!visible) return undefined;
+
+        const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+            requestClose();
+            return true;
+        });
+        return () => subscription.remove();
+    }, [requestClose, visible]);
+
+    const renderBackdrop = useCallback(backdropProps => (
+        <BottomSheetBackdrop
+            {...backdropProps}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+            opacity={0.48}
+            pressBehavior="close"
+        />
+    ), []);
 
     return (
-        <Modal visible={isMounted} transparent animationType="none" statusBarTranslucent onRequestClose={requestClose}>
-            <GestureHandlerRootView style={styles.modalRoot}>
-                <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]} />
-                <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={requestClose} />
-                <PanGestureHandler
-                    activeOffsetY={8}
-                    failOffsetX={[-28, 28]}
-                    onGestureEvent={handleSheetGesture}
-                    onHandlerStateChange={handleSheetGestureState}
-                >
-                    <Animated.View
-                        style={[
-                            styles.sheet,
-                            {
-                                paddingBottom: Math.max(insets.bottom, 16) + 10,
-                                transform: [{ translateY: sheetTranslateY }],
-                            },
-                        ]}
-                    >
+        <BottomSheetModal
+            ref={bottomSheetRef}
+            enableDynamicSizing
+            enablePanDownToClose
+            backdropComponent={renderBackdrop}
+            backgroundStyle={styles.sheetBackground}
+            handleComponent={null}
+            onDismiss={() => {
+                hasPresentedRef.current = false;
+                if (visible) onCloseRef.current?.();
+            }}
+        >
+            <BottomSheetView
+                style={[
+                    styles.sheet,
+                    { paddingBottom: Math.max(insets.bottom, 16) + 10 },
+                ]}
+                accessibilityViewIsModal
+            >
                     <View style={styles.handle} />
                     {displayKind === 'distance' && (
                         <>
@@ -570,17 +523,14 @@ const WidgetSetupBottomSheet = ({
                             onClose={requestClose}
                         />
                     )}
-                    </Animated.View>
-                </PanGestureHandler>
-            </GestureHandlerRootView>
-        </Modal>
+            </BottomSheetView>
+        </BottomSheetModal>
     );
 };
 
 const styles = StyleSheet.create({
-    modalRoot: { flex: 1, justifyContent: 'flex-end' },
-    backdrop: { backgroundColor: 'rgba(35,20,40,0.48)' },
-    sheet: { backgroundColor: '#FFFCFE', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 20, paddingTop: 10 },
+    sheetBackground: { backgroundColor: '#FFFCFE', borderTopLeftRadius: 32, borderTopRightRadius: 32 },
+    sheet: { paddingHorizontal: 20, paddingTop: 10 },
     handle: { width: 42, height: 5, borderRadius: 3, backgroundColor: '#D7D0D8', alignSelf: 'center', marginBottom: 20 },
     locationPreview: { height: 124, borderRadius: 24, backgroundColor: '#FFF7FB', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingBottom: 24, overflow: 'hidden' },
     initialBubble: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 3 },

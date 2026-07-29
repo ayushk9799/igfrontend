@@ -100,12 +100,6 @@ export default function TopicQuestionsSummaryScreen({
     const setColors = getFormatColors(format);
     const emoji = getSetEmoji(format, selectedSet?.title);
 
-    useEffect(() => {
-        if (!hasPartner && onLinkPartner) {
-            onLinkPartner();
-        }
-    }, [hasPartner, onLinkPartner]);
-
     const fetchReport = useCallback(async () => {
         if (!hasPartner) return;
         setLoading(true);

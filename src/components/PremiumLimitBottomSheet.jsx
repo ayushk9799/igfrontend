@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Animated,
-    Modal,
-    Pressable,
+    BottomSheetBackdrop,
+    BottomSheetModal,
+    BottomSheetView,
+} from '@gorhom/bottom-sheet';
+import {
+    BackHandler,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -58,129 +61,122 @@ const PremiumLimitBottomSheet = ({
     onUpgrade,
 }) => {
     const insets = useSafeAreaInsets();
-    const [mounted, setMounted] = useState(visible);
+    const bottomSheetRef = useRef(null);
+    const hasPresentedRef = useRef(false);
     const [displayFeature, setDisplayFeature] = useState(feature);
-    const backdropOpacity = useRef(new Animated.Value(0)).current;
-    const translateY = useRef(new Animated.Value(420)).current;
     const content = FEATURE_CONTENT[displayFeature] || FEATURE_CONTENT.liveChat;
+
+    const dismissSheet = () => {
+        if (hasPresentedRef.current) {
+            bottomSheetRef.current?.dismiss();
+        }
+    };
+
     const handleUpgrade = () => {
-        setMounted(false);
+        dismissSheet();
         onUpgrade?.();
     };
 
     useEffect(() => {
         if (visible) {
             setDisplayFeature(feature);
-            setMounted(true);
-            backdropOpacity.setValue(0);
-            translateY.setValue(420);
-            requestAnimationFrame(() => {
-                Animated.parallel([
-                    Animated.timing(backdropOpacity, {
-                        toValue: 1,
-                        duration: 180,
-                        useNativeDriver: true,
-                    }),
-                    Animated.spring(translateY, {
-                        toValue: 0,
-                        tension: 72,
-                        friction: 12,
-                        useNativeDriver: true,
-                    }),
-                ]).start();
+            const animationFrame = requestAnimationFrame(() => {
+                hasPresentedRef.current = true;
+                bottomSheetRef.current?.present();
             });
-            return undefined;
+            return () => cancelAnimationFrame(animationFrame);
         }
 
-        Animated.parallel([
-            Animated.timing(backdropOpacity, {
-                toValue: 0,
-                duration: 150,
-                useNativeDriver: true,
-            }),
-            Animated.timing(translateY, {
-                toValue: 420,
-                duration: 190,
-                useNativeDriver: true,
-            }),
-        ]).start(({ finished }) => {
-            if (finished) setMounted(false);
-        });
+        if (hasPresentedRef.current) {
+            dismissSheet();
+        }
         return undefined;
-    }, [backdropOpacity, feature, translateY, visible]);
+    }, [feature, visible]);
+
+    useEffect(() => {
+        if (!visible) return undefined;
+
+        const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+            dismissSheet();
+            return true;
+        });
+        return () => subscription.remove();
+    }, [visible]);
+
+    const renderBackdrop = backdropProps => (
+        <BottomSheetBackdrop
+            {...backdropProps}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+            opacity={0.48}
+            pressBehavior="close"
+            accessibilityLabel={translateUiText("Close premium limit message")}
+        />
+    );
 
     return (
-        <Modal
-            visible={mounted}
-            transparent
-            animationType="none"
-            statusBarTranslucent
-            onRequestClose={onClose}
+        <BottomSheetModal
+            ref={bottomSheetRef}
+            enableDynamicSizing
+            enablePanDownToClose
+            backdropComponent={renderBackdrop}
+            backgroundStyle={styles.sheetBackground}
+            handleComponent={null}
+            onDismiss={() => {
+                hasPresentedRef.current = false;
+                if (visible) onClose?.();
+            }}
         >
-            <View style={styles.modalRoot}>
-                <Animated.View
-                    pointerEvents="none"
-                    style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]}
-                />
-                <Pressable
-                    style={StyleSheet.absoluteFill}
-                    onPress={onClose}
+            <BottomSheetView
+                style={[
+                    styles.sheet,
+                    { paddingBottom: Math.max(insets.bottom, 16) + 14 },
+                ]}
+                accessibilityViewIsModal
+            >
+                <View style={styles.handle} />
+                <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={dismissSheet}
+                    activeOpacity={0.75}
+                    accessibilityRole="button"
                     accessibilityLabel={translateUiText("Close premium limit message")}
-                />
-                <Animated.View
-                    style={[
-                        styles.sheet,
-                        {
-                            paddingBottom: Math.max(insets.bottom, 16) + 14,
-                            transform: [{ translateY }],
-                        },
-                    ]}
-                    accessibilityViewIsModal
                 >
-                    <View style={styles.handle} />
-                    <TouchableOpacity
-                        style={styles.closeButton}
-                        onPress={onClose}
-                        activeOpacity={0.75}
-                        accessibilityRole="button"
-                        accessibilityLabel={translateUiText("Close premium limit message")}
-                    >
-                        <CloseIcon />
-                    </TouchableOpacity>
+                    <CloseIcon />
+                </TouchableOpacity>
 
-                    <View style={styles.iconCircle}>
-                        <Text style={styles.iconText}>{content.icon}</Text>
-                    </View>
-                    <Text style={styles.eyebrow}>{translateUiText(content.eyebrow)}</Text>
-                    <Text style={styles.title}>{translateUiText(content.title)}</Text>
-                    <Text style={styles.message}>{translateUiText(content.message)}</Text>
+                <View style={styles.iconCircle}>
+                    <Text style={styles.iconText}>{content.icon}</Text>
+                </View>
+                <Text style={styles.eyebrow}>{translateUiText(content.eyebrow)}</Text>
+                <Text style={styles.title}>{translateUiText(content.title)}</Text>
+                <Text style={styles.message}>{translateUiText(content.message)}</Text>
 
-                    <TouchableOpacity
-                        style={styles.upgradeButton}
-                        onPress={handleUpgrade}
-                        activeOpacity={0.84}
-                        accessibilityRole="button"
-                        accessibilityLabel={translateUiText("Upgrade to Premium")}
-                    >
-                        <Text style={styles.upgradeButtonText}>{translateUiText("Upgrade to Premium")}</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.coupleNote}>{translateUiText("One subscription unlocks Premium for both of you.")}</Text>
-                </Animated.View>
-            </View>
-        </Modal>
+                <TouchableOpacity
+                    style={styles.upgradeButton}
+                    onPress={handleUpgrade}
+                    activeOpacity={0.84}
+                    accessibilityRole="button"
+                    accessibilityLabel={translateUiText("Upgrade to Premium")}
+                >
+                    <Text style={styles.upgradeButtonText}>{translateUiText("Upgrade to Premium")}</Text>
+                </TouchableOpacity>
+                <Text style={styles.coupleNote}>{translateUiText("One subscription unlocks Premium for both of you.")}</Text>
+            </BottomSheetView>
+        </BottomSheetModal>
     );
 };
 
 const styles = StyleSheet.create({
-    modalRoot: { flex: 1, justifyContent: 'flex-end' },
-    backdrop: { backgroundColor: 'rgba(36, 20, 46, 0.48)' },
+    sheetBackground: {
+        backgroundColor: '#FFF9FC',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+    },
     sheet: {
         paddingHorizontal: 24,
         paddingTop: 12,
         alignItems: 'center',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        backgroundColor: '#FFF9FC',
         borderWidth: 1,
         borderColor: '#F5D2E2',
         shadowColor: '#5C2945',

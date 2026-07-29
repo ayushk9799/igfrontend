@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
 import { translateUiText } from '../i18n/uiTranslation';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 const TimelineDate = ({ month, day, year }) => (
     <View style={styles.dateCard}>
@@ -16,13 +17,16 @@ const TimelineDate = ({ month, day, year }) => (
 
 const JournalOnboardingScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
-    const entrance = useRef(new Animated.Value(0)).current;
+    const titleEntrance = useRef(new Animated.Value(0)).current;
+    const timelineEntrance = useRef(new Animated.Value(0)).current;
+    const buttonEntrance = useRef(new Animated.Value(0)).current;
     const eventAnims = useRef(Array.from({ length: 5 }, () => new Animated.Value(0))).current;
     const timelineRef = useRef(null);
     const eventLayoutsRef = useRef([]);
     const viewportHeightRef = useRef(0);
     const scrollOffsetRef = useRef(0);
     const scrollFrameRef = useRef(null);
+    const reducedMotion = useReducedMotion();
 
     const scrollSlowlyToEvent = (index) => {
         const layout = eventLayoutsRef.current[index];
@@ -50,7 +54,32 @@ const JournalOnboardingScreen = ({ onComplete }) => {
     };
 
     useEffect(() => {
-        Animated.timing(entrance, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+        if (reducedMotion) {
+            titleEntrance.setValue(1);
+            timelineEntrance.setValue(1);
+            buttonEntrance.setValue(1);
+            eventAnims.forEach(anim => anim.setValue(1));
+            return undefined;
+        }
+
+        Animated.stagger(110, [
+            Animated.timing(titleEntrance, {
+                toValue: 1,
+                duration: 380,
+                useNativeDriver: true,
+            }),
+            Animated.timing(timelineEntrance, {
+                toValue: 1,
+                duration: 380,
+                useNativeDriver: true,
+            }),
+            Animated.timing(buttonEntrance, {
+                toValue: 1,
+                duration: 380,
+                useNativeDriver: true,
+            }),
+        ]).start();
+
         const eventDelay = 300;
 
         Animated.stagger(
@@ -72,7 +101,7 @@ const JournalOnboardingScreen = ({ onComplete }) => {
             hapticTimers.forEach(clearTimeout);
             if (scrollFrameRef.current) cancelAnimationFrame(scrollFrameRef.current);
         };
-    }, [entrance, eventAnims]);
+    }, [buttonEntrance, eventAnims, reducedMotion, timelineEntrance, titleEntrance]);
 
     const eventStyle = (index) => ({
         opacity: eventAnims[index],
@@ -92,14 +121,50 @@ const JournalOnboardingScreen = ({ onComplete }) => {
     return (
         <LinearGradient colors={['#F9DCEB', '#FFF8FB', '#F6DDF4']} style={styles.container}>
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <View style={[styles.page, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 14 }]}>
-                <Animated.View style={[styles.intro, { opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}> 
-                    <Text style={styles.title}>{translateUiText("Save your story")}<Text style={styles.heart}>♥</Text></Text>
+            <View
+                style={[
+                    styles.page,
+                    {
+                        paddingTop: insets.top + 52,
+                        paddingBottom: insets.bottom + 14
+                            + (Platform.OS === 'android' ? 12 : 0),
+                    },
+                ]}
+            >
+                <Animated.View
+                    style={[
+                        styles.intro,
+                        {
+                            opacity: titleEntrance,
+                            transform: [{
+                                translateY: titleEntrance.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [18, 0],
+                                }),
+                            }],
+                        },
+                    ]}
+                >
+                    <Text style={styles.title}>{translateUiText("Save your story")}</Text>
+                    <Text style={styles.subtitle}>
+                        {translateUiText("Keep every memory and milestone in one shared story.")}
+                    </Text>
                 </Animated.View>
 
-                <ScrollView
+                <Animated.ScrollView
                     ref={timelineRef}
-                    style={styles.timeline}
+                    style={[
+                        styles.timeline,
+                        {
+                            opacity: timelineEntrance,
+                            transform: [{
+                                translateY: timelineEntrance.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [18, 0],
+                                }),
+                            }],
+                        },
+                    ]}
                     contentContainerStyle={styles.timelineContent}
                     showsVerticalScrollIndicator={false}
                     scrollEventThrottle={16}
@@ -169,21 +234,33 @@ const JournalOnboardingScreen = ({ onComplete }) => {
                             <View style={styles.storyLine} />
                         </View>
                     </Animated.View>
-                </ScrollView>
+                </Animated.ScrollView>
 
-                <View style={styles.footer}>
+                <Animated.View
+                    style={[
+                        styles.footer,
+                        {
+                            opacity: buttonEntrance,
+                            transform: [{
+                                translateY: buttonEntrance.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [18, 0],
+                                }),
+                            }],
+                        },
+                    ]}
+                >
                     <TouchableOpacity onPress={finish} activeOpacity={0.86} style={styles.buttonShadow}>
-                        <LinearGradient colors={['#FF72AD', '#FF477C']} style={styles.continueButton}>
-                            <Text style={styles.continueText}>{translateUiText("Continue")}</Text><Text style={styles.continueArrow}>→</Text>
+                        <LinearGradient
+                            colors={['#FF6B82', '#F45170']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.continueButton}
+                        >
+                            <Text style={styles.continueText}>{translateUiText("Continue")}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
-                    <View style={styles.progress}>
-                        <View style={[styles.dot, styles.dotActive]} />
-                        <View style={styles.dot} />
-                        <View style={styles.dot} />
-                        <View style={styles.dot} />
-                    </View>
-                </View>
+                </Animated.View>
             </View>
         </LinearGradient>
     );
@@ -191,8 +268,32 @@ const JournalOnboardingScreen = ({ onComplete }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 }, page: { flex: 1, paddingHorizontal: 18 },
-    intro: { paddingHorizontal: 6, paddingTop: 18, paddingBottom: 18 },
-    title: { color: '#2E1E3C', fontFamily: fontFamily.extraBold, fontWeight: fontWeight('700'), fontSize: 32, lineHeight: 37 }, heart: { color: '#FF4F83' },
+    intro: {
+        width: '100%',
+        alignItems: 'flex-start',
+        position: 'relative',
+        paddingTop: 32,
+        paddingBottom: 16,
+    },
+    title: {
+        color: '#050E3E',
+        fontFamily: fontFamily.extraBold,
+        fontWeight: fontWeight('800'),
+        fontSize: 30,
+        lineHeight: 35,
+        letterSpacing: -0.4,
+        textAlign: 'left',
+    },
+    subtitle: {
+        maxWidth: 330,
+        marginTop: 2,
+        color: '#536185',
+        fontFamily: fontFamily.medium,
+        fontWeight: fontWeight('500'),
+        fontSize: 14,
+        lineHeight: 19,
+        textAlign: 'left',
+    },
     timeline: { flex: 1 }, timelineContent: { paddingVertical: 4, paddingBottom: 16, gap: 14 }, timelineRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
     dateCard: { width: 54, paddingVertical: 6, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.76)', alignItems: 'center', borderWidth: 1, borderColor: '#F3DCE8' },
     dateMonth: { color: '#9B7F92', fontFamily: fontFamily.medium, fontSize: 11 }, dateDay: { color: '#36263C', fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 25 }, dateYear: { color: '#A38F9F', fontSize: 11 },
@@ -203,9 +304,10 @@ const styles = StyleSheet.create({
     photoCard: { flex: 1, overflow: 'hidden', borderRadius: 18, backgroundColor: '#DCCFE4', borderWidth: 2, borderColor: '#FFFFFF', shadowColor: '#9D4D78', shadowOpacity: 0.16, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 5 }, memoryPhoto: { width: '100%', height: 148, backgroundColor: '#F8C7DA' },
     photoBadges: { position: 'absolute', right: 8, top: 118, flexDirection: 'row', gap: 5 }, photoBadge: { overflow: 'hidden', color: '#FFFFFF', backgroundColor: 'rgba(46,30,60,0.76)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, fontFamily: fontFamily.bold, fontSize: 10 },
     photoCopy: { paddingHorizontal: 11, paddingVertical: 9 }, photoTitle: { color: '#38253C', fontFamily: fontFamily.bold, fontSize: 13 }, cardBody: { marginTop: 3, color: '#735F78', fontFamily: fontFamily.regular, fontSize: 10, lineHeight: 13 },
-    footer: { paddingTop: 10 }, buttonShadow: { shadowColor: '#E83C78', shadowOpacity: 0.24, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
-    continueButton: { height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }, continueText: { color: '#FFFFFF', fontFamily: fontFamily.bold, fontSize: 17 }, continueArrow: { color: '#FFFFFF', fontSize: 20 },
-    progress: { paddingTop: 10, flexDirection: 'row', justifyContent: 'center', gap: 6 }, dot: { width: 18, height: 4, borderRadius: 2, backgroundColor: '#E6C7D9' }, dotActive: { width: 34, backgroundColor: '#FF5D91' },
+    footer: { paddingTop: 10, paddingHorizontal: 8, alignItems: 'center' },
+    buttonShadow: { width: '100%', borderRadius: 24, shadowColor: '#F45170', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+    continueButton: { height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
+    continueText: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, fontWeight: fontWeight('800') },
 });
 
 export default JournalOnboardingScreen;

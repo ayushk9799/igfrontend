@@ -1,5 +1,6 @@
 import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { API_BASE } from '../constants/Api';
+import { apiFetch } from './apiFetch';
 import { getUser, updateUser as updateStoredUser } from './authStorage';
 import { reportWidgetIntent, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import { translateUiText } from '../i18n/uiTranslation';
@@ -295,7 +296,7 @@ export const refreshDistanceWidgetSnapshot = async (user = getUser()) => {
         return { skipped: true, reason: 'premium_required' };
     }
 
-    const distanceResponse = await fetch(`${API_BASE}/api/user/distance/${userId}`);
+    const distanceResponse = await apiFetch(`${API_BASE}/api/user/distance/${userId}`);
     const distanceJson = await readJsonResponse(distanceResponse, 'Failed to fetch partner distance.');
     if (!distanceResponse.ok || !distanceJson.success) {
         throw new Error(distanceJson.error || 'Failed to fetch partner distance.');
@@ -357,7 +358,7 @@ export const disableDistanceLocationSharing = async (user = getUser()) => {
         return { skipped: true, reason: 'missing_user' };
     }
 
-    const response = await fetch(`${API_BASE}/api/user/location`, {
+    const response = await apiFetch(`${API_BASE}/api/user/location`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -421,7 +422,7 @@ export const syncDistanceWidgetLocation = async ({
     } catch (error) {
         throw normalizeLocationPermissionError(error);
     }
-    const locationResponse = await fetch(`${API_BASE}/api/user/location`, {
+    const locationResponse = await apiFetch(`${API_BASE}/api/user/location`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

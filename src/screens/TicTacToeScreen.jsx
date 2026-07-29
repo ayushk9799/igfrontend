@@ -119,6 +119,7 @@ const TicTacToeScreen = ({
     route,
     onRequestPremium,
     hasPremiumAccess = false,
+    onLinkPartner,
 }) => {
     const { gameId: initialGameId, gameData: initialGameData } = route?.params || {};
     const { socket, partnerOnline } = useSocketContext();
@@ -219,12 +220,30 @@ const TicTacToeScreen = ({
     const shakeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const linkPartnerShakeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => () => {
         shakeAnim.stopAnimation();
         scaleAnim.stopAnimation();
         fadeAnim.stopAnimation();
-    }, [fadeAnim, scaleAnim, shakeAnim]);
+        linkPartnerShakeAnim.stopAnimation();
+    }, [fadeAnim, scaleAnim, shakeAnim, linkPartnerShakeAnim]);
+
+    const triggerLinkPartnerShake = useCallback(() => {
+        ReactNativeHapticFeedback.trigger('notificationWarning', {
+            enableVibrateFallback: false,
+            ignoreAndroidSystemSettings: false,
+        });
+        linkPartnerShakeAnim.setValue(0);
+        Animated.sequence([
+            Animated.timing(linkPartnerShakeAnim, { toValue: 12, duration: 45, easing: Easing.linear, useNativeDriver: true }),
+            Animated.timing(linkPartnerShakeAnim, { toValue: -12, duration: 45, easing: Easing.linear, useNativeDriver: true }),
+            Animated.timing(linkPartnerShakeAnim, { toValue: 8, duration: 45, easing: Easing.linear, useNativeDriver: true }),
+            Animated.timing(linkPartnerShakeAnim, { toValue: -8, duration: 45, easing: Easing.linear, useNativeDriver: true }),
+            Animated.timing(linkPartnerShakeAnim, { toValue: 4, duration: 45, easing: Easing.linear, useNativeDriver: true }),
+            Animated.timing(linkPartnerShakeAnim, { toValue: 0, duration: 45, easing: Easing.linear, useNativeDriver: true }),
+        ]).start();
+    }, [linkPartnerShakeAnim]);
 
     // Partner info
     const partnerId = route?.params?.partnerId;
@@ -636,7 +655,7 @@ const TicTacToeScreen = ({
     // Create game with first move (called when tapping first cell)
     const createGameWithFirstMove = async (position) => {
         if (!userId || !partnerId) {
-            // Partner not linked - button will show below
+            triggerLinkPartnerShake();
             return;
         }
 
@@ -864,6 +883,11 @@ const TicTacToeScreen = ({
     };
 
     const makeMove = async (position) => {
+        if (!partnerId) {
+            triggerLinkPartnerShake();
+            return;
+        }
+
         // Block moves during game start animation
         if (!userId || isGameStarting || gameActionPendingRef.current) return;
 
@@ -1521,6 +1545,29 @@ const TicTacToeScreen = ({
                         </View>
                     )}
 
+                    {/* Link Partner Button - shown directly below the board when no partner is linked */}
+                    {!partnerId && (
+                        <Animated.View
+                            style={[
+                                styles.linkPartnerContainer,
+                                { transform: [{ translateX: linkPartnerShakeAnim }] },
+                            ]}
+                        >
+                            <Button
+                                title={translateUiText("Link Partner to Play")}
+                                onPress={() => {
+                                    if (onLinkPartner) {
+                                        onLinkPartner();
+                                    } else if (navigation?.navigate) {
+                                        navigation.navigate('partnerCode');
+                                    }
+                                }}
+                                variant="primary"
+                                size="xl"
+                                fullWidth
+                            />
+                        </Animated.View>
+                    )}
                 </View>
 
                 {limitCheckError && (
@@ -1566,19 +1613,6 @@ const TicTacToeScreen = ({
                         </View>
                     ) : null}
                 </View>
-
-                {/* Link Partner Button - shown when no partner is linked */}
-                {!partnerId && (
-                    <View style={styles.linkPartnerContainer}>
-                        <Button
-                            title={translateUiText("Link Partner to Play 🔗")}
-                            onPress={() => navigation?.navigate?.('PartnerLink')}
-                            variant="primary"
-                            size="xl"
-                            fullWidth
-                        />
-                    </View>
-                )}
                 </ScrollView>
 
                 {showConfetti && (
@@ -2064,8 +2098,9 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     linkPartnerContainer: {
-        paddingHorizontal: 40,
-        paddingBottom: 30,
+        width: '100%',
+        maxWidth: 306,
+        marginTop: 20,
     },
 });
 

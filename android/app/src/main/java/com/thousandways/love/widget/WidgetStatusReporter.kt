@@ -11,6 +11,7 @@ import java.net.URL
 object WidgetStatusReporter {
     const val KEY_TRACKING_USER_ID = "widget_tracking_user_id"
     const val KEY_TRACKING_API_BASE = "widget_tracking_api_base"
+    const val KEY_TRACKING_AUTH_TOKEN = "widget_tracking_auth_token"
 
     private val providerTypes = listOf(
         "scribble" to ScribbleWidgetProvider::class.java,
@@ -31,6 +32,7 @@ object WidgetStatusReporter {
         val prefs = context.getSharedPreferences(ScribbleWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
         val userId = prefs.getString(KEY_TRACKING_USER_ID, null) ?: return
         val apiBase = prefs.getString(KEY_TRACKING_API_BASE, null)?.trimEnd('/') ?: return
+        val authToken = prefs.getString(KEY_TRACKING_AUTH_TOKEN, null) ?: return
         val counts = collect(context)
 
         Thread {
@@ -56,6 +58,7 @@ object WidgetStatusReporter {
                     readTimeout = 5000
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Authorization", "Bearer $authToken")
                 }
 
                 OutputStreamWriter(connection.outputStream).use { writer ->

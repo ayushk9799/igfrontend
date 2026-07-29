@@ -1,4 +1,5 @@
 import { API_BASE } from '../constants/Api';
+import { apiFetch } from './apiFetch';
 
 /**
  * Upload an image to S3 using presigned URL
@@ -14,7 +15,7 @@ export const uploadImageToS3 = async (localUri, folder = 'uploads') => {
         const fileName = `photo_${Date.now()}.jpg`;
         const fileType = 'image/jpeg';
 
-        const presignedResponse = await fetch(`${API_BASE}/api/upload/presigned-url`, {
+        const presignedResponse = await apiFetch(`${API_BASE}/api/upload/presigned-url`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fileName, fileType, folder }),
@@ -65,7 +66,7 @@ export const uploadAudioToS3 = async (localUri, folder = 'voice-recordings') => 
         const fileName = `voice_${Date.now()}.m4a`;
         const fileType = 'audio/m4a';
 
-        const presignedResponse = await fetch(`${API_BASE}/api/upload/presigned-url`, {
+        const presignedResponse = await apiFetch(`${API_BASE}/api/upload/presigned-url`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fileName, fileType, folder }),

@@ -1,6 +1,7 @@
 import { NativeModules, Platform } from 'react-native';
 import { API_BASE } from '../constants/Api';
-import { getUser } from '../utils/authStorage';
+import { getAuthToken, getUser } from '../utils/authStorage';
+import { apiFetch } from '../utils/apiFetch';
 
 const WIDGET_TYPES = ['scribble', 'togetherDays', 'togetherCountdown', 'distance', 'couplePhoto'];
 
@@ -8,7 +9,7 @@ const getUserId = (user) => user?._id || user?.id || null;
 
 const safeRequest = async (path, options = {}) => {
     try {
-        const response = await fetch(`${API_BASE}${path}`, {
+        const response = await apiFetch(`${API_BASE}${path}`, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -64,13 +65,14 @@ export const configureNativeWidgetTracking = async (user = getUser()) => {
     }
 
     const userId = getUserId(user);
+    const authToken = getAuthToken();
     const { ScribbleWidgetBridge } = NativeModules;
-    if (!userId || !ScribbleWidgetBridge?.setWidgetTrackingContext) {
+    if (!userId || !authToken || !ScribbleWidgetBridge?.setWidgetTrackingContext) {
         return;
     }
 
     try {
-        await ScribbleWidgetBridge.setWidgetTrackingContext(String(userId), API_BASE);
+        await ScribbleWidgetBridge.setWidgetTrackingContext(String(userId), API_BASE, authToken);
     } catch {
         // Widget metrics should never block the app.
     }

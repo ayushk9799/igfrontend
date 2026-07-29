@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -31,19 +32,21 @@ function App() {
             <Provider store={store} key={language}>
                 <SafeAreaProvider>
                     <KeyboardProvider statusBarTranslucent>
-                        <SocketProvider>
-                            <CallProvider>
-                                <StatusBar
-                                    barStyle="dark-content"
-                                    backgroundColor="transparent"
-                                    translucent
-                                />
-                                <View style={styles.container}>
-                                    <AppNavigator />
-                                    <CallOverlay />
-                                </View>
-                            </CallProvider>
-                        </SocketProvider>
+                        <BottomSheetModalProvider>
+                            <SocketProvider>
+                                <CallProvider>
+                                    <StatusBar
+                                        barStyle="dark-content"
+                                        backgroundColor="transparent"
+                                        translucent
+                                    />
+                                    <View style={styles.container}>
+                                        <AppNavigator />
+                                        <CallOverlay />
+                                    </View>
+                                </CallProvider>
+                            </SocketProvider>
+                        </BottomSheetModalProvider>
                     </KeyboardProvider>
                 </SafeAreaProvider>
             </Provider>

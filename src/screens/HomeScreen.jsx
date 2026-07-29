@@ -207,6 +207,7 @@ const HomeScreen = ({
     const penguinJiggleAnim = useRef(new Animated.Value(0)).current;
     const badgeWiggleAnim = useRef(new Animated.Value(0)).current;
     const badgePulseAnim = useRef(new Animated.Value(1)).current;
+    const guideAnim = useRef(new Animated.Value(0)).current;
     const playedNudgeKeyRef = useRef(null);
     const onRefreshPuzzleRef = useRef(onRefreshPuzzle);
     const [now, setNow] = useState(Date.now());
@@ -264,15 +265,33 @@ const HomeScreen = ({
             // pressing "Got it" cannot cause the one-time guide to reappear.
             storage.set(videoCallGuideStorageKey, true);
             setShowVideoCallGuide(true);
-        }, 650);
+        }, 4000);
 
         return () => clearTimeout(timer);
     }, [hasPartner, videoCallGuideStorageKey]);
 
+    useEffect(() => {
+        if (showVideoCallGuide) {
+            guideAnim.setValue(0);
+            Animated.spring(guideAnim, {
+                toValue: 1,
+                friction: 7,
+                tension: 40,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [showVideoCallGuide, guideAnim]);
+
     const dismissVideoCallGuide = useCallback(() => {
-        setShowVideoCallGuide(false);
         storage.set(videoCallGuideStorageKey, true);
-    }, [videoCallGuideStorageKey]);
+        Animated.timing(guideAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start(() => {
+            setShowVideoCallGuide(false);
+        });
+    }, [videoCallGuideStorageKey, guideAnim]);
 
     const handleVideoCallPress = useCallback(() => {
         dismissVideoCallGuide();
@@ -416,7 +435,25 @@ const HomeScreen = ({
                         <View style={styles.headerActions}>
                             {hasPartner && (
                                 <View style={styles.videoCallGuideAnchor}>
-                                    {showVideoCallGuide && <View style={styles.videoCallGuideRing} pointerEvents="none" />}
+                                    {showVideoCallGuide && (
+                                        <Animated.View
+                                            style={[
+                                                styles.videoCallGuideRing,
+                                                {
+                                                    opacity: guideAnim,
+                                                    transform: [
+                                                        {
+                                                            scale: guideAnim.interpolate({
+                                                                inputRange: [0, 1],
+                                                                outputRange: [0.7, 1],
+                                                            }),
+                                                        },
+                                                    ],
+                                                },
+                                            ]}
+                                            pointerEvents="none"
+                                        />
+                                    )}
                                     <TouchableOpacity
                                         style={[styles.headerButton, !partnerOnline && styles.offlineHeaderButton]}
                                         onPress={handleVideoCallPress}
@@ -427,7 +464,29 @@ const HomeScreen = ({
                                         <View style={[styles.presenceDot, partnerOnline ? styles.onlineDot : styles.offlineDot]} />
                                     </TouchableOpacity>
                                     {showVideoCallGuide && (
-                                        <View style={styles.videoCallGuide} accessibilityRole="alert">
+                                        <Animated.View
+                                            style={[
+                                                styles.videoCallGuide,
+                                                {
+                                                    opacity: guideAnim,
+                                                    transform: [
+                                                        {
+                                                            scale: guideAnim.interpolate({
+                                                                inputRange: [0, 1],
+                                                                outputRange: [0.88, 1],
+                                                            }),
+                                                        },
+                                                        {
+                                                            translateY: guideAnim.interpolate({
+                                                                inputRange: [0, 1],
+                                                                outputRange: [-10, 0],
+                                                            }),
+                                                        },
+                                                    ],
+                                                },
+                                            ]}
+                                            accessibilityRole="alert"
+                                        >
                                             <View style={styles.videoCallGuideArrow} />
                                             <HomeText style={styles.videoCallGuideTitle}>{translateUiText("Start a video call")}</HomeText>
                                             <HomeText style={styles.videoCallGuideText}>
@@ -442,7 +501,7 @@ const HomeScreen = ({
                                             >
                                                 <HomeText style={styles.videoCallGuideButtonText}>{translateUiText("Got it")}</HomeText>
                                             </TouchableOpacity>
-                                        </View>
+                                        </Animated.View>
                                     )}
                                 </View>
                             )}
