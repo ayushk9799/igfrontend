@@ -229,12 +229,6 @@ export default function TopicQuestionsV2Screen({
         fetchSets();
     }, [fetchSets]);
 
-    useEffect(() => {
-        if (!hasPartner && onLinkPartner) {
-            onLinkPartner();
-        }
-    }, [hasPartner, onLinkPartner]);
-
     const fetchQuestions = useCallback(async ({ set, cursor = 0, append = false }) => {
         if (!set || fetchingQuestionsRef.current) return;
         fetchingQuestionsRef.current = true;

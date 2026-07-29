@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { API_BASE } from '../constants/Api';
 import { getUser, updateUser } from '../utils/authStorage';
 import { updateUser as updateUserRedux } from '../store/slices/userSlice';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 
 /**
@@ -16,22 +17,28 @@ export const useAvatarUpload = () => {
     const dispatch = useDispatch();
 
 
-    // Helper to convert URI to Base64 using native fetch/blob/FileReader
+    // Generate a small thumbnail before converting it to Base64. Keeping the
+    // full-resolution avatar in Redux/storage can consume several megabytes.
     const uriToBase64 = async (uri) => {
         try {
-            const response = await fetch(uri);
+            const context = ImageManipulator.manipulate(uri);
+            context.resize({ width: 128, height: 128 });
+            const rendered = await context.renderAsync();
+            const thumbnail = await rendered.saveAsync({
+                compress: 0.72,
+                format: SaveFormat.JPEG,
+            });
+            const response = await fetch(thumbnail.uri);
             const blob = await response.blob();
 
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onloadend = () => {
-                    resolve(reader.result); // This is the data:image/jpeg;base64,... string
-                };
+                reader.onloadend = () => resolve(reader.result);
                 reader.onerror = reject;
                 reader.readAsDataURL(blob);
             });
-        } catch (error) {
-            console.error('B64 conversion error:', error);
+        } catch (conversionError) {
+            console.error('B64 conversion error:', conversionError);
             return null;
         }
     };
@@ -90,7 +97,7 @@ export const useAvatarUpload = () => {
 
 
             if (!uploadResult.ok) {
-                const errorText = await uploadResult.text();
+                await uploadResult.text();
                 throw new Error(`S3 upload failed with status ${uploadResult.status}`);
             }
 
@@ -135,7 +142,7 @@ export const useAvatarUpload = () => {
             setIsUploading(false);
             return { success: false, error: err.message };
         }
-    }, []);
+    }, [dispatch]);
 
     /**
      * Clear any upload error

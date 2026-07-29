@@ -139,6 +139,7 @@ export const PartnerCodeScreen = ({
     partnerUsername = null,
     onPaired = () => { },
     onSkip = () => { },
+    onClose = null,
 }) => {
     const [enteredCode, setEnteredCode] = useState('');
     const [isPairing, setIsPairing] = useState(false);
@@ -260,6 +261,17 @@ export const PartnerCodeScreen = ({
                             {partnerUsername && (
                                 <Text style={styles.connectedSubtitle}>
                                     {translateUiTemplate("{{0}} just paired with you", [partnerUsername])}</Text>
+                            )}
+                            {onClose && (
+                                <TouchableOpacity
+                                    style={styles.connectedContinueButton}
+                                    onPress={onClose}
+                                    activeOpacity={0.85}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={translateUiText("Continue")}
+                                >
+                                    <Text style={styles.connectedContinueText}>{translateUiText("Continue")}</Text>
+                                </TouchableOpacity>
                             )}
                         </Animated.View>
                     </View>
@@ -838,6 +850,26 @@ const createStyles = (isCompactHeight) => StyleSheet.create({
         color: '#7380A1',
         textAlign: 'center',
         fontWeight: '600',
+    },
+    connectedContinueButton: {
+        minWidth: 160,
+        height: 46,
+        borderRadius: 23,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FF5E97',
+        marginTop: 24,
+        paddingHorizontal: 28,
+        shadowColor: '#FF5E97',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    connectedContinueText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '800',
     },
     cloudsContainer: {
         position: 'absolute',

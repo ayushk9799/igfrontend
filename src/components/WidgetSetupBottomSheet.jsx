@@ -7,6 +7,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -272,6 +273,10 @@ const WidgetSetupBottomSheet = ({
     relationshipStartDate,
 }) => {
     const insets = useSafeAreaInsets();
+    const { height: screenHeight } = useWindowDimensions();
+    const offscreenDistance = Math.max(screenHeight, 500);
+    const [isMounted, setIsMounted] = useState(visible);
+    const [displayKind, setDisplayKind] = useState(kind);
     const [isRemindLoading, setIsRemindLoading] = useState(false);
     const [reminderSentText, setReminderSentText] = useState('');
     const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -281,6 +286,16 @@ const WidgetSetupBottomSheet = ({
     useEffect(() => {
         onCloseRef.current = onClose;
     }, [onClose]);
+
+    useEffect(() => {
+        if (visible) {
+            setDisplayKind(kind);
+        }
+    }, [kind, visible]);
+
+    const requestClose = useCallback(() => {
+        onCloseRef.current?.();
+    }, []);
 
     const handleRemindPress = useCallback(async () => {
         if (isRemindLoading) return;
@@ -308,7 +323,7 @@ const WidgetSetupBottomSheet = ({
         if (![State.END, State.CANCELLED, State.FAILED].includes(nativeEvent.state)) return;
 
         if (nativeEvent.translationY > 100 || nativeEvent.velocityY > 850) {
-            onCloseRef.current?.();
+            requestClose();
             return;
         }
         Animated.spring(sheetTranslateY, {
@@ -365,28 +380,45 @@ const WidgetSetupBottomSheet = ({
         backdropOpacity.stopAnimation();
         sheetTranslateY.stopAnimation();
 
-        if (!visible) {
-            return undefined;
-        }
-
-        backdropOpacity.setValue(0);
-        sheetTranslateY.setValue(500);
-        animationFrame = requestAnimationFrame(() => {
+        if (visible) {
+            backdropOpacity.setValue(0);
+            sheetTranslateY.setValue(offscreenDistance);
+            setIsMounted(true);
+            animationFrame = requestAnimationFrame(() => {
+                animation = Animated.parallel([
+                    Animated.timing(backdropOpacity, {
+                        toValue: 1,
+                        duration: 180,
+                        useNativeDriver: true,
+                    }),
+                    Animated.spring(sheetTranslateY, {
+                        toValue: 0,
+                        tension: 72,
+                        friction: 12,
+                        useNativeDriver: true,
+                    }),
+                ]);
+                animation.start();
+            });
+        } else {
             animation = Animated.parallel([
                 Animated.timing(backdropOpacity, {
-                    toValue: 1,
-                    duration: 180,
+                    toValue: 0,
+                    duration: 160,
                     useNativeDriver: true,
                 }),
-                Animated.spring(sheetTranslateY, {
-                    toValue: 0,
-                    tension: 72,
-                    friction: 12,
+                Animated.timing(sheetTranslateY, {
+                    toValue: offscreenDistance,
+                    duration: 220,
                     useNativeDriver: true,
                 }),
             ]);
-            animation.start();
-        });
+            animation.start(({ finished }) => {
+                if (finished) {
+                    setIsMounted(false);
+                }
+            });
+        }
 
         return () => {
             if (animationFrame !== undefined) {
@@ -394,13 +426,13 @@ const WidgetSetupBottomSheet = ({
             }
             animation?.stop();
         };
-    }, [backdropOpacity, sheetTranslateY, visible]);
+    }, [backdropOpacity, offscreenDistance, sheetTranslateY, visible]);
 
     return (
-        <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+        <Modal visible={isMounted} transparent animationType="none" statusBarTranslucent onRequestClose={requestClose}>
             <GestureHandlerRootView style={styles.modalRoot}>
                 <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]} />
-                <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+                <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={requestClose} />
                 <PanGestureHandler
                     activeOffsetY={8}
                     failOffsetX={[-28, 28]}
@@ -417,7 +449,7 @@ const WidgetSetupBottomSheet = ({
                         ]}
                     >
                     <View style={styles.handle} />
-                    {kind === 'distance' && (
+                    {displayKind === 'distance' && (
                         <>
                             <LocationPreview
                                 enabled={hasCompleteLocationAccess}
@@ -485,12 +517,12 @@ const WidgetSetupBottomSheet = ({
                             ) : (
                                 <ActionButton onPress={onHowToAdd}>{translateUiText("How to add widget")}</ActionButton>
                             )}
-                            <TouchableOpacity disabled={isLocationLoading} onPress={onClose} style={styles.quietAction}>
+                            <TouchableOpacity disabled={isLocationLoading} onPress={requestClose} style={styles.quietAction}>
                                 <Text style={styles.quietActionText}>{hasCompleteLocationAccess ? translateUiText("Done") : translateUiText("Not now")}</Text>
                             </TouchableOpacity>
                         </>
                     )}
-                    {kind === 'photo' && (
+                    {displayKind === 'photo' && (
                         <PhotoChoice
                             onTakePhoto={onTakePhoto}
                             onChoosePhoto={onChoosePhoto}
@@ -499,7 +531,7 @@ const WidgetSetupBottomSheet = ({
                             myPhoto={myPhoto}
                         />
                     )}
-                    {kind === 'cameraPermission' && (
+                    {displayKind === 'cameraPermission' && (
                         <>
                             <View style={styles.cameraPermissionPreview}>
                                 <LinearGradient colors={['#F26F9F', '#A670DD']} style={styles.cameraIconCircle}>
@@ -519,15 +551,15 @@ const WidgetSetupBottomSheet = ({
                                     ? translateUiText("Open Settings")
                                     : translateUiText("Allow Camera")}
                             </ActionButton>
-                            <TouchableOpacity onPress={onClose} style={styles.quietAction}><Text style={styles.quietActionText}>{translateUiText("Not now")}</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={requestClose} style={styles.quietAction}><Text style={styles.quietActionText}>{translateUiText("Not now")}</Text></TouchableOpacity>
                         </>
                     )}
-                    {kind === 'time' && (
+                    {displayKind === 'time' && (
                         <DaysTogetherShowcase
                             relationshipStartDate={relationshipStartDate}
                             daysTogether={daysTogether}
                             onHowToAdd={onHowToAdd}
-                            onClose={onClose}
+                            onClose={requestClose}
                         />
                     )}
                     </Animated.View>

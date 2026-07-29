@@ -184,6 +184,8 @@ export const AppNavigator = () => {
     const [partnerConnectedAlert, setPartnerConnectedAlert] = useState(null);
     const [shouldRestoreAccount, setShouldRestoreAccount] = useState(false);
     const [yearlyOfferRequestId, setYearlyOfferRequestId] = useState(0);
+    const [partnerCodeOverlayVisible, setPartnerCodeOverlayVisible] = useState(false);
+    const [partnerCodeOverlayStep, setPartnerCodeOverlayStep] = useState('partnerCode');
     const accountReturnPendingRef = useRef(false);
     const [activeJigsawPuzzle, setActiveJigsawPuzzle] = useState(null);
 
@@ -417,6 +419,13 @@ export const AppNavigator = () => {
             partnerCompletionRouteRef.current = false;
         }
     }, [currentScreen]);
+
+    useEffect(() => {
+        if (!userData?.isAuthenticated && partnerCodeOverlayVisible) {
+            setPartnerCodeOverlayVisible(false);
+            setPartnerCodeOverlayStep('partnerCode');
+        }
+    }, [partnerCodeOverlayVisible, userData?.isAuthenticated]);
 
     const syncDistanceWidgetSilently = useCallback(async ({ force = false } = {}) => {
         if (!['ios', 'android'].includes(Platform.OS)) return;
@@ -1119,7 +1128,7 @@ export const AppNavigator = () => {
                     break;
 
                 case 'partner_invite_reminder':
-                    setCurrentScreen('partnerCode');
+                    openPartnerCode();
                     break;
 
                 default:
@@ -1609,7 +1618,6 @@ export const AppNavigator = () => {
                         fetchPendingTicTacToe(storedUser.id);
                         fetchPendingWordle(storedUser.id);
                     } else {
-                        // Has nickname but not paired - show partner code screen
                         clearLiveChatActive();
                         setCurrentScreen('partnerCode');
                     }
@@ -1679,6 +1687,17 @@ export const AppNavigator = () => {
     const navigateHomeTab = (tab = lastHomeTab || 'home') => {
         setHomeInitialTab(tab);
         navigate('home');
+    };
+
+    const openPartnerCode = () => {
+        partnerCompletionRouteRef.current = false;
+        setPartnerCodeOverlayStep('partnerCode');
+        setPartnerCodeOverlayVisible(true);
+    };
+
+    const closePartnerCodeOverlay = () => {
+        setPartnerCodeOverlayVisible(false);
+        setPartnerCodeOverlayStep('partnerCode');
     };
 
     const navigateFromAccount = (screen) => {
@@ -1828,7 +1847,6 @@ export const AppNavigator = () => {
                 setOnboardedStorage(true);
                 setCurrentScreen('home');
             } else {
-                // Has nickname but not paired - show partner code screen
                 setCurrentScreen('partnerCode');
             }
         });
@@ -1884,6 +1902,11 @@ export const AppNavigator = () => {
             } catch (err) {
                 console.error('Failed to save relationship start date to server:', err);
             }
+        }
+
+        if (partnerCodeOverlayVisible && partnerCodeOverlayStep === 'relationshipStartDate') {
+            closePartnerCodeOverlay();
+            return;
         }
 
         if (accountReturnPendingRef.current) {
@@ -2027,6 +2050,15 @@ export const AppNavigator = () => {
         });
         dispatch(setPartner(resolvedPartner));
         cancelPartnerInviteReminders().catch(() => { });
+
+        if (partnerCodeOverlayVisible) {
+            if (needsRelationshipStartDate(nextUser)) {
+                setPartnerCodeOverlayStep('relationshipStartDate');
+            } else {
+                closePartnerCodeOverlay();
+            }
+            return;
+        }
 
         if (coupleIsPremium) {
             await continueAfterPartnerStep({ ...nextUser, isPremium: true });
@@ -2403,7 +2435,7 @@ export const AppNavigator = () => {
                         onMoodSelect={handleMoodSelect}
                         onQuestionPress={(category) => {
                             if (!userData?.partnerId) {
-                                navigate('partnerCode');
+                                openPartnerCode();
                                 return;
                             }
                             if (category) {
@@ -2419,11 +2451,17 @@ export const AppNavigator = () => {
                                 navigate('dailyChallenge');
                             }
                         }}
-                        onLiveChatPress={() => navigate('liveChat')}
+                        onLiveChatPress={() => {
+                            if (!userData?.partnerId) {
+                                openPartnerCode();
+                                return;
+                            }
+                            navigate('liveChat');
+                        }}
                         onRequestDrawPremium={() => showPremiumLimitSheet('drawTogether')}
                         onOpenDrawFreeScreen={handlePremiumLimitUpgrade}
                         onAvatarPress={() => navigate('avatarSelection')}
-                        onFindPartner={() => navigate('partnerCode')}
+                        onFindPartner={openPartnerCode}
                         onNavigateFromAccount={navigateFromAccount}
                         onJigsawCreate={() => navigate('jigsawCreate')}
                         onJigsawPlay={(puzzleData) => {
@@ -2472,7 +2510,7 @@ export const AppNavigator = () => {
                         }}
                         onBack={() => navigate('home')}
                         hasPartner={!!userData?.partnerId}
-                        onLinkPartner={() => navigate('partnerCode')}
+                        onLinkPartner={openPartnerCode}
                         userName={userData?.nickname || userData?.name || 'You'}
                         partnerName={userData?.partnerUsername || 'Your Love'}
                         userId={userData?._id || userData?.id}
@@ -2551,7 +2589,7 @@ export const AppNavigator = () => {
                             userId={userData.id}
                             partnerId={userData.partnerId}
                             hasPartner={!!userData.partnerId}
-                            onLinkPartner={() => navigate('partnerCode')}
+                            onLinkPartner={openPartnerCode}
                             onNavigateToPremium={() => navigate('premium')}
                             onOpenQuestionChat={(item) => {
                                 openQuestionV2Chat({
@@ -2592,7 +2630,7 @@ export const AppNavigator = () => {
                                 partnerName: userData.partnerUsername || 'Partner',
                             }
                         }}
-                        onLinkPartner={() => navigate('partnerCode')}
+                        onLinkPartner={openPartnerCode}
                     />
                 );
 
@@ -2619,7 +2657,7 @@ export const AppNavigator = () => {
             case 'ticTacToe':
                 return (
                     <TicTacToeScreen
-                        navigation={{ goBack: () => navigateHomeTab('games') }}
+                        navigation={{ goBack: () => navigateHomeTab('games'), navigate }}
                         route={{
                             params: {
                                 gameId: selectedTicTacToe?._id,
@@ -2628,6 +2666,7 @@ export const AppNavigator = () => {
                                 partnerName: userData.partnerUsername || 'Partner',
                             }
                         }}
+                        onLinkPartner={openPartnerCode}
                         hasPremiumAccess={hasActiveCouplePremium(userData)}
                         onRequestPremium={() => showPremiumLimitSheet('ticTacToe')}
                     />
@@ -2645,7 +2684,7 @@ export const AppNavigator = () => {
                                 partnerName: userData.partnerUsername || 'Partner',
                             }
                         }}
-                        onLinkPartner={() => navigate('partnerCode')}
+                        onLinkPartner={openPartnerCode}
                         hasPremiumAccess={hasActiveCouplePremium(userData)}
                         onRequestPremium={() => showPremiumLimitSheet('wordle')}
                     />
@@ -2727,6 +2766,33 @@ export const AppNavigator = () => {
                     onFinish={handleSplashAnimationFinish}
                 />
             )}
+            <Modal
+                visible={partnerCodeOverlayVisible}
+                animationType="slide"
+                transparent={false}
+                statusBarTranslucent={true}
+                presentationStyle="fullScreen"
+                onRequestClose={closePartnerCodeOverlay}
+            >
+                {partnerCodeOverlayVisible && partnerCodeOverlayStep === 'partnerCode' && (
+                    <PartnerCodeScreen
+                        partnerCode={userData.partnerCode || getPartnerCode() || 'XXXXXX'}
+                        userId={userData.id}
+                        partnerId={userData.partnerId}
+                        partnerUsername={userData.partnerUsername}
+                        onPaired={handlePartnerPaired}
+                        onSkip={closePartnerCodeOverlay}
+                        onClose={closePartnerCodeOverlay}
+                    />
+                )}
+                {partnerCodeOverlayVisible && partnerCodeOverlayStep === 'relationshipStartDate' && (
+                    <RelationshipStartDateScreen
+                        initialDate={userData?.relationshipStartDate || userData?.connectionDate}
+                        onComplete={handleRelationshipStartDateComplete}
+                        onBack={closePartnerCodeOverlay}
+                    />
+                )}
+            </Modal>
             <Modal
                 visible={isGamePremiumVisible}
                 animationType="slide"

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
     View,
     Text,
@@ -9,10 +9,13 @@ import {
     PermissionsAndroid,
     Alert,
     ActivityIndicator,
-    Animated,
-    Dimensions,
     InteractionManager,
     StatusBar,
+    ScrollView,
+    useWindowDimensions,
+    Linking,
+    AppState,
+    BackHandler,
 } from 'react-native';
 import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,23 +26,12 @@ import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 
-import { spacing } from '../theme';
 import useAvatarUpload from '../hooks/useAvatarUpload';
 import { selectUser } from '../store/slices/userSlice';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { translateUiText } from '../i18n/uiTranslation';
 
-const { width, height } = Dimensions.get('window');
-const isCompactHeight = height < 760;
-const navy = '#050E3E';
-
 // --- SVG Icons ---
-const TinyHeart = ({ color = "#FFB5D0" }) => (
-    <Svg width={14} height={12} viewBox="0 0 14 12" fill="none">
-        <Path d="M7 12L6.0125 11.0825C2.4 7.755 0 5.5425 0 2.8425C0 0.81 1.575 -0.75 3.5 -0.75C4.585 -0.75 5.6175 -0.255 6.265 0.4425C6.545 0.705 6.7825 1.0125 7 1.3425C7.2175 1.0125 7.455 0.705 7.735 0.4425C8.3825 -0.255 9.415 -0.75 10.5 -0.75C12.425 -0.75 14 0.81 14 2.8425C14 5.5425 11.6 7.755 7.9875 11.09L7 12Z" fill={color} />
-    </Svg>
-);
-
 const DecorativeHeart = ({ size = 24, color = "#FFB5D0" }) => (
     <Svg width={size} height={size * 0.875} viewBox="0 0 24 21" fill="none">
         <Path d="M12 21L10.3071 19.4708C4.11429 13.925 0 10.2375 0 5.7375C0 2.35 2.7 0 6 0C7.86 0 9.63 0.85 10.74 2.01667C11.22 2.45417 11.6271 2.96667 12 3.51667C12.3729 2.96667 12.78 2.45417 13.26 2.01667C14.37 0.85 16.14 0 18 0C21.3 0 24 2.35 24 5.7375C24 10.2375 19.8857 13.925 13.6929 19.4833L12 21Z" fill={color} />
@@ -49,14 +41,6 @@ const DecorativeHeart = ({ size = 24, color = "#FFB5D0" }) => (
 const SparkleIcon = ({ size = 16, color = "#FFB5D0" }) => (
     <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
         <Path d="M8 0C8 4.418 4.418 8 0 8C4.418 8 8 11.582 8 16C8 11.582 11.582 8 16 8C11.582 8 8 4.418 8 0Z" fill={color} />
-    </Svg>
-);
-
-const TitleBurst = () => (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-        <Path d="M6 16L9 14" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" />
-        <Path d="M4 8L8 10" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" />
-        <Path d="M12 4L13 8" stroke="#FF8FAB" strokeWidth={2.5} strokeLinecap="round" />
     </Svg>
 );
 
@@ -74,8 +58,8 @@ const FlipIcon = () => (
 
 const CameraIconOutline = ({ color = "#FF5E97" }) => (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-        <Path d="M12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17Z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <Path d="M22 8V18C22 19.1046 21.1046 20 20 20H4C2.89543 20 2 19.1046 2 18V8C2 6.89543 2.89543 6 4 6H7.17157C7.70201 6 8.21071 5.78929 8.58579 5.41421L9.41421 4.58579C9.78929 4.21071 10.298 4 10.8284 4H13.1716C13.702 4 14.2107 4.21071 14.5858 4.58579L15.4142 5.41421C15.7893 5.78929 16.298 6 16.8284 6H20C21.1046 6 22 6.89543 22 8Z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <Path d="M12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17Z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M22 8V18C22 19.1046 21.1046 20 20 20H4C2.89543 20 2 19.1046 2 18V8C2 6.89543 2.89543 6 4 6H7.17157C7.70201 6 8.21071 5.78929 8.58579 5.41421L9.41421 4.58579C9.78929 4.21071 10.298 4 10.8284 4H13.1716C13.702 4 14.2107 4.21071 14.5858 4.58579L15.4142 5.41421C15.7893 5.78929 16.298 6 16.8284 6H20C21.1046 6 22 6.89543 22 8Z" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
 );
 
@@ -91,68 +75,139 @@ const ReplaceIcon = () => (
     </Svg>
 );
 
-const AvatarSelectionScreen = ({ onComplete }) => {
+const AvatarSelectionScreen = ({ onComplete, onBack }) => {
     const { uploadAvatar, isUploading } = useAvatarUpload();
     const userData = useSelector(selectUser);
     const insets = useSafeAreaInsets();
+    const { width, height } = useWindowDimensions();
+    const styles = useMemo(() => createStyles(width, height), [width, height]);
+    const isNarrow = width < 380;
+    const partnerTitle = translateUiText("for your partner.");
+    const titleGlyphRatio = /[\u3000-\u9fff\uac00-\ud7af]/.test(partnerTitle) ? 1 : 0.58;
+    const partnerTitleFontSize = Math.max(
+        18,
+        Math.min(isNarrow ? 25 : 29, (width - 64) / (partnerTitle.length * titleGlyphRatio))
+    );
 
-    const existingAvatar = userData?.avatarThumbnail || userData?.avatar || null;
+    // This screen renders the avatar at full card size, so prefer the full image.
+    const existingAvatar = userData?.avatar || userData?.avatarThumbnail || null;
 
     const cameraRef = useRef(null);
     const isProcessingRef = useRef(false);
+    const isUploadInFlightRef = useRef(false);
+    const isPickerInFlightRef = useRef(false);
+    const isMountedRef = useRef(true);
+    const hasSyncedExistingAvatarRef = useRef(Boolean(existingAvatar));
 
-    const [hasPermission, setHasPermission] = useState(false);
+    const [permissionStatus, setPermissionStatus] = useState('checking');
+    const [permissionCanAskAgain, setPermissionCanAskAgain] = useState(true);
     const [previewUri, setPreviewUri] = useState(
-        existingAvatar ? { uri: existingAvatar, isFrontCamera: false } : null
+        existingAvatar ? { uri: existingAvatar, isFrontCamera: false, isExisting: true } : null
     );
     const [cameraType, setCameraType] = useState('front');
     const [isCameraInitialized, setIsCameraInitialized] = useState(false);
+    const [isPickingImage, setIsPickingImage] = useState(false);
+    const [isCapturing, setIsCapturing] = useState(false);
+    const [isPreparingUpload, setIsPreparingUpload] = useState(false);
+
+    const hasPermission = permissionStatus === 'granted';
+    const isBusy = isUploading || isPickingImage || isCapturing || isPreparingUpload;
 
     useEffect(() => {
+        isMountedRef.current = true;
         const task = InteractionManager.runAfterInteractions(() => {
             setIsCameraInitialized(true);
             checkCameraPermission();
         });
-        return () => task.cancel();
+        return () => {
+            isMountedRef.current = false;
+            task.cancel();
+        };
     }, []);
 
+    useEffect(() => {
+        if (hasSyncedExistingAvatarRef.current || !existingAvatar || previewUri) return;
+        hasSyncedExistingAvatarRef.current = true;
+        setPreviewUri({ uri: existingAvatar, isFrontCamera: false, isExisting: true });
+    }, [existingAvatar, previewUri]);
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', nextState => {
+            if (nextState === 'active') checkCameraPermission();
+        });
+        return () => subscription.remove();
+    }, []);
+
+    useEffect(() => {
+        if (!onBack) return undefined;
+        const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+            if (isUploadInFlightRef.current || isPickerInFlightRef.current || isProcessingRef.current) {
+                return true;
+            }
+            onBack();
+            return true;
+        });
+        return () => subscription.remove();
+    }, [onBack]);
+
     const checkCameraPermission = async () => {
-        if (Platform.OS === 'ios') {
-            const { status } = await ImagePicker.getCameraPermissionsAsync();
-            setHasPermission(status === 'granted');
-            return;
+        try {
+            if (Platform.OS === 'ios') {
+                const { status, canAskAgain } = await ImagePicker.getCameraPermissionsAsync();
+                if (!isMountedRef.current) return;
+                setPermissionStatus(status === 'granted' ? 'granted' : 'denied');
+                setPermissionCanAskAgain(canAskAgain !== false);
+                return;
+            }
+            const granted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
+            if (!isMountedRef.current) return;
+            setPermissionStatus(granted ? 'granted' : 'denied');
+        } catch (error) {
+            console.error('Failed to check camera permission:', error);
+            if (isMountedRef.current) setPermissionStatus('denied');
         }
-        const granted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
-        setHasPermission(granted);
     };
 
     const requestCameraPermission = async () => {
-        if (Platform.OS === 'ios') {
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            const granted = status === 'granted';
-            setHasPermission(granted);
-            if (!granted) {
-                Alert.alert(
-                    translateUiText("Camera Permission Needed"),
-                    translateUiText("Camera access is needed to take your profile photo. You can still choose a photo from Gallery."),
-                    [{ text: translateUiText("OK") }]
-                );
+        try {
+            if (Platform.OS === 'ios') {
+                if (!permissionCanAskAgain) {
+                    await Linking.openSettings();
+                    return;
+                }
+                const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+                const granted = status === 'granted';
+                setPermissionStatus(granted ? 'granted' : 'denied');
+                setPermissionCanAskAgain(canAskAgain !== false);
+                if (!granted) showCameraPermissionAlert(canAskAgain !== false);
+                return;
             }
-            return;
-        }
-        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
-        const granted = result === PermissionsAndroid.RESULTS.GRANTED;
-        setHasPermission(granted);
-        if (!granted) {
+            const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+            const granted = result === PermissionsAndroid.RESULTS.GRANTED;
+            const canAskAgain = result !== PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN;
+            setPermissionStatus(granted ? 'granted' : 'denied');
+            setPermissionCanAskAgain(canAskAgain);
+            if (!granted) showCameraPermissionAlert(canAskAgain);
+        } catch (error) {
+            console.error('Failed to request camera permission:', error);
             Alert.alert(
-                translateUiText("Camera Permission Needed"),
-                translateUiText("Camera access is needed to take your profile photo. You can still choose a photo from Gallery."),
-                [
-                    { text: translateUiText("Cancel"), style: 'cancel' },
-                    { text: translateUiText("Try Again"), onPress: () => requestCameraPermission() },
-                ]
+                translateUiText("Error"),
+                translateUiText("Camera access is needed to take your profile photo. You can still choose a photo from Gallery.")
             );
         }
+    };
+
+    const showCameraPermissionAlert = (canAskAgain) => {
+        Alert.alert(
+            translateUiText("Camera Permission Needed"),
+            translateUiText("Camera access is needed to take your profile photo. You can still choose a photo from Gallery."),
+            [
+                { text: translateUiText("Cancel"), style: 'cancel' },
+                canAskAgain
+                    ? { text: translateUiText("Try Again"), onPress: requestCameraPermission }
+                    : { text: translateUiText("Open Settings"), onPress: () => Linking.openSettings() },
+            ]
+        );
     };
 
     const toggleCamera = () => {
@@ -176,27 +231,35 @@ const AvatarSelectionScreen = ({ onComplete }) => {
 
         if (isProcessingRef.current) return;
         isProcessingRef.current = true;
+        setIsCapturing(true);
 
         try {
-            const data = await cameraRef.current?.capture();
+            if (!cameraRef.current) throw new Error('Camera is not ready yet');
+            const data = await cameraRef.current.capture();
             const source = data?.uri || (data?.path ? `file://${data.path}` : null);
             if (!source) throw new Error('No image captured');
 
-            let finalUri = source.startsWith('file://') ? source : `file://${source}`;
+            const finalUri = source.startsWith('file://') ? source : `file://${source}`;
 
             setPreviewUri({
                 uri: finalUri,
-                isFrontCamera: cameraType === 'front'
+                isFrontCamera: cameraType === 'front',
+                isExisting: false,
             });
 
         } catch (e) {
-            Alert.alert(translateUiText("Error"), translateUiText(e.message));
+            console.error('Failed to capture avatar photo:', e);
+            Alert.alert(translateUiText("Error"), translateUiText("Couldn’t take photo"));
         } finally {
             isProcessingRef.current = false;
+            if (isMountedRef.current) setIsCapturing(false);
         }
     };
 
     const handlePickFromGallery = async () => {
+        if (isPickerInFlightRef.current || isBusy) return;
+        isPickerInFlightRef.current = true;
+        setIsPickingImage(true);
         try {
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
@@ -217,9 +280,17 @@ const AvatarSelectionScreen = ({ onComplete }) => {
             const croppedUri = await handleCropImage(sourceUri);
             if (croppedUri) {
                 const finalUri = croppedUri.startsWith('file://') ? croppedUri : `file://${croppedUri}`;
-                setPreviewUri({ uri: finalUri, isFrontCamera: false });
+                setPreviewUri({ uri: finalUri, isFrontCamera: false, isExisting: false });
             }
         } catch (e) {
+            console.error('Failed to select an image:', e);
+            Alert.alert(
+                translateUiText("Error"),
+                translateUiText("Could not open photos")
+            );
+        } finally {
+            isPickerInFlightRef.current = false;
+            if (isMountedRef.current) setIsPickingImage(false);
         }
     };
 
@@ -229,7 +300,7 @@ const AvatarSelectionScreen = ({ onComplete }) => {
             const cropResult = await ExpoImageCropTool.openCropperAsync({
                 imageUri: uri,
                 shape: 'rectangle',
-                aspectRatio: 1, 
+                aspectRatio: 1,
                 format: 'jpeg',
                 compressImageQuality: 0.9,
             });
@@ -238,9 +309,45 @@ const AvatarSelectionScreen = ({ onComplete }) => {
             if (!out) return null;
             return out.startsWith('file://') ? out : `file://${out}`;
         } catch (e) {
-            console.warn("Crop cancelled or failed", e);
+            if (!/cancel/i.test(e?.message || '')) {
+                console.error('Failed to crop selected image:', e);
+                Alert.alert(
+                    translateUiText("Error"),
+                    translateUiText("Could not load photo")
+                );
+            }
             return null;
         }
+    };
+
+    const getImageSize = useCallback((uri) => (
+        new Promise((resolve, reject) => {
+            Image.getSize(
+                uri,
+                (imageWidth, imageHeight) => resolve({ width: imageWidth, height: imageHeight }),
+                reject
+            );
+        })
+    ), []);
+
+    const prepareImageForUpload = async ({ uri, isFrontCamera }) => {
+        const { width: imageWidth, height: imageHeight } = await getImageSize(uri);
+        const squareSize = Math.min(imageWidth, imageHeight);
+        const context = ImageManipulator.manipulate(uri);
+        context.crop({
+            originX: Math.max(0, (imageWidth - squareSize) / 2),
+            originY: Math.max(0, (imageHeight - squareSize) / 2),
+            width: squareSize,
+            height: squareSize,
+        });
+        if (isFrontCamera) context.flip(FlipType.Horizontal);
+        if (squareSize > 1080) context.resize({ width: 1080, height: 1080 });
+        const rendered = await context.renderAsync();
+        const saved = await rendered.saveAsync({
+            compress: 0.9,
+            format: SaveFormat.JPEG,
+        });
+        return saved.uri;
     };
 
     const handleNext = async () => {
@@ -252,21 +359,18 @@ const AvatarSelectionScreen = ({ onComplete }) => {
     };
 
     const handleConfirmAvatar = async () => {
-        if (!previewUri || isUploading) return;
+        if (!previewUri || isUploading || isUploadInFlightRef.current) return;
 
+        if (previewUri.isExisting) {
+            onComplete();
+            return;
+        }
+
+        isUploadInFlightRef.current = true;
+        setIsPreparingUpload(true);
         try {
-            let finalUploadUri = previewUri.uri;
-            if (previewUri.isFrontCamera) {
-                try {
-                    const context = ImageManipulator.manipulate(finalUploadUri);
-                    context.flip(FlipType.Horizontal);
-                    const result = await context.renderAsync();
-                    const saved = await result.saveAsync({ format: SaveFormat.JPEG });
-                    finalUploadUri = saved.uri;
-                } catch (err) {
-                    console.error('Failed to flip image before upload:', err);
-                }
-            }
+            const finalUploadUri = await prepareImageForUpload(previewUri);
+            if (isMountedRef.current) setIsPreparingUpload(false);
 
             const result = await uploadAvatar({
                 uri: finalUploadUri,
@@ -285,6 +389,9 @@ const AvatarSelectionScreen = ({ onComplete }) => {
         } catch (error) {
             console.error('Avatar upload error:', error);
             Alert.alert(translateUiText("Error"), translateUiText("Failed to set profile picture"));
+        } finally {
+            isUploadInFlightRef.current = false;
+            if (isMountedRef.current) setIsPreparingUpload(false);
         }
     };
 
@@ -298,26 +405,53 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                 end={{ x: 0.75, y: 1 }}
                 style={styles.gradient}
             >
-                <View style={[styles.container, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 10 }]}>
-                    
+                <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
+
                     {/* Top Row: Brand Logo & Close Button */}
                     <View style={styles.topRowContainer}>
-                        <Image 
-                            source={require('../../assets/images/penguin-text-logo.png')} 
-                            style={styles.brandLogo} 
-                            resizeMode="contain" 
+                        <Image
+                            source={require('../../assets/images/penguin-text-logo.png')}
+                            style={styles.brandLogo}
+                            resizeMode="contain"
                         />
-                        <TouchableOpacity onPress={onComplete} style={styles.skipButton} activeOpacity={0.85}>
-                            <Text style={styles.skipButtonText}>{translateUiText("Skip")}</Text>
-                        </TouchableOpacity>
+                        <View style={styles.headerActions}>
+                            {onBack && (
+                                <TouchableOpacity
+                                    onPress={onBack}
+                                    style={styles.headerButton}
+                                    activeOpacity={0.85}
+                                    disabled={isBusy}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={translateUiText("Back")}
+                                    accessibilityState={{ disabled: isBusy }}
+                                >
+                                    <Text style={styles.headerButtonText}>{translateUiText("Back")}</Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity
+                                onPress={onComplete}
+                                style={styles.headerButton}
+                                activeOpacity={0.85}
+                                disabled={isBusy}
+                                accessibilityRole="button"
+                                accessibilityLabel={translateUiText("Skip")}
+                                accessibilityState={{ disabled: isBusy }}
+                            >
+                                <Text style={styles.headerButtonText}>{translateUiText("Skip")}</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
-                    {/* Vertically Centered Content Section */}
-                    <View style={styles.contentCentered}>
+                    <ScrollView
+                        style={styles.scrollView}
+                        contentContainerStyle={[styles.contentCentered, { paddingBottom: insets.bottom + 20 }]}
+                        showsVerticalScrollIndicator={false}
+                        bounces={false}
+                    >
                         {/* Centered Premium Title Block inspired by other onboarding screens */}
                         <View style={styles.titleBlock}>
                             <Text style={styles.titlePrimary}>{translateUiText("Add a photo")}</Text>
-                            <Svg height={width < 380 ? 44 : 50} width={width - 40} style={styles.gradientTitle}>
+                            <Svg height={isNarrow ? 44 : 50} width={width - 40} style={styles.gradientTitle}>
                                 <Defs>
                                     <SvgGradient id="titleGradAvatar" x1="0" y1="0" x2="1" y2="0">
                                         <Stop offset="0" stopColor="#FF435F" />
@@ -328,14 +462,14 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                 <SvgText
                                     fill="url(#titleGradAvatar)"
                                     fontFamily={fontFamily.extraBold}
-                                    fontSize={width < 380 ? 25 : 29}
+                                    fontSize={partnerTitleFontSize}
                                     fontWeight={fontWeight('700')}
                                     stroke="url(#titleGradAvatar)"
                                     strokeWidth={0.15}
                                     textAnchor="middle"
                                     x={(width - 40) / 2}
-                                    y={width < 380 ? 31 : 36}
-                                >{translateUiText("for your partner.")}</SvgText>
+                                    y={isNarrow ? 31 : 36}
+                                >{partnerTitle}</SvgText>
                             </Svg>
                             <View style={styles.titleDivider}>
                                 <View style={styles.dividerLine} />
@@ -349,22 +483,27 @@ const AvatarSelectionScreen = ({ onComplete }) => {
 
                         {/* Main Camera / Mascot Box */}
                         <View style={styles.cardContainer}>
-                            <View style={[styles.dashedBox, (hasPermission || previewUri) && { borderWidth: 0 }]}>
-                                
+                            <View style={[styles.dashedBox, (hasPermission || previewUri) && styles.dashedBoxHiddenBorder]}>
+
                                 {/* Decorative Sparkles & Hearts */}
                                 {!previewUri && !hasPermission && (
                                     <>
-                                        <View style={[styles.decor, { top: '8%', left: '10%' }]}><SparkleIcon size={14} color="#FFA6C9" /></View>
-                                        <View style={[styles.decor, { top: '30%', left: '4%' }]}><DecorativeHeart size={20} color="#FF8FAB" /></View>
-                                        <View style={[styles.decor, { top: '55%', left: '8%' }]}><SparkleIcon size={12} color="#FFA6C9" /></View>
-                                        <View style={[styles.decor, { top: '10%', right: '12%' }]}><SparkleIcon size={18} color="#FF8FAB" /></View>
-                                        <View style={[styles.decor, { top: '25%', right: '6%' }]}><SparkleIcon size={10} color="#FFA6C9" /></View>
-                                        <View style={[styles.decor, { top: '45%', right: '3%' }]}><DecorativeHeart size={24} color="#FF8FAB" /></View>
-                                        <View style={[styles.decor, { top: '60%', right: '10%' }]}><SparkleIcon size={14} color="#FFA6C9" /></View>
+                                        <View style={[styles.decor, styles.decorLeftTop]}><SparkleIcon size={14} color="#FFA6C9" /></View>
+                                        <View style={[styles.decor, styles.decorLeftUpper]}><DecorativeHeart size={20} color="#FF8FAB" /></View>
+                                        <View style={[styles.decor, styles.decorLeftLower]}><SparkleIcon size={12} color="#FFA6C9" /></View>
+                                        <View style={[styles.decor, styles.decorRightTop]}><SparkleIcon size={18} color="#FF8FAB" /></View>
+                                        <View style={[styles.decor, styles.decorRightUpper]}><SparkleIcon size={10} color="#FFA6C9" /></View>
+                                        <View style={[styles.decor, styles.decorRightMiddle]}><DecorativeHeart size={24} color="#FF8FAB" /></View>
+                                        <View style={[styles.decor, styles.decorRightLower]}><SparkleIcon size={14} color="#FFA6C9" /></View>
                                     </>
                                 )}
 
-                                {previewUri ? (
+                                {permissionStatus === 'checking' && !previewUri ? (
+                                    <View style={styles.permissionLoading}>
+                                        <ActivityIndicator color="#FF5E97" size="large" />
+                                        <Text style={styles.permissionPromptText}>{translateUiText("Checking camera access…")}</Text>
+                                    </View>
+                                ) : previewUri ? (
                                     <View style={styles.cameraWrapper}>
                                         <Image
                                             source={{ uri: previewUri.uri }}
@@ -383,27 +522,38 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                                                 style={styles.camera}
                                                 cameraType={cameraType}
                                                 flashMode="auto"
+                                                resizeMode="cover"
                                             />
                                         )}
                                     </View>
                                 ) : (
                                     // No Permission State
                                     <View style={styles.noPermissionContent}>
-                                        <Image 
-                                            source={require('../../assets/images/camera-photo.png')} 
-                                            style={styles.mascotImage} 
-                                            resizeMode="contain" 
+                                        <Image
+                                            source={require('../../assets/images/camera-photo.png')}
+                                            style={styles.mascotImage}
+                                            resizeMode="contain"
                                         />
                                         <Text style={styles.permissionPromptText}>{translateUiText("Camera access is needed")}</Text>
-                                        <TouchableOpacity style={styles.grantButton} onPress={requestCameraPermission} activeOpacity={0.85}>
-                                            <LinearGradient 
-                                                colors={['#FF5E97', '#FFA1C9']} 
-                                                start={{ x: 0, y: 0 }} 
-                                                end={{ x: 1, y: 0 }} 
+                                        <TouchableOpacity
+                                            style={styles.grantButton}
+                                            onPress={permissionCanAskAgain ? requestCameraPermission : () => Linking.openSettings()}
+                                            activeOpacity={0.85}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={permissionCanAskAgain
+                                                ? translateUiText("Continue")
+                                                : translateUiText("Open Settings")}
+                                        >
+                                            <LinearGradient
+                                                colors={['#FF5E97', '#FFA1C9']}
+                                                start={{ x: 0, y: 0 }}
+                                                end={{ x: 1, y: 0 }}
                                                 style={styles.grantButtonGradient}
                                             >
                                                 <CameraIconOutline color="#FFFFFF" />
-                                                <Text style={styles.grantButtonText}>{translateUiText("Continue")}</Text>
+                                                <Text style={styles.grantButtonText}>
+                                                    {permissionCanAskAgain ? translateUiText("Continue") : translateUiText("Open Settings")}
+                                                </Text>
                                             </LinearGradient>
                                         </TouchableOpacity>
                                     </View>
@@ -417,21 +567,31 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                         {/* Bottom Controls */}
                         <View style={styles.controlsRow}>
                             <View style={styles.controlItem}>
-                                <TouchableOpacity style={styles.smallCircleButton} onPress={handlePickFromGallery}>
+                                <TouchableOpacity
+                                    style={styles.smallCircleButton}
+                                    onPress={handlePickFromGallery}
+                                    disabled={isBusy}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={translateUiText("Gallery")}
+                                    accessibilityState={{ disabled: isBusy }}
+                                >
                                     <GalleryIcon />
                                 </TouchableOpacity>
                                 <Text style={styles.controlLabel}>{translateUiText("Gallery")}</Text>
                             </View>
 
                             <View style={styles.controlItem}>
-                                <TouchableOpacity 
-                                    style={[styles.captureRing, (!previewUri && !hasPermission) && { opacity: 0.5 }]} 
+                                <TouchableOpacity
+                                    style={[styles.captureRing, (!previewUri && !hasPermission) && styles.controlDisabled]}
                                     onPress={previewUri ? handleNext : handleCapture}
-                                    disabled={(!previewUri && !hasPermission) || isUploading}
+                                    disabled={(!previewUri && !hasPermission) || isBusy}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={previewUri ? translateUiText("Done") : translateUiText("Take Photo")}
+                                    accessibilityState={{ disabled: (!previewUri && !hasPermission) || isBusy, busy: isBusy }}
                                 >
                                     <LinearGradient colors={['#FFB5D0', '#FF8FAB', '#FF5E97']} style={styles.captureRingGradient}>
                                         <View style={styles.captureInnerCircle}>
-                                            {isUploading ? (
+                                            {isUploading || isPreparingUpload ? (
                                                 <ActivityIndicator color="#FF5E97" size="small" />
                                             ) : previewUri ? (
                                                 <CheckIconBig />
@@ -442,16 +602,20 @@ const AvatarSelectionScreen = ({ onComplete }) => {
                             </View>
 
                             <View style={styles.controlItem}>
-                                <TouchableOpacity 
-                                    style={styles.smallCircleButton} 
+                                <TouchableOpacity
+                                    style={styles.smallCircleButton}
                                     onPress={previewUri ? () => setPreviewUri(null) : toggleCamera}
+                                    disabled={isBusy}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={previewUri ? translateUiText("Replace") : translateUiText("Flip")}
+                                    accessibilityState={{ disabled: isBusy }}
                                 >
                                     {previewUri ? <ReplaceIcon /> : <FlipIcon />}
                                 </TouchableOpacity>
                                 <Text style={styles.controlLabel}>{previewUri ? translateUiText("Replace") : translateUiText("Flip")}</Text>
                             </View>
                         </View>
-                    </View>
+                    </ScrollView>
                 </View>
 
                 {/* Bottom Clouds background decoration */}
@@ -467,7 +631,11 @@ const AvatarSelectionScreen = ({ onComplete }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (width, height) => {
+    const isCompactHeight = height < 760;
+    const cardSize = Math.min(width - 48, isCompactHeight ? 330 : 420);
+
+    return StyleSheet.create({
     root: {
         flex: 1,
     },
@@ -479,8 +647,11 @@ const styles = StyleSheet.create({
         zIndex: 2,
     },
     contentCentered: {
+        flexGrow: 1,
+        justifyContent: height > 700 ? 'center' : 'flex-start',
+    },
+    scrollView: {
         flex: 1,
-        justifyContent: 'center',
     },
     topRowContainer: {
         flexDirection: 'row',
@@ -495,14 +666,19 @@ const styles = StyleSheet.create({
         height: isCompactHeight ? 36 : 42,
         marginLeft: -14,
     },
-    skipButton: {
-        minWidth: 48,
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    headerButton: {
+        minWidth: 46,
         minHeight: 34,
         paddingHorizontal: 4,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    skipButtonText: {
+    headerButtonText: {
         fontFamily: fontFamily.bold,
         fontSize: 14,
         fontWeight: fontWeight('700'),
@@ -556,8 +732,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 36,
         padding: 12,
-        width: width - 48,
-        height: width - 48,
+        width: cardSize,
+        height: cardSize,
         alignSelf: 'center',
         shadowColor: '#FFB5D0',
         shadowOffset: { width: 0, height: 10 },
@@ -574,16 +750,32 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         position: 'relative',
     },
+    dashedBoxHiddenBorder: {
+        borderWidth: 0,
+    },
     decor: {
         position: 'absolute',
         zIndex: 1,
     },
+    decorLeftTop: { top: '8%', left: '10%' },
+    decorLeftUpper: { top: '30%', left: '4%' },
+    decorLeftLower: { top: '55%', left: '8%' },
+    decorRightTop: { top: '10%', right: '12%' },
+    decorRightUpper: { top: '25%', right: '6%' },
+    decorRightMiddle: { top: '45%', right: '3%' },
+    decorRightLower: { top: '60%', right: '10%' },
     noPermissionContent: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'flex-end',
         paddingBottom: 20,
         paddingHorizontal: 16,
+    },
+    permissionLoading: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 14,
     },
     mascotImage: {
         width: isCompactHeight ? 320 : 360,
@@ -600,49 +792,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: 12,
         zIndex: 3,
-    },
-    permissionInfoBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF5F8',
-        borderWidth: 1,
-        borderColor: '#FFE0EE',
-        borderStyle: 'dashed',
-        borderRadius: 16,
-        padding: 12,
-        width: '100%',
-        marginBottom: 16,
-        zIndex: 3,
-    },
-    permissionIconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-        shadowColor: '#FFB5D0',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    permissionTextCol: {
-        flex: 1,
-    },
-    permissionTitle: {
-        fontFamily: fontFamily.bold,
-        fontSize: 14,
-        fontWeight: fontWeight('700'),
-        color: navy,
-    },
-    permissionSubtitle: {
-        fontFamily: fontFamily.medium,
-        fontSize: 13,
-        color: '#7380A1',
-        marginTop: 2,
-        fontWeight: fontWeight('500'),
     },
     grantButton: {
         width: '100%',
@@ -726,6 +875,9 @@ const styles = StyleSheet.create({
         elevation: 5,
         marginBottom: 20,
     },
+    controlDisabled: {
+        opacity: 0.5,
+    },
     captureRingGradient: {
         flex: 1,
         borderRadius: 42,
@@ -739,44 +891,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    footer: {
-        paddingHorizontal: 24,
-        marginBottom: isCompactHeight ? 10 : 20,
-    },
-    continueButtonWrapper: {
-        width: '100%',
-        height: isCompactHeight ? 44 : 48,
-        borderRadius: 24,
-        overflow: 'hidden',
-        shadowColor: '#FF5E97',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 5,
-    },
-    continueButtonGradient: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    continueButtonDisabled: {
-        opacity: 0.45,
-    },
-    continueButtonContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-    },
-    continueButtonText: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: isCompactHeight ? 16 : 18,
-        fontWeight: fontWeight('800'),
-        color: '#FFFFFF',
-    },
-    continueButtonTextDisabled: {
-        color: 'rgba(255, 255, 255, 0.7)',
     },
     cloudsContainer: {
         position: 'absolute',
@@ -820,6 +934,7 @@ const styles = StyleSheet.create({
         bottom: -85,
         right: -50,
     },
-});
+    });
+};
 
 export default AvatarSelectionScreen;

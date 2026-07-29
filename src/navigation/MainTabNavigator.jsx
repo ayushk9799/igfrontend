@@ -274,6 +274,13 @@ export const MainTabNavigator = ({
     const { startCall, callState, expandCall } = useCall();
     const callActive = callState !== CALL_STATE.IDLE;
     const handleCallPress = callActive ? expandCall : startCall;
+    const handleLiveChatPress = useCallback(() => {
+        if (!hasPartner) {
+            onFindPartner?.();
+            return;
+        }
+        onLiveChatPress?.();
+    }, [hasPartner, onFindPartner, onLiveChatPress]);
 
     const handleSendCouplePhoto = useCallback(async (asset) => {
         const userId = userData?._id || userData?.id;
@@ -933,7 +940,7 @@ export const MainTabNavigator = ({
                         partnerName={partnerName || 'Partner'}
                         partnerOnline={partnerOnline}
                         liveChatDisabled={callActive}
-                        onLiveChatPress={onLiveChatPress}
+                        onLiveChatPress={handleLiveChatPress}
                         onSelectChat={(chat) => {
                             // Navigate to ChatScreen - handled by AppNavigator
                             // For now, we'll use a callback if available, or log
@@ -982,19 +989,24 @@ export const MainTabNavigator = ({
                         setCurrentTab('canvas');
                     }}
                     onQuestionPress={(category) => {
-                        if (!hasPartner) {
-                            onFindPartner?.();
-                            return;
-                        }
                         if (category) {
                             const topicConfig = TOPIC_CATEGORIES[category.id || category];
                             if (topicConfig) {
                                 setSelectedTopic(category.id || category);
                                 setCurrentTab('topicQuestions');
+                                return;
                             } else {
+                                if (!hasPartner) {
+                                    onFindPartner?.();
+                                    return;
+                                }
                                 onQuestionPress(category);
                             }
                         } else {
+                            if (!hasPartner) {
+                                onFindPartner?.();
+                                return;
+                            }
                             setCurrentTab('dailyChallenge');
                         }
                     }}
@@ -1068,8 +1080,7 @@ export const MainTabNavigator = ({
                             onNavigateFromAccount?.('avatarSelection');
                         }}
                         onFindPartner={() => {
-                            setIsAccountVisible(false);
-                            onNavigateFromAccount?.('partnerCode');
+                            onFindPartner?.();
                         }}
                         onNavigateToPremium={() => {
                             setHomePremiumStep('free');

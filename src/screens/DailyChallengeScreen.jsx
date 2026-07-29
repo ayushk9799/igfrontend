@@ -253,12 +253,6 @@ export default function DailyChallengeScreen({
     };
   }, [userId]);
 
-  useEffect(() => {
-    if (!hasPartner && onLinkPartner) {
-      onLinkPartner();
-    }
-  }, [hasPartner, onLinkPartner]);
-
   const tasks = useMemo(() => challenge?.tasks || [], [challenge?.tasks]);
 
   // Memoize answered count for performance - MUST be before early returns!
