@@ -123,6 +123,7 @@ export const MainTabNavigator = ({
     const locationSettingsPendingRef = useRef(false);
     const cameraSettingsPendingRef = useRef(false);
     const locationRevocationSyncRef = useRef(false);
+    const distancePremiumDelayRef = useRef(null);
     const yearlyOfferDelayRef = useRef(null);
     const lastAutoOpenedMoodRef = React.useRef(null);
     const currentTabRef = useRef(currentTab);
@@ -402,7 +403,13 @@ export const MainTabNavigator = ({
             // users must be allowed to grant it before the premium gate.
             if (!hasPremiumAccess) {
                 setWidgetSheet(null);
-                onPremiumPress?.();
+                if (distancePremiumDelayRef.current) {
+                    clearTimeout(distancePremiumDelayRef.current);
+                }
+                distancePremiumDelayRef.current = setTimeout(() => {
+                    distancePremiumDelayRef.current = null;
+                    onPremiumPress?.();
+                }, 400);
                 return;
             }
 
@@ -447,6 +454,12 @@ export const MainTabNavigator = ({
             setLocationSyncing(false);
         }
     }, [dispatch, hasPremiumAccess, locationSyncing, onPremiumPress, refreshLocationPermissionStatus, userData]);
+
+    useEffect(() => () => {
+        if (distancePremiumDelayRef.current) {
+            clearTimeout(distancePremiumDelayRef.current);
+        }
+    }, []);
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextState => {

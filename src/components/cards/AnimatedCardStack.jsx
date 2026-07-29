@@ -168,6 +168,15 @@ const CardLayer = React.memo(({
             pointerEvents={interactive ? 'auto' : 'none'}
         >
             <TaskCard {...cardProps} task={task} index={taskIndex} />
+            <View
+                style={styles.cardCounter}
+                pointerEvents="none"
+                accessible={false}
+            >
+                <Text style={styles.cardCounterText}>
+                    {cardProps.displayIndex} / {cardProps.totalCards}
+                </Text>
+            </View>
         </Animated.View>
     );
 });
@@ -629,6 +638,23 @@ const styles = StyleSheet.create({
         right: 0,
         overflow: 'hidden',
         backgroundColor: 'transparent',
+    },
+    cardCounter: {
+        position: 'absolute',
+        top: 24,
+        right: 24,
+        zIndex: 4,
+        elevation: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    },
+    cardCounterText: {
+        color: 'rgba(255, 255, 255, 0.88)',
+        fontSize: 14,
+        fontWeight: '800',
+        fontFamily: fontFamily.bold,
     },
     skipButton: {
         marginTop: 22,

@@ -282,6 +282,8 @@ const WidgetSetupBottomSheet = ({
     const backdropOpacity = useRef(new Animated.Value(0)).current;
     const sheetTranslateY = useRef(new Animated.Value(500)).current;
     const onCloseRef = useRef(onClose);
+    const visibleRef = useRef(visible);
+    visibleRef.current = visible;
 
     useEffect(() => {
         onCloseRef.current = onClose;
@@ -376,6 +378,7 @@ const WidgetSetupBottomSheet = ({
     useEffect(() => {
         let animation;
         let animationFrame;
+        let closeFallback;
 
         backdropOpacity.stopAnimation();
         sheetTranslateY.stopAnimation();
@@ -413,16 +416,21 @@ const WidgetSetupBottomSheet = ({
                     useNativeDriver: true,
                 }),
             ]);
-            animation.start(({ finished }) => {
-                if (finished) {
+            const finishClose = () => {
+                if (!visibleRef.current) {
                     setIsMounted(false);
                 }
-            });
+            };
+            animation.start(finishClose);
+            closeFallback = setTimeout(finishClose, 320);
         }
 
         return () => {
             if (animationFrame !== undefined) {
                 cancelAnimationFrame(animationFrame);
+            }
+            if (closeFallback !== undefined) {
+                clearTimeout(closeFallback);
             }
             animation?.stop();
         };

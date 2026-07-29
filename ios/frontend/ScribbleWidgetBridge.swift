@@ -11,8 +11,11 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     private let appGroupIdentifier = "group.com.thousandways.love"
     private var locationManager: CLLocationManager?
     private var backgroundLocationManager: CLLocationManager?
+    private var authorizationStatusManager: CLLocationManager?
     private var locationResolver: RCTPromiseResolveBlock?
     private var locationRejecter: RCTPromiseRejectBlock?
+    private var authorizationStatusResolvers: [RCTPromiseResolveBlock] = []
+    private var hasReceivedAuthorizationStatus = false
     private var backgroundStartResolver: RCTPromiseResolveBlock?
     private var backgroundStartRejecter: RCTPromiseRejectBlock?
     private var backgroundStartShouldTrack = false
@@ -285,29 +288,22 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     @objc
     func getLocationAuthorizationStatus(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async {
-            let status = CLLocationManager().authorizationStatus
-            let statusName: String
-            switch status {
-            case .notDetermined:
-                statusName = "notDetermined"
-            case .restricted:
-                statusName = "restricted"
-            case .denied:
-                statusName = "denied"
-            case .authorizedWhenInUse:
-                statusName = "whenInUse"
-            case .authorizedAlways:
-                statusName = "always"
-            @unknown default:
-                statusName = "unknown"
+            if let manager = self.authorizationStatusManager, self.hasReceivedAuthorizationStatus {
+                self.resolveLocationAuthorizationStatus(
+                    manager.authorizationStatus,
+                    resolvers: [resolver]
+                )
+                return
             }
 
-            resolver([
-                "status": statusName,
-                "foregroundGranted": status == .authorizedWhenInUse || status == .authorizedAlways,
-                "backgroundGranted": status == .authorizedAlways,
-                "servicesEnabled": CLLocationManager.locationServicesEnabled(),
-            ])
+            self.authorizationStatusResolvers.append(resolver)
+            guard self.authorizationStatusManager == nil else {
+                return
+            }
+
+            let manager = CLLocationManager()
+            self.authorizationStatusManager = manager
+            manager.delegate = self
         }
     }
 
@@ -315,11 +311,6 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     @objc
     func requestCurrentLocation(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async {
-            if CLLocationManager.locationServicesEnabled() == false {
-                rejecter("LOCATION_DISABLED", "Location services are disabled.", nil)
-                return
-            }
-
             let manager = CLLocationManager()
             self.locationManager = manager
             self.locationResolver = resolver
@@ -327,23 +318,46 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             manager.delegate = self
             manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
 
-            let status = manager.authorizationStatus
-            switch status {
-            case .notDetermined:
-                manager.requestWhenInUseAuthorization()
-            case .authorizedWhenInUse, .authorizedAlways:
-                manager.requestLocation()
-            case .denied, .restricted:
-                rejecter("LOCATION_DENIED", "Location permission is not granted.", nil)
-                self.clearLocationPromise()
-            @unknown default:
-                rejecter("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
-                self.clearLocationPromise()
+            self.withLocationServicesEnabled { servicesEnabled in
+                guard self.locationManager === manager else {
+                    return
+                }
+                guard servicesEnabled else {
+                    rejecter("LOCATION_DISABLED", "Location services are disabled.", nil)
+                    self.clearLocationPromise()
+                    return
+                }
+
+                switch manager.authorizationStatus {
+                case .notDetermined:
+                    manager.requestWhenInUseAuthorization()
+                case .authorizedWhenInUse, .authorizedAlways:
+                    manager.requestLocation()
+                case .denied, .restricted:
+                    rejecter("LOCATION_DENIED", "Location permission is not granted.", nil)
+                    self.clearLocationPromise()
+                @unknown default:
+                    rejecter("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
+                    self.clearLocationPromise()
+                }
             }
         }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if manager === authorizationStatusManager {
+            hasReceivedAuthorizationStatus = true
+            let resolvers = authorizationStatusResolvers
+            authorizationStatusResolvers.removeAll()
+            if !resolvers.isEmpty {
+                resolveLocationAuthorizationStatus(
+                    manager.authorizationStatus,
+                    resolvers: resolvers
+                )
+            }
+            return
+        }
+
         if manager === backgroundLocationManager {
             switch manager.authorizationStatus {
             case .authorizedAlways:
@@ -431,6 +445,46 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
             }
 
             self.clearBackgroundStartPromise()
+        }
+    }
+
+    private func withLocationServicesEnabled(_ completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let servicesEnabled = CLLocationManager.locationServicesEnabled()
+            DispatchQueue.main.async {
+                completion(servicesEnabled)
+            }
+        }
+    }
+
+    private func resolveLocationAuthorizationStatus(
+        _ status: CLAuthorizationStatus,
+        resolvers: [RCTPromiseResolveBlock]
+    ) {
+        withLocationServicesEnabled { servicesEnabled in
+            let statusName: String
+            switch status {
+            case .notDetermined:
+                statusName = "notDetermined"
+            case .restricted:
+                statusName = "restricted"
+            case .denied:
+                statusName = "denied"
+            case .authorizedWhenInUse:
+                statusName = "whenInUse"
+            case .authorizedAlways:
+                statusName = "always"
+            @unknown default:
+                statusName = "unknown"
+            }
+
+            let result: [String: Any] = [
+                "status": statusName,
+                "foregroundGranted": status == .authorizedWhenInUse || status == .authorizedAlways,
+                "backgroundGranted": status == .authorizedAlways,
+                "servicesEnabled": servicesEnabled,
+            ]
+            resolvers.forEach { $0(result) }
         }
     }
 
@@ -538,30 +592,35 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     @objc
     func requestAlwaysLocationAuthorization(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async {
-            guard CLLocationManager.locationServicesEnabled() else {
-                rejecter("LOCATION_DISABLED", "Location services are disabled.", nil)
-                return
-            }
-
             self.configureBackgroundLocationManager()
             guard let manager = self.backgroundLocationManager else {
                 rejecter("LOCATION_UNKNOWN", "Unable to create the location manager.", nil)
                 return
             }
 
-            switch manager.authorizationStatus {
-            case .notDetermined, .authorizedWhenInUse:
-                self.backgroundStartResolver = resolver
-                self.backgroundStartRejecter = rejecter
-                self.backgroundStartShouldTrack = false
-                manager.requestAlwaysAuthorization()
-                self.rejectBackgroundStartIfPendingAfterDelay()
-            case .authorizedAlways:
-                resolver(true)
-            case .denied, .restricted:
-                rejecter("LOCATION_DENIED", "Location permission is not granted.", nil)
-            @unknown default:
-                rejecter("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
+            self.withLocationServicesEnabled { servicesEnabled in
+                guard self.backgroundLocationManager === manager else {
+                    return
+                }
+                guard servicesEnabled else {
+                    rejecter("LOCATION_DISABLED", "Location services are disabled.", nil)
+                    return
+                }
+
+                switch manager.authorizationStatus {
+                case .notDetermined, .authorizedWhenInUse:
+                    self.backgroundStartResolver = resolver
+                    self.backgroundStartRejecter = rejecter
+                    self.backgroundStartShouldTrack = false
+                    manager.requestAlwaysAuthorization()
+                    self.rejectBackgroundStartIfPendingAfterDelay()
+                case .authorizedAlways:
+                    resolver(true)
+                case .denied, .restricted:
+                    rejecter("LOCATION_DENIED", "Location permission is not granted.", nil)
+                @unknown default:
+                    rejecter("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
+                }
             }
         }
     }
@@ -570,39 +629,38 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     @objc
     func startDistanceBackgroundUpdates(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async {
-            guard CLLocationManager.locationServicesEnabled() else {
-                rejecter("LOCATION_DISABLED", "Location services are disabled.", nil)
-                return
-            }
-
             self.configureBackgroundLocationManager()
             guard let manager = self.backgroundLocationManager else {
                 resolver(false)
                 return
             }
 
-            switch manager.authorizationStatus {
-            case .notDetermined:
-                self.backgroundStartResolver = resolver
-                self.backgroundStartRejecter = rejecter
-                self.backgroundStartShouldTrack = true
-                manager.requestAlwaysAuthorization()
-                self.rejectBackgroundStartIfPendingAfterDelay()
-            case .authorizedWhenInUse:
-                self.backgroundStartResolver = resolver
-                self.backgroundStartRejecter = rejecter
-                self.backgroundStartShouldTrack = true
-                manager.requestAlwaysAuthorization()
-                self.rejectBackgroundStartIfPendingAfterDelay()
-            case .authorizedAlways:
-                UserDefaults(suiteName: self.appGroupIdentifier)?.set(true, forKey: self.trackingEnabledKey)
-                manager.startMonitoringSignificantLocationChanges()
-                resolver(true)
-            case .denied, .restricted:
-                UserDefaults(suiteName: self.appGroupIdentifier)?.set(false, forKey: self.trackingEnabledKey)
-                rejecter("LOCATION_DENIED", "Location permission is not granted.", nil)
-            @unknown default:
-                rejecter("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
+            self.withLocationServicesEnabled { servicesEnabled in
+                guard self.backgroundLocationManager === manager else {
+                    return
+                }
+                guard servicesEnabled else {
+                    rejecter("LOCATION_DISABLED", "Location services are disabled.", nil)
+                    return
+                }
+
+                switch manager.authorizationStatus {
+                case .notDetermined, .authorizedWhenInUse:
+                    self.backgroundStartResolver = resolver
+                    self.backgroundStartRejecter = rejecter
+                    self.backgroundStartShouldTrack = true
+                    manager.requestAlwaysAuthorization()
+                    self.rejectBackgroundStartIfPendingAfterDelay()
+                case .authorizedAlways:
+                    UserDefaults(suiteName: self.appGroupIdentifier)?.set(true, forKey: self.trackingEnabledKey)
+                    manager.startMonitoringSignificantLocationChanges()
+                    resolver(true)
+                case .denied, .restricted:
+                    UserDefaults(suiteName: self.appGroupIdentifier)?.set(false, forKey: self.trackingEnabledKey)
+                    rejecter("LOCATION_DENIED", "Location permission is not granted.", nil)
+                @unknown default:
+                    rejecter("LOCATION_UNKNOWN", "Unable to determine location permission status.", nil)
+                }
             }
         }
     }
