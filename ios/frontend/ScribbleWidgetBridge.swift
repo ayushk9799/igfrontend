@@ -18,6 +18,7 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
     private var backgroundStartShouldTrack = false
     private let trackingUserIdKey = "distance_widget_tracking_user_id"
     private let trackingApiBaseKey = "distance_widget_tracking_api_base"
+    private let trackingAuthTokenKey = "distance_widget_tracking_auth_token"
     private let trackingEnabledKey = "distance_widget_background_tracking_enabled"
 
     private func localized(_ english: String, _ french: String) -> String {
@@ -526,10 +527,11 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
 
     /// Store parity with Android bridge. iOS widget status is reported by JS after reading WidgetKit configurations.
     @objc
-    func setWidgetTrackingContext(_ userId: NSString, apiBase: NSString, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    func setWidgetTrackingContext(_ userId: NSString, apiBase: NSString, authToken: NSString, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         if let defaults = UserDefaults(suiteName: appGroupIdentifier) {
             defaults.set(String(userId), forKey: trackingUserIdKey)
             defaults.set(String(apiBase), forKey: trackingApiBaseKey)
+            defaults.set(String(authToken), forKey: trackingAuthTokenKey)
         }
         resolver(true)
     }
@@ -672,6 +674,7 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
         guard let defaults = UserDefaults(suiteName: appGroupIdentifier),
               let userId = defaults.string(forKey: trackingUserIdKey),
               let apiBase = defaults.string(forKey: trackingApiBaseKey)?.trimmingCharacters(in: CharacterSet(charactersIn: "/")),
+              let authToken = defaults.string(forKey: trackingAuthTokenKey),
               let locationURL = URL(string: "\(apiBase)/api/user/location"),
               let distanceURL = URL(string: "\(apiBase)/api/user/distance/\(userId)") else {
             return
@@ -680,6 +683,7 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
         var locationRequest = URLRequest(url: locationURL)
         locationRequest.httpMethod = "PUT"
         locationRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        locationRequest.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
         locationRequest.httpBody = try? JSONSerialization.data(withJSONObject: [
             "userId": userId,
             "latitude": location.coordinate.latitude,
@@ -694,7 +698,9 @@ class ScribbleWidgetBridge: NSObject, CLLocationManagerDelegate {
                 return
             }
 
-            URLSession.shared.dataTask(with: distanceURL) { data, response, error in
+            var distanceRequest = URLRequest(url: distanceURL)
+            distanceRequest.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+            URLSession.shared.dataTask(with: distanceRequest) { data, response, error in
                 guard error == nil,
                       let data = data,
                       let httpResponse = response as? HTTPURLResponse,

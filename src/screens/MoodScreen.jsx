@@ -1,13 +1,17 @@
-import React, { useState, useCallback, useEffect, useRef, memo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef, memo } from 'react';
 import {
-    Animated,
-    Easing,
+    BottomSheetBackdrop,
+    BottomSheetFlatList,
+    BottomSheetFooter,
+    BottomSheetModal,
+} from '@gorhom/bottom-sheet';
+import {
+    BackHandler,
     Image,
     StyleSheet,
     Text,
     View,
     TouchableOpacity,
-    FlatList,
     Dimensions,
     Platform,
 } from 'react-native';
@@ -53,14 +57,6 @@ const formatTimeAgo = (dateValue) => {
     return formatRelativeTime(-days, 'day', { style: 'long' });
 };
 
-const getLastUpdatedText = (dateValue) => {
-    if (!dateValue) {
-        return translateUiText("Mood not updated yet");
-    }
-
-    return formatTimeAgo(dateValue);
-};
-
 const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
     return (
         <TouchableOpacity
@@ -77,7 +73,7 @@ const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
     );
 });
 
-const MoodListHeader = ({ onBack, partnerName, isRefreshPrompt, moodUpdatedAt }) => {
+const MoodListHeader = ({ onBack, partnerName, isRefreshPrompt, moodUpdatedAt, selectedMood }) => {
     const timeAgo = formatTimeAgo(moodUpdatedAt);
     const title = isRefreshPrompt
         ? translateUiTemplate("Last mood updated {{0}}", [timeAgo])
@@ -89,16 +85,26 @@ const MoodListHeader = ({ onBack, partnerName, isRefreshPrompt, moodUpdatedAt })
     return (
         <View style={styles.header}>
             <View style={styles.headerText}>
-                <Text style={styles.title}>{title}</Text>
+                <View style={styles.headerTitleRow}>
+                    <Text style={styles.title}>{title}</Text>
+                    <View style={styles.headerMoodStatus}>
+                        <View style={[
+                            styles.moodStatusDot,
+                            selectedMood && styles.moodStatusDotActive,
+                        ]} />
+                        <Text style={styles.headerMoodStatusText} numberOfLines={1}>
+                            {selectedMood
+                                ? translateUiText(selectedMood.label)
+                                : translateUiText("Select a mood")}
+                        </Text>
+                    </View>
+                </View>
                 <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
             <View style={styles.headerRight}>
                 <TouchableOpacity onPress={onBack} style={styles.closeButton}>
                     <Text style={styles.closeIcon}>×</Text>
                 </TouchableOpacity>
-                <View style={styles.updatedBadge}>
-                    <Text style={styles.updatedBadgeText}>{getLastUpdatedText(moodUpdatedAt)}</Text>
-                </View>
             </View>
         </View>
     );
@@ -106,7 +112,20 @@ const MoodListHeader = ({ onBack, partnerName, isRefreshPrompt, moodUpdatedAt })
 
 const ListFooter = () => <View style={styles.listFooter} />;
 
+const MoodSheetBackground = memo(({ style }) => (
+    <View pointerEvents="none" style={[style, styles.sheetBackground]}>
+        {Platform.OS === 'ios' ? (
+            <BlurView intensity={42} tint="light" style={StyleSheet.absoluteFillObject} />
+        ) : (
+            <View style={[StyleSheet.absoluteFillObject, styles.androidBackground]} />
+        )}
+        <View style={styles.liquidTint} />
+        <View style={styles.liquidHighlight} />
+    </View>
+));
+
 export const MoodScreen = ({
+    visible = true,
     currentMood = null,
     partnerName = 'Your Love',
     onMoodSelect = () => { },
@@ -117,19 +136,46 @@ export const MoodScreen = ({
 }) => {
     const [selectedMood, setSelectedMood] = useState(currentMood);
     const insets = useSafeAreaInsets();
-    const sheetOffset = useRef(new Animated.Value(height * 0.6)).current;
+    const bottomSheetRef = useRef(null);
+    const hasPresentedRef = useRef(false);
+    const snapPoints = useMemo(() => [Math.round(height * 0.58)], []);
 
     useEffect(() => {
-        const animation = Animated.timing(sheetOffset, {
-            toValue: 0,
-            delay: 30,
-            duration: 360,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
+        if (visible) {
+            setSelectedMood(currentMood);
+        }
+    }, [currentMood, visible]);
+
+    useEffect(() => {
+        if (visible) {
+            const animationFrame = requestAnimationFrame(() => {
+                hasPresentedRef.current = true;
+                bottomSheetRef.current?.present();
+            });
+            return () => cancelAnimationFrame(animationFrame);
+        }
+
+        if (hasPresentedRef.current) {
+            bottomSheetRef.current?.dismiss();
+        }
+        return undefined;
+    }, [visible]);
+
+    const closeSheet = useCallback(() => {
+        if (hasPresentedRef.current) {
+            bottomSheetRef.current?.dismiss();
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!visible) return undefined;
+
+        const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+            closeSheet();
+            return true;
         });
-        animation.start();
-        return () => animation.stop();
-    }, [sheetOffset]);
+        return () => subscription.remove();
+    }, [closeSheet, visible]);
 
     const handleSelectMood = useCallback((mood) => {
         setSelectedMood(mood);
@@ -139,7 +185,8 @@ export const MoodScreen = ({
     const handleShare = useCallback(() => {
         if (!selectedMood) return;
         onMoodSelect(selectedMood);
-    }, [selectedMood, onMoodSelect]);
+        closeSheet();
+    }, [closeSheet, selectedMood, onMoodSelect]);
 
     const renderEmoji = useCallback(({ item }) => (
         <EmojiItem
@@ -151,23 +198,56 @@ export const MoodScreen = ({
 
     const keyExtractor = useCallback((item) => item.id, []);
 
-    return (
-        <View style={styles.overlay}>
+    const renderBackdrop = useCallback(backdropProps => (
+        <BottomSheetBackdrop
+            {...backdropProps}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+            opacity={0.18}
+            pressBehavior="close"
+        />
+    ), []);
+
+    const renderFooter = useCallback(footerProps => (
+        <BottomSheetFooter
+            {...footerProps}
+            style={[
+                styles.stickyButtonContainer,
+                { paddingBottom: insets.bottom + spacing.sm },
+            ]}
+        >
             <TouchableOpacity
-                style={styles.backdropPressable}
-                activeOpacity={1}
-                onPress={onBack}
-            />
-            <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: sheetOffset }] }]}>
-                {Platform.OS === 'ios' ? (
-                    <BlurView intensity={42} tint="light" style={StyleSheet.absoluteFillObject} />
-                ) : (
-                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255, 255, 255, 0.94)' }]} />
-                )}
-                <View style={styles.liquidTint} />
-                <View style={styles.liquidHighlight} />
-                <View style={styles.dragIndicator} />
-                <FlatList
+                onPress={handleShare}
+                disabled={!selectedMood}
+                style={[
+                    styles.shareButton,
+                    !selectedMood && styles.shareButtonDisabled,
+                ]}
+                activeOpacity={0.8}
+            >
+                <Text style={styles.shareButtonText}>{translateUiText("Share My Vibe")}</Text>
+            </TouchableOpacity>
+        </BottomSheetFooter>
+    ), [handleShare, insets.bottom, selectedMood]);
+
+    return (
+        <BottomSheetModal
+            ref={bottomSheetRef}
+            snapPoints={snapPoints}
+            enableDynamicSizing={false}
+            enablePanDownToClose
+            backdropComponent={renderBackdrop}
+            footerComponent={renderFooter}
+            backgroundComponent={MoodSheetBackground}
+            handleIndicatorStyle={styles.dragIndicator}
+            handleStyle={styles.handle}
+            style={styles.sheetShadow}
+            onDismiss={() => {
+                hasPresentedRef.current = false;
+                if (visible) onBack?.();
+            }}
+        >
+                <BottomSheetFlatList
                     data={emojis}
                     renderItem={renderEmoji}
                     keyExtractor={keyExtractor}
@@ -178,15 +258,16 @@ export const MoodScreen = ({
                         styles.contentContainer,
                         {
                             paddingTop: spacing.md,
-                            paddingBottom: insets.bottom + spacing.xl + 80,
+                            paddingBottom: insets.bottom + spacing.xl + 76,
                         },
                     ]}
                     ListHeaderComponent={(
                         <MoodListHeader
-                            onBack={onBack}
+                            onBack={closeSheet}
                             partnerName={partnerName}
                             isRefreshPrompt={isRefreshPrompt}
                             moodUpdatedAt={moodUpdatedAt}
+                            selectedMood={selectedMood}
                         />
                     )}
                     ListFooterComponent={ListFooter}
@@ -201,36 +282,12 @@ export const MoodScreen = ({
                         index,
                     })}
                 />
-
-                {/* Fixed Share Button — always visible */}
-                <View style={[styles.stickyButtonContainer, { paddingBottom: insets.bottom + spacing.sm }]}>
-                    <TouchableOpacity
-                        onPress={handleShare}
-                        disabled={!selectedMood}
-                        style={[
-                            styles.shareButton,
-                            !selectedMood && styles.shareButtonDisabled
-                        ]}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={styles.shareButtonText}>{translateUiText("Share My Vibe")}</Text>
-                    </TouchableOpacity>
-                </View>
-            </Animated.View>
-        </View>
+        </BottomSheetModal>
     );
 };
 
 const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(5, 14, 62, 0.18)',
-        justifyContent: 'flex-end',
-    },
-    backdropPressable: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    sheetContainer: {
+    sheetBackground: {
         backgroundColor: Platform.select({
             ios: 'rgba(255, 255, 255, 0.18)',
             android: 'rgba(255, 255, 255, 0.74)',
@@ -239,9 +296,11 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 26,
         borderTopRightRadius: 26,
         overflow: 'hidden',
-        maxHeight: '58%',
-        minHeight: '46%',
-        paddingTop: 8,
+    },
+    androidBackground: {
+        backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    },
+    sheetShadow: {
         ...Platform.select({
             ios: {
                 shadowColor: '#C084FC',
@@ -253,6 +312,10 @@ const styles = StyleSheet.create({
                 elevation: 24,
             },
         }),
+    },
+    handle: {
+        paddingTop: 8,
+        paddingBottom: 4,
     },
     liquidTint: {
         ...StyleSheet.absoluteFillObject,
@@ -271,8 +334,6 @@ const styles = StyleSheet.create({
         height: 5,
         borderRadius: 2.5,
         backgroundColor: '#E2E8F0',
-        alignSelf: 'center',
-        marginBottom: 4,
     },
     outerContainer: {
         flex: 1,
@@ -292,9 +353,32 @@ const styles = StyleSheet.create({
     headerText: {
         flex: 1,
     },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+    },
     headerRight: {
         alignItems: 'flex-end',
         gap: 6,
+    },
+    headerMoodStatus: {
+        maxWidth: 116,
+        minHeight: 26,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        borderRadius: 13,
+        backgroundColor: '#FFF0F5',
+        borderWidth: 1,
+        borderColor: '#FAD6E3',
+    },
+    headerMoodStatusText: {
+        flexShrink: 1,
+        color: '#B44768',
+        fontSize: 11,
+        fontWeight: '700',
     },
     closeButton: {
         width: 36,
@@ -323,6 +407,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     title: {
+        flexShrink: 1,
         fontSize: 20,
         fontWeight: '800',
         color: colors.text,
@@ -332,22 +417,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: colors.textSecondary,
         marginTop: 1,
-    },
-    updatedBadge: {
-        flexShrink: 0,
-        maxWidth: 116,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 14,
-        backgroundColor: 'rgba(255, 240, 245, 0.8)',
-        borderWidth: 1,
-        borderColor: 'rgba(250, 214, 227, 0.7)',
-    },
-    updatedBadgeText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#B44768',
-        textAlign: 'center',
     },
     gridRow: {
         gap: GRID_GAP,
@@ -393,13 +462,9 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     stickyButtonContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
         paddingHorizontal: spacing.md,
         paddingTop: spacing.md,
-        backgroundColor: 'rgba(255, 255, 255, 0.65)',
+        backgroundColor: '#FFFFFF',
         borderTopWidth: 1,
         borderTopColor: 'rgba(250, 232, 255, 0.8)',
     },
@@ -426,6 +491,15 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 15,
         fontWeight: '700',
+    },
+    moodStatusDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        backgroundColor: '#CBD5E1',
+    },
+    moodStatusDotActive: {
+        backgroundColor: '#34C759',
     },
     partnerCard: {
         backgroundColor: '#FFFFFF',

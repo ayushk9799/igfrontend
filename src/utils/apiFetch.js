@@ -1,6 +1,7 @@
 // API Fetch wrapper with authentication error handling
 import { API_BASE } from '../constants/Api';
 import { getContentLanguage } from '../i18n/uiTranslation';
+import { getAuthToken } from './authStorage';
 
 // Global auth error handler reference
 let globalAuthErrorHandler = null;
@@ -32,11 +33,13 @@ export const apiFetch = async (url, options = {}) => {
     const fullUrl = url.startsWith('http') ? url : `${API_BASE}${url}`;
 
     try {
+        const authToken = getAuthToken();
         const response = await fetch(fullUrl, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
                 'Accept-Language': getContentLanguage(),
+                ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
                 ...options.headers,
             },
         });

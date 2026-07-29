@@ -5,6 +5,7 @@ import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, PanResponde
 import { useDispatch, useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
+import EditAccountScreen from '../screens/EditAccountScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import GamesScreen from '../screens/GamesScreen';
 import DailyChallengeScreen from '../screens/DailyChallengeScreen';
@@ -72,8 +73,6 @@ export const MainTabNavigator = ({
     initialTab,
     onMoodSelect,
     onQuestionPress,
-    onEditProfile,
-    onAvatarPress,
     onFindPartner,
     onJigsawCreate,
     onJigsawPlay,
@@ -99,6 +98,7 @@ export const MainTabNavigator = ({
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
     const [todayChallenge, setTodayChallenge] = useState(null);
     const [isAccountVisible, setIsAccountVisible] = useState(openAccountOnMount);
+    const [isEditAccountVisible, setIsEditAccountVisible] = useState(false);
     const [shouldReturnToAccountFromTab, setShouldReturnToAccountFromTab] = useState(false);
     const [isHomePremiumVisible, setIsHomePremiumVisible] = useState(false);
     const [homePremiumStep, setHomePremiumStep] = useState('free');
@@ -108,7 +108,7 @@ export const MainTabNavigator = ({
     const [moodRefreshNow, setMoodRefreshNow] = useState(Date.now());
     const [moodPreview, setMoodPreview] = useState(null);
     const [isScribbleLiveFullscreen, setIsScribbleLiveFullscreen] = useState(false);
-    const [tabBarRenderKey, setTabBarRenderKey] = useState(0);
+    const [tabBarRenderKey] = useState(0);
     const [openScribbleLiveMode, setOpenScribbleLiveMode] = useState(false);
     const [openDistanceSetup, setOpenDistanceSetup] = useState(false);
     const [widgetSheet, setWidgetSheet] = useState(null);
@@ -135,6 +135,9 @@ export const MainTabNavigator = ({
 
     useEffect(() => {
         isAccountVisibleRef.current = isAccountVisible;
+        if (!isAccountVisible) {
+            setIsEditAccountVisible(false);
+        }
     }, [isAccountVisible]);
 
     useEffect(() => {
@@ -1033,7 +1036,7 @@ export const MainTabNavigator = ({
                 />
             </View>
             {renderScreen()}
-            {!isScribbleLiveFullscreen && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab) && (
+            {!isMoodVisible && !widgetSheet && !isScribbleLiveFullscreen && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab) && (
                 <BottomTabBar
                     key={tabBarRenderKey}
                     currentTab={currentTab}
@@ -1046,60 +1049,64 @@ export const MainTabNavigator = ({
                 <Animated.View
                     style={[
                         StyleSheet.absoluteFillObject,
+                        styles.accountOverlay,
                         {
                             transform: [{ translateX: slideAnim }],
-                            zIndex: 9999,
-                            backgroundColor: colors.background || '#FFFFFF',
                         },
                     ]}
                     {...panResponder.panHandlers}
                 >
-                    <AccountScreen
-                        userData={userData}
-                        partnerName={partnerName}
-                        partnerNickname={userData?.partnerNickname}
-                        hasPartner={hasPartner}
-                        isPremium={hasPremiumAccess}
-                        premiumPlan={effectivePremiumPlan}
-                        premiumExpiresAt={effectivePremiumExpiresAt}
-                        premiumWillRenew={effectivePremiumWillRenew}
-                        premiumSource={effectivePremiumSource}
-                        subscriptionStatus={effectiveSubscriptionStatus}
-                        daysTogether={daysTogether}
-                        onLogout={() => {
-                            setIsAccountVisible(false);
-                            onLogout();
-                        }}
-                        onDeleteAccount={() => {
-                            setIsAccountVisible(false);
-                            onDeleteAccount();
-                        }}
-                        onEditProfile={onEditProfile}
-                        onAvatarPress={() => {
-                            setIsAccountVisible(false);
-                            onNavigateFromAccount?.('avatarSelection');
-                        }}
-                        onFindPartner={() => {
-                            onFindPartner?.();
-                        }}
-                        onNavigateToPremium={() => {
-                            setHomePremiumStep('free');
-                            setIsHomePremiumVisible(true);
-                        }}
-                        onWidgetsPress={() => {
-                            setIsAccountVisible(false);
-                            setShouldReturnToAccountFromTab(true);
-                            setCurrentTab('widgetsLibrary');
-                        }}
-                        onEditRelationshipDate={() => {
-                            setIsAccountVisible(false);
-                            onNavigateFromAccount?.('relationshipStartDate');
-                        }}
-                        onBack={() => {
-                            setIsAccountVisible(false);
-                        }}
-                    />
-
+                    {isEditAccountVisible ? (
+                        <EditAccountScreen
+                            onBack={() => setIsEditAccountVisible(false)}
+                            onSaved={() => setIsEditAccountVisible(false)}
+                            onDeleteAccount={onDeleteAccount
+                                ? () => {
+                                    setIsEditAccountVisible(false);
+                                    setIsAccountVisible(false);
+                                    onDeleteAccount();
+                                }
+                                : undefined}
+                        />
+                    ) : (
+                        <AccountScreen
+                            userData={userData}
+                            partnerName={partnerName}
+                            partnerNickname={userData?.partnerNickname}
+                            hasPartner={hasPartner}
+                            isPremium={hasPremiumAccess}
+                            premiumPlan={effectivePremiumPlan}
+                            premiumExpiresAt={effectivePremiumExpiresAt}
+                            premiumWillRenew={effectivePremiumWillRenew}
+                            premiumSource={effectivePremiumSource}
+                            subscriptionStatus={effectiveSubscriptionStatus}
+                            daysTogether={daysTogether}
+                            onLogout={() => {
+                                setIsAccountVisible(false);
+                                onLogout();
+                            }}
+                            onEditProfile={() => setIsEditAccountVisible(true)}
+                            onFindPartner={() => {
+                                onFindPartner?.();
+                            }}
+                            onNavigateToPremium={() => {
+                                setHomePremiumStep('free');
+                                setIsHomePremiumVisible(true);
+                            }}
+                            onWidgetsPress={() => {
+                                setIsAccountVisible(false);
+                                setShouldReturnToAccountFromTab(true);
+                                setCurrentTab('widgetsLibrary');
+                            }}
+                            onEditRelationshipDate={() => {
+                                setIsAccountVisible(false);
+                                onNavigateFromAccount?.('relationshipStartDate');
+                            }}
+                            onBack={() => {
+                                setIsAccountVisible(false);
+                            }}
+                        />
+                    )}
                 </Animated.View>
             )}
 
@@ -1147,32 +1154,21 @@ export const MainTabNavigator = ({
                 />
             </Modal>
 
-            <Modal
+            <MoodScreen
                 visible={isMoodVisible && callState !== CALL_STATE.INCOMING}
-                animationType="none"
-                transparent={true}
-                presentationStyle="overFullScreen"
-                statusBarTranslucent={true}
-                onRequestClose={closeMoodPicker}
-            >
-                {isMoodVisible && callState !== CALL_STATE.INCOMING && (
-                    <MoodScreen
-                        currentMood={getEmojiById(yourMood?.id) || getEmojiByLabel(yourMood?.label) || emojis[0]}
-                        partnerMood={partnerMood ? (getEmojiById(partnerMood.id) || getEmojiByLabel(partnerMood.label)) : null}
-                        partnerName={userData?.partnerUsername || partnerName || 'Your Love'}
-                        onMoodSelect={(mood) => {
-                            setMoodPreview(null);
-                            setIsMoodRefreshPrompt(false);
-                            onMoodSelect?.(mood);
-                            setIsMoodVisible(false);
-                        }}
-                        onMoodPreview={setMoodPreview}
-                        onBack={closeMoodPicker}
-                        isRefreshPrompt={isMoodRefreshPrompt}
-                        moodUpdatedAt={yourMood?.updatedAt}
-                    />
-                )}
-            </Modal>
+                currentMood={getEmojiById(yourMood?.id) || getEmojiByLabel(yourMood?.label) || emojis[0]}
+                partnerMood={partnerMood ? (getEmojiById(partnerMood.id) || getEmojiByLabel(partnerMood.label)) : null}
+                partnerName={userData?.partnerUsername || partnerName || 'Your Love'}
+                onMoodSelect={(mood) => {
+                    setMoodPreview(null);
+                    setIsMoodRefreshPrompt(false);
+                    onMoodSelect?.(mood);
+                }}
+                onMoodPreview={setMoodPreview}
+                onBack={closeMoodPicker}
+                isRefreshPrompt={isMoodRefreshPrompt}
+                moodUpdatedAt={yourMood?.updatedAt}
+            />
 
             <WidgetSetupBottomSheet
                 visible={!!widgetSheet}
@@ -1240,6 +1236,10 @@ const styles = StyleSheet.create({
     },
     hiddenScreen: {
         display: 'none',
+    },
+    accountOverlay: {
+        zIndex: 9999,
+        backgroundColor: colors.background || '#FFFFFF',
     },
 });
 

@@ -1,6 +1,7 @@
 // Onboarding Premium Screen - onboarding copy of the premium subscription UI
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+    AccessibilityInfo,
     View,
     Text,
     TouchableOpacity,
@@ -10,11 +11,14 @@ import {
     StyleSheet,
     Linking,
     ActivityIndicator,
+    Alert,
     StatusBar,
     ScrollView,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import Purchases from 'react-native-purchases';
@@ -24,8 +28,14 @@ import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
 import { getPremiumEntitlement, mapSubscriptionAccessToUser, refreshSubscription } from '../api/subscriptionApi';
 import { updateUser as updateUserStorage } from '../utils/authStorage';
 import { getUiLocale, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import {
+    calculateSavingsPercent,
+    getFreeTrialPeriod,
+    normalizeTrialPeriod,
+    resolveOfferingPackages,
+} from '../utils/premiumOffering';
 
-const ONBOARDING_OFFERING_ID = 'onbording';
+const ONBOARDING_OFFERING_IDS = ['onboarding', 'onbording'];
 
 // Close (cross) icon
 const CloseIcon = () => (
@@ -74,24 +84,44 @@ const HeartIcon = ({ size = 20, color = colors.primary }) => (
 );
 
 // Animated Floating Heart
-const FloatingHeart = ({ delay = 0, startX = 0, size = 16, color = colors.primary, zIndex = 1 }) => {
+const FloatingHeart = ({
+    delay = 0,
+    startX = 0,
+    size = 16,
+    color = colors.primary,
+    zIndex = 1,
+    reduceMotion = false,
+}) => {
     const animation = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        const startAnimation = () => {
+        if (reduceMotion) {
             animation.setValue(0);
-            Animated.timing(animation, {
+            return undefined;
+        }
+
+        let mounted = true;
+        let activeAnimation;
+        const startAnimation = () => {
+            if (!mounted) return;
+            animation.setValue(0);
+            activeAnimation = Animated.timing(animation, {
                 toValue: 1,
                 duration: 4000,
                 delay: delay,
                 useNativeDriver: true,
-            }).start(() => {
-                startAnimation();
+            });
+            activeAnimation.start(({ finished }) => {
+                if (finished && mounted) startAnimation();
             });
         };
 
         startAnimation();
-    }, [animation, delay]);
+        return () => {
+            mounted = false;
+            activeAnimation?.stop();
+        };
+    }, [animation, delay, reduceMotion]);
 
     // Rising Y animation
     const translateY = animation.interpolate({
@@ -119,6 +149,9 @@ const FloatingHeart = ({ delay = 0, startX = 0, size = 16, color = colors.primar
 
     return (
         <Animated.View
+            accessible={false}
+            importantForAccessibility="no-hide-descendants"
+            pointerEvents="none"
             style={[
                 styles.floatingHeart,
                 {
@@ -136,36 +169,77 @@ const FloatingHeart = ({ delay = 0, startX = 0, size = 16, color = colors.primar
 export default function OnboardingPremiumScreen({ onBack }) {
     const dispatch = useDispatch();
     const user = useSelector(state => state.user);
+    useTranslation();
     const [selectedPlan, setSelectedPlan] = useState('annual'); // Default to Yearly/Annual plan
     const [offering, setOffering] = useState(null);
     const [entitlements, setEntitlements] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [plansLoading, setPlansLoading] = useState(false);
     const [purchasing, setPurchasing] = useState(false);
     const [purchaseSucceeded, setPurchaseSucceeded] = useState(false);
     const [restoring, setRestoring] = useState(false);
+    const [loadError, setLoadError] = useState(false);
+    const [annualTrialPeriod, setAnnualTrialPeriod] = useState(null);
+    const [purchasePending, setPurchasePending] = useState(false);
+    const [reduceMotion, setReduceMotion] = useState(false);
     const insets = useSafeAreaInsets();
     const screenEntrance = useRef(new Animated.Value(0)).current;
     const successScale = useRef(new Animated.Value(0.7)).current;
+    const successAnimationRef = useRef(null);
+    const mountedRef = useRef(true);
+    const insetStyles = useMemo(() => StyleSheet.create({
+        topAction: {
+            top: insets.top > 0 ? insets.top + 6 : 16,
+        },
+        scrollContent: {
+            paddingTop: insets.top > 0 ? insets.top + 8 : 16,
+        },
+        bottomContent: {
+            paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16,
+        },
+    }), [insets.bottom, insets.top]);
 
-    const features = useMemo(
-        () => [
-            { label: translateUiText("One premium covers both of you") },
-            { label: translateUiText("2000+ couple questions") },
-            { label: translateUiText("Unlimited Games") },
-            { label: translateUiText("Unlimited Memories") },
-            { label: translateUiText("Live drawing") },
-            { label: translateUiText("Widgets") },
-        ],
-        [],
-    );
+    const features = [
+        { label: translateUiText("One premium covers both of you") },
+        { label: translateUiText("2000+ couple questions") },
+        { label: translateUiText("Unlimited Games") },
+        { label: translateUiText("Unlimited Memories") },
+        { label: translateUiText("Live drawing") },
+        { label: translateUiText("Widgets") },
+    ];
 
     useEffect(() => {
-        Animated.timing(screenEntrance, {
+        mountedRef.current = true;
+        AccessibilityInfo.isReduceMotionEnabled()
+            .then(enabled => {
+                if (mountedRef.current) setReduceMotion(enabled);
+            })
+            .catch(() => {});
+        const subscription = AccessibilityInfo.addEventListener(
+            'reduceMotionChanged',
+            setReduceMotion,
+        );
+
+        return () => {
+            mountedRef.current = false;
+            successAnimationRef.current?.stop();
+            subscription.remove();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (reduceMotion) {
+            screenEntrance.setValue(1);
+            return undefined;
+        }
+
+        const entranceAnimation = Animated.timing(screenEntrance, {
             toValue: 1,
             duration: 400,
             useNativeDriver: true,
-        }).start();
-    }, [screenEntrance]);
+        });
+        entranceAnimation.start();
+        return () => entranceAnimation.stop();
+    }, [reduceMotion, screenEntrance]);
 
     useEffect(() => {
         const init = async () => {
@@ -191,28 +265,40 @@ export default function OnboardingPremiumScreen({ onBack }) {
         }
     };
 
-    const checkEntitlements = async () => {
+    const checkEntitlements = async (knownCustomerInfo = null) => {
         try {
-            const customerInfo = await Purchases.getCustomerInfo();
+            const customerInfo = knownCustomerInfo || await Purchases.getCustomerInfo();
             dispatch(setCustomerInfo(customerInfo));
-            setEntitlements(customerInfo.entitlements.active);
+            if (mountedRef.current) {
+                setEntitlements(customerInfo?.entitlements?.active || {});
+            }
             await syncServerPremium(customerInfo);
+            return customerInfo;
         } catch (e) {
             console.error('Error checking entitlements:', e);
+            return null;
         }
     };
 
     const handlePurchase = async (pkg) => {
         try {
-            setLoading(true);
             setPurchasing(true);
+            setPurchasePending(false);
 
-            const { customerInfo } = await Purchases.purchasePackage(pkg);
+            const purchaseResult = await Purchases.purchasePackage(pkg);
+            let customerInfo = purchaseResult?.customerInfo;
+            let premiumEntitlement = getPremiumEntitlement(customerInfo);
+
+            // A store transaction can settle before the entitlement snapshot refreshes.
+            if (!premiumEntitlement) {
+                customerInfo = await Purchases.getCustomerInfo();
+                premiumEntitlement = getPremiumEntitlement(customerInfo);
+            }
+
             dispatch(setCustomerInfo(customerInfo));
 
             // ── Optimistic update: show premium card instantly ──
             const active = customerInfo?.entitlements?.active || {};
-            const premiumEntitlement = getPremiumEntitlement(customerInfo);
             if (premiumEntitlement) {
                 const optimisticPremium = {
                     isPremium: true,
@@ -224,15 +310,27 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 };
                 updateUserStorage(optimisticPremium);
                 dispatch(setPremiumStatus(optimisticPremium));
-                setEntitlements(active);
-                setPurchaseSucceeded(true);
-                successScale.setValue(0.7);
-                Animated.spring(successScale, {
-                    toValue: 1,
-                    friction: 5,
-                    tension: 90,
-                    useNativeDriver: true,
-                }).start();
+                if (mountedRef.current) {
+                    setEntitlements(active);
+                    setPurchaseSucceeded(true);
+                    setPurchasePending(false);
+                    successScale.setValue(reduceMotion ? 1 : 0.7);
+                    if (!reduceMotion) {
+                        successAnimationRef.current = Animated.spring(successScale, {
+                            toValue: 1,
+                            friction: 5,
+                            tension: 90,
+                            useNativeDriver: true,
+                        });
+                        successAnimationRef.current.start();
+                    }
+                }
+            } else if (mountedRef.current) {
+                setPurchasePending(true);
+                Alert.alert(
+                    translateUiText('Purchase verification pending'),
+                    translateUiText('Your store purchase completed, but premium is still being verified. Please restore purchases to check again.'),
+                );
             }
 
             // Sync with backend in the background
@@ -246,10 +344,17 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 const errorCode = e?.code;
                 const errorMessage = e?.message || e?.underlyingErrorMessage || String(e);
                 console.error(`❌ Purchase error (Code: ${errorCode}):`, errorMessage);
+                if (mountedRef.current) {
+                    Alert.alert(
+                        translateUiText('Purchase failed'),
+                        translateUiText('Your purchase was not completed. Please try again.'),
+                    );
+                }
             }
         } finally {
-            setLoading(false);
-            setPurchasing(false);
+            if (mountedRef.current) {
+                setPurchasing(false);
+            }
         }
     };
 
@@ -257,45 +362,121 @@ export default function OnboardingPremiumScreen({ onBack }) {
         try {
             setRestoring(true);
             const customerInfo = await Purchases.restorePurchases();
-            dispatch(setCustomerInfo(customerInfo));
-            await checkEntitlements();
+            await checkEntitlements(customerInfo);
+            const restoredEntitlement = getPremiumEntitlement(customerInfo);
+            if (mountedRef.current) {
+                const verificationStillPending = purchasePending && !restoredEntitlement;
+                setPurchasePending(verificationStillPending);
+                Alert.alert(
+                    restoredEntitlement
+                        ? translateUiText('Purchases restored')
+                        : verificationStillPending
+                            ? translateUiText('Purchase verification pending')
+                            : translateUiText('No purchases found'),
+                    restoredEntitlement
+                        ? translateUiText('Your premium access has been restored.')
+                        : verificationStillPending
+                            ? translateUiText('Your store purchase completed, but premium is still being verified. Please restore purchases to check again.')
+                            : translateUiText('We could not find a previous premium purchase for this store account.'),
+                );
+            }
         } catch (e) {
             console.error('Error restoring purchases:', e);
+            if (mountedRef.current) {
+                Alert.alert(
+                    translateUiText('Restore failed'),
+                    translateUiText('We could not restore purchases right now. Please try again.'),
+                );
+            }
         } finally {
-            setRestoring(false);
+            if (mountedRef.current) setRestoring(false);
+        }
+    };
+
+    const updateAnnualTrialEligibility = async (annualPackage) => {
+        const freeTrialPeriod = getFreeTrialPeriod(annualPackage, Platform.OS);
+        let trialIsEligible = false;
+
+        if (freeTrialPeriod && Platform.OS === 'android') {
+            // Google only returns subscription options available to this customer.
+            trialIsEligible = true;
+        } else if (freeTrialPeriod && Platform.OS === 'ios') {
+            try {
+                const productId = annualPackage?.product?.identifier;
+                if (productId) {
+                    const eligibility = await Purchases.checkTrialOrIntroductoryPriceEligibility([productId]);
+                    trialIsEligible = eligibility?.[productId]?.status
+                        === Purchases.INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE;
+                }
+            } catch {
+                // RevenueCat recommends hiding intro messaging when eligibility is unknown.
+                trialIsEligible = false;
+            }
+        }
+
+        if (mountedRef.current) {
+            setAnnualTrialPeriod(trialIsEligible ? freeTrialPeriod : null);
         }
     };
 
     const getOfferingsAndEntitlements = async () => {
-        try {
-            setLoading(true);
-            const allOfferings = await Purchases.getOfferings();
-            const onboardingOffering = allOfferings?.all?.[ONBOARDING_OFFERING_ID] || null;
+        let resolvedPackages = null;
 
-            if (onboardingOffering && Array.isArray(onboardingOffering.availablePackages) && onboardingOffering.availablePackages.length > 0) {
+        try {
+            setPlansLoading(true);
+            setLoadError(false);
+            const allOfferings = await Purchases.getOfferings();
+            if (!mountedRef.current) return;
+            const onboardingOffering = ONBOARDING_OFFERING_IDS
+                .map(id => allOfferings?.all?.[id])
+                .find(Boolean) || null;
+            resolvedPackages = resolveOfferingPackages(onboardingOffering);
+
+            if (onboardingOffering && resolvedPackages.availablePackages.length > 0) {
                 setOffering(onboardingOffering);
-                if (onboardingOffering.annual) {
+                if (resolvedPackages.annual) {
                     setSelectedPlan('annual');
-                } else if (onboardingOffering.monthly) {
+                } else if (resolvedPackages.monthly) {
                     setSelectedPlan('monthly');
                 } else {
-                    setSelectedPlan('annual');
+                    setSelectedPlan('fallback');
                 }
             } else {
                 setOffering(null);
+                setAnnualTrialPeriod(null);
             }
-            await checkEntitlements();
         } catch (e) {
-            console.error(`Error fetching RevenueCat offering "${ONBOARDING_OFFERING_ID}":`, e);
-            setOffering(null);
+            console.error(`Error fetching RevenueCat offerings "${ONBOARDING_OFFERING_IDS.join(', ')}":`, e);
+            if (mountedRef.current) {
+                setOffering(null);
+                setAnnualTrialPeriod(null);
+                setLoadError(true);
+            }
         } finally {
-            setLoading(false);
+            if (mountedRef.current) setPlansLoading(false);
+        }
+
+        if (mountedRef.current) {
+            // Plans are now visible and interactive. Entitlement, backend, and
+            // trial checks continue independently without blocking checkout.
+            Promise.allSettled([
+                checkEntitlements(),
+                updateAnnualTrialEligibility(resolvedPackages?.annual || null),
+            ]);
         }
     };
 
-    const annualPackage = offering?.annual || null;
-    const monthlyPackage = offering?.monthly || null;
-    const selectedPackage = selectedPlan === 'monthly' ? monthlyPackage : selectedPlan === 'annual' ? annualPackage : null;
+    const {
+        annual: annualPackage,
+        monthly: monthlyPackage,
+        fallback: fallbackPackage,
+    } = resolveOfferingPackages(offering);
+    const selectedPackage = selectedPlan === 'monthly'
+        ? monthlyPackage
+        : selectedPlan === 'annual'
+            ? annualPackage
+            : fallbackPackage;
+    const annualHasFreeTrial = !!annualTrialPeriod;
     const isPremium = !!(user?.isPremium || getPremiumEntitlement({ entitlements: { active: entitlements || {} } }));
     const premiumFromPartner = user?.premiumSource === 'partner';
     const premiumPlan = premiumFromPartner
@@ -333,27 +514,17 @@ export default function OnboardingPremiumScreen({ onBack }) {
         }
     };
 
-    const roundPriceForDisplay = (price) => {
-        if (price < 100) {
-            return Math.floor(price) + 0.99;
-        } else {
-            return Math.ceil(price);
-        }
-    };
-
-    const formatCurrencyPrice = (price, currencyCode, shouldRound = false) => {
+    const formatCurrencyPrice = (price, currencyCode) => {
         try {
             if (!price || !currencyCode) return '';
-            const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
             return new Intl.NumberFormat(getUiLocale(), {
                 style: 'currency',
                 currency: currencyCode,
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
-            }).format(finalPrice);
+            }).format(price);
         } catch {
-            const finalPrice = shouldRound ? roundPriceForDisplay(price) : price;
-            return `${currencyCode} ${finalPrice.toFixed(2)}`;
+            return `${currencyCode} ${price.toFixed(2)}`;
         }
     };
 
@@ -362,12 +533,34 @@ export default function OnboardingPremiumScreen({ onBack }) {
     const annualPrice = annualPackage?.product?.price || 0;
     const annualCurrency = annualPackage?.product?.currencyCode || null;
     const annualMonthlyEquivalent = annualPrice / 12;
-    const formattedAnnualMonthlyEquivalent = formatCurrencyPrice(annualMonthlyEquivalent, annualCurrency);
+    const formattedAnnualMonthlyEquivalent = annualPackage?.product?.pricePerMonthString
+        || formatCurrencyPrice(annualMonthlyEquivalent, annualCurrency);
     const formattedAnnualPrice = annualPackage?.product?.priceString || '';
 
-    const savingsPercent = monthlyPackage && annualPackage
-        ? Math.round(((monthlyPackage.product.price * 12) - annualPackage.product.price) / (monthlyPackage.product.price * 12) * 100)
-        : null;
+    const savingsPercent = calculateSavingsPercent(
+        monthlyPackage?.product?.price,
+        annualPackage?.product?.price,
+    );
+
+    const formatTrialPeriod = (period) => {
+        const normalized = normalizeTrialPeriod(period);
+        if (!normalized) return '';
+        const key = normalized.value === 1
+            ? `{{0}} ${normalized.unit}`
+            : `{{0}} ${normalized.unit}s`;
+        return translateUiTemplate(key, [normalized.value]);
+    };
+
+    const openLegalLink = async (url) => {
+        try {
+            await Linking.openURL(url);
+        } catch {
+            Alert.alert(
+                translateUiText('Could not open link'),
+                translateUiText('Please check your internet connection and try again.'),
+            );
+        }
+    };
 
     return (
         <View style={styles.root}>
@@ -397,7 +590,15 @@ export default function OnboardingPremiumScreen({ onBack }) {
             {/* Back button (Left) */}
             <TouchableOpacity
                 onPress={onBack}
-                style={[styles.backButton, { top: insets.top > 0 ? insets.top + 6 : 16 }]}
+                disabled={purchasing || restoring}
+                accessibilityRole="button"
+                accessibilityLabel={translateUiText("Close premium offer")}
+                accessibilityState={{ disabled: purchasing || restoring }}
+                style={[
+                    styles.backButton,
+                    insetStyles.topAction,
+                    (purchasing || restoring) && styles.actionDisabled,
+                ]}
                 activeOpacity={0.8}
             >
                 <CloseIcon />
@@ -406,8 +607,15 @@ export default function OnboardingPremiumScreen({ onBack }) {
             {/* Restore button (Right) */}
             <TouchableOpacity
                 onPress={handleRestore}
-                disabled={loading || restoring}
-                style={[styles.restoreButton, { top: insets.top > 0 ? insets.top + 6 : 16 }]}
+                disabled={plansLoading || restoring || purchasing}
+                accessibilityRole="button"
+                accessibilityLabel={translateUiText("Restore purchases")}
+                accessibilityState={{ disabled: plansLoading || restoring || purchasing, busy: restoring }}
+                style={[
+                    styles.restoreButton,
+                    insetStyles.topAction,
+                    (plansLoading || restoring || purchasing) && styles.actionDisabled,
+                ]}
                 activeOpacity={0.8}
             >
                 <Text style={styles.restoreButtonText}>
@@ -419,25 +627,24 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 style={styles.scrollView}
                 contentContainerStyle={[
                     styles.scrollContent,
-                    {
-                        paddingTop: insets.top > 0 ? insets.top + 8 : 16,
-                    },
+                    insetStyles.scrollContent,
                 ]}
                 showsVerticalScrollIndicator={false}
             >
                 {/* Mascot Image & Floating Hearts */}
                 <View style={styles.mascotContainer}>
-                    <FloatingHeart delay={0} startX={-45} size={14} color={colors.primary} zIndex={1} />
-                    <FloatingHeart delay={1000} startX={50} size={18} color={colors.primaryLight} zIndex={3} />
-                    <FloatingHeart delay={2000} startX={-15} size={16} color={colors.heart} zIndex={1} />
-                    <FloatingHeart delay={3000} startX={35} size={14} color={colors.primary} zIndex={3} />
-                    <FloatingHeart delay={1500} startX={-65} size={20} color={colors.primaryLight} zIndex={1} />
-                    <FloatingHeart delay={2500} startX={70} size={15} color={colors.heart} zIndex={3} />
+                    <FloatingHeart reduceMotion={reduceMotion} delay={0} startX={-45} size={14} color={colors.primary} zIndex={1} />
+                    <FloatingHeart reduceMotion={reduceMotion} delay={1000} startX={50} size={18} color={colors.primaryLight} zIndex={3} />
+                    <FloatingHeart reduceMotion={reduceMotion} delay={2000} startX={-15} size={16} color={colors.heart} zIndex={1} />
+                    <FloatingHeart reduceMotion={reduceMotion} delay={3000} startX={35} size={14} color={colors.primary} zIndex={3} />
+                    <FloatingHeart reduceMotion={reduceMotion} delay={1500} startX={-65} size={20} color={colors.primaryLight} zIndex={1} />
+                    <FloatingHeart reduceMotion={reduceMotion} delay={2500} startX={70} size={15} color={colors.heart} zIndex={3} />
 
                     <Image
                         source={require('../../assets/images/premium-muscot.png')}
                         style={styles.mascotImage}
                         resizeMode="contain"
+                        accessible={false}
                     />
                 </View>
 
@@ -450,14 +657,14 @@ export default function OnboardingPremiumScreen({ onBack }) {
                     {/* Heading */}
                     <View style={styles.headerTextContainer}>
                         <Text style={styles.headingTitle}>
-                            {purchaseSucceeded ? (
-                                <>{translateUiText("You're")}<Text style={styles.premiumText}>{translateUiText("Premium!")}</Text></>
+                            {isPremium ? (
+                                <>{translateUiText("You're")}{' '}<Text style={styles.premiumText}>{translateUiText("Premium!")}</Text></>
                             ) : (
-                                <>{translateUiText("Go")}<Text style={styles.premiumText}>{translateUiText("Premium")}</Text></>
+                                <>{translateUiText("Go")}{' '}<Text style={styles.premiumText}>{translateUiText("Premium")}</Text></>
                             )}
                         </Text>
                         <Text style={styles.headingSubtitle}>
-                            {purchaseSucceeded
+                            {isPremium
                                 ? translateUiText("Your partner is included")
                                 : translateUiText("Your partner doesn't pay anything")}
                         </Text>
@@ -494,13 +701,13 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                     <Text style={styles.premiumStatusTitle}>{translateUiText("You're Premium")}</Text>
                                 </View>
                                 <View style={styles.premiumStatusDetails}>
-                                    <View>
+                                    <View style={styles.premiumStatusColumn}>
                                         <Text style={styles.premiumStatusLabel}>{translateUiText("Plan")}</Text>
                                         <Text style={styles.premiumStatusValue}>
                                             {planLabelFromId(premiumPlan)}
                                         </Text>
                                     </View>
-                                    <View style={{ alignItems: 'flex-end' }}>
+                                    <View style={styles.premiumStatusRight}>
                                         <Text style={styles.premiumStatusLabel}>
                                             {premiumIsCancelled ? translateUiText("Access until") : translateUiText("Renews/Expires")}
                                         </Text>
@@ -520,7 +727,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                     )}
 
                     {/* Premium Benefits List */}
-                    {!purchaseSucceeded && (
+                    {!purchaseSucceeded && !isPremium && (
                         <View style={styles.benefitsContainer}>
                             {features.map((f) => {
                                 return (
@@ -538,7 +745,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
             <View
                 style={[
                     styles.bottomContent,
-                    { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16 },
+                    insetStyles.bottomContent,
                 ]}
             >
                 <LinearGradient
@@ -553,12 +760,15 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 />
 
                 {/* Plan Selection Cards */}
-                {!isPremium && (monthlyPackage || annualPackage) && (
+                {!isPremium && !purchasePending && (monthlyPackage || annualPackage || fallbackPackage) && (
                     <View style={styles.planCardsContainer}>
                         {/* Yearly Plan Option */}
                         {annualPackage && (
                             <Pressable
                                 onPress={() => setSelectedPlan('annual')}
+                                accessibilityRole="radio"
+                                accessibilityLabel={translateUiText("Yearly plan")}
+                                accessibilityState={{ checked: selectedPlan === 'annual' }}
                                 style={[
                                     styles.planCard,
                                     selectedPlan === 'annual' && styles.planCardSelected,
@@ -569,10 +779,17 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                     <Text style={styles.planPriceText}>
                                         {translateUiTemplate("{{0}} / month", [formattedAnnualMonthlyEquivalent])}<Text style={styles.planSubText}> {translateUiText("per couple")}</Text>
                                     </Text>
-                                    <Text style={styles.planTrialText}>{translateUiTemplate("7 days free, then {{0}} / year", [formattedAnnualPrice])}</Text>
+                                    <Text style={styles.planTrialText}>
+                                        {annualHasFreeTrial
+                                            ? translateUiTemplate(
+                                                "{{0}} free trial, then {{1}} / year",
+                                                [formatTrialPeriod(annualTrialPeriod), formattedAnnualPrice],
+                                            )
+                                            : translateUiTemplate("{{0}} / year", [formattedAnnualPrice])}
+                                    </Text>
                                 </View>
                                 <View style={styles.planRadioCol}>
-                                    {selectedPlan === 'annual' && <RadioCircleChecked />}
+                                    {selectedPlan === 'annual' ? <RadioCircleChecked /> : <RadioCircleOutline />}
                                 </View>
 
                                 {savingsPercent !== null && (
@@ -587,6 +804,9 @@ export default function OnboardingPremiumScreen({ onBack }) {
                         {monthlyPackage && (
                             <Pressable
                                 onPress={() => setSelectedPlan('monthly')}
+                                accessibilityRole="radio"
+                                accessibilityLabel={translateUiText("Monthly plan")}
+                                accessibilityState={{ checked: selectedPlan === 'monthly' }}
                                 style={[
                                     styles.planCard,
                                     selectedPlan === 'monthly' && styles.planCardSelected,
@@ -599,7 +819,32 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                     </Text>
                                 </View>
                                 <View style={styles.planRadioCol}>
-                                    {selectedPlan === 'monthly' && <RadioCircleChecked />}
+                                    {selectedPlan === 'monthly' ? <RadioCircleChecked /> : <RadioCircleOutline />}
+                                </View>
+                            </Pressable>
+                        )}
+
+                        {fallbackPackage && (
+                            <Pressable
+                                onPress={() => setSelectedPlan('fallback')}
+                                accessibilityRole="radio"
+                                accessibilityLabel={fallbackPackage.product?.title || translateUiText("Premium plan")}
+                                accessibilityState={{ checked: selectedPlan === 'fallback' }}
+                                style={[
+                                    styles.planCard,
+                                    selectedPlan === 'fallback' && styles.planCardSelected,
+                                ]}
+                            >
+                                <View style={styles.planDetailsCol}>
+                                    <Text style={styles.planTitleText}>
+                                        {fallbackPackage.product?.title || translateUiText("Premium plan")}
+                                    </Text>
+                                    <Text style={styles.planPriceText}>
+                                        {fallbackPackage.product?.priceString || ''}
+                                    </Text>
+                                </View>
+                                <View style={styles.planRadioCol}>
+                                    {selectedPlan === 'fallback' ? <RadioCircleChecked /> : <RadioCircleOutline />}
                                 </View>
                             </Pressable>
                         )}
@@ -607,16 +852,19 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 )}
 
                 {/* CTA Action Button */}
-                {!isPremium && selectedPackage && (
+                {!isPremium && !purchasePending && selectedPackage && (
                     <View>
                         <TouchableOpacity
                             activeOpacity={0.88}
                             onPress={() => handlePurchase(selectedPackage)}
                             style={[
                                 styles.subscribeButtonWrapper,
-                                (loading || purchasing) && styles.subscribeButtonDisabled,
+                                (plansLoading || purchasing) && styles.subscribeButtonDisabled,
                             ]}
-                            disabled={loading || purchasing}
+                            disabled={plansLoading || purchasing}
+                            accessibilityRole="button"
+                            accessibilityLabel={translateUiText("Start premium purchase")}
+                            accessibilityState={{ disabled: plansLoading || purchasing, busy: purchasing }}
                         >
                             <LinearGradient
                                 colors={['#FF5E97', '#FFA1C9']}
@@ -627,25 +875,97 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 <Text style={styles.subscribeButtonText}>
                                     {purchasing
                                         ? translateUiText("Processing...")
-                                        : selectedPlan === 'annual'
-                                            ? translateUiText("Try free for 7 days")
+                                        : selectedPlan === 'annual' && annualHasFreeTrial
+                                            ? translateUiText("Try free for 7 Days")
                                             : translateUiText("Start now")}
                                 </Text>
                             </LinearGradient>
                         </TouchableOpacity>
                         <Text style={styles.paymentNoteText}>
-                            {selectedPlan === 'annual'
+                            {selectedPlan === 'annual' && annualHasFreeTrial
                                 ? translateUiText("No payment due now")
                                 : translateUiText("Cancel anytime, no commitment")}
                         </Text>
                     </View>
                 )}
 
-                {purchaseSucceeded && (
+                {!isPremium && !purchasePending && !selectedPackage && !plansLoading && (
+                    <View>
+                        <TouchableOpacity
+                            activeOpacity={0.88}
+                            onPress={getOfferingsAndEntitlements}
+                            style={styles.subscribeButtonWrapper}
+                            accessibilityRole="button"
+                        >
+                            <LinearGradient
+                                colors={['#FF5E97', '#FFA1C9']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.subscribeButton}
+                            >
+                                <Text style={styles.subscribeButtonText}>
+                                    {translateUiText(loadError ? 'Retry loading plans' : 'Load plans')}
+                                </Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                        {loadError && (
+                            <Text style={styles.paymentNoteText}>
+                                {translateUiText('Plans are temporarily unavailable.')}
+                            </Text>
+                        )}
+                    </View>
+                )}
+
+                {!isPremium && plansLoading && !selectedPackage && (
+                    <View
+                        style={styles.loadingPlansContainer}
+                        accessibilityRole="progressbar"
+                        accessibilityLiveRegion="polite"
+                    >
+                        <ActivityIndicator color={colors.primary} />
+                        <Text style={styles.loadingPlansText}>{translateUiText("Loading plans…")}</Text>
+                    </View>
+                )}
+
+                {!isPremium && purchasePending && (
+                    <View>
+                        <TouchableOpacity
+                            activeOpacity={0.88}
+                            onPress={handleRestore}
+                            disabled={restoring}
+                            accessibilityRole="button"
+                            accessibilityState={{ disabled: restoring, busy: restoring }}
+                            style={[
+                                styles.subscribeButtonWrapper,
+                                restoring && styles.subscribeButtonDisabled,
+                            ]}
+                        >
+                            <LinearGradient
+                                colors={['#FF5E97', '#FFA1C9']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.subscribeButton}
+                            >
+                                <Text style={styles.subscribeButtonText}>
+                                    {restoring
+                                        ? translateUiText("Verifying purchase…")
+                                        : translateUiText("Verify purchase")}
+                                </Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                        <Text style={styles.paymentNoteText}>
+                            {translateUiText("Your purchase is awaiting verification.")}
+                        </Text>
+                    </View>
+                )}
+
+                {isPremium && (
                     <TouchableOpacity
                         activeOpacity={0.88}
                         onPress={onBack}
                         style={styles.subscribeButtonWrapper}
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText("Continue")}
                     >
                         <LinearGradient
                             colors={['#FF5E97', '#FFA1C9']}
@@ -660,24 +980,32 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
                 {/* Terms & Privacy links */}
                 <View style={styles.termsContainer}>
-                    <Text style={styles.termsText}>
-                        <Text
-                            style={styles.termsLink}
-                            onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/terms-of-service.html')}
-                        >{translateUiText("Terms of Use")}</Text>
-                        {' • '}
-                        <Text
-                            style={styles.termsLink}
-                            onPress={() => Linking.openURL('https://ayushk9799.github.io/penguin-legal/privacy-policy.html')}
-                        >{translateUiText("Privacy Policy")}</Text>
-                    </Text>
+                    <TouchableOpacity
+                        onPress={() => openLegalLink('https://ayushk9799.github.io/penguin-legal/terms-of-service.html')}
+                        accessibilityRole="link"
+                        hitSlop={8}
+                    >
+                        <Text style={[styles.termsText, styles.termsLink]}>{translateUiText("Terms of Use")}</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.termsSeparator}>•</Text>
+                    <TouchableOpacity
+                        onPress={() => openLegalLink('https://ayushk9799.github.io/penguin-legal/privacy-policy.html')}
+                        accessibilityRole="link"
+                        hitSlop={8}
+                    >
+                        <Text style={[styles.termsText, styles.termsLink]}>{translateUiText("Privacy Policy")}</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
             </Animated.View>
 
             {/* Purchasing overlay loader */}
             {purchasing && (
-                <View style={styles.processingOverlay}>
+                <View
+                    style={styles.processingOverlay}
+                    accessibilityViewIsModal
+                    accessibilityLiveRegion="assertive"
+                >
                     <View style={styles.processingCard}>
                         <ActivityIndicator size="large" color={colors.primary} />
                         <Text style={styles.processingText}>{translateUiText("Processing purchase…")}</Text>
@@ -720,9 +1048,9 @@ const styles = StyleSheet.create({
     backButton: {
         position: 'absolute',
         left: 16,
-        width: 42,
-        height: 42,
-        borderRadius: 21,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
         borderWidth: 1,
         borderColor: '#F7DDEA',
@@ -738,9 +1066,13 @@ const styles = StyleSheet.create({
     restoreButton: {
         position: 'absolute',
         right: 16,
+        minHeight: 44,
         paddingHorizontal: 8,
-        paddingVertical: 6,
+        justifyContent: 'center',
         zIndex: 10,
+    },
+    actionDisabled: {
+        opacity: 0.5,
     },
     restoreButtonText: {
         color: colors.primary,
@@ -750,7 +1082,8 @@ const styles = StyleSheet.create({
     mascotContainer: {
         alignSelf: 'center',
         position: 'relative',
-        width: 350,
+        width: '100%',
+        maxWidth: 350,
         height: 280,
         justifyContent: 'center',
         alignItems: 'center',
@@ -758,7 +1091,8 @@ const styles = StyleSheet.create({
         zIndex: 2,
     },
     mascotImage: {
-        width: 335,
+        width: '96%',
+        maxWidth: 335,
         height: 276,
         zIndex: 2,
     },
@@ -964,6 +1298,9 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginBottom: 10,
         alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 10,
     },
     termsText: {
         color: colors.textSecondary,
@@ -972,6 +1309,23 @@ const styles = StyleSheet.create({
     },
     termsLink: {
         color: colors.textSecondary,
+        textDecorationLine: 'underline',
+    },
+    termsSeparator: {
+        color: colors.textSecondary,
+        fontSize: 12,
+    },
+    loadingPlansContainer: {
+        minHeight: 62,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 10,
+    },
+    loadingPlansText: {
+        color: colors.textSecondary,
+        fontSize: 13,
+        fontWeight: '600',
     },
     // Premium Active Status
     premiumStatusContainer: {
@@ -1004,6 +1358,15 @@ const styles = StyleSheet.create({
     premiumStatusDetails: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        gap: 12,
+    },
+    premiumStatusRight: {
+        alignItems: 'flex-end',
+        flexShrink: 1,
+        flex: 1,
+    },
+    premiumStatusColumn: {
+        flex: 1,
     },
     premiumStatusLabel: {
         color: colors.textSecondary,

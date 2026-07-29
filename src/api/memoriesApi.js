@@ -1,4 +1,5 @@
 import { API_BASE } from '../constants/Api';
+import { apiFetch } from '../utils/apiFetch';
 
 const parseJson = async (response) => {
     const data = await response.json();
@@ -9,7 +10,7 @@ const parseJson = async (response) => {
 };
 
 export const uploadMemoryImage = async (preparedImage) => {
-    const presignedResponse = await fetch(`${API_BASE}/api/upload/presigned-url`, {
+    const presignedResponse = await apiFetch(`${API_BASE}/api/upload/presigned-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

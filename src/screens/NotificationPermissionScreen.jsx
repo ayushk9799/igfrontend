@@ -96,51 +96,51 @@ const NotificationPermissionScreen = ({ onComplete }) => {
         notif3Opacity.setValue(0);
 
         Animated.sequence([
-            Animated.delay(600), // Wait for entry animation
+            Animated.delay(300), // Briefly wait for the screen entrance
 
             // 1st notification pops
             Animated.parallel([
                 Animated.spring(notif1Scale, {
                     toValue: 1,
-                    friction: 6,
-                    tension: 40,
+                    friction: 7,
+                    tension: 70,
                     useNativeDriver: true,
                 }),
                 Animated.timing(notif1Opacity, {
                     toValue: 1,
-                    duration: 200,
+                    duration: 120,
                     useNativeDriver: true,
                 })
             ]),
-            Animated.delay(800),
+            Animated.delay(300),
 
             // 2nd notification pops
             Animated.parallel([
                 Animated.spring(notif2Scale, {
                     toValue: 1,
-                    friction: 6,
-                    tension: 40,
+                    friction: 7,
+                    tension: 70,
                     useNativeDriver: true,
                 }),
                 Animated.timing(notif2Opacity, {
                     toValue: 1,
-                    duration: 200,
+                    duration: 120,
                     useNativeDriver: true,
                 })
             ]),
-            Animated.delay(800),
+            Animated.delay(300),
 
             // 3rd notification pops
             Animated.parallel([
                 Animated.spring(notif3Scale, {
                     toValue: 1,
-                    friction: 6,
-                    tension: 40,
+                    friction: 7,
+                    tension: 70,
                     useNativeDriver: true,
                 }),
                 Animated.timing(notif3Opacity, {
                     toValue: 1,
-                    duration: 200,
+                    duration: 120,
                     useNativeDriver: true,
                 })
             ])

@@ -25,6 +25,7 @@ import { API_BASE } from '../constants/Api';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { apiFetch } from '../utils/apiFetch';
 
 const navy = '#050E3E';
 const decorativeStyles = StyleSheet.create({
@@ -356,7 +357,7 @@ export const PartnerCodeScreen = ({
         setIsPairing(true);
         setPairingStatus('Connecting...');
         try {
-            const response = await fetch(`${API_BASE}/api/partner/pair`, {
+            const response = await apiFetch(`${API_BASE}/api/partner/pair`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 signal: abortController.signal,

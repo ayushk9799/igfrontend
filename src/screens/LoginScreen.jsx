@@ -293,8 +293,8 @@ export const LoginScreen = ({
 
             const data = JSON.parse(text);
 
-            if (data.success && data.user) {
-                onLogin(data.user);
+            if (data.success && data.user && data.token) {
+                onLogin(data.user, data.token);
             } else {
                 throw new Error(data.error || 'Login failed');
             }
@@ -341,8 +341,8 @@ export const LoginScreen = ({
 
             const data = await response.json();
 
-            if (data.success && data.user) {
-                onLogin(data.user);
+            if (data.success && data.user && data.token) {
+                onLogin(data.user, data.token);
             } else {
                 throw new Error(data.error || 'Login failed');
             }

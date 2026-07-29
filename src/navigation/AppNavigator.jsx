@@ -1,10 +1,12 @@
 // Updated Navigator with premium theme and auth persistence
 import React, { useState, useEffect, startTransition, useCallback, useMemo, useRef } from 'react';
-import { View, StyleSheet, Alert, Platform, BackHandler, Modal, AppState, NativeModules, Linking } from 'react-native';
+import { Animated, Easing, View, Text, TouchableOpacity, StyleSheet, Alert, Platform, BackHandler, Modal, AppState, NativeModules, Linking } from 'react-native';
 import SpInAppUpdates, { IAUUpdateKind, IAUInstallStatus } from 'sp-react-native-in-app-updates';
 import BootSplash from 'react-native-bootsplash';
 import DeviceInfo from 'react-native-device-info';
 import { BlurView } from 'expo-blur';
+import { ChevronLeft } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
 import LoginScreen from '../screens/LoginScreen';
 import NicknameScreen from '../screens/NicknameScreen';
@@ -25,6 +27,7 @@ import OnboardingFeaturesScreen from '../screens/OnboardingFeaturesScreen';
 import JournalOnboardingScreen from '../screens/JournalOnboardingScreen';
 import QuestionsOnboardingScreen from '../screens/QuestionsOnboardingScreen';
 import LiveCallOnboardingScreen from '../screens/LiveCallOnboardingScreen';
+import LiveChatOnboardingScreen from '../screens/LiveChatOnboardingScreen';
 import WidgetOnboardingScreen from '../screens/WidgetOnboardingScreen';
 import NotificationPermissionScreen from '../screens/NotificationPermissionScreen';
 
@@ -43,7 +46,7 @@ import PremiumLimitBottomSheet from '../components/PremiumLimitBottomSheet';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
-import { clearLiveChatActive, getUser, saveUser, updateUser as updateUserStorage, isAuthenticated, isOnboarded as isOnboardedStorage, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding, hasSeenOnboardingPremium, setSeenOnboardingPremium, shouldResumeLiveChat } from '../utils/authStorage';
+import { clearLiveChatActive, getAuthToken, getUser, saveUser, setAuthToken, updateUser as updateUserStorage, isAuthenticated, isOnboarded as isOnboardedStorage, setOnboarded as setOnboardedStorage, clearAuth, getPartnerCode, hasSeenOnboarding, setSeenOnboarding, hasSeenOnboardingPremium, setSeenOnboardingPremium, shouldResumeLiveChat } from '../utils/authStorage';
 import { useSocketContext } from '../context/SocketContext';
 import { getApp } from '@react-native-firebase/app';
 import { registerFCMToken, setupForegroundMessageHandler, onNotificationOpenedApp, getInitialNotification, getMessaging, setupTokenRefreshListener, checkNotificationPermission } from '../utils/pushNotifications';
@@ -56,6 +59,9 @@ import { disableDistanceLocationSharing, getDistanceLocationPermissionStatus, re
 import { configureNativeWidgetTracking, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import { getPremiumEntitlement, getSubscriptionStatus, mapSubscriptionAccessToUser, refreshSubscription } from '../api/subscriptionApi';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
+import { updateOnboardingProfile, updateOnboardingStep } from '../api/onboardingApi';
+import { getRequiredOnboardingScreen, needsRelationshipStartDate } from '../utils/onboardingFlow';
+import useReducedMotion from '../hooks/useReducedMotion';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
@@ -63,6 +69,15 @@ import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { getContentLanguage, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const UPDATE_CHECK_TIMEOUT_MS = 8000;
+const INTRO_ONBOARDING_SCREENS = [
+    'onboarding',
+    'onboardingFeatures',
+    'journalOnboarding',
+    'questionsOnboarding',
+    'liveCallOnboarding',
+    'liveChatOnboarding',
+    'widgetOnboarding',
+];
 
 const fetchWithTimeout = async (url, options = {}, timeoutMs = UPDATE_CHECK_TIMEOUT_MS) => {
     const controller = new AbortController();
@@ -158,6 +173,11 @@ const DISTANCE_WIDGET_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 export const AppNavigator = () => {
     const dispatch = useDispatch();
+    const insets = useSafeAreaInsets();
+    const reducedMotion = useReducedMotion();
+    const onboardingProgress = useRef(
+        new Animated.Value(1 / INTRO_ONBOARDING_SCREENS.length)
+    ).current;
 
     // Redux state
     const userData = useSelector(state => state.user);
@@ -189,12 +209,34 @@ export const AppNavigator = () => {
     const accountReturnPendingRef = useRef(false);
     const [activeJigsawPuzzle, setActiveJigsawPuzzle] = useState(null);
 
+    useEffect(() => {
+        const screenIndex = INTRO_ONBOARDING_SCREENS.indexOf(currentScreen);
+        if (screenIndex < 0) return undefined;
+
+        const animation = Animated.timing(onboardingProgress, {
+            toValue: (screenIndex + 1) / INTRO_ONBOARDING_SCREENS.length,
+            duration: reducedMotion ? 0 : 380,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+        });
+        animation.start();
+        return () => animation.stop();
+    }, [currentScreen, onboardingProgress, reducedMotion]);
+
     // Socket context for real-time sync
     const { socket, connect, disconnect, partnerMood, partnerOnline, userMood, partnerScribble } = useSocketContext();
 
-    const needsRelationshipStartDate = (user) => !!user?.partnerId
-        && !user?.relationshipStartDate
-        && user?.shouldAskRelationshipStartDate === true;
+    const persistOnboardingStep = async (step, userId = userData?.id) => {
+        if (!userId) return userData?.onboarding || null;
+        const data = await updateOnboardingStep(userId, step);
+        const onboarding = data.onboarding || null;
+        if (onboarding) {
+            updateUserStorage({ onboarding });
+            dispatch(updateUser({ onboarding }));
+        }
+        return onboarding;
+    };
+
 
     const closeGamePremium = useCallback(() => {
         const shouldQueueYearlyOffer = gamePremiumStep === 'premium';
@@ -232,6 +274,9 @@ export const AppNavigator = () => {
         return () => {
             socket.off('puzzle:updated', handlePuzzleUpdate);
         };
+        // Fetch helper is declared later in this large navigator; socket/user
+        // identity are the actual subscription lifecycle dependencies.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket, userData?.id]);
 
     useEffect(() => {
@@ -517,7 +562,7 @@ export const AppNavigator = () => {
 
         try {
             const deviceInfo = getDeviceInfo();
-            const response = await fetch(`${API_BASE}/api/user/device-info`, {
+            const response = await apiFetch(`${API_BASE}/api/user/device-info`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -844,6 +889,7 @@ export const AppNavigator = () => {
             socket.off('wordle:invite', handleWordleInvite);
             socket.off('wordle:update', handleWordleUpdate);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket, userData?.id, userData?._id]);
 
     // Listen for TicTacToe socket events for real-time updates
@@ -867,6 +913,7 @@ export const AppNavigator = () => {
             socket.off('tictactoe:newGame', handleTicTacToeUpdate);
             socket.off('tictactoe:gameComplete', handleTicTacToeUpdate);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket, userData?.id]);
 
     // Listen for partner:paired socket event (when someone pairs with us in real-time)
@@ -876,7 +923,7 @@ export const AppNavigator = () => {
         const handlePartnerPaired = async (data) => {
             try {
                 // Fetch full partner status from server
-                const response = await fetch(`${API_BASE}/api/partner/status/${userData.id}`);
+                const response = await apiFetch(`${API_BASE}/api/partner/status/${userData.id}`);
                 const statusData = await response.json();
 
                 if (statusData.success && statusData.isPaired) {
@@ -931,9 +978,10 @@ export const AppNavigator = () => {
 
                     // Continue onboarding after a short delay so PartnerCodeScreen can show the connected text.
                     if (currentScreen === 'partnerCode') {
-                        setTimeout(() => {
+                        setTimeout(async () => {
                             if (partnerCompletionRouteRef.current) return;
                             partnerCompletionRouteRef.current = true;
+                            await persistOnboardingStep('partner');
 
                             const nextUser = {
                                 ...userData,
@@ -945,13 +993,12 @@ export const AppNavigator = () => {
                                 if (needsRelationshipStartDate(nextUser)) {
                                     setCurrentScreen('relationshipStartDate');
                                 } else {
-                                    checkNotificationPermission().then((hasPermission) => {
-                                        setCurrentScreen(hasPermission ? 'home' : 'notificationPermission');
-                                    });
+                                    const hasPermission = await checkNotificationPermission();
+                                    if (hasPermission) await persistOnboardingStep('completed');
+                                    setCurrentScreen(hasPermission ? 'home' : 'notificationPermission');
                                 }
                             } else {
-                                setSeenOnboardingPremium(userData.id, true);
-                                setCurrentScreen('freeScreen');
+                                await showOnboardingPremiumOnce();
                             }
                         }, 2500);
                     }
@@ -966,6 +1013,9 @@ export const AppNavigator = () => {
         return () => {
             socket.off('partner:paired', handlePartnerPaired);
         };
+        // userData/currentScreen refresh the handler closures, while adding
+        // navigation helpers would resubscribe on every render.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket, userData, currentScreen, dispatch]);
 
     useEffect(() => {
@@ -1149,6 +1199,9 @@ export const AppNavigator = () => {
             || data.sessionId
             || '';
         return `${data.type || 'unknown'}:${targetId}`;
+        // Notification listeners are intentionally installed once and route
+        // through the current global handlers.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const showRoutedLocalNotification = useCallback(async ({ title, body, data }) => {
@@ -1227,6 +1280,8 @@ export const AppNavigator = () => {
             if (unsubscribeForeground) unsubscribeForeground();
             if (unsubscribeTokenRefresh) unsubscribeTokenRefresh();
         };
+        // App-state listener is intentionally installed once.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -1247,6 +1302,8 @@ export const AppNavigator = () => {
         });
 
         return () => subscription?.remove();
+        // App-state listener is intentionally installed once.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -1493,7 +1550,7 @@ export const AppNavigator = () => {
                 const storedUser = getUser();
 
 
-                if (authenticated && storedUser) {
+                if (authenticated && storedUser && getAuthToken()) {
                     // User is authenticated - dispatch to Redux
                     dispatch(setUser(storedUser));
 
@@ -1508,7 +1565,7 @@ export const AppNavigator = () => {
                     // IMPORTANT: Fetch latest partner status from server
                     // This handles the case where another user paired with us
                     try {
-                        const response = await fetch(`${API_BASE}/api/partner/status/${storedUser.id}`);
+                        const response = await apiFetch(`${API_BASE}/api/partner/status/${storedUser.id}`);
                         const statusData = await response.json();
 
                         if (statusData.success && statusData.isPaired) {
@@ -1548,6 +1605,8 @@ export const AppNavigator = () => {
                                     avatar: statusData.partner.avatar || null,
                                 });
                                 setOnboardedStorage(true);
+                                await persistOnboardingStep('partner', storedUser.id);
+                                await persistOnboardingStep('completed', storedUser.id);
                                 setCurrentScreen('home');
                                 fetchPendingPuzzle(storedUser.id);
                                 fetchPendingTicTacToe(storedUser.id);
@@ -1587,10 +1646,9 @@ export const AppNavigator = () => {
                         // Continue with local data if server check fails
                     }
 
-                    // FIRST check if user has a nickname - required before anything else
-                    if (!storedUser.nickname) {
-                        // No nickname yet - show nickname screen first
-                        setCurrentScreen('nickname');
+                    const requiredScreen = getRequiredOnboardingScreen(storedUser);
+                    if (requiredScreen !== 'home') {
+                        setCurrentScreen(requiredScreen);
                     } else if (storedUser.partnerId) {
                         if (needsRelationshipStartDate(storedUser)) {
                             setCurrentScreen('relationshipStartDate');
@@ -1619,16 +1677,13 @@ export const AppNavigator = () => {
                         fetchPendingWordle(storedUser.id);
                     } else {
                         clearLiveChatActive();
-                        setCurrentScreen('partnerCode');
+                        dispatch(setOnboarded(true));
+                        setOnboardedStorage(true);
+                        setCurrentScreen('home');
                     }
                 } else {
-                    // Not authenticated - check if first launch
-                    // TODO: Remove this override after testing
-                    // if (!hasSeenOnboarding()) {
-                    setCurrentScreen('onboarding'); // Force show for testing
-                    // } else {
-                    //     setCurrentScreen('welcome');
-                    // }
+                    if (authenticated || storedUser) clearAuth();
+                    setCurrentScreen(hasSeenOnboarding() ? 'login' : 'onboarding');
                 }
             } catch (error) {
                 console.error('Error checking auth state:', error);
@@ -1637,6 +1692,9 @@ export const AppNavigator = () => {
         };
 
         checkAuthState();
+        // Authentication bootstrap must not rerun when navigation callbacks
+        // are recreated by subsequent state updates.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [connect, dispatch, syncDeviceInfo]);
 
     // Fetch pending puzzles for the user
@@ -1816,91 +1874,76 @@ export const AppNavigator = () => {
     };
 
     // Handle login - save user and navigate based on pairing status
-    const handleLogin = (user) => {
+    const handleLogin = (user, token) => {
         startTransition(() => {
-            // Save user to MMKV storage
+            setAuthToken(token);
             saveUser(user);
-
-            // Dispatch to Redux
             dispatch(setUser(user));
-
-            // Connect to socket for real-time sync
             connect();
-
-            // Register FCM token for push notifications (critical for reinstalls!)
             registerFCMToken();
-
             syncDeviceInfo(user.id);
 
-            // FIRST check if user has a nickname - required before anything else
-            if (!user.nickname) {
-                // No nickname yet - show nickname screen first
-                setCurrentScreen('nickname');
+            const requiredScreen = getRequiredOnboardingScreen(user);
+            if (requiredScreen !== 'home') {
+                setCurrentScreen(requiredScreen);
             } else if (user.partnerId) {
                 if (needsRelationshipStartDate(user)) {
                     setCurrentScreen('relationshipStartDate');
                     return;
                 }
 
-                // Has nickname and is paired - go to home
                 dispatch(setOnboarded(true));
                 setOnboardedStorage(true);
                 setCurrentScreen('home');
             } else {
-                setCurrentScreen('partnerCode');
+                dispatch(setOnboarded(true));
+                setOnboardedStorage(true);
+                setCurrentScreen('home');
             }
         });
     };
 
     // Handle nickname completion
     const handleNicknameComplete = async (nickname) => {
-        if (nickname) {
-            // Update local storage and Redux immediately
-            updateUserStorage({ nickname });
-            dispatch(updateUser({ nickname }));
-
-            // Save nickname to backend via profile update
-            try {
-                await fetch(`${API_BASE}/api/user/profile`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: userData.id, nickname }),
-                });
-            } catch (err) {
-                console.error('Failed to save nickname to server:', err);
-            }
-        }
-
-        startTransition(() => {
-            // After nickname, continue profile setup before pairing.
+        try {
+            const data = await updateOnboardingProfile(userData.id, { nickname });
+            const updates = {
+                nickname: data.user.nickname,
+                onboarding: data.user.onboarding,
+            };
+            updateUserStorage(updates);
+            dispatch(updateUser(updates));
             setCurrentScreen('avatarSelection');
-        });
+        } catch (error) {
+            Alert.alert(
+                translateUiText('Could not save nickname'),
+                translateUiText(error.message || 'Please try again.'),
+            );
+            throw error;
+        }
     };
 
     // Handle relationship start date completion
     const handleRelationshipStartDateComplete = async (relationshipStartDate) => {
         if (relationshipStartDate) {
-            updateUserStorage({ relationshipStartDate, shouldAskRelationshipStartDate: false });
-            dispatch(updateUser({ relationshipStartDate, shouldAskRelationshipStartDate: false }));
-            saveTogetherWidgetStartDate(relationshipStartDate).catch((error) => {
-                console.warn('Failed to save submitted relationship date to widget:', error?.message || error);
-            });
-
             try {
-                const response = await fetch(`${API_BASE}/api/user/profile`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: userData.id, relationshipStartDate }),
-                });
-                const data = await response.json();
+                const data = await updateOnboardingProfile(userData.id, { relationshipStartDate });
                 const savedRelationshipStartDate = data?.user?.relationshipStartDate;
                 if (data?.success && savedRelationshipStartDate) {
                     const pendingRelationshipStartDate = data?.user?.pendingRelationshipStartDate || null;
                     updateUserStorage({ relationshipStartDate: savedRelationshipStartDate, pendingRelationshipStartDate, shouldAskRelationshipStartDate: false });
                     dispatch(updateUser({ relationshipStartDate: savedRelationshipStartDate, pendingRelationshipStartDate, shouldAskRelationshipStartDate: false }));
+                    saveTogetherWidgetStartDate(savedRelationshipStartDate).catch((error) => {
+                        console.warn('Failed to save submitted relationship date to widget:', error?.message || error);
+                    });
                 }
             } catch (err) {
                 console.error('Failed to save relationship start date to server:', err);
+                Alert.alert(
+                    translateUiText('Could not save relationship date'),
+                    translateUiText(err.message || 'Please try again.'),
+                );
+                return;
             }
         }
 
@@ -1914,17 +1957,14 @@ export const AppNavigator = () => {
             return;
         }
 
-        startTransition(() => {
-            if (userData.partnerId) {
-                dispatch(setOnboarded(true));
-                setOnboardedStorage(true);
-                checkNotificationPermission().then((hasPermission) => {
-                    setCurrentScreen(hasPermission ? 'home' : 'notificationPermission');
-                });
-            } else {
-                setCurrentScreen('partnerCode');
-            }
-        });
+        if (userData.partnerId) {
+            await persistOnboardingStep('completed');
+            dispatch(setOnboarded(true));
+            setOnboardedStorage(true);
+            setCurrentScreen('home');
+        } else {
+            setCurrentScreen('partnerCode');
+        }
     };
 
     // Handle avatar completion
@@ -1934,22 +1974,23 @@ export const AppNavigator = () => {
             return;
         }
 
-        // After avatar, go to notification permission (or skip if already granted)
-        const hasPermission = await checkNotificationPermission();
-        startTransition(() => {
-            if (hasPermission) {
-                // Permission already granted, skip to pairing/home
-                if (userData.partnerId) {
-                    dispatch(setOnboarded(true));
-                    setOnboardedStorage(true);
-                    setCurrentScreen('home');
-                } else {
-                    setCurrentScreen('partnerCode');
-                }
-            } else {
+        try {
+            const onboarding = await persistOnboardingStep('avatar');
+            const hasPermission = await checkNotificationPermission();
+            if (!hasPermission) {
                 setCurrentScreen('notificationPermission');
+                return;
             }
-        });
+
+            const notificationOnboarding = await persistOnboardingStep('notifications');
+            const nextUser = {
+                ...userData,
+                onboarding: notificationOnboarding || onboarding || userData.onboarding,
+            };
+            setCurrentScreen(getRequiredOnboardingScreen(nextUser));
+        } catch (error) {
+            Alert.alert(translateUiText('Could not save progress'), translateUiText('Please try again.'));
+        }
     };
 
     const continueAfterPartnerStep = async (nextUser = userData) => {
@@ -1963,28 +2004,30 @@ export const AppNavigator = () => {
             return;
         }
 
+        await persistOnboardingStep('completed');
         dispatch(setOnboarded(true));
         setOnboardedStorage(true);
-
-        // A user who deferred pairing already passed the notification step.
-        if (!nextUser.partnerId) {
-            setCurrentScreen('home');
-            return;
-        }
-
-        const hasPermission = await checkNotificationPermission();
-        setCurrentScreen(hasPermission ? 'home' : 'notificationPermission');
+        setCurrentScreen('home');
     };
 
     const shouldShowOnboardingPremium = () => (
         !isOnboardedStorage()
         && userData?.isOnboarded !== true
+        && !userData?.onboarding?.premiumOfferShownAt
         && !hasSeenOnboardingPremium(userData?.id)
     );
 
-    const showOnboardingPremiumOnce = () => {
-        setSeenOnboardingPremium(userData?.id, true);
+    const showOnboardingPremiumOnce = async () => {
         setCurrentScreen('freeScreen');
+    };
+
+    const handleOnboardingOfferShown = async () => {
+        try {
+            await persistOnboardingStep('premium');
+            setSeenOnboardingPremium(userData?.id, true);
+        } catch (error) {
+            console.warn('Failed to persist premium impression:', error?.message || error);
+        }
     };
 
 
@@ -1998,7 +2041,7 @@ export const AppNavigator = () => {
         // Refresh the couple status so premium purchased by the code owner is
         // known before deciding whether the second user should see the offer.
         try {
-            const response = await fetch(`${API_BASE}/api/partner/status/${userData.id}`);
+            const response = await apiFetch(`${API_BASE}/api/partner/status/${userData.id}`);
             const statusData = await response.json();
             if (statusData?.success && statusData?.isPaired && statusData?.partner) {
                 resolvedPartner = {
@@ -2016,6 +2059,14 @@ export const AppNavigator = () => {
 
         if (partnerCompletionRouteRef.current) return;
         partnerCompletionRouteRef.current = true;
+        let onboarding = userData.onboarding;
+        try {
+            onboarding = await persistOnboardingStep('partner');
+        } catch (error) {
+            // Pairing itself is already committed transactionally by the backend.
+            // Keep the successful connection usable and refresh progress on login.
+            console.warn('Failed to refresh paired onboarding progress:', error?.message || error);
+        }
 
         const partnerPremiumExpiresAt = resolvedPartner.premiumExpiresAt || null;
         const partnerIsPremium = resolvedPartner.isPremium === true
@@ -2039,7 +2090,7 @@ export const AppNavigator = () => {
             partnerSubscriptionStatus: resolvedPartner.subscriptionStatus || null,
             partnerSubscriptionBillingIssueAt: resolvedPartner.subscriptionBillingIssueAt || null,
         };
-        const nextUser = { ...userData, ...partnerData };
+        const nextUser = { ...userData, ...partnerData, onboarding: onboarding || userData.onboarding };
         const coupleIsPremium = hasActiveCouplePremium(nextUser);
 
         updateUserStorage({
@@ -2066,7 +2117,7 @@ export const AppNavigator = () => {
         }
 
         if (shouldShowPremiumStep) {
-            startTransition(showOnboardingPremiumOnce);
+            await showOnboardingPremiumOnce();
         } else {
             await continueAfterPartnerStep(nextUser);
         }
@@ -2078,13 +2129,20 @@ export const AppNavigator = () => {
         partnerCompletionRouteRef.current = true;
 
         const shouldShowPremiumStep = shouldShowOnboardingPremium();
-        dispatch(setOnboarded(true));
-        setOnboardedStorage(true);
+        let onboarding;
+        try {
+            onboarding = await persistOnboardingStep('partner');
+        } catch {
+            partnerCompletionRouteRef.current = false;
+            Alert.alert(translateUiText('Could not save progress'), translateUiText('Please try again.'));
+            return;
+        }
+        const nextUser = { ...userData, onboarding: onboarding || userData.onboarding };
 
         if (shouldShowPremiumStep) {
-            startTransition(showOnboardingPremiumOnce);
+            await showOnboardingPremiumOnce();
         } else {
-            await continueAfterPartnerStep(userData);
+            await continueAfterPartnerStep(nextUser);
         }
     };
 
@@ -2094,17 +2152,19 @@ export const AppNavigator = () => {
     };
 
     // Handle notification permission completion (allow or skip)
-    const handleNotificationComplete = () => {
-        startTransition(() => {
-            // After notification permission, check pairing status
-            if (userData.partnerId) {
-                dispatch(setOnboarded(true));
-                setOnboardedStorage(true);
-                setCurrentScreen('home');
+    const handleNotificationComplete = async () => {
+        try {
+            const onboarding = await persistOnboardingStep('notifications');
+            const nextUser = { ...userData, onboarding: onboarding || userData.onboarding };
+            const requiredScreen = getRequiredOnboardingScreen(nextUser);
+            if (requiredScreen === 'home') {
+                await continueAfterPartnerStep(nextUser);
             } else {
-                setCurrentScreen('partnerCode');
+                setCurrentScreen(requiredScreen);
             }
-        });
+        } catch {
+            Alert.alert(translateUiText('Could not save progress'), translateUiText('Please try again.'));
+        }
     };
 
     const handleMoodSelect = (mood) => {
@@ -2173,7 +2233,7 @@ export const AppNavigator = () => {
                 return;
             }
 
-            const response = await fetch(`${API_BASE}/api/user/delete-account`, {
+            const response = await apiFetch(`${API_BASE}/api/user/delete-account`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId }),
@@ -2285,6 +2345,14 @@ export const AppNavigator = () => {
         });
     };
 
+    const onboardingScreenIndex = INTRO_ONBOARDING_SCREENS.indexOf(currentScreen);
+    const canGoBackInOnboarding = onboardingScreenIndex > 0;
+    const handleOnboardingBack = () => {
+        if (canGoBackInOnboarding) {
+            navigate(INTRO_ONBOARDING_SCREENS[onboardingScreenIndex - 1]);
+        }
+    };
+
     const handleSplashAnimationFinish = useCallback(() => {
         setHasPlayedSplashAnimation(true);
     }, []);
@@ -2329,6 +2397,13 @@ export const AppNavigator = () => {
             case 'liveCallOnboarding':
                 return (
                     <LiveCallOnboardingScreen
+                        onComplete={() => navigate('liveChatOnboarding')}
+                    />
+                );
+
+            case 'liveChatOnboarding':
+                return (
+                    <LiveChatOnboardingScreen
                         onComplete={() => navigate('widgetOnboarding')}
                     />
                 );
@@ -2381,13 +2456,9 @@ export const AppNavigator = () => {
                 return (
                     <AvatarSelectionScreen
                         onComplete={handleAvatarComplete}
-                        onBack={() => {
-                            if (accountReturnPendingRef.current) {
-                                returnToAccount();
-                                return;
-                            }
-                            navigate('nickname');
-                        }}
+                        onBack={accountReturnPendingRef.current
+                            ? returnToAccount
+                            : undefined}
                     />
                 );
 
@@ -2414,6 +2485,7 @@ export const AppNavigator = () => {
                 return (
                     <FreeScreen
                         onContinue={() => setCurrentScreen('onboardingPremium')}
+                        onShown={handleOnboardingOfferShown}
                     />
                 );
 
@@ -2752,6 +2824,57 @@ export const AppNavigator = () => {
     return (
         <View style={styles.container}>
             {renderScreen()}
+            {onboardingScreenIndex >= 2 && (
+                <View
+                    style={[styles.onboardingControls, { top: insets.top + 6 }]}
+                    pointerEvents="box-none"
+                >
+                    <TouchableOpacity
+                        onPress={handleOnboardingBack}
+                        disabled={!canGoBackInOnboarding}
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText('Back')}
+                        accessibilityState={{ disabled: !canGoBackInOnboarding }}
+                        style={[
+                            styles.onboardingBackButton,
+                            !canGoBackInOnboarding && styles.onboardingBackButtonDisabled,
+                        ]}
+                    >
+                        <ChevronLeft color="#2E1E3C" size={22} strokeWidth={2.5} />
+                    </TouchableOpacity>
+
+                    <View
+                        style={styles.onboardingProgressTrack}
+                        accessibilityRole="progressbar"
+                        accessibilityValue={{
+                            min: 1,
+                            max: INTRO_ONBOARDING_SCREENS.length,
+                            now: onboardingScreenIndex + 1,
+                        }}
+                    >
+                        <Animated.View
+                            style={[
+                                styles.onboardingProgressFill,
+                                {
+                                    width: onboardingProgress.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: ['0%', '100%'],
+                                    }),
+                                },
+                            ]}
+                        />
+                    </View>
+
+                    <TouchableOpacity
+                        onPress={handleOnboardingComplete}
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText('Skip introduction')}
+                        style={styles.onboardingSkipButton}
+                    >
+                        <Text style={styles.onboardingSkipText}>{translateUiText('Skip')}</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
             {versionGate.status === 'required' && (
                 <BlurView
                     intensity={28}
@@ -2838,6 +2961,49 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
+    },
+    onboardingControls: {
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        zIndex: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    onboardingBackButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    onboardingBackButtonDisabled: {
+        opacity: 0.35,
+    },
+    onboardingProgressTrack: {
+        flex: 1,
+        height: 7,
+        borderRadius: 4,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(255,255,255,0.72)',
+    },
+    onboardingProgressFill: {
+        height: '100%',
+        borderRadius: 4,
+        backgroundColor: '#F95B72',
+    },
+    onboardingSkipButton: {
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    onboardingSkipText: {
+        color: '#2E1E3C',
+        fontSize: 14,
+        fontWeight: '700',
     },
     loadingContainer: {
         flex: 1,

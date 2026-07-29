@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+    BottomSheetBackdrop,
+    BottomSheetModal,
+    BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
+import {
     ActivityIndicator,
     Alert,
-    Animated,
-    Easing,
-    Modal,
-    Pressable,
-    ScrollView,
+    BackHandler,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -90,11 +91,10 @@ export default function YearlyOfferBottomSheet({
     const [purchasing, setPurchasing] = useState(false);
     const [loadFailed, setLoadFailed] = useState(false);
     const [countdownNow, setCountdownNow] = useState(Date.now());
+    const bottomSheetRef = useRef(null);
+    const hasPresentedRef = useRef(false);
     const loadingOfferingRef = useRef(false);
     const presentedRef = useRef(false);
-    const closingRef = useRef(false);
-    const translateY = useRef(new Animated.Value(700)).current;
-    const opacity = useRef(new Animated.Value(0)).current;
 
     const sheetMaxHeight = Math.min(height * 0.66, 590);
     const price = yearlyPackage?.product?.priceString || '';
@@ -169,31 +169,18 @@ export default function YearlyOfferBottomSheet({
     useEffect(() => {
         if (!visible) {
             presentedRef.current = false;
-            closingRef.current = false;
-            translateY.setValue(sheetMaxHeight + 48);
-            opacity.setValue(0);
+            if (hasPresentedRef.current) {
+                bottomSheetRef.current?.dismiss();
+            }
             return;
         }
 
-        closingRef.current = false;
-        translateY.setValue(sheetMaxHeight + 48);
-        opacity.setValue(0);
-        Animated.parallel([
-            Animated.timing(translateY, {
-                toValue: 0,
-                duration: 420,
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-                toValue: 1,
-                duration: 260,
-                easing: Easing.out(Easing.quad),
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-    }, [opacity, sheetMaxHeight, translateY, visible]);
+        const animationFrame = requestAnimationFrame(() => {
+            hasPresentedRef.current = true;
+            bottomSheetRef.current?.present();
+        });
+        return () => cancelAnimationFrame(animationFrame);
+    }, [visible]);
 
     useEffect(() => {
         if (offerReady && !presentedRef.current) {
@@ -289,86 +276,78 @@ export default function YearlyOfferBottomSheet({
     };
 
     const closeSheet = () => {
-        if (closingRef.current) return;
-
-        closingRef.current = true;
-        Animated.parallel([
-            Animated.timing(translateY, {
-                toValue: sheetMaxHeight + 48,
-                duration: 300,
-                easing: Easing.in(Easing.cubic),
-                useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-                toValue: 0,
-                duration: 220,
-                easing: Easing.in(Easing.quad),
-                useNativeDriver: true,
-            }),
-        ]).start(() => {
-            onClose?.();
-        });
+        if (hasPresentedRef.current) {
+            bottomSheetRef.current?.dismiss();
+        }
     };
 
-    if (!visible) return null;
+    useEffect(() => {
+        if (!visible) return undefined;
+
+        const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+            closeSheet();
+            return true;
+        });
+        return () => subscription.remove();
+    }, [visible]);
+
+    const renderBackdrop = backdropProps => (
+        <BottomSheetBackdrop
+            {...backdropProps}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+            opacity={0.48}
+            pressBehavior="close"
+            accessibilityLabel={translateUiText("Close yearly offer")}
+        />
+    );
 
     return (
-        <Modal
-            visible
-            transparent
-            animationType="none"
-            statusBarTranslucent
-            presentationStyle="overFullScreen"
-            onRequestClose={closeSheet}
+        <BottomSheetModal
+            ref={bottomSheetRef}
+            enableDynamicSizing
+            enablePanDownToClose
+            maxDynamicContentSize={sheetMaxHeight}
+            backdropComponent={renderBackdrop}
+            backgroundStyle={styles.sheetBackground}
+            handleComponent={null}
+            onDismiss={() => {
+                hasPresentedRef.current = false;
+                if (visible) onClose?.();
+            }}
         >
-            <View style={styles.modalRoot}>
-                <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={translateUiText("Close yearly offer")}
-                    style={styles.backdrop}
-                    onPress={closeSheet}
-                />
+            <LinearGradient
+                pointerEvents="none"
+                colors={['#F1F7FF', '#FFFFFF', '#FFF7FA']}
+                locations={[0, 0.55, 1]}
+                style={StyleSheet.absoluteFillObject}
+            />
+            <View style={styles.handle} />
+            {discountPercentage && regularPrice ? (
+                <View style={[styles.discountBadge, styles.topDiscountBadge]}>
+                    <Text style={styles.discountText} numberOfLines={1}>
+                        {discountLabel}
+                    </Text>
+                </View>
+            ) : null}
+            <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={translateUiText("Close yearly offer")}
+                activeOpacity={0.8}
+                onPress={closeSheet}
+                style={styles.closeButton}
+            >
+                <CloseIcon />
+            </TouchableOpacity>
 
-                <Animated.View
-                    style={[
-                        styles.sheet,
-                        {
-                            maxHeight: sheetMaxHeight,
-                            paddingBottom: Math.max(insets.bottom, 14),
-                            opacity,
-                            transform: [{ translateY }],
-                        },
-                    ]}
-                >
-                    <LinearGradient
-                        pointerEvents="none"
-                        colors={['#F1F7FF', '#FFFFFF', '#FFF7FA']}
-                        locations={[0, 0.55, 1]}
-                        style={StyleSheet.absoluteFillObject}
-                    />
-                    <View style={styles.handle} />
-                    {discountPercentage && regularPrice ? (
-                        <View style={[styles.discountBadge, styles.topDiscountBadge]}>
-                            <Text style={styles.discountText} numberOfLines={1}>
-                                {discountLabel}
-                            </Text>
-                        </View>
-                    ) : null}
-                    <TouchableOpacity
-                        accessibilityRole="button"
-                        accessibilityLabel={translateUiText("Close yearly offer")}
-                        activeOpacity={0.8}
-                        onPress={closeSheet}
-                        style={styles.closeButton}
-                    >
-                        <CloseIcon />
-                    </TouchableOpacity>
-
-                    <ScrollView
-                        bounces={false}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.content}
-                    >
+            <BottomSheetScrollView
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                    styles.content,
+                    { paddingBottom: Math.max(insets.bottom, 14) + 16 },
+                ]}
+            >
                         <View style={styles.animationWrap}>
                             <View style={styles.blueGlow} />
                             <LottieView
@@ -462,24 +441,13 @@ export default function YearlyOfferBottomSheet({
                                 </Text>
                             </View>
                         ) : null}
-                    </ScrollView>
-                </Animated.View>
-            </View>
-        </Modal>
+            </BottomSheetScrollView>
+        </BottomSheetModal>
     );
 }
 
 const styles = StyleSheet.create({
-    modalRoot: {
-        flex: 1,
-        justifyContent: 'flex-end',
-    },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(38, 27, 42, 0.48)',
-    },
-    sheet: {
-        width: '100%',
+    sheetBackground: {
         overflow: 'hidden',
         borderTopLeftRadius: 30,
         borderTopRightRadius: 30,

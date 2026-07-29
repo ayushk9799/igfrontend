@@ -3,6 +3,7 @@ import {
     Animated,
     Dimensions,
     Image,
+    Platform,
     StatusBar,
     StyleSheet,
     Text,
@@ -15,6 +16,7 @@ import Svg, { Defs, LinearGradient as SvgGradient, Stop, Text as SvgText } from 
 import { fontFamily, fontWeight } from '../constants/fonts';
 import * as Haptics from 'expo-haptics';
 import { translateUiText } from '../i18n/uiTranslation';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,26 +59,27 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const featureAnims = useRef(FEATURES.map(() => new Animated.Value(0))).current;
+    const reducedMotion = useReducedMotion();
 
     useEffect(() => {
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 400,
+                duration: reducedMotion ? 0 : 400,
                 useNativeDriver: true,
             }),
             Animated.stagger(
-                90,
+                reducedMotion ? 0 : 90,
                 featureAnims.map((anim) =>
                     Animated.timing(anim, {
                         toValue: 1,
-                        duration: 360,
+                        duration: reducedMotion ? 0 : 360,
                         useNativeDriver: true,
                     })
                 )
             ),
         ]).start();
-    }, [fadeAnim, featureAnims]);
+    }, [fadeAnim, featureAnims, reducedMotion]);
 
     const handleNext = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -93,7 +96,16 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                 end={{ x: 0.75, y: 1 }}
                 style={styles.page}
             >
-                <View style={[styles.card, { paddingTop: insets.top + 4, paddingBottom: insets.bottom + 16 }]}>
+                <View
+                    style={[
+                        styles.card,
+                        {
+                            paddingTop: insets.top + 4,
+                            paddingBottom: insets.bottom + 16
+                                + (Platform.OS === 'android' ? 12 : 0),
+                        },
+                    ]}
+                >
                     <View style={styles.header}>
                         <Image
                             source={require('../../assets/images/penguin-text-logo.png')}
@@ -198,10 +210,6 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                             </LinearGradient>
                         </TouchableOpacity>
 
-                        <View style={styles.progressRow}>
-                            <View style={styles.progressSegment} />
-                            <View style={[styles.progressSegment, styles.progressSegmentActive]} />
-                        </View>
                     </View>
                 </View>
             </LinearGradient>
@@ -384,7 +392,7 @@ const styles = StyleSheet.create({
         color: '#FF6B82',
     },
     footer: {
-        paddingHorizontal: 38,
+        paddingHorizontal: 26,
         alignItems: 'center',
     },
     nextButtonShadow: {
@@ -409,21 +417,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: fontWeight('800'),
         letterSpacing: 0,
-    },
-    progressRow: {
-        marginTop: 24,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 10,
-    },
-    progressSegment: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#E5DDF2',
-    },
-    progressSegmentActive: {
-        backgroundColor: '#F95B72',
     },
 });
 

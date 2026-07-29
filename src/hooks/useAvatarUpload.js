@@ -5,6 +5,7 @@ import { API_BASE } from '../constants/Api';
 import { getUser, updateUser } from '../utils/authStorage';
 import { updateUser as updateUserRedux } from '../store/slices/userSlice';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { apiFetch } from '../utils/apiFetch';
 
 
 /**
@@ -60,10 +61,8 @@ export const useAvatarUpload = () => {
             const fileName = imageAsset.fileName || `avatar_${Date.now()}.jpg`;
             const fileType = imageAsset.mimeType || 'image/jpeg';
 
-
             // Step 1: Get presigned URL from backend
-
-            const presignedResponse = await fetch(`${API_BASE}/api/upload/presigned-url`, {
+            const presignedResponse = await apiFetch(`${API_BASE}/api/upload/presigned-url`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -73,20 +72,14 @@ export const useAvatarUpload = () => {
                 }),
             });
 
-
             const presignedData = await presignedResponse.json();
-
             if (!presignedData.success) {
                 throw new Error(presignedData.message || 'Failed to get upload URL');
             }
 
             const { presignedUrl, publicUrl } = presignedData.data;
-
-            // First, fetch the file URI to get a blob
             const fileResponse = await fetch(uri);
             const blob = await fileResponse.blob();
-
-            // Upload the blob to S3
             const uploadResult = await fetch(presignedUrl, {
                 method: 'PUT',
                 headers: {
@@ -95,15 +88,13 @@ export const useAvatarUpload = () => {
                 body: blob,
             });
 
-
             if (!uploadResult.ok) {
                 await uploadResult.text();
                 throw new Error(`S3 upload failed with status ${uploadResult.status}`);
             }
 
-
             // Step 3: Update user profile with new avatar URL
-            const updateResponse = await fetch(`${API_BASE}/api/user/profile`, {
+            const updateResponse = await apiFetch(`${API_BASE}/api/user/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -111,10 +102,7 @@ export const useAvatarUpload = () => {
                     avatar: publicUrl,
                 }),
             });
-
-
             const updateData = await updateResponse.json();
-
             if (!updateData.success) {
                 throw new Error(updateData.error || 'Failed to update profile');
             }
@@ -128,8 +116,9 @@ export const useAvatarUpload = () => {
             }
 
             // Step 5: Update local storage with URL and thumbnail
-            updateUser({ avatar: publicUrl, avatarThumbnail: thumbnail });
-            dispatch(updateUserRedux({ avatar: publicUrl, avatarThumbnail: thumbnail }));
+            const onboarding = updateData.user?.onboarding || user.onboarding || null;
+            updateUser({ avatar: publicUrl, avatarThumbnail: thumbnail, onboarding });
+            dispatch(updateUserRedux({ avatar: publicUrl, avatarThumbnail: thumbnail, onboarding }));
 
             setIsUploading(false);
             return { success: true, avatarUrl: publicUrl, avatarThumbnail: thumbnail };

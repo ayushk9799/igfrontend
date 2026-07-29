@@ -21,6 +21,7 @@ import { getUser } from './authStorage';
 import { API_BASE } from '../constants/Api';
 import { getDeviceInfo } from './deviceInfo';
 import { getContentLanguage } from '../i18n/uiTranslation';
+import { apiFetch } from './apiFetch';
 
 /**
  * Check if notification permission is already granted (silent - no dialog)
@@ -118,7 +119,7 @@ export const registerFCMToken = async () => {
 
         // Register token with backend
         const deviceInfo = getDeviceInfo();
-        const response = await fetch(`${API_BASE}/api/user/fcm-token`, {
+        const response = await apiFetch(`${API_BASE}/api/user/fcm-token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

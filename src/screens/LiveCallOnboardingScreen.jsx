@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
     Animated,
     Image,
+    Platform,
     StatusBar,
     StyleSheet,
     Text,
@@ -12,19 +13,42 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { translateUiText } from '../i18n/uiTranslation';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 const LiveCallOnboardingScreen = ({ onComplete }) => {
     const insets = useSafeAreaInsets();
-    const entrance = useRef(new Animated.Value(0)).current;
+    const titleEntrance = useRef(new Animated.Value(0)).current;
+    const visualEntrance = useRef(new Animated.Value(0)).current;
+    const buttonEntrance = useRef(new Animated.Value(0)).current;
+    const reducedMotion = useReducedMotion();
 
     useEffect(() => {
-        Animated.timing(entrance, {
-            toValue: 1,
-            duration: 450,
-            useNativeDriver: true,
-        }).start();
-    }, [entrance]);
+        if (reducedMotion) {
+            titleEntrance.setValue(1);
+            visualEntrance.setValue(1);
+            buttonEntrance.setValue(1);
+            return;
+        }
+
+        Animated.stagger(110, [
+            Animated.timing(titleEntrance, {
+                toValue: 1,
+                duration: 380,
+                useNativeDriver: true,
+            }),
+            Animated.timing(visualEntrance, {
+                toValue: 1,
+                duration: 380,
+                useNativeDriver: true,
+            }),
+            Animated.timing(buttonEntrance, {
+                toValue: 1,
+                duration: 380,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [buttonEntrance, reducedMotion, titleEntrance, visualEntrance]);
 
     const finish = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -42,18 +66,64 @@ const LiveCallOnboardingScreen = ({ onComplete }) => {
                 style={[
                     styles.page,
                     {
-                        paddingTop: insets.top + 8,
-                        paddingBottom: insets.bottom + 12,
+                        paddingTop: insets.top + 52,
+                        paddingBottom: insets.bottom + 12
+                            + (Platform.OS === 'android' ? 12 : 0),
                     },
                 ]}
             >
+                <View style={styles.content}>
+                    <Animated.View
+                        style={[
+                            styles.header,
+                            {
+                                opacity: titleEntrance,
+                                transform: [{
+                                    translateY: titleEntrance.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [18, 0],
+                                    }),
+                                }],
+                            },
+                        ]}
+                    >
+                        <Text style={styles.title}>
+                            {translateUiText("Play closer together")}
+                        </Text>
+                        <Text style={styles.subtitle}>
+                            {translateUiText("Enjoy games with live video, wherever you both are.")}
+                        </Text>
+                    </Animated.View>
+
+                    <Animated.View
+                        style={[
+                            styles.callVisual,
+                            {
+                                opacity: visualEntrance,
+                                transform: [{
+                                    translateY: visualEntrance.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [18, 0],
+                                    }),
+                                }],
+                            },
+                        ]}
+                    >
+                        <Image
+                            source={require('../../assets/onbording/live-call-visual.png')}
+                            resizeMode="contain"
+                            style={styles.callVisualImage}
+                        />
+                    </Animated.View>
+                </View>
+
                 <Animated.View
                     style={[
-                        styles.content,
+                        styles.footer,
                         {
-                            opacity: entrance,
+                            opacity: buttonEntrance,
                             transform: [{
-                                translateY: entrance.interpolate({
+                                translateY: buttonEntrance.interpolate({
                                     inputRange: [0, 1],
                                     outputRange: [18, 0],
                                 }),
@@ -61,43 +131,24 @@ const LiveCallOnboardingScreen = ({ onComplete }) => {
                         },
                     ]}
                 >
-                    <View style={styles.header}>
-                        <Text style={styles.title}>{translateUiTemplate("Never miss{{0}}their face", ['\n'])}</Text>
-                       
-                    </View>
-
-                    <View style={styles.callVisual}>
-                        <Image
-                            source={require('../../assets/onbording/live-call-visual.png')}
-                            resizeMode="contain"
-                            style={styles.callVisualImage}
-                        />
-                    </View>
-
-                    <View style={styles.progress}>
-                        <View style={styles.dot} />
-                        <View style={styles.dot} />
-                        <View style={[styles.dot, styles.dotActive]} />
-                        <View style={styles.dot} />
-                    </View>
-                </Animated.View>
-
-                <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel={translateUiText("Keep going")}
-                    activeOpacity={0.86}
-                    onPress={finish}
-                    style={styles.buttonShadow}
-                >
-                    <LinearGradient
-                        colors={['#FF5F62', '#F72F78']}
-                        start={{ x: 0, y: 0.5 }}
-                        end={{ x: 1, y: 0.5 }}
-                        style={styles.continueButton}
+                    <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText("Keep going")}
+                        activeOpacity={0.86}
+                        onPress={finish}
+                        style={styles.buttonShadow}
                     >
-                        <Text style={styles.continueText}>{translateUiText("Keep going")}</Text>
-                    </LinearGradient>
-                </TouchableOpacity>
+                        <LinearGradient
+                            colors={['#FF6B82', '#F45170']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.continueButton}
+                        >
+                            <Text style={styles.continueText}>{translateUiText("Keep going")}</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+
+                </Animated.View>
             </View>
         </LinearGradient>
     );
@@ -115,27 +166,31 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         minHeight: 0,
+        paddingTop: 32,
     },
     header: {
         width: '100%',
         alignItems: 'flex-start',
+        position: 'relative',
     },
     title: {
-        color: '#071552',
+        color: '#050E3E',
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
-        fontSize: 31,
-        lineHeight: 37,
+        fontSize: 30,
+        lineHeight: 35,
+        letterSpacing: -0.4,
         textAlign: 'left',
     },
     subtitle: {
-        color: '#071552',
+        maxWidth: 330,
+        marginTop: 2,
+        color: '#536185',
         fontFamily: fontFamily.medium,
         fontWeight: fontWeight('500'),
-        fontSize: 16,
-        lineHeight: 21,
+        fontSize: 14,
+        lineHeight: 19,
         textAlign: 'left',
-        marginTop: 7,
     },
     callVisual: {
         flex: 1,
@@ -150,33 +205,24 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
-    progress: {
-        flexDirection: 'row',
+    footer: {
+        width: '100%',
+        paddingHorizontal: 8,
         alignItems: 'center',
-        gap: 14,
-        paddingVertical: 9,
-    },
-    dot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#DCCFE6',
-    },
-    dotActive: {
-        backgroundColor: '#F85B88',
     },
     buttonShadow: {
+        width: '100%',
         marginTop: 6,
-        borderRadius: 30,
-        shadowColor: '#E52C6E',
-        shadowOpacity: 0.26,
+        borderRadius: 24,
+        shadowColor: '#F45170',
+        shadowOpacity: 0.22,
         shadowRadius: 12,
-        shadowOffset: { width: 0, height: 7 },
-        elevation: 6,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 4,
     },
     continueButton: {
-        height: 58,
-        borderRadius: 30,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -184,7 +230,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
-        fontSize: 19,
+        fontSize: 18,
     },
 });
 

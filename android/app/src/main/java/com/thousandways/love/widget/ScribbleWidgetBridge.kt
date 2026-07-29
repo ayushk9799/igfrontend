@@ -288,7 +288,7 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun setWidgetTrackingContext(userId: String, apiBase: String, promise: Promise) {
+    fun setWidgetTrackingContext(userId: String, apiBase: String, authToken: String, promise: Promise) {
         try {
             val prefs = reactContext.getSharedPreferences(
                 ScribbleWidgetProvider.PREFS_NAME,
@@ -298,6 +298,7 @@ class ScribbleWidgetBridge(private val reactContext: ReactApplicationContext) :
             prefs.edit()
                 .putString(WidgetStatusReporter.KEY_TRACKING_USER_ID, userId)
                 .putString(WidgetStatusReporter.KEY_TRACKING_API_BASE, apiBase)
+                .putString(WidgetStatusReporter.KEY_TRACKING_AUTH_TOKEN, authToken)
                 .apply()
 
             WidgetStatusReporter.report(reactContext, "native")

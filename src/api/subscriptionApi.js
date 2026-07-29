@@ -1,4 +1,5 @@
 import { API_BASE } from '../constants/Api';
+import { apiFetch } from '../utils/apiFetch';
 
 export const PREMIUM_ENTITLEMENT_ID = 'premium';
 
@@ -48,7 +49,7 @@ const parseResponse = async (response) => {
 };
 
 export const refreshSubscription = async (userId) => {
-    const response = await fetch(`${API_BASE}/api/subscriptions/refresh`, {
+    const response = await apiFetch(`${API_BASE}/api/subscriptions/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
@@ -57,6 +58,6 @@ export const refreshSubscription = async (userId) => {
 };
 
 export const getSubscriptionStatus = async (userId) => {
-    const response = await fetch(`${API_BASE}/api/subscriptions/status/${encodeURIComponent(userId)}`);
+    const response = await apiFetch(`${API_BASE}/api/subscriptions/status/${encodeURIComponent(userId)}`);
     return parseResponse(response);
 };

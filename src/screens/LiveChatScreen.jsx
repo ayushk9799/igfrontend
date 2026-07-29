@@ -1,5 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+    BottomSheetBackdrop,
+    BottomSheetModal,
+    BottomSheetView,
+} from '@gorhom/bottom-sheet';
+import {
     Animated,
     ActivityIndicator,
     AppState,
@@ -9,7 +14,6 @@ import {
     InteractionManager,
     Keyboard,
     Linking,
-    Modal,
     Platform,
     ScrollView,
     StyleSheet,
@@ -39,15 +43,17 @@ import { useSocketContext } from '../context/SocketContext';
 import { useCall } from '../calling/CallContext';
 import { CALL_STATE, STUN_URLS } from '../calling/callConstants';
 import { API_BASE } from '../constants/Api';
+import { apiFetch } from '../utils/apiFetch';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { clearLiveChatActive, markLiveChatActive, storage } from '../utils/authStorage';
-import { translateUiText } from '../i18n/uiTranslation';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const MAX_MESSAGE_LENGTH = 500;
 const VIDEO_NEGOTIATION_TIMEOUT_MS = 12_000;
 const FREE_LIVE_CHAT_LIMIT_MS = 5 * 60 * 1000;
 const LIVE_CHAT_USAGE_KEY = 'live_chat_free_usage_ms_v1';
 const LIVE_CHAT_INSTRUCTION_KEY = 'live_chat_instruction_seen_v1';
+const LIVE_CHAT_CAMERA_PREFERENCE_KEY = 'live_chat_camera_preference_v1';
 const LIVE_CHAT_CARD_HEIGHT_KEY = 'live_chat_card_height_v2';
 const DEFAULT_CARD_HEIGHT = 136;
 const MIN_CARD_HEIGHT = 108;
@@ -158,8 +164,10 @@ export default function LiveChatScreen({
     const { callState } = useCall();
     const compact = width < 370;
     const instructionStorageKey = `${LIVE_CHAT_INSTRUCTION_KEY}:${userId || 'device'}`;
+    const cameraPreferenceStorageKey = `${LIVE_CHAT_CAMERA_PREFERENCE_KEY}:${userId || 'device'}`;
     const cardHeightStorageKey = `${LIVE_CHAT_CARD_HEIGHT_KEY}:${Platform.OS}:${Math.round(screenDimensions.width)}x${Math.round(screenDimensions.height)}`;
     const freeUsageStorageKey = getLiveChatUsageKey(userId);
+    const hasSeenInstruction = storage.getBoolean(instructionStorageKey) === true;
 
     const [sessionId, setSessionId] = useState(null);
     const [participantCount, setParticipantCount] = useState(0);
@@ -187,10 +195,13 @@ export default function LiveChatScreen({
         () => readCachedCardHeight(cardHeightStorageKey),
     );
     const [instructionVisible, setInstructionVisible] = useState(
-        () => storage.getBoolean(instructionStorageKey) !== true,
+        () => !hasSeenInstruction,
     );
     const [showChatGuidance, setShowChatGuidance] = useState(
-        () => storage.getBoolean(instructionStorageKey) !== true,
+        () => !hasSeenInstruction,
+    );
+    const [entryChoiceComplete, setEntryChoiceComplete] = useState(
+        () => hasSeenInstruction,
     );
     const [freeUsageMs, setFreeUsageMs] = useState(
         () => readLiveChatUsage(freeUsageStorageKey),
@@ -225,7 +236,11 @@ export default function LiveChatScreen({
     const messageSoundSequenceRef = useRef(Promise.resolve());
     const messageSoundDisposedRef = useRef(false);
     const appStateRef = useRef(AppState.currentState);
-    const pendingKeyboardBackTimerRef = useRef(null);
+    const cameraWantedEnabledRef = useRef(
+        storage.getBoolean(cameraPreferenceStorageKey) === true,
+    );
+    const instructionSheetRef = useRef(null);
+    const instructionSheetPresentedRef = useRef(false);
     const keyboardVisibleRef = useRef(false);
     const stageViewportHeightRef = useRef(0);
     const measuredCardHeightRef = useRef(cardHeight);
@@ -282,7 +297,7 @@ export default function LiveChatScreen({
         let cancelled = false;
         const loadPartnerNickname = async () => {
             try {
-                const response = await fetch(`${API_BASE}/api/partner/status/${userId}`);
+                const response = await apiFetch(`${API_BASE}/api/partner/status/${userId}`);
                 const json = await response.json();
                 const nickname = json?.partner?.nickname?.trim();
                 if (!cancelled) setPartnerNickname(nickname || null);
@@ -569,7 +584,9 @@ export default function LiveChatScreen({
         ) return;
         offerInFlightRef.current = true;
         try {
-            await ensureFrontCamera({ requestPermission: false });
+            if (cameraWantedEnabledRef.current) {
+                await ensureFrontCamera({ requestPermission: false });
+            }
             if (
                 !mountedRef.current
                 || sessionIdRef.current !== id
@@ -639,6 +656,7 @@ export default function LiveChatScreen({
     }, [handleBack]);
 
     useEffect(() => {
+        if (!entryChoiceComplete) return undefined;
         if (isFreeLimitReached) {
             leaveSession();
             setError(null);
@@ -678,7 +696,9 @@ export default function LiveChatScreen({
                 onRequestPremiumRef.current?.();
                 return;
             }
-            await ensureFrontCamera({ requestPermission: false });
+            if (cameraWantedEnabledRef.current) {
+                await ensureFrontCamera({ requestPermission: false });
+            }
             if ((data.participantCount || 1) > 1 && data.shouldOffer) startOffer();
         };
         const onPartnerJoined = async data => {
@@ -686,6 +706,9 @@ export default function LiveChatScreen({
             participantCountRef.current = data.participantCount || 2;
             setParticipantCount(data.participantCount || 2);
             if (data.shouldOffer) shouldOfferRef.current = true;
+            if (cameraWantedEnabledRef.current) {
+                await ensureFrontCamera({ requestPermission: false });
+            }
             if (shouldOfferRef.current) await startOffer();
         };
         const onPartnerLeft = data => {
@@ -704,7 +727,9 @@ export default function LiveChatScreen({
                 preservePendingCandidates: true,
             });
             try {
-                await ensureFrontCamera({ requestPermission: false });
+                if (cameraWantedEnabledRef.current) {
+                    await ensureFrontCamera({ requestPermission: false });
+                }
                 if (
                     !mountedRef.current
                     || sessionIdRef.current !== data.sessionId
@@ -754,7 +779,7 @@ export default function LiveChatScreen({
                 setMyMessage(data.message);
                 const pending = pendingMessageRef.current;
                 const confirmed = pending && (
-                    data.message?.clientMessageId === pending.clientMessageId
+                    data.clientMessageId === pending.clientMessageId
                     || data.message?.text === pending.text
                 );
                 if (confirmed) {
@@ -841,11 +866,11 @@ export default function LiveChatScreen({
             socket.off('liveChat:freeLimitReached', onFreeLimitReached);
             socket.off('liveChat:error', onError);
         };
-    }, [callState, closePeerConnection, createPeerConnection, ensureFrontCamera, flushCandidates, freeUsageStorageKey, hasPremiumAccess, isConnected, isFreeLimitReached, leaveSession, partnerId, playMessageSound, socket, startOffer, stopCamera, userId]);
+    }, [callState, closePeerConnection, createPeerConnection, ensureFrontCamera, entryChoiceComplete, flushCandidates, freeUsageStorageKey, hasPremiumAccess, isConnected, isFreeLimitReached, leaveSession, partnerId, playMessageSound, socket, startOffer, stopCamera, userId]);
 
     useEffect(() => {
         mountedRef.current = true;
-        if (isFreeLimitReached) {
+        if (isFreeLimitReached || !entryChoiceComplete) {
             clearLiveChatActive();
         } else {
             markLiveChatActive(userId);
@@ -858,7 +883,7 @@ export default function LiveChatScreen({
             }
             leaveSession();
         };
-    }, [isFreeLimitReached, leaveSession, userId]);
+    }, [entryChoiceComplete, isFreeLimitReached, leaveSession, userId]);
 
     useEffect(() => {
         let animationFrame = null;
@@ -880,10 +905,6 @@ export default function LiveChatScreen({
         const subscription = AppState.addEventListener('change', async nextState => {
             appStateRef.current = nextState;
             if (nextState !== 'active') {
-                if (pendingKeyboardBackTimerRef.current) {
-                    clearTimeout(pendingKeyboardBackTimerRef.current);
-                    pendingKeyboardBackTimerRef.current = null;
-                }
                 stopCamera();
                 return;
             }
@@ -895,7 +916,11 @@ export default function LiveChatScreen({
                         ? 'denied'
                         : 'needed',
             );
-            if (cameraStatus === permissions.RESULT.GRANTED && sessionIdRef.current) {
+            if (
+                cameraStatus === permissions.RESULT.GRANTED
+                && sessionIdRef.current
+                && cameraWantedEnabledRef.current
+            ) {
                 await ensureFrontCamera({ requestPermission: false });
                 if (shouldOfferRef.current && participantCountRef.current > 1) startOffer();
             }
@@ -909,7 +934,6 @@ export default function LiveChatScreen({
             || isFreeLimitReached
             || !sessionId
             || participantCount < 2
-            || instructionVisible
         ) {
             return undefined;
         }
@@ -957,7 +981,6 @@ export default function LiveChatScreen({
     }, [
         freeUsageStorageKey,
         hasPremiumAccess,
-        instructionVisible,
         isFreeLimitReached,
         participantCount,
         sessionId,
@@ -999,10 +1022,6 @@ export default function LiveChatScreen({
         focusInput();
         const keyboardShowSubscription = Keyboard.addListener('keyboardDidShow', event => {
             Keyboard.scheduleLayoutAnimation?.(event);
-            if (pendingKeyboardBackTimerRef.current) {
-                clearTimeout(pendingKeyboardBackTimerRef.current);
-                pendingKeyboardBackTimerRef.current = null;
-            }
             keyboardVisibleRef.current = true;
             setKeyboardVisible(true);
             requestAnimationFrame(() => {
@@ -1013,45 +1032,14 @@ export default function LiveChatScreen({
             Keyboard.scheduleLayoutAnimation?.(event);
             keyboardVisibleRef.current = false;
             setKeyboardVisible(false);
-
-            if (Platform.OS === 'android' && sessionIdRef.current) {
-                if (pendingKeyboardBackTimerRef.current) {
-                    clearTimeout(pendingKeyboardBackTimerRef.current);
-                }
-
-                // Some Android devices hide the keyboard just before reporting
-                // that the app moved to the background. Wait briefly so that
-                // lifecycle change cannot be mistaken for a hardware Back press.
-                pendingKeyboardBackTimerRef.current = setTimeout(() => {
-                    pendingKeyboardBackTimerRef.current = null;
-                    if (
-                        appStateRef.current === 'active'
-                        && sessionIdRef.current
-                        && !instructionVisible
-                    ) {
-                        handleBack();
-                    }
-                }, 1000);
-                return;
-            }
-
-            focusInput(true);
         });
         const appStateSubscription = AppState.addEventListener('change', nextState => {
             appStateRef.current = nextState;
-            if (nextState !== 'active' && pendingKeyboardBackTimerRef.current) {
-                clearTimeout(pendingKeyboardBackTimerRef.current);
-                pendingKeyboardBackTimerRef.current = null;
-            }
             if (nextState === 'active') focusInput(true);
         });
         const appBlurSubscription = Platform.OS === 'android'
             ? AppState.addEventListener('blur', () => {
                 appStateRef.current = 'blurred';
-                if (pendingKeyboardBackTimerRef.current) {
-                    clearTimeout(pendingKeyboardBackTimerRef.current);
-                    pendingKeyboardBackTimerRef.current = null;
-                }
             })
             : null;
         const appFocusSubscription = Platform.OS === 'android'
@@ -1067,24 +1055,39 @@ export default function LiveChatScreen({
             appBlurSubscription?.remove();
             appFocusSubscription?.remove();
             if (focusTimer) clearTimeout(focusTimer);
-            if (pendingKeyboardBackTimerRef.current) {
-                clearTimeout(pendingKeyboardBackTimerRef.current);
-                pendingKeyboardBackTimerRef.current = null;
-            }
             keyboardVisibleRef.current = false;
             setKeyboardVisible(false);
         };
-    }, [calculateAndCacheCardHeight, handleBack, instructionVisible, screenReadyForKeyboard, sessionId]);
+    }, [calculateAndCacheCardHeight, instructionVisible, screenReadyForKeyboard, sessionId]);
 
-    const dismissInstruction = useCallback(() => {
+    const completeEntryChoice = useCallback((useCamera) => {
         storage.set(instructionStorageKey, true);
+        storage.set(cameraPreferenceStorageKey, useCamera);
+        cameraWantedEnabledRef.current = useCamera;
+        setEntryChoiceComplete(true);
         setShowChatGuidance(false);
         setInstructionVisible(false);
-    }, [instructionStorageKey]);
+    }, [cameraPreferenceStorageKey, instructionStorageKey]);
+
+    const dismissInstruction = useCallback(() => {
+        if (!entryChoiceComplete) {
+            completeEntryChoice(false);
+            return;
+        }
+        setInstructionVisible(false);
+    }, [completeEntryChoice, entryChoiceComplete]);
 
     const handleInstructionCameraAction = useCallback(async () => {
         if (cameraPermissionState === 'granted') {
-            dismissInstruction();
+            storage.set(cameraPreferenceStorageKey, true);
+            cameraWantedEnabledRef.current = true;
+            if (!entryChoiceComplete) {
+                completeEntryChoice(true);
+                return;
+            }
+            setInstructionVisible(false);
+            await ensureFrontCamera({ requestPermission: false });
+            if (shouldOfferRef.current && participantCountRef.current > 1) startOffer();
             return;
         }
         if (cameraPermissionState === 'denied') {
@@ -1095,22 +1098,62 @@ export default function LiveChatScreen({
 
         setRequestingCameraPermission(true);
         try {
-            await ensureFrontCamera({ requestPermission: true });
+            cameraPermissionAttemptedRef.current = true;
+            await permissions.request({ name: 'camera' });
             const cameraStatus = await permissions.query({ name: 'camera' })
                 .catch(() => permissions.RESULT.DENIED);
             const granted = cameraStatus === permissions.RESULT.GRANTED;
             setCameraPermissionState(granted ? 'granted' : 'denied');
             setCameraDenied(!granted);
-            if (granted) dismissInstruction();
+            if (!granted) return;
+
+            storage.set(cameraPreferenceStorageKey, true);
+            cameraWantedEnabledRef.current = true;
+            if (!entryChoiceComplete) {
+                completeEntryChoice(true);
+                return;
+            }
+            setInstructionVisible(false);
+            await ensureFrontCamera({ requestPermission: false });
+            if (shouldOfferRef.current && participantCountRef.current > 1) startOffer();
         } finally {
             if (mountedRef.current) setRequestingCameraPermission(false);
         }
     }, [
+        cameraPreferenceStorageKey,
         cameraPermissionState,
-        dismissInstruction,
+        completeEntryChoice,
+        entryChoiceComplete,
         ensureFrontCamera,
         requestingCameraPermission,
+        startOffer,
     ]);
+
+    useEffect(() => {
+        const shouldShow = instructionVisible && !isFreeLimitReached;
+        if (shouldShow) {
+            const animationFrame = requestAnimationFrame(() => {
+                instructionSheetPresentedRef.current = true;
+                instructionSheetRef.current?.present();
+            });
+            return () => cancelAnimationFrame(animationFrame);
+        }
+
+        if (instructionSheetPresentedRef.current) {
+            instructionSheetRef.current?.dismiss();
+        }
+        return undefined;
+    }, [instructionVisible, isFreeLimitReached]);
+
+    const renderInstructionBackdrop = useCallback(backdropProps => (
+        <BottomSheetBackdrop
+            {...backdropProps}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+            opacity={0.42}
+            pressBehavior="none"
+        />
+    ), []);
 
     const handleDraftChange = useCallback((text) => {
         if (isFreeLimitReached) return;
@@ -1173,6 +1216,8 @@ export default function LiveChatScreen({
             return;
         }
         if (cameraEnabled) {
+            cameraWantedEnabledRef.current = false;
+            storage.set(cameraPreferenceStorageKey, false);
             stopCamera();
             return;
         }
@@ -1182,13 +1227,16 @@ export default function LiveChatScreen({
             setCameraPermissionState(
                 cameraPermissionAttemptedRef.current ? 'denied' : 'needed',
             );
+            setShowChatGuidance(false);
             setInstructionVisible(true);
             return;
         }
         setCameraPermissionState('granted');
+        cameraWantedEnabledRef.current = true;
+        storage.set(cameraPreferenceStorageKey, true);
         await ensureFrontCamera({ requestPermission: false });
         if (shouldOfferRef.current && participantCountRef.current > 1) startOffer();
-    }, [cameraEnabled, ensureFrontCamera, isFreeLimitReached, onRequestPremium, startOffer, stopCamera]);
+    }, [cameraEnabled, cameraPreferenceStorageKey, ensureFrontCamera, isFreeLimitReached, onRequestPremium, startOffer, stopCamera]);
 
     const handleRequestPremium = useCallback(() => {
         Keyboard.dismiss();
@@ -1210,6 +1258,12 @@ export default function LiveChatScreen({
         ? partnerName
         : 'Partner';
     const partnerDisplayName = partnerNickname || fallbackPartnerName;
+    const sessionStatusText = !sessionId
+        ? translateUiText('Getting Live Chat ready…')
+        : participantCount < 2
+            ? translateUiTemplate('Waiting for {{0}} to join…', [partnerDisplayName])
+            : translateUiTemplate('{{0}} is here', [partnerDisplayName]);
+    const partnerIsPresent = Boolean(sessionId && participantCount > 1);
     const videoSize = compact
         ? { width: 100 }
         : { width: 116 };
@@ -1226,8 +1280,9 @@ export default function LiveChatScreen({
     );
     const showFreeTierCountdown = !hasPremiumAccess
         && !isFreeLimitReached
+        && Boolean(sessionId)
         && remainingFreeSeconds > 0
-        && remainingFreeSeconds <= 60;
+        && participantCount > 1;
     const visibleError = error
         || (cameraDenied ? 'Front-camera permission is off. Messages still work.' : null)
         || cameraFailureMessage;
@@ -1286,6 +1341,15 @@ export default function LiveChatScreen({
                             <VideoOff color="#A99CA9" size={23} strokeWidth={2.2} />
                         )}
                     </TouchableOpacity>
+                </View>
+                <View style={styles.sessionStatus}>
+                    <View style={[
+                        styles.sessionStatusDot,
+                        partnerIsPresent && styles.sessionStatusDotConnected,
+                    ]} />
+                    <Text style={styles.sessionStatusText}>
+                        {sessionStatusText}
+                    </Text>
                 </View>
 
                 <KeyboardAvoidingView
@@ -1436,103 +1500,116 @@ export default function LiveChatScreen({
                     </View>
                 </KeyboardAvoidingView>
 
-                <Modal
-                    visible={instructionVisible && !isFreeLimitReached}
-                    transparent
-                    animationType="fade"
-                    statusBarTranslucent
-                    onRequestClose={dismissInstruction}
+                <BottomSheetModal
+                    ref={instructionSheetRef}
+                    enableDynamicSizing
+                    enablePanDownToClose={false}
+                    backdropComponent={renderInstructionBackdrop}
+                    backgroundStyle={styles.instructionSheetBackground}
+                    handleComponent={null}
+                    onDismiss={() => {
+                        instructionSheetPresentedRef.current = false;
+                    }}
                 >
-                    <View
-                        style={styles.instructionBackdrop}
+                    <BottomSheetView
+                        style={[styles.instructionCard, instructionCardInsetStyle]}
                         accessibilityViewIsModal
                     >
-                        <View style={[styles.instructionCard, instructionCardInsetStyle]}>
-                            <View style={styles.instructionHandle} />
-                            {showChatGuidance && (
-                                <>
-                                    <View style={styles.instructionIcon}>
-                                        <Text style={styles.instructionIconText}>1</Text>
-                                    </View>
-                                    <Text style={styles.instructionTitle}>{translateUiText("One message at a time")}</Text>
-                                    <Text style={styles.instructionText}>{translateUiText("Each of you has one message on screen. Sending a new message replaces your previous one.")}</Text>
-                                </>
+                        <View style={styles.instructionHandle} />
+                        <View style={styles.instructionIcon}>
+                            {showChatGuidance ? (
+                                <Text style={styles.instructionIconText}>1</Text>
+                            ) : (
+                                <Camera color="#D84F86" size={25} strokeWidth={2.2} />
                             )}
-                            {cameraPermissionState !== 'granted' && (
-                                <View style={[
-                                    styles.cameraPermissionCard,
-                                    cameraPermissionState === 'denied'
-                                        && styles.cameraPermissionCardDenied,
-                                ]}>
-                                    <View style={styles.cameraPermissionIcon}>
-                                        {cameraPermissionState === 'denied' ? (
-                                            <Settings color="#D84F86" size={25} strokeWidth={2.2} />
-                                        ) : (
-                                            <Camera color="#D84F86" size={27} strokeWidth={2.2} />
-                                        )}
-                                    </View>
-                                    <View style={styles.cameraPermissionCopy}>
-                                        <Text style={styles.cameraPermissionTitle}>
-                                            {cameraPermissionState === 'checking'
-                                                ? translateUiText("Checking camera access…")
-                                                : cameraPermissionState === 'denied'
-                                                    ? translateUiText("Camera permission is off")
-                                                    : translateUiText("Camera permission required")}
-                                        </Text>
-                                        <Text style={styles.cameraPermissionText}>
-                                            {cameraPermissionState === 'denied'
-                                                ? translateUiText("Open Settings to enable live video. Messages still work without it.")
-                                                : translateUiText("Camera permission is required for video chat with your partner.")}
-                                        </Text>
-                                    </View>
-                                </View>
-                            )}
-                            <TouchableOpacity
-                                style={[
-                                    styles.instructionButton,
-                                    (cameraPermissionState === 'checking' || requestingCameraPermission)
-                                        && styles.instructionButtonDisabled,
-                                ]}
-                                onPress={handleInstructionCameraAction}
-                                disabled={cameraPermissionState === 'checking' || requestingCameraPermission}
-                                activeOpacity={0.84}
-                                accessibilityRole="button"
-                                accessibilityLabel={
-                                    cameraPermissionState === 'granted'
-                                            ? translateUiText("Continue to Live Chat")
-                                            : cameraPermissionState === 'denied'
-                                                ? translateUiText("Open settings for camera permission")
-                                                : translateUiText("Continue with camera permission")
-                                }
-                            >
-                                {requestingCameraPermission || cameraPermissionState === 'checking' ? (
-                                    <ActivityIndicator color="#FFFFFF" />
-                                ) : (
-                                    <Text style={styles.instructionButtonText}>
-                                        {cameraPermissionState === 'granted'
-                                            ? translateUiText("Got it")
-                                            : cameraPermissionState === 'denied'
-                                                ? translateUiText("Open Settings")
-                                                : translateUiText("Continue Camera")}
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
-                            {cameraPermissionState !== 'granted'
-                                && cameraPermissionState !== 'checking'
-                                && (
-                                    <TouchableOpacity
-                                        style={styles.continueWithoutCameraButton}
-                                        onPress={dismissInstruction}
-                                        activeOpacity={0.75}
-                                        accessibilityRole="button"
-                                        accessibilityLabel={translateUiText("Not now")}
-                                    >
-                                        <Text style={styles.continueWithoutCameraText}>{translateUiText("Not Now")}</Text>
-                                    </TouchableOpacity>
-                                )}
                         </View>
-                    </View>
-                </Modal>
+                        <Text style={styles.instructionTitle}>
+                            {translateUiText(showChatGuidance ? 'Live Chat' : 'Turn on camera')}
+                        </Text>
+                        <Text style={styles.instructionText}>
+                            {translateUiText(
+                                showChatGuidance
+                                    ? 'Share one live message each. Your next message replaces your previous one.'
+                                    : 'Turn on your front camera so your partner can see you.',
+                            )}
+                        </Text>
+                        {showChatGuidance && !hasPremiumAccess && (
+                            <View style={styles.freeTierNotice}>
+                                <Text style={styles.freeTierNoticeText}>
+                                    {translateUiText('You have 5 free minutes. Time counts only while you’re both connected.')}
+                                </Text>
+                            </View>
+                        )}
+                        {cameraPermissionState !== 'granted' && (
+                            <View style={[
+                                styles.cameraPermissionCard,
+                                cameraPermissionState === 'denied'
+                                    && styles.cameraPermissionCardDenied,
+                            ]}>
+                                <View style={styles.cameraPermissionIcon}>
+                                    {cameraPermissionState === 'denied' ? (
+                                        <Settings color="#D84F86" size={25} strokeWidth={2.2} />
+                                    ) : (
+                                        <Camera color="#D84F86" size={27} strokeWidth={2.2} />
+                                    )}
+                                </View>
+                                <View style={styles.cameraPermissionCopy}>
+                                    <Text style={styles.cameraPermissionTitle}>
+                                        {cameraPermissionState === 'checking'
+                                            ? translateUiText('Checking camera access…')
+                                            : cameraPermissionState === 'denied'
+                                                ? translateUiText('Camera permission is off')
+                                                : translateUiText('Camera access is optional')}
+                                    </Text>
+                                    <Text style={styles.cameraPermissionText}>
+                                        {cameraPermissionState === 'denied'
+                                            ? translateUiText('Open Settings to enable video. Messages still work without it.')
+                                            : translateUiText('We only use it while Live Chat is active.')}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={[
+                                styles.instructionButton,
+                                (cameraPermissionState === 'checking' || requestingCameraPermission)
+                                    && styles.instructionButtonDisabled,
+                            ]}
+                            onPress={handleInstructionCameraAction}
+                            disabled={cameraPermissionState === 'checking' || requestingCameraPermission}
+                            activeOpacity={0.84}
+                            accessibilityRole="button"
+                            accessibilityLabel={cameraPermissionState === 'denied'
+                                ? translateUiText('Open settings for camera permission')
+                                : translateUiText('Start with camera')}
+                        >
+                            {requestingCameraPermission || cameraPermissionState === 'checking' ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                                <Text style={styles.instructionButtonText}>
+                                    {cameraPermissionState === 'denied'
+                                        ? translateUiText('Open Settings')
+                                        : translateUiText('Start with Camera')}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.continueWithoutCameraButton}
+                            onPress={dismissInstruction}
+                            activeOpacity={0.75}
+                            accessibilityRole="button"
+                            accessibilityLabel={translateUiText('Continue without camera')}
+                        >
+                            <Text style={styles.continueWithoutCameraText}>
+                                {translateUiText(
+                                    showChatGuidance
+                                        ? 'Continue without Camera'
+                                        : 'Keep Camera Off',
+                                )}
+                            </Text>
+                        </TouchableOpacity>
+                    </BottomSheetView>
+                </BottomSheetModal>
             </SafeAreaView>
         </LinearGradient>
     );
@@ -1563,6 +1640,28 @@ const styles = StyleSheet.create({
         color: '#1B1237', fontSize: 26, fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
     },
+    sessionStatus: {
+        minHeight: 28,
+        marginHorizontal: 18,
+        marginBottom: 2,
+        paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sessionStatusDot: {
+        width: 8,
+        height: 8,
+        marginRight: 7,
+        borderRadius: 4,
+        backgroundColor: '#B8ADB7',
+    },
+    sessionStatusDotConnected: { backgroundColor: '#42B883' },
+    sessionStatusText: {
+        color: '#765F6E',
+        fontSize: 12,
+        fontFamily: fontFamily.bold,
+    },
     errorCard: {
         position: 'absolute', bottom: Platform.OS === 'android' ? 76 : 68,
         left: 18, right: 18, zIndex: 50,
@@ -1574,11 +1673,10 @@ const styles = StyleSheet.create({
     },
     errorText: { color: '#7A3655', fontSize: 12, flex: 1, fontFamily: fontFamily.medium },
     settingsText: { color: '#D84F86', fontSize: 12, fontFamily: fontFamily.bold },
-    instructionBackdrop: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(36, 20, 46, 0.42)',
+    instructionSheetBackground: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
     },
     instructionCard: {
         width: '100%',
@@ -1630,6 +1728,23 @@ const styles = StyleSheet.create({
         color: '#6F6070',
         fontSize: 14,
         lineHeight: 21,
+        textAlign: 'center',
+        fontFamily: fontFamily.medium,
+    },
+    freeTierNotice: {
+        width: '100%',
+        marginTop: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 11,
+        borderRadius: 14,
+        backgroundColor: '#F8EFFB',
+        borderWidth: 1,
+        borderColor: '#E7D1F0',
+    },
+    freeTierNoticeText: {
+        color: '#6F5572',
+        fontSize: 12,
+        lineHeight: 18,
         textAlign: 'center',
         fontFamily: fontFamily.medium,
     },

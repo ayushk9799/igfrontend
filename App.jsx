@@ -4,7 +4,9 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { StatusBar, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { Provider } from 'react-redux';
@@ -26,25 +28,29 @@ function App() {
     }, []);
 
     return (
-        <Provider store={store} key={language}>
-            <SafeAreaProvider>
-                <KeyboardProvider statusBarTranslucent>
-                    <SocketProvider>
-                        <CallProvider>
-                            <StatusBar
-                                barStyle="dark-content"
-                                backgroundColor="transparent"
-                                translucent
-                            />
-                            <View style={styles.container}>
-                                <AppNavigator />
-                                <CallOverlay />
-                            </View>
-                        </CallProvider>
-                    </SocketProvider>
-                </KeyboardProvider>
-            </SafeAreaProvider>
-        </Provider>
+        <GestureHandlerRootView style={styles.container}>
+            <Provider store={store} key={language}>
+                <SafeAreaProvider>
+                    <KeyboardProvider statusBarTranslucent>
+                        <BottomSheetModalProvider>
+                            <SocketProvider>
+                                <CallProvider>
+                                    <StatusBar
+                                        barStyle="dark-content"
+                                        backgroundColor="transparent"
+                                        translucent
+                                    />
+                                    <View style={styles.container}>
+                                        <AppNavigator />
+                                        <CallOverlay />
+                                    </View>
+                                </CallProvider>
+                            </SocketProvider>
+                        </BottomSheetModalProvider>
+                    </KeyboardProvider>
+                </SafeAreaProvider>
+            </Provider>
+        </GestureHandlerRootView>
     );
 }
 

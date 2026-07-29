@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
     Image,
     ScrollView,
@@ -33,12 +33,17 @@ const CloseIcon = () => (
     </Svg>
 );
 
-const FreeScreen = ({ onContinue, onClose }) => {
+const FreeScreen = ({ onContinue, onClose, onShown }) => {
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
     const isCompactHeight = height < 760;
     const mascotWidth = Math.min(width - 24, 350);
     const mascotHeight = mascotWidth * 0.8;
+    const onShownRef = useRef(onShown);
+
+    useEffect(() => {
+        onShownRef.current?.();
+    }, []);
 
     return (
         <View style={styles.root}>
@@ -112,10 +117,10 @@ const FreeScreen = ({ onContinue, onClose }) => {
                                     end={{ x: 1, y: 0 }}
                                     style={styles.freeBadge}
                                 >
-                                    <Text style={styles.freeBadgeText}>{translateUiText("7 Days Free")}</Text>
+                                    <Text style={styles.freeBadgeText}>{translateUiText("Try Premium")}</Text>
                                 </LinearGradient>
                             </View>
-                            <Text style={styles.offerSubtitle}>{translateUiTemplate("so every couple can get{{0}}closer with Penguin", ['\n'])}</Text>
+                            <Text style={styles.offerSubtitle}>{translateUiTemplate("See available plans{{0}}for your couple", ['\n'])}</Text>
                         </View>
                     </View>
                 </View>
