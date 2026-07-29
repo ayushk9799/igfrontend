@@ -28,9 +28,10 @@ const buildQuery = (params = {}) => {
 };
 
 export const QuestionsV2Api = {
-    getTopics: async () => {
+    getTopics: async (userId) => {
         try {
-            const response = await apiFetch(`${QUESTIONS_V2_BASE}/topics`);
+            const query = buildQuery({ userId });
+            const response = await apiFetch(`${QUESTIONS_V2_BASE}/topics${query}`);
             return parseJson(response);
         } catch (error) {
             return { success: false, error: error.message };

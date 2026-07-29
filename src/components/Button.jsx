@@ -8,7 +8,6 @@ import {
     View,
     Animated,
     ActivityIndicator,
-    Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { colors, borderRadius, spacing, shadows } from '../theme';
@@ -24,6 +23,7 @@ export const Button = ({
     leftIcon,
     rightIcon,
     style,
+    gradientColors,
 }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -79,7 +79,10 @@ export const Button = ({
                     variant === 'ghost' && styles.ghostText,
                     variant === 'outline' && styles.outlineText,
                     disabled && styles.disabledText,
-                ]}>
+                ]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                >
                     {title}
                 </Text>
             )}
@@ -114,11 +117,11 @@ export const Button = ({
                     <LinearGradient
                         colors={disabled
                             ? ['#CBD5E0', '#A0AEC0']
-                            : ['#F97068', '#F4A261']
+                            : (gradientColors || ['#F97068', '#F4A261'])
                         }
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={StyleSheet.absoluteFill}
+                        style={styles.gradientBackground}
                     />
                     {renderContent()}
                 </TouchableOpacity>
@@ -251,6 +254,10 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         ...shadows.sm,
     },
+    gradientBackground: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: borderRadius.xl,
+    },
     button: {
         borderRadius: borderRadius.xl,
         alignItems: 'center',
@@ -279,10 +286,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        maxWidth: '100%',
     },
     text: {
         color: '#FFFFFF',
         fontWeight: '600',
+        flexShrink: 1,
     },
     ghostText: {
         color: colors.primary,
@@ -302,5 +311,3 @@ const styles = StyleSheet.create({
 });
 
 export default Button;
-
-

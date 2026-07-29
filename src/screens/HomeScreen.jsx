@@ -21,6 +21,7 @@ import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import HomeWidgetShowcase from '../components/HomeWidgetShowcase';
 import HomeYearlyOfferCard from '../components/HomeYearlyOfferCard';
+import CircularProgressRing from '../components/CircularProgressRing';
 import { getUser, storage } from '../utils/authStorage';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
@@ -169,6 +170,7 @@ const ArrowCircle = ({ color = '#7762E8' }) => (
 );
 
 const HomeScreen = ({
+    topicProgress = {},
     hasPartner = false,
     yourMood = null,
     partnerMood = null,
@@ -757,33 +759,55 @@ const HomeScreen = ({
                         <HomeText style={styles.sectionTitle}>{translateUiText("Deepen your connection")}</HomeText>
                     </View>
                     <View style={styles.topicGrid}>
-                        {CONNECTION_TOPICS.map((topic) => (
-                            <TouchableOpacity
-                                key={topic.id}
-                                style={styles.topicPressable}
-                                onPress={() => onQuestionPress?.(TOPIC_CATEGORIES[topic.id])}
-                                activeOpacity={0.88}
-                            >
-                                <LinearGradient
-                                    colors={topic.gradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={styles.topicCard}
+                        {CONNECTION_TOPICS.map((topic) => {
+                            const progress = topicProgress?.[topic.id];
+                            const percentComplete = Math.max(
+                                0,
+                                Math.min(100, progress?.percentComplete || 0)
+                            );
+
+                            return (
+                                <TouchableOpacity
+                                    key={topic.id}
+                                    style={styles.topicPressable}
+                                    onPress={() => onQuestionPress?.(TOPIC_CATEGORIES[topic.id])}
+                                    activeOpacity={0.88}
                                 >
-                                    {topic.image ? (
-                                        <Image source={topic.image} style={styles.topicImage} />
-                                    ) : (
-                                        <View style={styles.topicEmojiBadge}>
-                                            <HomeText style={styles.topicEmoji}>{topic.emoji}</HomeText>
+                                    <LinearGradient
+                                        colors={topic.gradient}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.topicCard}
+                                    >
+                                        {topic.image ? (
+                                            <Image source={topic.image} style={styles.topicImage} />
+                                        ) : (
+                                            <View style={styles.topicEmojiBadge}>
+                                                <HomeText style={styles.topicEmoji}>{topic.emoji}</HomeText>
+                                            </View>
+                                        )}
+                                        <View style={styles.topicCopy}>
+                                            <HomeText style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{translateUiText(topic.title)}</HomeText>
+                                            <HomeText style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{translateUiText(topic.subtitle)}</HomeText>
                                         </View>
-                                    )}
-                                    <View style={styles.topicCopy}>
-                                        <HomeText style={[styles.topicTitle, { color: topic.textColor }]} numberOfLines={1}>{translateUiText(topic.title)}</HomeText>
-                                        <HomeText style={[styles.topicSubtitle, { color: topic.textColor }]} numberOfLines={2}>{translateUiText(topic.subtitle)}</HomeText>
-                                    </View>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        ))}
+                                        {progress?.totalQuestions > 0 ? (
+                                            <CircularProgressRing
+                                                progress={percentComplete}
+                                                color={topic.textColor}
+                                                trackColor="rgba(255,255,255,0.62)"
+                                                size={36}
+                                                strokeWidth={2.5}
+                                                style={styles.topicProgressBadge}
+                                            >
+                                                <HomeText style={[styles.topicProgressPercent, { color: topic.textColor }]}>
+                                                    {percentComplete}%
+                                                </HomeText>
+                                            </CircularProgressRing>
+                                        ) : null}
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
 
                 </ScrollView>
@@ -1581,8 +1605,21 @@ const styles = StyleSheet.create({
         lineHeight: 16,
         fontWeight: fontWeight('700'),
         marginTop: 4,
+        paddingRight: 34,
         opacity: 0.85,
         fontFamily: fontFamily.bold,
+    },
+    topicProgressBadge: {
+        position: 'absolute',
+        right: 8,
+        bottom: 6,
+    },
+    topicProgressPercent: {
+        fontSize: 9,
+        lineHeight: 11,
+        fontWeight: fontWeight('900'),
+        fontFamily: fontFamily.extraBold,
+        textAlign: 'center',
     },
 });
 

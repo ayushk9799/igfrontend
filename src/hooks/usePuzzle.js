@@ -73,6 +73,7 @@ export const usePuzzle = () => {
                     partnerId,
                     imageUrl: publicUrl,
                     gridSize,
+                    timerMode: 'five_minute',
                 }),
             });
 

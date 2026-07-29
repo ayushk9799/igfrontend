@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { createSafeAudioPlayer } from '../utils/safeAudioPlayer';
@@ -32,7 +33,13 @@ import { isValidFiveLetterWord } from '../utils/wordValidator';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const FREE_WORDLE_GAME_LIMIT = 3;
-const WORDLE_AUTO_SUBMIT_DELAY_MS = 600;
+const MAX_NUDGE_NAME_LENGTH = 13;
+
+const getCompactNudgeName = (name) => {
+    const characters = Array.from(String(name || 'Partner').trim());
+    if (characters.length <= MAX_NUDGE_NAME_LENGTH) return characters.join('');
+    return `${characters.slice(0, MAX_NUDGE_NAME_LENGTH).join('').trimEnd()}…`;
+};
 
 const AnimatedWordleTile = ({
     letter,
@@ -229,6 +236,7 @@ const WordleScreen = ({
     // Partner info
     const partnerId = route?.params?.partnerId;
     const partnerName = route?.params?.partnerName || 'Partner';
+    const compactNudgeName = getCompactNudgeName(partnerName);
 
     // Animation
     const shakeAnim = useState(new Animated.Value(0))[0];
@@ -242,7 +250,6 @@ const WordleScreen = ({
     const mountedRef = useRef(true);
     const submittingRef = useRef(false);
     const checkingPremiumRef = useRef(false);
-    const autoSubmitTimerRef = useRef(null);
     const focusTimerRef = useRef(null);
     const messageTimerRef = useRef(null);
     const socketRefreshTimerRef = useRef(null);
@@ -256,7 +263,6 @@ const WordleScreen = ({
         return () => {
             mountedRef.current = false;
             [
-                autoSubmitTimerRef,
                 focusTimerRef,
                 messageTimerRef,
                 socketRefreshTimerRef,
@@ -446,7 +452,6 @@ const WordleScreen = ({
             if (data.gameId && String(data.gameId) === String(gameId)) return;
 
             // Reset state and fetch the new game
-            if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
             setGuesses([]);
             setCurrentGuess('');
             setStatus('pending');
@@ -482,7 +487,6 @@ const WordleScreen = ({
 
     const loadGameFromData = (data) => {
         if (!data) return;
-        if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
         setGameId(data._id || data.gameId);
         setGuesses(data.guesses || []);
         setStatus(data.status || 'pending');
@@ -724,7 +728,10 @@ const WordleScreen = ({
         try {
             const response = await fetch(`${API_BASE}/api/wordle/create`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wordle-Validation': 'frontend-v1',
+                },
                 body: JSON.stringify({
                     creatorId: currentUserId,
                     partnerId: partnerId,
@@ -787,7 +794,10 @@ const WordleScreen = ({
         try {
             const response = await fetch(`${API_BASE}/api/wordle/${gameId}/guess`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Wordle-Validation': 'frontend-v1',
+                },
                 body: JSON.stringify({
                     userId: currentUserId,
                     guess: guess.toLowerCase(),
@@ -859,7 +869,6 @@ const WordleScreen = ({
 
     const startNewGame = () => {
         if (!mountedRef.current) return;
-        if (autoSubmitTimerRef.current) clearTimeout(autoSubmitTimerRef.current);
         setGuesses([]);
         setCurrentGuess('');
         setSecretWord('');
@@ -973,18 +982,8 @@ const WordleScreen = ({
     };
 
     // Handle text input change - only allow letters
-    const handleInputKeyPress = ({ nativeEvent }) => {
-        if (nativeEvent.key !== 'Backspace' || !autoSubmitTimerRef.current) return;
-        clearTimeout(autoSubmitTimerRef.current);
-        autoSubmitTimerRef.current = null;
-    };
-
     const handleTextChange = (text) => {
         if (submitting) return;
-        if (autoSubmitTimerRef.current) {
-            clearTimeout(autoSubmitTimerRef.current);
-            autoSubmitTimerRef.current = null;
-        }
 
         ReactNativeHapticFeedback.trigger("selection", {
             enableVibrateFallback: false,
@@ -996,6 +995,7 @@ const WordleScreen = ({
 
         // Limit to 5 characters
         const limitedText = lettersOnly.slice(0, 5);
+        setErrorMessage('');
 
         if (mode === 'create') {
             setSecretWord(limitedText);
@@ -1006,10 +1006,7 @@ const WordleScreen = ({
                     setShowLinkPartner(true);
                     Keyboard.dismiss();
                 } else {
-                    autoSubmitTimerRef.current = setTimeout(
-                        () => createGame(limitedText),
-                        WORDLE_AUTO_SUBMIT_DELAY_MS
-                    );
+                    createGame(limitedText);
                 }
             } else {
                 setShowLinkPartner(false);
@@ -1018,13 +1015,9 @@ const WordleScreen = ({
             setCurrentGuess(limitedText);
             // Auto-submit when 5 letters entered - pass word directly
             if (limitedText.length === 5) {
-                autoSubmitTimerRef.current = setTimeout(
-                    () => submitGuess(limitedText),
-                    WORDLE_AUTO_SUBMIT_DELAY_MS
-                );
+                submitGuess(limitedText);
             }
         }
-        setErrorMessage('');
     };
 
     // Render a guess row
@@ -1321,7 +1314,6 @@ const WordleScreen = ({
                             style={styles.hiddenInput}
                             value={mode === 'create' ? secretWord : currentGuess}
                             onChangeText={handleTextChange}
-                            onKeyPress={handleInputKeyPress}
                             maxLength={5}
                             autoCapitalize="characters"
                             autoCorrect={false}
@@ -1358,20 +1350,48 @@ const WordleScreen = ({
                         <View style={styles.actionButtons}>
                             <TouchableOpacity
                                 onPress={notifyPartner}
-                                activeOpacity={0.8}
+                                activeOpacity={0.88}
                                 disabled={notifying}
                                 style={[
-                                    styles.playAgainButton,
+                                    styles.nudgeButton,
                                     notifying && styles.buttonDisabled,
                                 ]}
                                 accessibilityRole="button"
                                 accessibilityLabel={translateUiTemplate("Nudge {{0}}", [partnerName])}
+                                accessibilityState={{ disabled: notifying, busy: notifying }}
                             >
-                                {notifying ? (
-                                    <ActivityIndicator color="#FFFFFF" />
-                                ) : (
-                                    <Text style={styles.playAgainText}>{translateUiTemplate("Nudge {{0}}", [partnerName])}</Text>
-                                )}
+                                <LinearGradient
+                                    colors={['#FF5E97', '#FFA1C9']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.nudgeButtonGradient}
+                                >
+                                    {notifying ? (
+                                        <ActivityIndicator color="#FFFFFF" />
+                                    ) : (
+                                        <>
+                                            <View style={styles.nudgeButtonIcon}>
+                                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                                    <Path
+                                                        d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
+                                                        stroke="#FFFFFF"
+                                                        strokeWidth={2}
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                </Svg>
+                                            </View>
+                                            <Text
+                                                style={styles.nudgeButtonText}
+                                                numberOfLines={1}
+                                                ellipsizeMode="tail"
+                                            >
+                                                {translateUiTemplate("Nudge {{0}}", [compactNudgeName])}
+                                            </Text>
+                                            <View style={styles.nudgeButtonIconSpacer} />
+                                        </>
+                                    )}
+                                </LinearGradient>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -1788,8 +1808,47 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontFamily: fontFamily.bold,
     },
+    nudgeButton: {
+        width: '100%',
+        maxWidth: 360,
+        minHeight: 48,
+        borderRadius: 24,
+        shadowColor: '#FF5E97',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 5,
+    },
+    nudgeButtonGradient: {
+        flex: 1,
+        minHeight: 48,
+        paddingHorizontal: 20,
+        borderRadius: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    nudgeButtonIcon: {
+        width: 20,
+        height: 20,
+        flexShrink: 0,
+    },
+    nudgeButtonIconSpacer: {
+        width: 20,
+        height: 20,
+        flexShrink: 0,
+    },
+    nudgeButtonText: {
+        minWidth: 0,
+        flex: 1,
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: fontFamily.extraBold,
+        textAlign: 'center',
+    },
     buttonDisabled: {
-        opacity: 0.5,
+        opacity: 0.65,
     },
 });
 

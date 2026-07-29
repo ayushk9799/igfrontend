@@ -1546,6 +1546,8 @@ const TicTacToeScreen = ({
                                 onPress={notifyPartner}
                                 variant="primary"
                                 size="md"
+                                fullWidth
+                                gradientColors={['#FF5E97', '#FFA1C9']}
                                 disabled={notifying}
                                 loading={notifying}
                                 leftIcon={
@@ -2011,7 +2013,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     nudgeButton: {
-        marginHorizontal: 40,
+        width: '100%',
     },
     boardGameOverButtons: {
         width: '100%',

@@ -45,6 +45,7 @@ import { reportWidgetIntent, sendPartnerLocationReminder, syncNativeWidgetStatus
 import * as ImagePicker from 'expo-image-picker';
 import { storage } from '../utils/authStorage';
 import { translateUiText } from '../i18n/uiTranslation';
+import { QuestionsV2Api } from '../api/questionsV2Api';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const YEARLY_OFFER_DISMISS_DELAY_MS = 5 * 1000;
@@ -98,6 +99,7 @@ export const MainTabNavigator = ({
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
     const [todayChallenge, setTodayChallenge] = useState(null);
+    const [topicProgressById, setTopicProgressById] = useState({});
     const [isAccountVisible, setIsAccountVisible] = useState(openAccountOnMount);
     const [shouldReturnToAccountFromTab, setShouldReturnToAccountFromTab] = useState(false);
     const [isHomePremiumVisible, setIsHomePremiumVisible] = useState(false);
@@ -261,6 +263,34 @@ export const MainTabNavigator = ({
 
     // Duel notification badge count
     const duelBadgeCount = useSelector(selectDuelBadgeCount);
+
+    const refreshTopicProgress = useCallback(async () => {
+        const userId = userData?._id || userData?.id;
+        if (!userId) {
+            setTopicProgressById({});
+            return;
+        }
+
+        const response = await QuestionsV2Api.getTopics(userId);
+        if (!response.success) {
+            console.warn('[MainTabNavigator] Failed to refresh topic progress', {
+                message: response.message || response.error,
+            });
+            return;
+        }
+
+        const nextProgress = {};
+        for (const topic of response.data?.topics || []) {
+            nextProgress[topic.topicId] = topic.progress;
+        }
+        setTopicProgressById(nextProgress);
+    }, [userData?._id, userData?.id]);
+
+    useEffect(() => {
+        if (currentTab === 'home') {
+            refreshTopicProgress();
+        }
+    }, [currentTab, refreshTopicProgress]);
 
     // Socket context for real-time data
     const {
@@ -968,6 +998,7 @@ export const MainTabNavigator = ({
         <View style={styles.container}>
             <View style={[styles.screenContainer, currentTab !== 'home' && styles.hiddenScreen]}>
                 <HomeScreen
+                    topicProgress={topicProgressById}
                     hasPartner={hasPartner}
                     yourMood={moodPreview || yourMood}
                     partnerMood={partnerMood}

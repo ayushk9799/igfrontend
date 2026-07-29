@@ -222,9 +222,13 @@ const GamesScreen = ({
                     ? (isPuzzleCreator ? translateUiText("Puzzle sent 🧩") : translateUiText("Puzzle waiting"))
                     : translateUiText("Create puzzle"),
             subtitle: pendingPuzzle?.status === 'in_progress'
-                ? (isPuzzleCreator
-                    ? translateUiTemplate("⏱ {{0}} remaining · Watch live", [puzzleTimeLabel])
-                    : translateUiTemplate("⏱ {{0}} remaining", [puzzleTimeLabel]))
+                ? (puzzleTimeLabel
+                    ? (isPuzzleCreator
+                        ? translateUiTemplate("⏱ {{0}} remaining · Watch live", [puzzleTimeLabel])
+                        : translateUiTemplate("⏱ {{0}} remaining", [puzzleTimeLabel]))
+                    : (isPuzzleCreator
+                        ? translateUiText("Watch live 👀")
+                        : translateUiText("Continue")))
                 : pendingPuzzle
                     ? (isPuzzleCreator
                         ? translateUiTemplate("Waiting for {{0}} to start.", [partnerName])

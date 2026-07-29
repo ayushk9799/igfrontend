@@ -388,7 +388,7 @@ const timerStyles = StyleSheet.create({
     },
 });
 
-const helperNormalizePieces = (rawPieces, gridSize, status) => {
+const helperNormalizePieces = (rawPieces, gridSize) => {
     if (!rawPieces || !Array.isArray(rawPieces)) return [];
     const dim = gridSize?.rows || 5;
     const targetLength = dim * dim;
@@ -397,10 +397,6 @@ const helperNormalizePieces = (rawPieces, gridSize, status) => {
         loadedPieces = [...loadedPieces, ...Array(targetLength - loadedPieces.length).fill(null)];
     } else if (loadedPieces.length > targetLength) {
         loadedPieces = loadedPieces.slice(0, targetLength);
-    }
-    const hasNegative = loadedPieces.some(p => p !== null && p < 0);
-    if (!hasNegative && status !== 'solved') {
-        loadedPieces = loadedPieces.map((p) => p !== null ? -p - 1 : null);
     }
     return loadedPieces;
 };
@@ -437,8 +433,8 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
 
     const activePuzzleId = puzzleId || initialData?._id || initialData?.id;
     const initialNormalizedPieces = React.useMemo(() => (
-        initialData?.pieces ? helperNormalizePieces(initialData.pieces, initialData.gridSize, initialData.status) : []
-    ), [initialData?.pieces, initialData?.gridSize, initialData?.status]);
+        initialData?.pieces ? helperNormalizePieces(initialData.pieces, initialData.gridSize) : []
+    ), [initialData?.pieces, initialData?.gridSize]);
 
     const initialNormalizedTray = React.useMemo(() => (
         initialNormalizedPieces.filter(val => val !== null && val < 0).map(val => -val - 1)
@@ -462,7 +458,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         if (!initialData) return;
         setPuzzle(initialData);
         if (initialData.pieces && Array.isArray(initialData.pieces)) {
-            const norm = helperNormalizePieces(initialData.pieces, initialData.gridSize, initialData.status);
+            const norm = helperNormalizePieces(initialData.pieces, initialData.gridSize);
             setPieces(norm);
             setTrayOrder(norm.filter(val => val !== null && val < 0).map(val => -val - 1));
         }
@@ -566,7 +562,11 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     const isCreator = puzzle?.creatorId
         ? (puzzle.creatorId._id || puzzle.creatorId) === currentUserId
         : false;
+    const isSolver = puzzle?.partnerId
+        ? (puzzle.partnerId._id || puzzle.partnerId) === currentUserId
+        : false;
     const isSpectator = isCreator;
+    const usesFiveMinuteTimer = puzzle?.timerMode === 'five_minute';
 
     // Pieces ref for use in pan responders
     const piecesRef = useRef(pieces);
@@ -662,7 +662,6 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     const jigsawSoundPlayingRef = useRef(false);
     const jigsawSoundTimeoutRef = useRef(null);
     const moveQueueRef = useRef(Promise.resolve());
-    const legacyStartAttemptedRef = useRef(false);
 
     useEffect(() => {
         audioPlayerRef.current = createSafeAudioPlayer();
@@ -780,7 +779,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         getPuzzle(targetId).then((result) => {
             if (result.success && isMounted) {
                 const loadedPuzzle = result.data;
-                const loadedPieces = helperNormalizePieces(loadedPuzzle.pieces, loadedPuzzle.gridSize, loadedPuzzle.status);
+                const loadedPieces = helperNormalizePieces(loadedPuzzle.pieces, loadedPuzzle.gridSize);
                 setPuzzle(loadedPuzzle);
                 setPieces(loadedPieces);
                 setTrayOrder(loadedPieces.filter(val => val !== null && val < 0).map(val => -val - 1));
@@ -884,6 +883,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     useEffect(() => {
         if (
             !showReference
+            || !isSolver
             || puzzle?.status !== 'pending'
             || !puzzleContentReady
             || !referenceImageReady
@@ -897,8 +897,10 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             setIsStarting(false);
             if (result.success) {
                 setPuzzle(result.data);
-                setExpiresAt(result.data.expiresAt);
-                setRemainingMs(Math.max(0, new Date(result.data.expiresAt).getTime() - Date.now()));
+                setExpiresAt(result.data.expiresAt || null);
+                setRemainingMs(result.data.expiresAt
+                    ? Math.max(0, new Date(result.data.expiresAt).getTime() - Date.now())
+                    : 0);
                 setShowReference(false);
             } else if (result.code === 'PUZZLE_EXPIRED') {
                 setShowReference(false);
@@ -920,52 +922,16 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         puzzleContentReady,
         referenceImageReady,
         showReference,
-        startPuzzle,
-    ]);
-
-    // Puzzles that were already active before timed puzzles existed need a deadline once.
-    useEffect(() => {
-        if (
-            puzzle?.status !== 'in_progress'
-            || puzzle.expiresAt
-            || expiresAt
-            || isExpired
-            || legacyStartAttemptedRef.current
-        ) {
-            return;
-        }
-
-        legacyStartAttemptedRef.current = true;
-        let cancelled = false;
-        setIsStarting(true);
-        startPuzzle(puzzleId || puzzle?._id).then((result) => {
-            if (cancelled) return;
-            setIsStarting(false);
-            if (result.success && result.data?.expiresAt) {
-                setPuzzle(result.data);
-                setExpiresAt(result.data.expiresAt);
-                setRemainingMs(Math.max(
-                    0,
-                    new Date(result.data.expiresAt).getTime() - Date.now()
-                ));
-            } else if (result.code === 'PUZZLE_EXPIRED') {
-                expireLocally();
-            }
-        });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [
-        expireLocally,
-        expiresAt,
-        isExpired,
-        puzzle,
-        puzzleId,
+        isSolver,
         startPuzzle,
     ]);
 
     const handleBack = useCallback(() => {
+        if (isSpectator) {
+            navigation.goBack();
+            return;
+        }
+
         if (puzzle?.status === 'in_progress' && !isSolved && !isExpired && !leaveWarningShown) {
             const seconds = Math.ceil(remainingMs / 1000);
             const minutesPart = Math.floor(seconds / 60);
@@ -981,7 +947,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             return;
         }
         navigation.goBack();
-    }, [isExpired, isSolved, leaveWarningShown, navigation, puzzle?.status, remainingMs]);
+    }, [isExpired, isSolved, isSpectator, leaveWarningShown, navigation, puzzle?.status, remainingMs]);
 
     const timerSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
     const timerLabel = `${String(Math.floor(timerSeconds / 60)).padStart(2, '0')}:${String(timerSeconds % 60).padStart(2, '0')}`;
@@ -1015,6 +981,68 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             }),
         ]).start();
     }, [celebrateScale, celebrateOpacity]);
+
+    // Setter live view must also work when the solver is on an older client
+    // that only persists moves through REST and does not share live socket
+    // capabilities. Polling is a read-only fallback; sockets still provide
+    // the faster path when both clients support them.
+    useEffect(() => {
+        if (
+            !isSpectator
+            || !activePuzzleId
+            || !['pending', 'in_progress'].includes(puzzle?.status)
+        ) {
+            return undefined;
+        }
+
+        let cancelled = false;
+        let requestInFlight = false;
+
+        const refreshSpectatorView = async () => {
+            if (requestInFlight) return;
+            requestInFlight = true;
+            const result = await getPuzzle(activePuzzleId);
+            requestInFlight = false;
+
+            if (cancelled || !result?.success || !result.data) return;
+
+            const updated = result.data;
+            const updatedPieces = helperNormalizePieces(updated.pieces, updated.gridSize);
+            setPuzzle(updated);
+            setPieces(updatedPieces);
+            setTrayOrder(updatedPieces
+                .filter(value => value !== null && value < 0)
+                .map(value => -value - 1));
+            setMoveCount(updated.moveCount || 0);
+            setExpiresAt(updated.expiresAt || null);
+            setRemainingMs(updated.expiresAt
+                ? Math.max(0, new Date(updated.expiresAt).getTime() - Date.now())
+                : 0);
+            setShowReference(updated.status === 'pending');
+
+            if (updated.status === 'solved') {
+                setIsSolved(true);
+                playCelebration();
+            } else if (updated.status === 'expired') {
+                expireLocally();
+            }
+        };
+
+        refreshSpectatorView();
+        const pollingTimer = setInterval(refreshSpectatorView, 1000);
+
+        return () => {
+            cancelled = true;
+            clearInterval(pollingTimer);
+        };
+    }, [
+        activePuzzleId,
+        expireLocally,
+        getPuzzle,
+        isSpectator,
+        playCelebration,
+        puzzle?.status,
+    ]);
 
     useEffect(() => {
         if (isExpired) {
@@ -1675,7 +1703,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                             {isSolved ? translateUiText("Made it whole") : isSpectator ? translateUiText("Partner's Puzzle") : translateUiText("Piece it together")}
                         </Text>
                         <View style={styles.headerRight}>
-                            {!showReference && !isSolved && (
+                            {!showReference && !isSolved && !isExpired && expiresAt && (
                                 <View style={[
                                     styles.solveTimer,
                                     timerTone === 'warning' && styles.solveTimerWarning,
@@ -1964,7 +1992,11 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                 styles.referenceOverlay,
                                 { opacity: referenceImageReady ? referenceOpacity : 0 },
                             ]}>
-                                <Text style={styles.referencePreviewLabel}>{translateUiText("Memorize this image 👀")}</Text>
+                                <Text style={styles.referencePreviewLabel}>
+                                    {isSpectator
+                                        ? translateUiText("Your puzzle preview 🧩")
+                                        : translateUiText("Memorize this image 👀")}
+                                </Text>
                                 <View style={[styles.referenceImageWrapper, { width: actualPuzzleSize, height: actualPuzzleSize }]}>
                                     <Image
                                         source={{
@@ -1976,14 +2008,22 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                                         fadeDuration={0}
                                         onLoad={() => setReferenceImageReady(true)}
                                     />
-                                    {referenceImageReady && (
+                                    {referenceImageReady && !isSpectator && (
                                         <View style={styles.countdownBadge}>
                                             <CountdownTimer duration={5} />
                                         </View>
                                     )}
                                 </View>
                                 <Text style={styles.referencePreviewHint}>
-                                    {isStarting ? translateUiText("Starting your timer...") : translateUiText("You’ll have 5 minutes to solve it")}
+                                    {isSpectator
+                                        ? translateUiText("Puzzle waiting")
+                                        : isStarting
+                                            ? (usesFiveMinuteTimer
+                                                ? translateUiText("Starting your timer...")
+                                                : translateUiText("Building your puzzle"))
+                                            : (usesFiveMinuteTimer
+                                                ? translateUiText("You’ll have 5 minutes to solve it")
+                                                : translateUiText("Take your time — there’s no time limit."))}
                                 </Text>
                             </Animated.View>
                         )}

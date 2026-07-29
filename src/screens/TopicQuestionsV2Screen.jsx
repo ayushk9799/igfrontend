@@ -25,6 +25,7 @@ import { fontFamily } from '../constants/fonts';
 import { selectIsPremium, selectUser } from '../store/slices/userSlice';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import CircularProgressRing from '../components/CircularProgressRing';
 
 const PAGE_SIZE = 10;
 const { height } = Dimensions.get('window');
@@ -148,25 +149,40 @@ const getAvatarInitial = (name) => (name || '?').trim().charAt(0).toUpperCase() 
 
 const isProgressComplete = (progress) => Boolean(progress?.completedAt || progress?.percentComplete >= 100);
 
-const SetStatusAvatar = ({ avatar, name, complete, variant = 'user' }) => {
+const SetStatusAvatar = ({
+    avatar,
+    name,
+    complete,
+    progress = 0,
+    ringColor,
+    variant = 'user',
+}) => {
     const avatarSource = getAvatarSource(avatar);
 
     return (
-        <View style={[
-            styles.statusAvatar,
-            variant === 'partner' && styles.partnerStatusAvatar,
-            variant === 'userOverlap' && styles.userStatusAvatarOverlap,
-            complete && styles.statusAvatarComplete,
-            !complete && styles.statusAvatarPending,
-        ]}>
-            {avatarSource ? (
-                <Image source={avatarSource} style={styles.statusAvatarImage} resizeMode="cover" />
-            ) : (
-                <Text style={styles.statusAvatarInitial} allowFontScaling={false}>
-                    {getAvatarInitial(name)}
-                </Text>
-            )}
-        </View>
+        <CircularProgressRing
+            progress={progress}
+            color={ringColor}
+            trackColor="rgba(255,255,255,0.8)"
+            size={36}
+            strokeWidth={3}
+            style={variant === 'userOverlap' && styles.userStatusAvatarOverlap}
+        >
+            <View style={[
+                styles.statusAvatar,
+                variant === 'partner' && styles.partnerStatusAvatar,
+                complete && styles.statusAvatarComplete,
+                !complete && styles.statusAvatarPending,
+            ]}>
+                {avatarSource ? (
+                    <Image source={avatarSource} style={styles.statusAvatarImage} resizeMode="cover" />
+                ) : (
+                    <Text style={styles.statusAvatarInitial} allowFontScaling={false}>
+                        {getAvatarInitial(name)}
+                    </Text>
+                )}
+            </View>
+        </CircularProgressRing>
     );
 };
 
@@ -213,8 +229,8 @@ export default function TopicQuestionsV2Screen({
     const fetchingQuestionsRef = useRef(false);
     const normalizedTaskCacheRef = useRef(new WeakMap());
 
-    const fetchSets = useCallback(async () => {
-        setSetsLoading(true);
+    const fetchSets = useCallback(async (showLoading = true) => {
+        if (showLoading) setSetsLoading(true);
         setError(null);
         const response = await QuestionsV2Api.getSets(topic, effectiveUserId);
         if (response.success) {
@@ -222,7 +238,7 @@ export default function TopicQuestionsV2Screen({
         } else {
             setError(response.message || response.error || 'Failed to load question sets');
         }
-        setSetsLoading(false);
+        if (showLoading) setSetsLoading(false);
     }, [effectiveUserId, topic]);
 
     useEffect(() => {
@@ -343,10 +359,11 @@ export default function TopicQuestionsV2Screen({
             setInitiallyHiddenQuestionIds([]);
             setSummaryReturnsToQuestions(false);
             setShowSummary(false);
+            fetchSets(false);
             return;
         }
         onBack();
-    }, [onBack, questionChatToOpen, selectedSet, singleQuestionToAnswer]);
+    }, [fetchSets, onBack, questionChatToOpen, selectedSet, singleQuestionToAnswer]);
 
     const openSummaryQuestionChat = useCallback(async (item = {}) => {
         const chatId = item.chatId?._id || item.chatId;
@@ -487,6 +504,9 @@ export default function TopicQuestionsV2Screen({
 
         setSkippedQuestionIds((prev) => (
             prev.includes(question.questionId) ? prev : [...prev, question.questionId]
+        ));
+        setAnsweredQuestionIds((prev) => (
+            prev.filter((questionId) => questionId !== question.questionId)
         ));
 
         QuestionsV2Api.saveProgress({
@@ -762,6 +782,10 @@ export default function TopicQuestionsV2Screen({
                     const theme = getFormatTheme(set.format);
                     const userComplete = isProgressComplete(set.progress);
                     const partnerComplete = isProgressComplete(set.partnerProgress);
+                    const percentComplete = Math.max(
+                        0,
+                        Math.min(100, set.progress?.percentComplete || 0)
+                    );
                     return (
                         <TouchableOpacity
                             key={set.setId}
@@ -809,6 +833,8 @@ export default function TopicQuestionsV2Screen({
                                                 avatar={effectivePartnerAvatar}
                                                 name={partnerName}
                                                 complete={partnerComplete}
+                                                progress={set.partnerProgress?.percentComplete || 0}
+                                                ringColor="#9B63D9"
                                                 variant="partner"
                                             />
                                         ) : null}
@@ -816,6 +842,8 @@ export default function TopicQuestionsV2Screen({
                                             avatar={effectiveUserAvatar}
                                             name={userName}
                                             complete={userComplete}
+                                            progress={percentComplete}
+                                            ringColor={theme.accent}
                                             variant={set.partnerProgress ? 'userOverlap' : 'user'}
                                         />
                                     </View>
@@ -1157,10 +1185,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        minWidth: 54,
+        minWidth: 34,
     },
     setCardRightColumn: {
-        width: 48,
+        width: 58,
         flexShrink: 0,
         minHeight: 82,
         alignItems: 'flex-end',
@@ -1168,10 +1196,10 @@ const styles = StyleSheet.create({
         marginLeft: 6,
     },
     statusAvatar: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        borderWidth: 1,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 0,
         borderColor: '#F5A3CB',
         backgroundColor: '#FFE7F2',
         alignItems: 'center',
@@ -1191,13 +1219,13 @@ const styles = StyleSheet.create({
         borderColor: '#F04F9D',
     },
     statusAvatarPending: {
-        opacity: 0.38,
+        opacity: 0.72,
         borderColor: 'transparent',
     },
     statusAvatarImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 15,
+        borderRadius: 12,
     },
     statusAvatarInitial: {
         color: '#B31975',
