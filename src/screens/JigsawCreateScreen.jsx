@@ -26,7 +26,12 @@ import Svg, {
 import * as ImagePicker from 'expo-image-picker';
 
 import { Camera } from 'react-native-camera-kit';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import {
+    FlipType,
+    ImageManipulator,
+    SaveFormat,
+} from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing } from '../theme';
@@ -43,11 +48,52 @@ const JIGSAW_CARD_SIZE = Math.min(
     IS_COMPACT_HEIGHT ? 280 : 340
 );
 const MAX_SEND_NAME_LENGTH = 13;
+const PUZZLE_IMAGE_SIZE = 960;
+const PUZZLE_IMAGE_QUALITY = 0.8;
 
 const getCompactSendName = (name) => {
     const characters = Array.from(String(name || 'your partner').trim());
     if (characters.length <= MAX_SEND_NAME_LENGTH) return characters.join('');
     return `${characters.slice(0, MAX_SEND_NAME_LENGTH).join('').trimEnd()}…`;
+};
+
+const preparePuzzleImage = async (uri, mirrorHorizontally = false) => {
+    const context = ImageManipulator.manipulate(uri);
+    let sourceImage = null;
+    let outputImage = null;
+
+    try {
+        // Native decoding resolves EXIF orientation before dimensions are read,
+        // keeping the crop rectangle in the same coordinate system as the pixels.
+        sourceImage = await context.renderAsync();
+        const cropSize = Math.floor(Math.min(sourceImage.width, sourceImage.height));
+
+        context.crop({
+            originX: Math.floor((sourceImage.width - cropSize) / 2),
+            originY: Math.floor((sourceImage.height - cropSize) / 2),
+            width: cropSize,
+            height: cropSize,
+        });
+        context.resize({
+            width: PUZZLE_IMAGE_SIZE,
+            height: PUZZLE_IMAGE_SIZE,
+        });
+
+        // Match the mirrored selfie view in the actual uploaded asset.
+        if (mirrorHorizontally) {
+            context.flip(FlipType.Horizontal);
+        }
+
+        outputImage = await context.renderAsync();
+        return await outputImage.saveAsync({
+            compress: PUZZLE_IMAGE_QUALITY,
+            format: SaveFormat.JPEG,
+        });
+    } finally {
+        outputImage?.release?.();
+        sourceImage?.release?.();
+        context.release?.();
+    }
 };
 
 const GalleryIcon = () => (
@@ -102,10 +148,12 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     const [previewUri, setPreviewUri] = useState(null);
     const [showCamera, setShowCamera] = useState(false);
     const [isSending, setIsSending] = useState(false);
+    const [isPreparingImage, setIsPreparingImage] = useState(false);
     const [cameraType, setCameraType] = useState('back');
     const [screenMessage, setScreenMessage] = useState(null);
 
     const [isCameraInitialized, setIsCameraInitialized] = useState(false);
+    const preparedUriRef = useRef(null);
 
     // Animations
     const puzzleFloat = useRef(new Animated.Value(0)).current;
@@ -122,6 +170,35 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
 
         return () => task.cancel();
     }, []);
+
+    useEffect(() => () => {
+        if (preparedUriRef.current) {
+            FileSystem.deleteAsync(preparedUriRef.current, { idempotent: true }).catch(() => {});
+        }
+    }, []);
+
+    const replacePreparedPreview = (preparedImage) => {
+        const previousUri = preparedUriRef.current;
+        preparedUriRef.current = preparedImage.uri;
+        setPreviewUri({
+            uri: preparedImage.uri,
+            width: preparedImage.width,
+            height: preparedImage.height,
+        });
+
+        if (previousUri && previousUri !== preparedImage.uri) {
+            FileSystem.deleteAsync(previousUri, { idempotent: true }).catch(() => {});
+        }
+    };
+
+    const clearPreparedPreview = () => {
+        const previousUri = preparedUriRef.current;
+        preparedUriRef.current = null;
+        setPreviewUri(null);
+        if (previousUri) {
+            FileSystem.deleteAsync(previousUri, { idempotent: true }).catch(() => {});
+        }
+    };
 
     // Animation Effect
     useEffect(() => {
@@ -182,9 +259,10 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
     };
 
     const handleOpenCamera = async () => {
+        if (isPreparingImage) return;
         const granted = hasPermission || (await requestCameraPermission());
         if (granted) {
-            setPreviewUri(null);
+            clearPreparedPreview();
             setShowCamera(true);
         }
     };
@@ -208,28 +286,35 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
         }
         if (isProcessingRef.current) return;
         isProcessingRef.current = true;
+        let capturedUri = null;
 
         try {
             const data = await cameraRef.current?.capture();
             const source = data?.uri || (data?.path ? `file://${data.path}` : null);
             if (!source) throw new Error('No image captured');
 
-            const finalUri = source.startsWith('file://') ? source : `file://${source}`;
-
-            setPreviewUri({
-                uri: finalUri,
-                isFrontCamera: cameraType === 'front'
-            });
-
+            capturedUri = source.startsWith('file://') ? source : `file://${source}`;
             setShowCamera(false);
+            setIsPreparingImage(true);
+
+            const preparedImage = await preparePuzzleImage(
+                capturedUri,
+                cameraType === 'front'
+            );
+            replacePreparedPreview(preparedImage);
         } catch (e) {
             setScreenMessage({ tone: 'error', text: translateUiText("Could not capture the photo. Please try again.") });
         } finally {
+            if (capturedUri && capturedUri !== preparedUriRef.current) {
+                FileSystem.deleteAsync(capturedUri, { idempotent: true }).catch(() => {});
+            }
+            setIsPreparingImage(false);
             isProcessingRef.current = false;
         }
     };
 
     const handlePickFromGallery = async () => {
+        if (isPreparingImage) return;
         try {
             const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!perm.granted) {
@@ -251,54 +336,32 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
             if (!sourceUri) return;
 
             const finalUri = sourceUri.startsWith('file://') ? sourceUri : `file://${sourceUri}`;
-            setPreviewUri({ uri: finalUri, isFrontCamera: false });
             setShowCamera(false);
+            setIsPreparingImage(true);
+
+            const preparedImage = await preparePuzzleImage(finalUri);
+            replacePreparedPreview(preparedImage);
         } catch (e) {
-        }
-    };
-
-    const handleCropImage = async () => {
-        const uri = typeof previewUri === 'string' ? previewUri : previewUri?.uri;
-        if (!uri) return null;
-
-        try {
-            // Get image dimensions to perform center crop
-            const { width, height } = await new Promise((resolve, reject) => {
-                Image.getSize(uri, (w, h) => resolve({ width: w, height: h }), (err) => reject(err));
+            setScreenMessage({
+                tone: 'error',
+                text: translateUiText("Could not prepare the photo. Please try again."),
             });
-
-            const size = Math.min(width, height);
-            const originX = (width - size) / 2;
-            const originY = (height - size) / 2;
-
-            const cropResult = await manipulateAsync(
-                uri,
-                [{ crop: { originX, originY, width: size, height: size } }],
-                { compress: 0.9, format: SaveFormat.JPEG }
-            );
-
-            const finalUri = cropResult.uri.startsWith('file://') ? cropResult.uri : `file://${cropResult.uri}`;
-            setPreviewUri({ uri: finalUri, isFrontCamera: previewUri?.isFrontCamera || false });
-            return finalUri;
-        } catch (e) {
-            // If crop fails, return the original URI as a fallback
-            return uri.startsWith('file://') ? uri : `file://${uri}`;
+        } finally {
+            setIsPreparingImage(false);
         }
     };
 
     const handleSendPuzzle = async () => {
-        if (!previewUri || isSending) return;
+        if (!previewUri?.uri || isSending || isPreparingImage) return;
         setIsSending(true);
 
         try {
-            const croppedUri = await handleCropImage();
-            if (!croppedUri) {
-                setIsSending(false);
-                return;
-            }
-
             const result = await createPuzzle(
-                { uri: croppedUri, fileName: `puzzle_${Date.now()}.jpg` },
+                {
+                    uri: previewUri.uri,
+                    fileName: `puzzle_${Date.now()}.jpg`,
+                    mimeType: 'image/jpeg',
+                },
                 partnerId
             );
 
@@ -414,7 +477,11 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                 (showCamera || previewUri) && styles.dashedBoxMedia,
                             ]}
                         >
-                            {showCamera && !previewUri ? (
+                            {isPreparingImage ? (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color="#FF5E97" />
+                                </View>
+                            ) : showCamera && !previewUri ? (
                                 isCameraInitialized && hasPermission ? (
                                     <View style={styles.cameraWrapper}>
                                         <Camera
@@ -422,6 +489,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                             style={styles.camera}
                                             cameraType={cameraType}
                                             flashMode={cameraType === 'front' ? 'off' : 'auto'}
+                                            resizeMode="cover"
                                         />
                                     </View>
                                 ) : !hasPermission && isCameraInitialized ? (
@@ -452,10 +520,7 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                                 <>
                                     <Image
                                         source={{ uri: typeof previewUri === 'string' ? previewUri : previewUri?.uri }}
-                                        style={[
-                                            styles.previewImage,
-                                            (previewUri?.isFrontCamera) && { transform: [{ scaleX: -1 }] }
-                                        ]}
+                                        style={styles.previewImage}
                                         resizeMode="cover"
                                     />
                                     <View style={styles.gridOverlay}>
@@ -545,10 +610,10 @@ const JigsawCreateScreen = ({ navigation, route, onLinkPartner }) => {
                         <TouchableOpacity
                             onPress={handleSendPuzzle}
                             activeOpacity={0.8}
-                            disabled={!previewUri || isSending}
+                            disabled={!previewUri || isPreparingImage || isSending}
                             style={[
                                 styles.premiumActionButton,
-                                (!previewUri || isSending) && styles.premiumActionButtonDisabled,
+                                (!previewUri || isPreparingImage || isSending) && styles.premiumActionButtonDisabled,
                             ]}
                         >
                             <LinearGradient
@@ -754,11 +819,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
     },
     camera: {
-        position: 'absolute',
-        top: '-38.5%',
-        left: 0,
-        width: '100%',
-        height: '177%',
+        flex: 1,
     },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     cameraPermissionText: {

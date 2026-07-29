@@ -19,6 +19,7 @@
     "@react-native-firebase/messaging": "^23.4.0",
     "@react-native/new-app-screen": "0.82.1",
     "@reduxjs/toolkit": "^2.11.2",
+    "@shopify/react-native-skia": "2.8.0",
     "expo": "~54.0.31",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",

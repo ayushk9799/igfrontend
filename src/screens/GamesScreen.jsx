@@ -16,6 +16,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { getUser, storage } from '../utils/authStorage';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { prefetchPuzzleTexture } from '../utils/puzzleTextureCache';
 
 const VIDEO_CALL_GUIDANCE_KEY = 'games_video_call_guidance_v1';
 
@@ -185,10 +186,12 @@ const GamesScreen = ({
 
     useEffect(() => {
         if (pendingPuzzle?.imageUrl) {
-            Image.prefetch(pendingPuzzle.imageUrl);
-            Image.getSize(pendingPuzzle.imageUrl, () => {}, () => {});
+            prefetchPuzzleTexture(
+                pendingPuzzle._id || pendingPuzzle.id,
+                pendingPuzzle.imageUrl
+            );
         }
-    }, [pendingPuzzle?.imageUrl]);
+    }, [pendingPuzzle?._id, pendingPuzzle?.id, pendingPuzzle?.imageUrl]);
 
     useEffect(() => {
         if (!pendingTicTacToe && !pendingWordle) {

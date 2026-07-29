@@ -61,6 +61,7 @@ import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPrem
 import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { getContentLanguage, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { prefetchPuzzleTexture } from '../utils/puzzleTextureCache';
 
 const UPDATE_CHECK_TIMEOUT_MS = 8000;
 
@@ -1045,6 +1046,10 @@ export const AppNavigator = () => {
                     }
 
                     if (puzzle) {
+                        prefetchPuzzleTexture(
+                            puzzle._id || puzzle.id,
+                            puzzle.imageUrl
+                        );
                         dispatch(setSelectedPuzzle(puzzle));
                         setCurrentScreen('jigsawPuzzle');
                     } else {
@@ -1638,7 +1643,12 @@ export const AppNavigator = () => {
             const response = await fetch(`${API_BASE}/api/puzzle/pending/${userId}`);
             const data = await response.json();
             if (data.success && data.data.length > 0) {
-                dispatch(setPendingPuzzle(data.data[0])); // Show first pending puzzle
+                const nextPuzzle = data.data[0];
+                dispatch(setPendingPuzzle(nextPuzzle)); // Show first pending puzzle
+                prefetchPuzzleTexture(
+                    nextPuzzle._id || nextPuzzle.id,
+                    nextPuzzle.imageUrl
+                );
             } else {
                 dispatch(setPendingPuzzle(null));
             }

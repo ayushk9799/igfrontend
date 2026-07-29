@@ -1,5 +1,6 @@
 // usePuzzle - Custom hook for managing jigsaw puzzles
 import { useState, useCallback } from 'react';
+import * as FileSystem from 'expo-file-system/legacy';
 import { API_BASE } from '../constants/Api';
 import { getUser } from '../utils/authStorage';
 
@@ -50,17 +51,15 @@ export const usePuzzle = () => {
 
             const { presignedUrl, publicUrl } = presignedData.data;
 
-            // Step 2: Upload to S3
-            const fileResponse = await fetch(uri);
-            const blob = await fileResponse.blob();
-
-            const uploadResult = await fetch(presignedUrl, {
-                method: 'PUT',
+            // Step 2: Stream the local file through the native uploader instead
+            // of loading the full JPEG into a JavaScript Blob first.
+            const uploadResult = await FileSystem.uploadAsync(presignedUrl, uri, {
+                httpMethod: 'PUT',
+                uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
                 headers: { 'Content-Type': fileType },
-                body: blob,
             });
 
-            if (!uploadResult.ok) {
+            if (uploadResult.status < 200 || uploadResult.status >= 300) {
                 throw new Error('S3 upload failed');
             }
 
