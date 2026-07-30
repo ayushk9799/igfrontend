@@ -1368,5 +1368,19 @@
   "Your nickname": "닉네임",
   "Your unsaved profile changes will be lost.": "저장하지 않은 프로필 변경사항이 사라집니다.",
   "Danger Zone": "위험 구역",
-  "Deleting your account permanently removes your profile and cannot be undone.": "계정을 삭제하면 프로필이 영구적으로 제거되며 되돌릴 수 없습니다."
+  "Deleting your account permanently removes your profile and cannot be undone.": "계정을 삭제하면 프로필이 영구적으로 제거되며 되돌릴 수 없습니다.",
+  "Reconnect to enter Video Chat.": "영상 채팅에 참여하려면 다시 연결하세요.",
+  "Pair with a partner before starting Video Chat.": "영상 채팅을 시작하기 전에 파트너와 연결하세요.",
+  "End your video call before starting Video Chat.": "영상 채팅을 시작하기 전에 영상 통화를 종료하세요.",
+  "Video Chat could not start.": "영상 채팅을 시작할 수 없습니다.",
+  "Unable to enter Video Chat.": "영상 채팅에 참여할 수 없습니다.",
+  "Message was not sent because Video Chat is reconnecting.": "영상 채팅이 다시 연결 중이므로 메시지가 전송되지 않았습니다.",
+  "Getting Video Chat ready…": "영상 채팅을 준비하는 중…",
+  "Upgrade Video Chat": "영상 채팅 업그레이드",
+  "Tap to unlock Video Chat": "영상 채팅을 잠금 해제하려면 탭하세요",
+  "Unlock Video Chat": "영상 채팅 잠금 해제",
+  "Video Chat message": "영상 채팅 메시지",
+  "Sent you a Video Chat message": "영상 채팅 메시지를 보냈습니다",
+  "Video Chat free limit": "영상 채팅 무료 한도",
+  "We only use it while Video Chat is active.": "영상 채팅이 활성화된 동안에만 사용합니다."
 }

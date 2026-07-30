@@ -1368,5 +1368,19 @@
   "Your nickname": "Tu apodo",
   "Your unsaved profile changes will be lost.": "Los cambios de perfil no guardados se perderán.",
   "Danger Zone": "Zona de peligro",
-  "Deleting your account permanently removes your profile and cannot be undone.": "Eliminar tu cuenta borra permanentemente tu perfil y no se puede deshacer."
+  "Deleting your account permanently removes your profile and cannot be undone.": "Eliminar tu cuenta borra permanentemente tu perfil y no se puede deshacer.",
+  "Reconnect to enter Video Chat.": "Vuelve a conectarte para entrar al videochat.",
+  "Pair with a partner before starting Video Chat.": "Vincúlate con una pareja antes de iniciar el videochat.",
+  "End your video call before starting Video Chat.": "Finaliza tu videollamada antes de iniciar el videochat.",
+  "Video Chat could not start.": "No se pudo iniciar el videochat.",
+  "Unable to enter Video Chat.": "No se puede entrar al videochat.",
+  "Message was not sent because Video Chat is reconnecting.": "El mensaje no se envió porque el videochat se está reconectando.",
+  "Getting Video Chat ready…": "Preparando el videochat…",
+  "Upgrade Video Chat": "Mejorar videochat",
+  "Tap to unlock Video Chat": "Toca para desbloquear el videochat",
+  "Unlock Video Chat": "Desbloquear videochat",
+  "Video Chat message": "Mensaje de videochat",
+  "Sent you a Video Chat message": "Te envió un mensaje de videochat",
+  "Video Chat free limit": "Límite gratuito del videochat",
+  "We only use it while Video Chat is active.": "Solo la usamos mientras el videochat está activo."
 }

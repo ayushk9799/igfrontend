@@ -181,7 +181,7 @@ export default function LiveChatScreen({
     const [localStream, setLocalStream] = useState(null);
     const [remoteStream, setRemoteStream] = useState(null);
 
-    // Live Chat deliberately owns two scalar slots. There is no message array.
+    // Video Chat deliberately owns two scalar slots. There is no message array.
     const [myMessage, setMyMessage] = useState(null);
     const [partnerMessage, setPartnerMessage] = useState(null);
     const [partnerTyping, setPartnerTyping] = useState(false);

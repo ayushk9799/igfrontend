@@ -1368,5 +1368,19 @@
   "Your nickname": "あなたのニックネーム",
   "Your unsaved profile changes will be lost.": "保存していないプロフィールの変更は失われます。",
   "Danger Zone": "危険な操作",
-  "Deleting your account permanently removes your profile and cannot be undone.": "アカウントを削除するとプロフィールは完全に消去され、元に戻すことはできません。"
+  "Deleting your account permanently removes your profile and cannot be undone.": "アカウントを削除するとプロフィールは完全に消去され、元に戻すことはできません。",
+  "Reconnect to enter Video Chat.": "再接続してビデオチャットに入ります。",
+  "Pair with a partner before starting Video Chat.": "ビデオチャットを開始する前に、パートナーとペアリングしてください。",
+  "End your video call before starting Video Chat.": "ビデオチャットを開始する前にビデオ通話を終了してください。",
+  "Video Chat could not start.": "ビデオチャットを開始できませんでした。",
+  "Unable to enter Video Chat.": "ビデオチャットに入ることができません。",
+  "Message was not sent because Video Chat is reconnecting.": "ビデオチャットが再接続中のため、メッセージは送信されませんでした。",
+  "Getting Video Chat ready…": "ビデオチャットを準備しています…",
+  "Upgrade Video Chat": "ビデオチャットをアップグレード",
+  "Tap to unlock Video Chat": "タップしてビデオチャットのロックを解除します",
+  "Unlock Video Chat": "ビデオチャットのロックを解除",
+  "Video Chat message": "ビデオチャットメッセージ",
+  "Sent you a Video Chat message": "ビデオチャットメッセージを送信しました",
+  "Video Chat free limit": "ビデオチャットの無料制限",
+  "We only use it while Video Chat is active.": "ビデオチャットが有効な間だけ使用します。"
 }
