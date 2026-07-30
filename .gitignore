@@ -81,3 +81,7 @@ questions_v2_summary.md
 
 docs/
 
+# Ignored untracked assets and output
+assets/app-store/
+assets/onbording/app-store/
+output/

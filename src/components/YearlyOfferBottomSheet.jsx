@@ -320,7 +320,7 @@ export default function YearlyOfferBottomSheet({
                 pointerEvents="none"
                 colors={['#F1F7FF', '#FFFFFF', '#FFF7FA']}
                 locations={[0, 0.55, 1]}
-                style={StyleSheet.absoluteFillObject}
+                style={styles.sheetGradient}
             />
             <View style={styles.handle} />
             {discountPercentage && regularPrice ? (
@@ -447,6 +447,12 @@ export default function YearlyOfferBottomSheet({
 }
 
 const styles = StyleSheet.create({
+    sheetGradient: {
+        ...StyleSheet.absoluteFillObject,
+        overflow: 'hidden',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+    },
     sheetBackground: {
         overflow: 'hidden',
         borderTopLeftRadius: 30,

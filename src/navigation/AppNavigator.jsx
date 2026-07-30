@@ -1388,8 +1388,8 @@ export const AppNavigator = () => {
             if (!data.sessionId || currentScreen === 'liveChat') return;
 
             showRoutedLocalNotification({
-                title: translateUiText("live chat message"),
-                body: data.preview || translateUiText("Sent you a Live Chat message"),
+                title: translateUiText("Video Chat message"),
+                body: data.preview || translateUiText("Sent you a Video Chat message"),
                 data: {
                     type: 'live_chat',
                     sessionId: data.sessionId,

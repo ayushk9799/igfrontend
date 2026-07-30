@@ -31,9 +31,9 @@ const FEATURE_CONTENT = {
     },
     liveChat: {
         icon: '💬',
-        eyebrow: 'Live Chat free limit',
+        eyebrow: 'Video Chat free limit',
         title: "Your 5 free minutes are used",
-        message: "Upgrade to Premium to keep chatting live whenever you’re both here.",
+        message: "Upgrade to Premium to keep using Video Chat whenever you’re both here.",
     },
     drawTogether: {
         icon: '🎨',
