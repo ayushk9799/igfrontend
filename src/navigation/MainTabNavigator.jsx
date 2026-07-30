@@ -1,7 +1,7 @@
 // Main Tab Navigator - Home with Bottom Tabs
 // Now uses Redux for global state instead of prop drilling
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, PanResponder, Alert, AppState, Linking, Platform } from 'react-native';
+import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, PanResponder, AppState, Linking, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
@@ -19,6 +19,7 @@ import MoodScreen from '../screens/MoodScreen';
 import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
 import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
 import WidgetSetupBottomSheet from '../components/WidgetSetupBottomSheet';
+import WidgetInstructionsBottomSheet from '../components/WidgetInstructionsBottomSheet';
 import YearlyOfferBottomSheet from '../components/YearlyOfferBottomSheet';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
@@ -45,7 +46,6 @@ import {
 import { reportWidgetIntent, sendPartnerLocationReminder, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import * as ImagePicker from 'expo-image-picker';
 import { storage } from '../utils/authStorage';
-import { translateUiText } from '../i18n/uiTranslation';
 import { QuestionsV2Api } from '../api/questionsV2Api';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
@@ -114,6 +114,10 @@ export const MainTabNavigator = ({
     const [openScribbleLiveMode, setOpenScribbleLiveMode] = useState(false);
     const [openDistanceSetup, setOpenDistanceSetup] = useState(false);
     const [widgetSheet, setWidgetSheet] = useState(null);
+    const [isWidgetInstructionsVisible, setIsWidgetInstructionsVisible] = useState(false);
+    const [widgetInstructionsType, setWidgetInstructionsType] = useState(
+        Platform.OS === 'android' ? 'home' : 'lock'
+    );
     const [locationSyncing, setLocationSyncing] = useState(false);
     const [locationMessage, setLocationMessage] = useState('');
     const [distanceReason, setDistanceReason] = useState(null);
@@ -593,11 +597,11 @@ export const MainTabNavigator = ({
         return () => subscription.remove();
     }, [openPhotoCapture, widgetSheet]);
 
-    const showWidgetInstructions = useCallback(() => {
-        Alert.alert(
-            translateUiText("Add to your home screen"),
-            translateUiText("Touch and hold your home screen, tap Add Widget, find Penguin, then choose this widget.")
+    const showWidgetInstructions = useCallback((tutorialType) => {
+        setWidgetInstructionsType(
+            Platform.OS === 'android' || tutorialType === 'home' ? 'home' : 'lock'
         );
+        setIsWidgetInstructionsVisible(true);
     }, []);
 
     const handleOpenLocationSettings = useCallback(() => {
@@ -1263,6 +1267,12 @@ export const MainTabNavigator = ({
                     userData?.pendingRelationshipStartDate ||
                     userData?.connectionDate
                 }
+            />
+
+            <WidgetInstructionsBottomSheet
+                visible={isWidgetInstructionsVisible}
+                tutorialType={widgetInstructionsType}
+                onClose={() => setIsWidgetInstructionsVisible(false)}
             />
 
             <YearlyOfferBottomSheet

@@ -33,6 +33,7 @@
     "expo-localization": "~17.0.9",
     "expo-modules-core": "^3.0.29",
     "expo-store-review": "~9.0.8",
+    "expo-video": "~3.0.16",
     "i18next": "^26.3.6",
     "lottie-react-native": "^7.3.5",
     "lucide-react-native": "^1.23.0",

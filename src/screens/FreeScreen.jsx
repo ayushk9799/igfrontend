@@ -110,17 +110,12 @@ const FreeScreen = ({ onContinue, onClose, onShown }) => {
 
                         <View style={styles.offerContainer}>
                             <Text style={styles.offerTitle}>{translateUiText("We offer")}</Text>
-                            <View style={styles.freeBadgeOuter}>
-                                <LinearGradient
-                                    colors={['#FF5E97', '#FFA1C9']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.freeBadge}
-                                >
-                                    <Text style={styles.freeBadgeText}>{translateUiText("Try Premium")}</Text>
-                                </LinearGradient>
+                            <View style={styles.freeBadge}>
+                                <Text style={styles.freeBadgeText}>{translateUiText("7 days Free")}</Text>
                             </View>
-                            <Text style={styles.offerSubtitle}>{translateUiTemplate("See available plans{{0}}for your couple", ['\n'])}</Text>
+                            <Text style={styles.offerSubtitle}>
+                                {translateUiTemplate("so every couple{{0}}can enjoy Penguin", ['\n'])}
+                            </Text>
                         </View>
                     </View>
                 </View>
@@ -245,6 +240,7 @@ const styles = StyleSheet.create({
         height: 56,
     },
     offerContainer: {
+        alignSelf: 'stretch',
         alignItems: 'center',
         marginTop: 0,
     },
@@ -255,17 +251,14 @@ const styles = StyleSheet.create({
         fontSize: 22,
         marginBottom: 8,
     },
-    freeBadgeOuter: {
-        width: 170,
-        borderRadius: 18,
-        borderWidth: 2,
-        borderColor: '#FFD2E1',
-        overflow: 'hidden',
-    },
     freeBadge: {
-        width: '100%',
-        height: 40,
-        borderRadius: 16,
+        alignSelf: 'center',
+        maxWidth: '100%',
+        minHeight: 44,
+        paddingHorizontal: 22,
+        paddingVertical: 7,
+        borderRadius: 22,
+        backgroundColor: '#FF6EA8',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -274,7 +267,9 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
         fontSize: 22,
+        lineHeight: 27,
         letterSpacing: 0.2,
+        textAlign: 'center',
     },
     offerSubtitle: {
         color: colors.text,

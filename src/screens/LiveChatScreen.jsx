@@ -241,6 +241,7 @@ export default function LiveChatScreen({
     );
     const instructionSheetRef = useRef(null);
     const instructionSheetPresentedRef = useRef(false);
+    const instructionSheetDismissalHandledRef = useRef(false);
     const keyboardVisibleRef = useRef(false);
     const stageViewportHeightRef = useRef(0);
     const measuredCardHeightRef = useRef(cardHeight);
@@ -1133,6 +1134,7 @@ export default function LiveChatScreen({
         const shouldShow = instructionVisible && !isFreeLimitReached;
         if (shouldShow) {
             const animationFrame = requestAnimationFrame(() => {
+                instructionSheetDismissalHandledRef.current = false;
                 instructionSheetPresentedRef.current = true;
                 instructionSheetRef.current?.present();
             });
@@ -1140,6 +1142,7 @@ export default function LiveChatScreen({
         }
 
         if (instructionSheetPresentedRef.current) {
+            instructionSheetDismissalHandledRef.current = true;
             instructionSheetRef.current?.dismiss();
         }
         return undefined;
@@ -1504,12 +1507,15 @@ export default function LiveChatScreen({
                 <BottomSheetModal
                     ref={instructionSheetRef}
                     enableDynamicSizing
-                    enablePanDownToClose={false}
+                    enablePanDownToClose
                     backdropComponent={renderInstructionBackdrop}
                     backgroundStyle={styles.instructionSheetBackground}
                     handleComponent={null}
                     onDismiss={() => {
                         instructionSheetPresentedRef.current = false;
+                        if (!instructionSheetDismissalHandledRef.current) {
+                            dismissInstruction();
+                        }
                     }}
                 >
                     <BottomSheetView

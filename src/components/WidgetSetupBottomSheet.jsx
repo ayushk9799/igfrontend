@@ -99,7 +99,7 @@ const HeartIcon = ({ color = '#FF758F', size = 16, style }) => (
 );
 
 const DaysTogetherShowcase = ({ relationshipStartDate, daysTogether, onHowToAdd, onClose }) => {
-    const [activeTab, setActiveTab] = useState('lock');
+    const [activeTab, setActiveTab] = useState(Platform.OS === 'android' ? 'home' : 'lock');
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
     const initialElapsed = useMemo(() => {
@@ -162,22 +162,24 @@ const DaysTogetherShowcase = ({ relationshipStartDate, daysTogether, onHowToAdd,
 
     return (
         <View style={styles.timeShowcaseWrapper}>
-            <View style={styles.tabSelectorRow}>
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.tabSelectorButton, activeTab === 'lock' && styles.tabSelectorActive]}
-                    onPress={() => setActiveTab('lock')}
-                >
-                    <Text style={[styles.tabSelectorText, activeTab === 'lock' && styles.tabSelectorActiveText]}>{translateUiText("🔒 Lock Screen")}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    style={[styles.tabSelectorButton, activeTab === 'home' && styles.tabSelectorActive]}
-                    onPress={() => setActiveTab('home')}
-                >
-                    <Text style={[styles.tabSelectorText, activeTab === 'home' && styles.tabSelectorActiveText]}>{translateUiText("🏠 Home Screen")}</Text>
-                </TouchableOpacity>
-            </View>
+            {Platform.OS === 'ios' && (
+                <View style={styles.tabSelectorRow}>
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.tabSelectorButton, activeTab === 'lock' && styles.tabSelectorActive]}
+                        onPress={() => setActiveTab('lock')}
+                    >
+                        <Text style={[styles.tabSelectorText, activeTab === 'lock' && styles.tabSelectorActiveText]}>{translateUiText("🔒 Lock Screen")}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.tabSelectorButton, activeTab === 'home' && styles.tabSelectorActive]}
+                        onPress={() => setActiveTab('home')}
+                    >
+                        <Text style={[styles.tabSelectorText, activeTab === 'home' && styles.tabSelectorActiveText]}>{translateUiText("🏠 Home Screen")}</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <LinearGradient
                 colors={['#1F1133', '#3B184E', '#5B1B67', '#321042']}
@@ -243,7 +245,7 @@ const DaysTogetherShowcase = ({ relationshipStartDate, daysTogether, onHowToAdd,
 
             <Text style={styles.timeShowcaseTitle}>{translateUiText("Days Together Widget")}</Text>
 
-            <ActionButton onPress={onHowToAdd}>{translateUiText("How to add widget")}</ActionButton>
+            <ActionButton onPress={() => onHowToAdd(activeTab)}>{translateUiText("How to add widget")}</ActionButton>
             <TouchableOpacity onPress={onClose} style={styles.quietAction}>
                 <Text style={styles.quietActionText}>{translateUiText("Done")}</Text>
             </TouchableOpacity>
