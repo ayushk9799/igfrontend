@@ -664,17 +664,17 @@ export default function LiveChatScreen({
         }
         if (!socket || !isConnected) {
             leaveSession();
-            setError('Reconnect to enter Live Chat.');
+            setError('Reconnect to enter Video Chat.');
             return undefined;
         }
         if (!partnerId) {
             leaveSession();
-            setError('Pair with a partner before starting Live Chat.');
+            setError('Pair with a partner before starting Video Chat.');
             return undefined;
         }
         if (callState !== CALL_STATE.IDLE) {
             leaveSession();
-            setError('End your video call before starting Live Chat.');
+            setError('End your video call before starting Video Chat.');
             return undefined;
         }
 
@@ -815,7 +815,7 @@ export default function LiveChatScreen({
             }
         };
         const onError = data => {
-            setError(data.message || 'Live Chat could not start.');
+            setError(data.message || 'Video Chat could not start.');
             if (pendingMessageRef.current) {
                 const previousMessage = pendingMessageRef.current.previousMessage;
                 if (pendingMessageTimeoutRef.current) {
@@ -1179,7 +1179,7 @@ export default function LiveChatScreen({
         const text = myDraft.trim();
         if (!text || !sessionIdRef.current || sendPending) return;
         if (!socket?.connected) {
-            setError('Message was not sent because Live Chat is reconnecting.');
+            setError('Message was not sent because Video Chat is reconnecting.');
             return;
         }
         const clientMessageId = makeId('message');
@@ -1259,7 +1259,7 @@ export default function LiveChatScreen({
         : 'Partner';
     const partnerDisplayName = partnerNickname || fallbackPartnerName;
     const sessionStatusText = !sessionId
-        ? translateUiText('Getting Live Chat ready…')
+        ? translateUiText('Getting Video Chat ready…')
         : participantCount < 2
             ? translateUiTemplate('Waiting for {{0}} to join…', [partnerDisplayName])
             : translateUiTemplate('{{0}} is here', [partnerDisplayName]);
@@ -1282,6 +1282,7 @@ export default function LiveChatScreen({
         && !isFreeLimitReached
         && Boolean(sessionId)
         && remainingFreeSeconds > 0
+        && remainingFreeSeconds <= 60
         && participantCount > 1;
     const visibleError = error
         || (cameraDenied ? 'Front-camera permission is off. Messages still work.' : null)
@@ -1327,7 +1328,7 @@ export default function LiveChatScreen({
                             />
                         </Svg>
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{translateUiText("Live Chat")}</Text>
+                    <Text style={styles.headerTitle}>{translateUiText("Video Chat")}</Text>
                     <TouchableOpacity
                         style={styles.headerButton}
                         onPress={toggleFrontCamera}
@@ -1464,7 +1465,7 @@ export default function LiveChatScreen({
                                     onPress={handleFreeTierUpgrade}
                                     activeOpacity={0.7}
                                     accessibilityRole="button"
-                                    accessibilityLabel={translateUiText("Upgrade Live Chat")}
+                                    accessibilityLabel={translateUiText("Upgrade Video Chat")}
                                 >
                                     <Text style={styles.freeTierUpgradeText}>{translateUiText("Upgrade")}</Text>
                                 </TouchableOpacity>
@@ -1477,14 +1478,14 @@ export default function LiveChatScreen({
                                 onChangeText={handleDraftChange}
                                 onPressIn={isFreeLimitReached ? handleRequestPremium : undefined}
                                 style={styles.input}
-                                placeholder={isFreeLimitReached ? translateUiText("Tap to unlock Live Chat") : translateUiText("Type a message…")}
+                                placeholder={isFreeLimitReached ? translateUiText("Tap to unlock Video Chat") : translateUiText("Type a message…")}
                                 placeholderTextColor="#A99CA9"
                                 maxLength={MAX_MESSAGE_LENGTH}
                                 multiline
                                 editable={Boolean(sessionId) && !isFreeLimitReached}
                                 accessibilityLabel={isFreeLimitReached
-                                    ? translateUiText("Unlock Live Chat")
-                                    : translateUiText("Live Chat message")}
+                                    ? translateUiText("Unlock Video Chat")
+                                    : translateUiText("Video Chat message")}
                             />
                             <TouchableOpacity
                                 style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
@@ -1524,7 +1525,7 @@ export default function LiveChatScreen({
                             )}
                         </View>
                         <Text style={styles.instructionTitle}>
-                            {translateUiText(showChatGuidance ? 'Live Chat' : 'Turn on camera')}
+                            {translateUiText(showChatGuidance ? 'Video Chat' : 'Turn on camera')}
                         </Text>
                         <Text style={styles.instructionText}>
                             {translateUiText(
@@ -1564,7 +1565,7 @@ export default function LiveChatScreen({
                                     <Text style={styles.cameraPermissionText}>
                                         {cameraPermissionState === 'denied'
                                             ? translateUiText('Open Settings to enable video. Messages still work without it.')
-                                            : translateUiText('We only use it while Live Chat is active.')}
+                                            : translateUiText('We only use it while Video Chat is active.')}
                                     </Text>
                                 </View>
                             </View>

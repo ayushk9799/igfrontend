@@ -1004,6 +1004,18 @@ export const MainTabNavigator = ({
         }
     };
 
+    const isYearlyOfferSheetVisible = (
+        isYearlyOfferDue
+        && currentTab === 'home'
+        && !hasPremiumAccess
+        && !callActive
+        && !isAccountMounted
+        && !isHomePremiumVisible
+        && !isNotificationVisible
+        && !isMoodVisible
+        && !widgetSheet
+    );
+
     return (
         <View style={styles.container}>
             <View style={[styles.screenContainer, currentTab !== 'home' && styles.hiddenScreen]}>
@@ -1080,7 +1092,12 @@ export const MainTabNavigator = ({
                 />
             </View>
             {renderScreen()}
-            {!isMoodVisible && !widgetSheet && !isScribbleLiveFullscreen && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab) && (
+            {!isMoodVisible
+                && !widgetSheet
+                && !isScribbleLiveFullscreen
+                && !isYearlyOfferSheetVisible
+                && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab)
+                && (
                 <BottomTabBar
                     key={tabBarRenderKey}
                     currentTab={currentTab}
@@ -1249,17 +1266,7 @@ export const MainTabNavigator = ({
             />
 
             <YearlyOfferBottomSheet
-                visible={
-                    isYearlyOfferDue
-                    && currentTab === 'home'
-                    && !hasPremiumAccess
-                    && !callActive
-                    && !isAccountMounted
-                    && !isHomePremiumVisible
-                    && !isNotificationVisible
-                    && !isMoodVisible
-                    && !widgetSheet
-                }
+                visible={isYearlyOfferSheetVisible}
                 onClose={closeYearlyOffer}
                 onPresented={markYearlyOfferPresented}
                 onPurchased={completeYearlyOffer}
