@@ -190,8 +190,24 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                                                 resizeMode="contain"
                                             />
                                         </View>
-                                        <Text style={styles.featureTitle}>{translateUiText(feature.title)}</Text>
-                                        <Text style={styles.featureCopy}>{translateUiText(feature.copy)}</Text>
+                                        <Text
+                                            style={styles.featureTitle}
+                                            numberOfLines={2}
+                                            adjustsFontSizeToFit
+                                            minimumFontScale={0.8}
+                                            maxFontSizeMultiplier={1.2}
+                                        >
+                                            {translateUiText(feature.title)}
+                                        </Text>
+                                        <Text
+                                            style={styles.featureCopy}
+                                            numberOfLines={3}
+                                            adjustsFontSizeToFit
+                                            minimumFontScale={0.75}
+                                            maxFontSizeMultiplier={1.2}
+                                        >
+                                            {translateUiText(feature.copy)}
+                                        </Text>
                                     </Animated.View>
                                 ))}
                             </View>
@@ -353,6 +369,8 @@ const styles = StyleSheet.create({
     },
     featureTitle: {
         marginTop: height < 760 ? 0 : 2,
+        width: '100%',
+        flexShrink: 1,
         fontFamily: fontFamily.bold,
         fontSize: width < 380 ? 15 : 17,
         lineHeight: width < 380 ? 19 : 21,
@@ -372,6 +390,8 @@ const styles = StyleSheet.create({
         height: '112%',
     },
     featureCopy: {
+        width: '100%',
+        flexShrink: 1,
         fontFamily: fontFamily.medium,
         fontSize: width < 380 ? 11 : 13,
         lineHeight: width < 380 ? 15 : 17,
