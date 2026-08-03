@@ -206,6 +206,9 @@ export default function LiveChatScreen({
     const [freeUsageMs, setFreeUsageMs] = useState(
         () => readLiveChatUsage(freeUsageStorageKey),
     );
+    const shouldBlockKeyboardForCamera = instructionVisible
+        || cameraPermissionState === 'checking'
+        || requestingCameraPermission;
     const isFreeLimitReached = !hasPremiumAccess && freeUsageMs >= FREE_LIVE_CHAT_LIMIT_MS;
     const remainingFreeSeconds = Math.max(
         0,
@@ -790,10 +793,6 @@ export default function LiveChatScreen({
                     }
                     pendingMessageRef.current = null;
                     setSendPending(false);
-                    if (myDraftRef.current === pending.text) {
-                        myDraftRef.current = '';
-                        setMyDraft('');
-                    }
                 }
             } else {
                 setPartnerMessage(data.message);
@@ -818,7 +817,8 @@ export default function LiveChatScreen({
         const onError = data => {
             setError(data.message || 'Video Chat could not start.');
             if (pendingMessageRef.current) {
-                const previousMessage = pendingMessageRef.current.previousMessage;
+                const pendingMessage = pendingMessageRef.current;
+                const previousMessage = pendingMessage.previousMessage;
                 if (pendingMessageTimeoutRef.current) {
                     clearTimeout(pendingMessageTimeoutRef.current);
                     pendingMessageTimeoutRef.current = null;
@@ -826,6 +826,10 @@ export default function LiveChatScreen({
                 pendingMessageRef.current = null;
                 setSendPending(false);
                 setMyMessage(previousMessage || null);
+                if (myDraftRef.current === '') {
+                    myDraftRef.current = pendingMessage.text;
+                    setMyDraft(pendingMessage.text);
+                }
             }
             if (data.code === 'NORMAL_CALL_ACTIVE') {
                 closePeerConnection();
@@ -1000,14 +1004,25 @@ export default function LiveChatScreen({
     }, [hasPremiumAccess, isFreeLimitReached, onRequestPremium]);
 
     useEffect(() => {
-        if (!sessionId || !screenReadyForKeyboard) return undefined;
+        if (shouldBlockKeyboardForCamera) {
+            messageInputRef.current?.blur();
+            Keyboard.dismiss();
+            keyboardVisibleRef.current = false;
+            setKeyboardVisible(false);
+        }
+    }, [shouldBlockKeyboardForCamera]);
+
+    useEffect(() => {
+        if (!sessionId || !screenReadyForKeyboard || shouldBlockKeyboardForCamera) {
+            return undefined;
+        }
         let focusTimer = null;
 
         const focusInput = (resetFocus = false) => {
             if (
                 !mountedRef.current
                 || !sessionIdRef.current
-                || instructionVisible
+                || shouldBlockKeyboardForCamera
                 || AppState.currentState !== 'active'
             ) return;
 
@@ -1059,7 +1074,7 @@ export default function LiveChatScreen({
             keyboardVisibleRef.current = false;
             setKeyboardVisible(false);
         };
-    }, [calculateAndCacheCardHeight, instructionVisible, screenReadyForKeyboard, sessionId]);
+    }, [calculateAndCacheCardHeight, screenReadyForKeyboard, sessionId, shouldBlockKeyboardForCamera]);
 
     const completeEntryChoice = useCallback((useCamera) => {
         storage.set(instructionStorageKey, true);
@@ -1079,6 +1094,9 @@ export default function LiveChatScreen({
     }, [completeEntryChoice, entryChoiceComplete]);
 
     const handleInstructionCameraAction = useCallback(async () => {
+        messageInputRef.current?.blur();
+        Keyboard.dismiss();
+
         if (cameraPermissionState === 'granted') {
             storage.set(cameraPreferenceStorageKey, true);
             cameraWantedEnabledRef.current = true;
@@ -1186,15 +1204,19 @@ export default function LiveChatScreen({
             return;
         }
         const clientMessageId = makeId('message');
+        pendingMessageRef.current = { clientMessageId, text, previousMessage: myMessage };
+        setSendPending(true);
+        setMyMessage({ clientMessageId, text });
+        messageInputRef.current?.clear();
+        myDraftRef.current = '';
+        setMyDraft('');
+        setError(null);
+
         if (typingStopTimeoutRef.current) {
             clearTimeout(typingStopTimeoutRef.current);
             typingStopTimeoutRef.current = null;
         }
         emitTypingState(false);
-        pendingMessageRef.current = { clientMessageId, text, previousMessage: myMessage };
-        setSendPending(true);
-        setMyMessage({ clientMessageId, text });
-        setError(null);
         socket?.emit('liveChat:message:set', {
             sessionId: sessionIdRef.current,
             text,
@@ -1204,12 +1226,19 @@ export default function LiveChatScreen({
         messageInputRef.current?.focus();
         pendingMessageTimeoutRef.current = setTimeout(() => {
             if (pendingMessageRef.current?.clientMessageId !== clientMessageId) return;
-            const previousMessage = pendingMessageRef.current.previousMessage;
+            const pendingMessage = pendingMessageRef.current;
+            const previousMessage = pendingMessage.previousMessage;
             pendingMessageRef.current = null;
             pendingMessageTimeoutRef.current = null;
             setSendPending(false);
             setMyMessage(previousMessage);
-            setError('Message delivery was not confirmed. Your text is still available to retry.');
+            if (myDraftRef.current === '') {
+                myDraftRef.current = pendingMessage.text;
+                setMyDraft(pendingMessage.text);
+                setError('Message delivery was not confirmed. Your text is available to retry.');
+            } else {
+                setError('Message delivery was not confirmed. Please try again.');
+            }
         }, 8000);
     }, [emitTypingState, isFreeLimitReached, myDraft, myMessage, playMessageSound, sendPending, socket]);
 
@@ -1227,6 +1256,8 @@ export default function LiveChatScreen({
         const cameraStatus = await permissions.query({ name: 'camera' })
             .catch(() => permissions.RESULT.DENIED);
         if (cameraStatus !== permissions.RESULT.GRANTED) {
+            messageInputRef.current?.blur();
+            Keyboard.dismiss();
             setCameraPermissionState(
                 cameraPermissionAttemptedRef.current ? 'denied' : 'needed',
             );
@@ -1436,7 +1467,12 @@ export default function LiveChatScreen({
                                 <View style={styles.nameRow}>
                                     <Text style={styles.personName}>{translateUiText("You")}</Text>
                                 </View>
-                                <SmoothMessageText text={myDisplayText} />
+                                <Text style={[
+                                    styles.messageText,
+                                    !myDisplayText && styles.emptyMessageText,
+                                ]}>
+                                    {myDisplayText || '...'}
+                                </Text>
                             </View>
                         </View>
                     </ScrollView>
@@ -1485,7 +1521,9 @@ export default function LiveChatScreen({
                                 placeholderTextColor="#A99CA9"
                                 maxLength={MAX_MESSAGE_LENGTH}
                                 multiline
-                                editable={Boolean(sessionId) && !isFreeLimitReached}
+                                editable={Boolean(sessionId)
+                                    && !isFreeLimitReached
+                                    && !shouldBlockKeyboardForCamera}
                                 accessibilityLabel={isFreeLimitReached
                                     ? translateUiText("Unlock Video Chat")
                                     : translateUiText("Video Chat message")}

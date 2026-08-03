@@ -80,6 +80,7 @@ const ChatInput = ({
     const [message, setMessage] = useState('');
     const [inputHeight, setInputHeight] = useState(44);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const inputRef = useRef(null);
     const sendButtonScale = useRef(new Animated.Value(1)).current;
     const typingTimeout = useRef(null);
 
@@ -142,6 +143,7 @@ const ChatInput = ({
             ]).start();
 
             onSend(trimmedMessage);
+            inputRef.current?.clear();
             setMessage('');
             setInputHeight(44);
 
@@ -172,6 +174,7 @@ const ChatInput = ({
                 {/* Input field */}
                 <View style={styles.inputContainer}>
                     <TextInput
+                        ref={inputRef}
                         style={[styles.input, { height: Math.max(40, inputHeight - 8) }]}
                         value={message}
                         onChangeText={handleChangeText}
@@ -280,4 +283,3 @@ const styles = StyleSheet.create({
 });
 
 export default ChatInput;
-

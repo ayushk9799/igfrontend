@@ -35,6 +35,9 @@ const CANVAS_PLACED_Y = PHONE_PREVIEW_TOP
     + (PHONE_PREVIEW_HEIGHT * 0.245)
     - (SHOWCASE_HEIGHT / 2);
 const PARTNER_PHOTO_SIZE = IS_COMPACT ? 240 : 260;
+const TOGETHER_DEMO_ELAPSED_SECONDS = (1096 * 86400) + (21 * 3600) + (25 * 60) + 31;
+const CANVAS_ANIMATION_SPEED = 3;
+const CANVAS_PLACEMENT_DURATION = 900;
 
 const partnerPhotoPreviews = [
     { image: require('../../assets/photo-crops-final/01-moon-sky.png'), caption: "Good evening" },
@@ -190,16 +193,18 @@ const DistanceWidget = ({ reducedMotion }) => {
 
 const TogetherWidget = ({ relationshipStartDate }) => {
     const [now, setNow] = useState(Date.now());
+    const demoStartTime = useRef(now - (TOGETHER_DEMO_ELAPSED_SECONDS * 1000)).current;
 
     useEffect(() => {
         const interval = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(interval);
     }, []);
 
-    const start = new Date(relationshipStartDate).getTime();
-    const elapsed = Number.isFinite(start)
-        ? Math.max(0, Math.floor((now - start) / 1000))
-        : (1096 * 86400) + (21 * 3600) + (25 * 60) + 31;
+    const relationshipStartTime = new Date(relationshipStartDate).getTime();
+    const startTime = Number.isFinite(relationshipStartTime)
+        ? relationshipStartTime
+        : demoStartTime;
+    const elapsed = Math.max(0, Math.floor((now - startTime) / 1000));
     const parts = [
         { value: Math.floor(elapsed / 86400), label: translateUiText("days") },
         { value: String(Math.floor((elapsed % 86400) / 3600)).padStart(2, '0'), label: translateUiText("hr") },
@@ -254,13 +259,13 @@ const CanvasWidget = ({ isActive, reducedMotion }) => {
         Animated.parallel([
             Animated.timing(phoneOpacity, {
                 toValue: 1,
-                duration: reducedMotion ? 0 : 1350,
+                duration: reducedMotion ? 0 : CANVAS_PLACEMENT_DURATION,
                 easing: Easing.out(Easing.cubic),
                 useNativeDriver: true,
             }),
             Animated.timing(placement, {
                 toValue: 1,
-                duration: reducedMotion ? 0 : 1350,
+                duration: reducedMotion ? 0 : CANVAS_PLACEMENT_DURATION,
                 easing: Easing.inOut(Easing.cubic),
                 useNativeDriver: true,
             }),
@@ -295,6 +300,7 @@ const CanvasWidget = ({ isActive, reducedMotion }) => {
                     source={require('../../assets/flower1.lottie')}
                     autoPlay={false}
                     loop={false}
+                    speed={CANVAS_ANIMATION_SPEED}
                     resizeMode="contain"
                     onAnimationFinish={placeWidgetOnPhone}
                     style={styles.canvasLottie}
