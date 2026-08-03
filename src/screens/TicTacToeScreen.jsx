@@ -13,6 +13,7 @@ import {
     Image,
     ScrollView,
     useWindowDimensions,
+    AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -30,6 +31,7 @@ import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const FREE_TICTACTOE_GAME_LIMIT = 5;
+const TICTACTOE_HYBRID_REMATCH_CAPABILITY = 'hybrid-rematch-v1';
 const SparkleStar = ({ size = 20, color = '#EC4899', style }) => (
     <Animated.View style={style}>
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -352,6 +354,37 @@ const TicTacToeScreen = ({
             socket.emit('tictactoe:leave', { gameId });
         };
     }, [socket, gameId, requestGameReviewOnce, userId]);
+
+    // A visible-screen signal is intentionally separate from joining the game
+    // room: navigation can keep an off-screen component mounted.
+    useEffect(() => {
+        if (!socket || !gameId) return;
+
+        const emitActive = () => {
+            if (AppState.currentState !== 'active') return;
+            socket.emit('tictactoe:screenActive', {
+                gameId,
+                capability: TICTACTOE_HYBRID_REMATCH_CAPABILITY,
+            });
+        };
+        const emitInactive = () => {
+            socket.emit('tictactoe:screenInactive', { gameId });
+        };
+        const handleAppStateChange = nextState => {
+            if (nextState === 'active') emitActive();
+            else emitInactive();
+        };
+
+        emitActive();
+        socket.on('connect', emitActive);
+        const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
+        return () => {
+            emitInactive();
+            socket.off('connect', emitActive);
+            appStateSubscription.remove();
+        };
+    }, [socket, gameId]);
 
     // Game start animation function
     const startGameAnimation = useCallback((message) => {
@@ -750,7 +783,11 @@ const TicTacToeScreen = ({
             const response = await fetch(`${API_BASE}/api/tictactoe/${gameId}/restart`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId }),
+                body: JSON.stringify({
+                    userId,
+                    rematchCapability: TICTACTOE_HYBRID_REMATCH_CAPABILITY,
+                    round: gameRound,
+                }),
             });
             const data = await response.json();
             if (!mountedRef.current) return;
@@ -760,6 +797,11 @@ const TicTacToeScreen = ({
                     setFreeLimitReached(true);
                     setLimitCheckError('');
                     onRequestPremium?.();
+                    return;
+                }
+                if (response.status === 409) {
+                    await fetchGame(gameId);
+                    showStatus('Your partner already started the next game.', 'info');
                     return;
                 }
                 showStatus(data.message || 'Failed to restart game');

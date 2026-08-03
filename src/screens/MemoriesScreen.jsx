@@ -23,7 +23,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Heart, ImagePlus, Minus, Plus, X } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { BlurView } from 'expo-blur';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { colors } from '../theme';
 import { storage } from '../utils/authStorage';
@@ -296,9 +295,10 @@ const MemoryCard = ({ item }) => {
                             <View style={styles.momentIcon}>
                                 <Heart color="#FF758F" size={22} strokeWidth={2} />
                             </View>
-                            <Text style={styles.momentKicker}>{translateUiText("MEMORY")}</Text>
-                            {!!item.title && <Text style={styles.momentTitle}>{item.title}</Text>}
-                            {!!item.caption && <Text style={styles.momentCaption}>{item.caption}</Text>}
+                            <View style={styles.momentCopy}>
+                                {!!item.title && <Text style={styles.momentTitle}>{item.title}</Text>}
+                                {!!item.caption && <Text style={styles.momentCaption}>{item.caption}</Text>}
+                            </View>
                         </View>
                     )
                 )}
@@ -768,7 +768,6 @@ const AddMemoryModal = ({
 
 const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const insets = useSafeAreaInsets();
-    const scrollY = useRef(new Animated.Value(0)).current;
     const fabProgress = useRef(new Animated.Value(0)).current;
     const loadedUserRef = useRef(null);
 
@@ -787,12 +786,6 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const [capturedAt, setCapturedAtState] = useState(new Date());
     const [capturedAtSource, setCapturedAtSource] = useState('upload_time');
     const [phase, setPhase] = useState('');
-
-    const headerOpacity = scrollY.interpolate({
-        inputRange: [0, 40],
-        outputRange: [0, 1],
-        extrapolate: 'clamp',
-    });
 
     useEffect(() => {
         Animated.spring(fabProgress, {
@@ -998,10 +991,17 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         }
     }, [caption, capturedAt, capturedAtSource, draft, entryType, iconKey, phase, resetDraft, title, userId]);
 
+    const androidStatusBarHeight = StatusBar.currentHeight || 0;
+    const topPadding = Platform.OS === 'android'
+        ? Math.max(insets.top, androidStatusBarHeight) + 14
+        : Math.max(insets.top + 4, 16);
+    const fadeOverlayHeight = Platform.OS === 'android'
+        ? Math.max(insets.top, androidStatusBarHeight) + 40
+        : Math.max(insets.top + 28, 64);
     const contentPadding = useMemo(() => ({
-        paddingTop: insets.top + 76,
+        paddingTop: topPadding,
         paddingBottom: insets.bottom + 94,
-    }), [insets.bottom, insets.top]);
+    }), [insets.bottom, topPadding]);
 
     return (
         <LinearGradient
@@ -1012,14 +1012,12 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             style={styles.screen}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <Animated.View style={[styles.headerBlur, { opacity: headerOpacity, height: insets.top + 66 }]}>
-                <BlurView intensity={70} tint="light" style={StyleSheet.absoluteFill} />
-            </Animated.View>
-            <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-                <View style={styles.headerCopy}>
-                    <Text style={styles.title}>{translateUiText("Our Timeline")}</Text>
-                </View>
-            </View>
+            <LinearGradient
+                colors={['#F8D9EC', 'rgba(248, 217, 236, 0.88)', 'rgba(248, 217, 236, 0.45)', 'rgba(248, 217, 236, 0)']}
+                locations={[0, 0.4, 0.72, 1]}
+                style={[styles.topFadeGradient, { height: fadeOverlayHeight }]}
+                pointerEvents="none"
+            />
 
             <Animated.FlatList
                 data={memories}
@@ -1027,6 +1025,11 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 renderItem={({ item }) => <MemoryCard item={item} />}
                 contentContainerStyle={[styles.listContent, contentPadding, memories.length === 0 && styles.emptyListContent]}
                 showsVerticalScrollIndicator={false}
+                ListHeaderComponent={(
+                    <View style={styles.header}>
+                        <Text style={styles.title}>{translateUiText("Our Timeline")}</Text>
+                    </View>
+                )}
                 onEndReachedThreshold={0.45}
                 onEndReached={() => loadMemories()}
                 refreshControl={
@@ -1047,11 +1050,6 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                         <ActivityIndicator color="#C96F81" />
                     </View>
                 ) : null}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                    { useNativeDriver: false }
-                )}
-                scrollEventThrottle={16}
                 removeClippedSubviews={Platform.OS === 'android'}
             />
 
@@ -1114,7 +1112,7 @@ const styles = StyleSheet.create({
     screen: {
         flex: 1,
     },
-    headerBlur: {
+    topFadeGradient: {
         position: 'absolute',
         top: 0,
         left: 0,
@@ -1122,19 +1120,9 @@ const styles = StyleSheet.create({
         zIndex: 4,
     },
     header: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 5,
-        paddingHorizontal: 18,
-        paddingBottom: 4,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    headerCopy: {
-        flex: 1,
+        paddingLeft: 12,
+        paddingRight: 4,
+        paddingBottom: 10,
     },
     title: {
         fontFamily: fontFamily.extraBold,
@@ -1264,12 +1252,15 @@ const styles = StyleSheet.create({
         lineHeight: 22,
     },
     momentCard: {
-        minHeight: 154,
+        minHeight: 110,
         borderRadius: 24,
         padding: 18,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#F2DED8',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
         justifyContent: 'center',
         ...cardShadow,
     },
@@ -1284,7 +1275,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#FFF0F4',
-        marginBottom: 12,
+        flexShrink: 0,
+    },
+    momentCopy: {
+        flex: 1,
     },
     dateMomentIcon: {
         backgroundColor: '#EAF5EE',
@@ -1292,14 +1286,6 @@ const styles = StyleSheet.create({
     momentGlyph: {
         fontSize: 24,
         lineHeight: 28,
-    },
-    momentKicker: {
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
-        color: '#C96F81',
-        fontSize: 11,
-        letterSpacing: 0,
-        marginBottom: 5,
     },
     inlineKicker: {
         marginBottom: 4,
