@@ -114,6 +114,7 @@ const TabItem = ({
     badge = 0,
     attentionDot = false,
     reduceMotion = false,
+    useLiquidGlass = false,
 }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const activeGlowAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
@@ -237,6 +238,7 @@ const TabItem = ({
                     pointerEvents="none"
                     style={[
                         styles.activeLiquid,
+                        useLiquidGlass && styles.activeLiquidGlass,
                         {
                             opacity: activeGlowAnim,
                             transform: [
@@ -338,6 +340,7 @@ export const BottomTabBar = ({
                     badge={tab.key === 'chats' ? chatBadge : 0}
                     attentionDot={tab.key === 'games' && gamesNeedAttention}
                     reduceMotion={reduceMotion}
+                    useLiquidGlass={shouldUseLiquidGlass}
                 />
             ))}
         </View>
@@ -350,17 +353,20 @@ export const BottomTabBar = ({
                 floatingOffsetStyle,
             ]}
         >
-            <View style={styles.liquidSheet}>
+            <View
+                style={[
+                    styles.liquidSheet,
+                    shouldUseLiquidGlass && styles.nativeLiquidSheet,
+                ]}
+            >
                 {shouldUseLiquidGlass ? (
                     <GlassView
-                        glassEffectStyle="clear"
-                        tintColor="rgba(255,255,255,0.5)"
+                        glassEffectStyle="regular"
                         colorScheme="light"
                         isInteractive={true}
                         borderRadius={36}
                         style={styles.glassSurface}
                     >
-                        <View style={styles.glassMilkTint} />
                         {tabBarContent}
                     </GlassView>
                 ) : (
@@ -406,14 +412,14 @@ const styles = StyleSheet.create({
             default: 'rgba(255,255,255,0.74)',
         }),
     },
+    nativeLiquidSheet: {
+        paddingVertical: 0,
+        backgroundColor: 'transparent',
+    },
     glassSurface: {
         borderRadius: 36,
         paddingVertical: 4,
         overflow: 'hidden',
-    },
-    glassMilkTint: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(255,255,255,0.14)',
     },
     liquidTint: {
         ...StyleSheet.absoluteFillObject,
@@ -461,6 +467,15 @@ const styles = StyleSheet.create({
                 elevation: 2,
             },
         }),
+    },
+    activeLiquidGlass: {
+        top: 4,
+        bottom: 4,
+        backgroundColor: 'rgba(255,255,255,0.24)',
+        borderColor: 'rgba(255,255,255,0.44)',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
     },
     tabInner: {
         alignItems: 'center',

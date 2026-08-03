@@ -1,4 +1,7 @@
-import { selectGamesNeedAttention } from '../notificationsSlice';
+import {
+    selectGameAttentionByType,
+    selectGamesNeedAttention,
+} from '../notificationsSlice';
 
 const makeState = ({
     userId = 'user-1',
@@ -82,5 +85,23 @@ describe('selectGamesNeedAttention', () => {
 
     it('returns false when no game needs action', () => {
         expect(selectGamesNeedAttention(makeState())).toBe(false);
+    });
+
+    it('identifies the exact cards that need attention', () => {
+        const state = makeState({
+            pendingPuzzles: [{
+                _id: 'puzzle-1',
+                creatorId: 'partner-1',
+                partnerId: 'user-1',
+                status: 'pending',
+            }],
+            pendingWordle: { _id: 'wordle-1', status: 'in_progress' },
+        });
+
+        expect(selectGameAttentionByType(state)).toEqual({
+            puzzle: true,
+            tictactoe: false,
+            wordle: true,
+        });
     });
 });

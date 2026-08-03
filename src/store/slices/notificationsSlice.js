@@ -78,14 +78,15 @@ export const selectDuelBadgeCount = createSelector(
 );
 
 /**
- * Whether the Games bottom tab should show its action-needed dot.
+ * Which game cards, and therefore whether the Games bottom tab, should show
+ * an action-needed dot.
  *
  * A sent puzzle or a game where it is the partner's turn is deliberately not
  * considered actionable. The indicator remains visible until the underlying
  * turn/challenge is completed rather than clearing merely because the tab was
  * opened.
  */
-export const selectGamesNeedAttention = createSelector(
+export const selectGameAttentionByType = createSelector(
     [
         selectPendingPuzzles,
         selectPendingPuzzle,
@@ -99,6 +100,15 @@ export const selectGamesNeedAttention = createSelector(
             isPuzzleActionableForUser(puzzle, userId)
         ));
 
-        return hasPuzzleToPlay || !!pendingTicTacToe || !!pendingWordle;
+        return {
+            puzzle: hasPuzzleToPlay,
+            tictactoe: !!pendingTicTacToe,
+            wordle: !!pendingWordle,
+        };
     }
+);
+
+export const selectGamesNeedAttention = createSelector(
+    [selectGameAttentionByType],
+    (attentionByType) => Object.values(attentionByType).some(Boolean)
 );

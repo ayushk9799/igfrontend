@@ -27,7 +27,11 @@ import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether, selectIsPremium, updateUser } from '../store/slices/userSlice';
 import { selectGames } from '../store/slices/gamesSlice';
-import { selectDuelBadgeCount, selectGamesNeedAttention } from '../store/slices/notificationsSlice';
+import {
+    selectDuelBadgeCount,
+    selectGameAttentionByType,
+    selectGamesNeedAttention,
+} from '../store/slices/notificationsSlice';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { API_BASE } from '../constants/Api';
 import { getCoupleTodayChallenge } from '../utils/answerApi';
@@ -270,6 +274,7 @@ export const MainTabNavigator = ({
 
     // Duel notification badge count
     const duelBadgeCount = useSelector(selectDuelBadgeCount);
+    const gameAttentionByType = useSelector(selectGameAttentionByType);
     const gamesNeedAttention = useSelector(selectGamesNeedAttention);
 
     const refreshTopicProgress = useCallback(async () => {
@@ -949,6 +954,7 @@ export const MainTabNavigator = ({
                         pendingTicTacToe={pendingTicTacToe}
                         activeWordle={activeWordle}
                         pendingWordle={pendingWordle}
+                        attentionByGame={gameAttentionByType}
                         onJigsawCreate={onJigsawCreate}
                         onJigsawPlay={onJigsawPlay}
                         onTicTacToePress={onTicTacToePress}

@@ -13,10 +13,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { getUser, storage } from '../utils/authStorage';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 import { prefetchPuzzleTexture } from '../utils/puzzleTextureCache';
+import useReducedMotion from '../hooks/useReducedMotion';
 
 const VIDEO_CALL_GUIDANCE_KEY = 'games_video_call_guidance_v1';
 
@@ -98,6 +100,7 @@ const GamesScreen = ({
     pendingTicTacToe,
     activeWordle,
     pendingWordle,
+    attentionByGame = {},
     onJigsawCreate,
     onJigsawPlay,
     onTicTacToePress,
@@ -109,6 +112,7 @@ const GamesScreen = ({
 }) => {
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
+    const reducedMotion = useReducedMotion();
     const blinkAnim = useRef(new Animated.Value(1)).current;
     const refreshPuzzleRef = useRef(onRefreshPuzzle);
     const refreshedExpiredPuzzleRef = useRef(null);
@@ -194,21 +198,23 @@ const GamesScreen = ({
     }, [pendingPuzzle?._id, pendingPuzzle?.id, pendingPuzzle?.imageUrl]);
 
     useEffect(() => {
-        if (!pendingTicTacToe && !pendingWordle) {
+        const hasCardAttention = Object.values(attentionByGame).some(Boolean);
+        if (!hasCardAttention || reducedMotion) {
+            blinkAnim.stopAnimation();
             blinkAnim.setValue(1);
             return undefined;
         }
 
         const animation = Animated.loop(
             Animated.sequence([
-                Animated.timing(blinkAnim, { toValue: 0.25, duration: 600, useNativeDriver: true }),
+                Animated.timing(blinkAnim, { toValue: 0.2, duration: 600, useNativeDriver: true }),
                 Animated.timing(blinkAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
             ])
         );
 
         animation.start();
         return () => animation.stop();
-    }, [pendingTicTacToe, pendingWordle, blinkAnim]);
+    }, [attentionByGame, blinkAnim, reducedMotion]);
 
     const currentUser = getUser();
     const currentUserId = currentUser?.id || currentUser?._id;
@@ -248,6 +254,7 @@ const GamesScreen = ({
             image: gameAssets.puzzle,
             cardStyle: styles.puzzleCard,
             imageStyle: styles.puzzleImage,
+            needsAttention: !!attentionByGame.puzzle,
             onPress: pendingPuzzle ? () => onJigsawPlay?.(pendingPuzzle) : onJigsawCreate,
         },
         {
@@ -266,6 +273,7 @@ const GamesScreen = ({
             cardStyle: styles.ticCard,
             imageStyle: styles.ticImage,
             active: !!pendingTicTacToe,
+            needsAttention: !!attentionByGame.tictactoe,
             onPress: () => onTicTacToePress?.(pendingTicTacToe || activeTicTacToe),
         },
         {
@@ -284,6 +292,7 @@ const GamesScreen = ({
             cardStyle: styles.wordleCard,
             imageStyle: styles.wordleImage,
             active: !!pendingWordle,
+            needsAttention: !!attentionByGame.wordle,
             onPress: () => onWordlePress?.(pendingWordle || activeWordle),
         },
     ];
@@ -379,53 +388,65 @@ const GamesScreen = ({
 
                     <View style={styles.listContainer}>
                         {games.map((game) => (
-                        <TouchableOpacity
-                            key={game.key}
-                            style={[styles.gameCard, { minHeight: cardMinHeight }, game.cardStyle]}
-                            onPress={game.onPress}
-                            activeOpacity={0.9}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${game.title}. ${game.subtitle}. ${game.buttonLabel}`}
-                        >
-                            <Sparkle style={styles.cardSparkleOne} />
-                            <Sparkle style={styles.cardSparkleTwo} color="#FFE6C7" />
-                            {game.active && (
-                                <Animated.View
-                                    style={[
-                                        styles.activeBadge,
-                                        { backgroundColor: game.accent, opacity: blinkAnim },
-                                    ]}
-                                >
-                                    <Text style={styles.activeText}>{translateUiText("YOUR TURN")}</Text>
-                                </Animated.View>
-                            )}
-                            <View style={styles.cardCopy}>
-                                <View style={styles.headerRow}>
-                                    <View style={[styles.iconChip, { backgroundColor: `${game.accent}24` }]}>
-                                        <GameIcon type={game.icon} color={game.accent} size={18} />
+                            <TouchableOpacity
+                                key={game.key}
+                                style={[styles.gameCard, { minHeight: cardMinHeight }, game.cardStyle]}
+                                onPress={game.onPress}
+                                activeOpacity={0.9}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${game.title}. ${game.subtitle}. ${game.buttonLabel}${game.needsAttention ? `. ${translateUiText("Game action required")}` : ''}`}
+                            >
+                                <Sparkle style={styles.cardSparkleOne} />
+                                <Sparkle style={styles.cardSparkleTwo} color="#FFE6C7" />
+                                {(game.active || game.needsAttention) && (
+                                    <View style={styles.cardStatus} pointerEvents="none">
+                                        {game.active && (
+                                            <View
+                                                style={[
+                                                    styles.activeBadge,
+                                                    { backgroundColor: game.accent },
+                                                ]}
+                                            >
+                                                <Text style={styles.activeText}>{translateUiText("YOUR TURN")}</Text>
+                                            </View>
+                                        )}
+                                        {game.needsAttention && (
+                                            <Animated.View
+                                                style={[
+                                                    styles.gameAttentionDot,
+                                                    { opacity: blinkAnim },
+                                                ]}
+                                            />
+                                        )}
                                     </View>
+                                )}
+                                <View style={styles.cardCopy}>
+                                    <View style={styles.headerRow}>
+                                        <View style={[styles.iconChip, { backgroundColor: `${game.accent}24` }]}>
+                                            <GameIcon type={game.icon} color={game.accent} size={18} />
+                                        </View>
+                                    </View>
+                                    <Text style={styles.gameTitle} numberOfLines={2}>{game.title}</Text>
+                                    <Text style={styles.gameSubtitle} numberOfLines={2}>{game.subtitle}</Text>
+                                    <LinearGradient
+                                        colors={game.gradient}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.cta}
+                                    >
+                                        <Text style={styles.ctaText}>{game.buttonLabel}</Text>
+                                        <View style={styles.ctaArrow}>
+                                            <ArrowIcon color={game.accent} size={10} />
+                                        </View>
+                                    </LinearGradient>
                                 </View>
-                                <Text style={styles.gameTitle} numberOfLines={2}>{game.title}</Text>
-                                <Text style={styles.gameSubtitle} numberOfLines={2}>{game.subtitle}</Text>
-                                <LinearGradient
-                                    colors={game.gradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={styles.cta}
-                                >
-                                    <Text style={styles.ctaText}>{game.buttonLabel}</Text>
-                                    <View style={styles.ctaArrow}>
-                                        <ArrowIcon color={game.accent} size={10} />
-                                    </View>
-                                </LinearGradient>
-                            </View>
-                            <Image
-                                source={game.image}
-                                style={[styles.gameImage, game.imageStyle]}
-                                resizeMode="contain"
-                                accessible={false}
-                            />
-                        </TouchableOpacity>
+                                <Image
+                                    source={game.image}
+                                    style={[styles.gameImage, game.imageStyle]}
+                                    resizeMode="contain"
+                                    accessible={false}
+                                />
+                            </TouchableOpacity>
                         ))}
                     </View>
 
@@ -668,14 +689,32 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 4,
     },
-    activeBadge: {
+    cardStatus: {
         position: 'absolute',
         top: 12,
         right: 12,
         zIndex: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+    },
+    activeBadge: {
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 8,
+    },
+    gameAttentionDot: {
+        width: 9,
+        height: 9,
+        borderRadius: 5,
+        backgroundColor: colors.error,
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
+        shadowColor: '#C93F52',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.28,
+        shadowRadius: 4,
+        elevation: 3,
     },
     activeText: {
         color: '#FFFFFF',
