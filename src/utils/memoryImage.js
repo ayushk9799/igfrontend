@@ -1,6 +1,8 @@
 import { Image } from 'react-native';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
+// Keep the existing image quality contract. Save-time improvements happen by
+// preparing earlier and overlapping work, not by reducing photo quality.
 const MAX_LONG_EDGE = 1600;
 const JPEG_QUALITY = 0.82;
 
@@ -70,7 +72,9 @@ export const getCapturedDateFromAsset = (asset) => {
     };
 };
 
-export const prepareMemoryImage = async (asset) => {
+export const createMemoryImageFileName = () => `memory_${Date.now()}.jpg`;
+
+export const prepareMemoryImage = async (asset, { fileName = createMemoryImageFileName() } = {}) => {
     const sourceUri = normalizeUri(asset?.uri);
     if (!sourceUri) {
         throw new Error('No photo selected');
@@ -106,7 +110,7 @@ export const prepareMemoryImage = async (asset) => {
         uri: outputUri,
         width: outputSize.width || width,
         height: outputSize.height || height,
-        fileName: `memory_${Date.now()}.jpg`,
+        fileName,
         mimeType: 'image/jpeg',
     };
 };

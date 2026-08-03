@@ -9,40 +9,66 @@ const parseJson = async (response) => {
     return data;
 };
 
-export const uploadMemoryImage = async (preparedImage) => {
+export const requestMemoryImageUpload = async ({ fileName, mimeType = 'image/jpeg' }) => {
     const presignedResponse = await apiFetch(`${API_BASE}/api/upload/presigned-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            fileName: preparedImage.fileName,
-            fileType: preparedImage.mimeType || 'image/jpeg',
+            fileName,
+            fileType: mimeType,
             folder: 'memories',
         }),
     });
     const presignedData = await parseJson(presignedResponse);
-    const { presignedUrl, publicUrl, fileKey } = presignedData.data;
+    return presignedData.data;
+};
+
+export const uploadMemoryImage = async (preparedImage, uploadTarget = null) => {
+    let target = uploadTarget || await requestMemoryImageUpload({
+        fileName: preparedImage.fileName,
+        mimeType: preparedImage.mimeType || 'image/jpeg',
+    });
 
     const fileResponse = await fetch(preparedImage.uri);
     const blob = await fileResponse.blob();
 
-    const uploadResponse = await fetch(presignedUrl, {
+    const putImage = (presignedUrl) => fetch(presignedUrl, {
         method: 'PUT',
         headers: { 'Content-Type': preparedImage.mimeType || 'image/jpeg' },
         body: blob,
     });
 
-    if (!uploadResponse.ok) {
+    let uploadResponse = null;
+    try {
+        uploadResponse = await putImage(target.presignedUrl);
+    } catch (error) {
+        if (!uploadTarget) throw error;
+    }
+
+    // A URL warmed while the user edits can expire, or a mobile connection can
+    // briefly drop. Refresh it once rather than making them choose the photo again.
+    if (!uploadResponse?.ok && uploadTarget) {
+        target = await requestMemoryImageUpload({
+            fileName: preparedImage.fileName,
+            mimeType: preparedImage.mimeType || 'image/jpeg',
+        });
+        uploadResponse = await putImage(target.presignedUrl);
+    }
+
+    if (!uploadResponse?.ok) {
         throw new Error('Photo upload failed');
     }
 
-    return { imageUrl: publicUrl, fileKey };
+    return { imageUrl: target.publicUrl, fileKey: target.fileKey };
 };
 
 export const createMemory = async (payload) => {
     const response = await fetch(`${API_BASE}/api/memories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        // Only this new client opts into returning as soon as the memory is
+        // durable. Older app builds omit the flag and retain their old flow.
+        body: JSON.stringify({ ...payload, notifyPartnerAsync: true }),
     });
     const data = await parseJson(response);
     return data.data;

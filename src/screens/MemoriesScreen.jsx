@@ -26,8 +26,18 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { colors } from '../theme';
 import { storage } from '../utils/authStorage';
-import { createMemory, fetchMemories, uploadMemoryImage } from '../api/memoriesApi';
-import { getCapturedDateFromAsset, getDisplayAspectRatio, prepareMemoryImage } from '../utils/memoryImage';
+import {
+    createMemory,
+    fetchMemories,
+    requestMemoryImageUpload,
+    uploadMemoryImage,
+} from '../api/memoriesApi';
+import {
+    createMemoryImageFileName,
+    getCapturedDateFromAsset,
+    getDisplayAspectRatio,
+    prepareMemoryImage,
+} from '../utils/memoryImage';
 import { getUiLocale, translateUiText } from '../i18n/uiTranslation';
 
 const PAGE_LIMIT = 20;
@@ -214,15 +224,21 @@ const mergeMemories = (current, incoming) => {
     });
 };
 
-const UploadProgress = ({ phase }) => {
-    if (!phase) return null;
+const createImageUploadJob = (asset) => {
+    const fileName = createMemoryImageFileName();
+    const preparedImagePromise = prepareMemoryImage(asset, { fileName });
+    const uploadTargetPromise = requestMemoryImageUpload({ fileName, mimeType: 'image/jpeg' });
 
-    return (
-        <View style={styles.progressPill}>
-            <ActivityIndicator color="#FFFFFF" size="small" />
-            <Text style={styles.progressText}>{phase}</Text>
-        </View>
-    );
+    // Preparation and URL signing start as soon as a photo is chosen. Observe
+    // early failures now; saveMemory will surface them if the user presses save.
+    preparedImagePromise.catch(() => {});
+    uploadTargetPromise.catch(() => {});
+
+    return {
+        sourceUri: asset.uri,
+        preparedImagePromise,
+        uploadTargetPromise,
+    };
 };
 
 const MemoryImage = ({ uri, aspectRatio }) => {
@@ -564,7 +580,7 @@ const AddMemoryModal = ({
     capturedAt,
     setCapturedAt,
     capturedAtSource,
-    phase,
+    isSaving,
     onClose,
     onPickPhoto,
     onSave,
@@ -597,7 +613,7 @@ const AddMemoryModal = ({
                     style={{ flex: 1 }}
                 >
                     <View style={[styles.pageHeader, { paddingTop: insets.top + 10 }]}>
-                        <TouchableOpacity style={styles.pageHeaderBack} onPress={onClose} disabled={!!phase}>
+                        <TouchableOpacity style={styles.pageHeaderBack} onPress={onClose} disabled={isSaving}>
                             <ChevronLeft color="#302832" size={24} strokeWidth={2} />
                         </TouchableOpacity>
                         <Text style={styles.pageHeaderTitle}>{typeConfig.modalTitle}</Text>
@@ -613,7 +629,7 @@ const AddMemoryModal = ({
                     {draft?.uri && (
                         <View style={styles.previewButton}>
                             <Image source={{ uri: draft.uri }} style={styles.previewImage} resizeMode="cover" />
-                            {!phase && (
+                            {!isSaving && (
                                 <TouchableOpacity
                                     style={styles.removePhotoBadge}
                                     onPress={onRemovePhoto}
@@ -634,7 +650,7 @@ const AddMemoryModal = ({
                                     setShowIconPicker((current) => !current);
                                 }}
                                 activeOpacity={0.86}
-                                disabled={!!phase}
+                                disabled={isSaving}
                             >
                                 <View style={styles.momentPreviewIcon}>
                                     <Text style={styles.momentPreviewGlyph}>{getSpecialDateIcon(iconKey).glyph}</Text>
@@ -652,7 +668,7 @@ const AddMemoryModal = ({
                                     placeholder={typeConfig.placeholderTitle}
                                     placeholderTextColor="#B09AA4"
                                     maxLength={TITLE_LIMIT}
-                                    editable={!phase}
+                                    editable={!isSaving}
                                 />
                             </View>
                         </View>
@@ -660,7 +676,7 @@ const AddMemoryModal = ({
                         <>
                             <View style={styles.titlePhotoRow}>
                                 {!draft?.uri && (
-                                    <TouchableOpacity style={styles.photoIconButton} onPress={onPickPhoto} activeOpacity={0.88} disabled={!!phase}>
+                                    <TouchableOpacity style={styles.photoIconButton} onPress={onPickPhoto} activeOpacity={0.88} disabled={isSaving}>
                                         <ImagePlus color="#C96F81" size={22} strokeWidth={1.9} />
                                     </TouchableOpacity>
                                 )}
@@ -671,7 +687,7 @@ const AddMemoryModal = ({
                                     placeholder={typeConfig.placeholderTitle}
                                     placeholderTextColor="#B09AA4"
                                     maxLength={TITLE_LIMIT}
-                                    editable={!phase}
+                                    editable={!isSaving}
                                 />
                             </View>
                         </>
@@ -680,7 +696,7 @@ const AddMemoryModal = ({
                     <TouchableOpacity
                         style={styles.dateChip}
                         onPress={openDatePicker}
-                        disabled={!!phase}
+                        disabled={isSaving}
                         activeOpacity={0.86}
                     >
                         <Text style={styles.dateChipText}>{dateParts.line}</Text>
@@ -694,18 +710,21 @@ const AddMemoryModal = ({
                         placeholderTextColor="#B09AA4"
                         multiline
                         maxLength={CAPTION_LIMIT}
-                        editable={!phase}
+                        editable={!isSaving}
                     />
 
                     <TouchableOpacity
-                        style={[styles.saveButton, !!phase && styles.saveButtonDisabled]}
+                        style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
                         onPress={onSave}
-                        disabled={!!phase}
+                        disabled={isSaving}
                         activeOpacity={0.9}
                     >
-                        <Text style={styles.saveButtonText}>{typeConfig.saveLabel}</Text>
+                        {isSaving ? (
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                            <Text style={styles.saveButtonText}>{typeConfig.saveLabel}</Text>
+                        )}
                     </TouchableOpacity>
-                    <UploadProgress phase={phase} />
                 </ScrollView>
             </KeyboardAvoidingView>
             </LinearGradient>
@@ -770,6 +789,8 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const insets = useSafeAreaInsets();
     const fabProgress = useRef(new Animated.Value(0)).current;
     const loadedUserRef = useRef(null);
+    const imageUploadJobRef = useRef(null);
+    const saveInFlightRef = useRef(false);
 
     const [memories, setMemories] = useState(() => userId && hasPartner ? readCachedMemories(userId) : []);
     const [cursor, setCursor] = useState(null);
@@ -785,7 +806,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const [caption, setCaption] = useState('');
     const [capturedAt, setCapturedAtState] = useState(new Date());
     const [capturedAtSource, setCapturedAtSource] = useState('upload_time');
-    const [phase, setPhase] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         Animated.spring(fabProgress, {
@@ -866,7 +887,8 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         setCaption('');
         setCapturedAtState(new Date());
         setCapturedAtSource('upload_time');
-        setPhase('');
+        imageUploadJobRef.current = null;
+        setIsSaving(false);
     }, []);
 
     const openAdd = useCallback((type = 'memory') => {
@@ -910,6 +932,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             if (!asset?.uri) return;
 
             const captured = getCapturedDateFromAsset(asset);
+            imageUploadJobRef.current = createImageUploadJob(asset);
             setCapturedAtState(captured.capturedAt);
             setCapturedAtSource(captured.capturedAtSource);
             setDraft({
@@ -927,7 +950,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     }, []);
 
     const saveMemory = useCallback(async () => {
-        if (!userId || phase) return;
+        if (!userId || saveInFlightRef.current) return;
 
         const safeTitle = title.trim();
         const safeCaption = caption.trim();
@@ -947,19 +970,34 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             return;
         }
 
+        saveInFlightRef.current = true;
         try {
+            setIsSaving(true);
             let preparedImage = null;
             let uploaded = {};
 
             if (draft?.asset) {
-                setPhase('Preparing photo');
-                preparedImage = await prepareMemoryImage(draft.asset);
+                const existingJob = imageUploadJobRef.current;
+                const job = existingJob?.sourceUri === draft.asset.uri
+                    ? existingJob
+                    : createImageUploadJob(draft.asset);
+                imageUploadJobRef.current = job;
 
-                setPhase('Uploading photo');
-                uploaded = await uploadMemoryImage(preparedImage);
+                // Both promises have already been running in parallel. If URL
+                // warming failed while offline, refresh only that cheap step.
+                preparedImage = await job.preparedImagePromise;
+                let uploadTarget;
+                try {
+                    uploadTarget = await job.uploadTargetPromise;
+                } catch {
+                    uploadTarget = await requestMemoryImageUpload({
+                        fileName: preparedImage.fileName,
+                        mimeType: preparedImage.mimeType,
+                    });
+                }
+                uploaded = await uploadMemoryImage(preparedImage, uploadTarget);
             }
 
-            setPhase('Saving timeline');
             const saved = await createMemory({
                 userId,
                 entryType: normalizedType,
@@ -987,9 +1025,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 translateUiText(error.message || "Please try again."),
             );
         } finally {
-            setPhase('');
+            saveInFlightRef.current = false;
+            setIsSaving(false);
         }
-    }, [caption, capturedAt, capturedAtSource, draft, entryType, iconKey, phase, resetDraft, title, userId]);
+    }, [caption, capturedAt, capturedAtSource, draft, entryType, iconKey, resetDraft, title, userId]);
 
     const androidStatusBarHeight = StatusBar.currentHeight || 0;
     const topPadding = Platform.OS === 'android'
@@ -1072,16 +1111,19 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 capturedAt={capturedAt}
                 setCapturedAt={setCapturedAt}
                 capturedAtSource={capturedAtSource}
-                phase={phase}
+                isSaving={isSaving}
                 onClose={() => {
-                    if (!phase) {
+                    if (!isSaving) {
                         setModalVisible(false);
                         resetDraft();
                     }
                 }}
                 onPickPhoto={pickPhoto}
                 onSave={saveMemory}
-                onRemovePhoto={() => setDraft(null)}
+                onRemovePhoto={() => {
+                    imageUploadJobRef.current = null;
+                    setDraft(null);
+                }}
             />
 
             <TimelineFab
@@ -1885,25 +1927,6 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight('800'),
         color: '#FFFFFF',
         fontSize: 16,
-    },
-    progressPill: {
-        position: 'absolute',
-        left: 28,
-        right: 28,
-        bottom: 28,
-        height: 46,
-        borderRadius: 23,
-        backgroundColor: 'rgba(45,35,42,0.86)',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-    },
-    progressText: {
-        fontFamily: fontFamily.bold,
-        fontWeight: fontWeight('700'),
-        color: '#FFFFFF',
-        fontSize: 14,
     },
     calendarOverlay: {
         ...StyleSheet.absoluteFillObject,
