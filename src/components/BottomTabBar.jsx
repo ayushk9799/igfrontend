@@ -106,9 +106,18 @@ const TabIcon = ({ iconKey, color, size = 24, filled = false }) => {
     return <IconComponent color={color} size={size} strokeWidth={filled ? 2.5 : 1.75} />;
 };
 
-const TabItem = ({ iconKey, label, isActive, onPress, badge = 0, reduceMotion = false }) => {
+const TabItem = ({
+    iconKey,
+    label,
+    isActive,
+    onPress,
+    badge = 0,
+    attentionDot = false,
+    reduceMotion = false,
+}) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const activeGlowAnim = useRef(new Animated.Value(isActive ? 1 : 0)).current;
+    const attentionBlinkAnim = useRef(new Animated.Value(1)).current;
     const pressAnimationRef = useRef(null);
 
     useEffect(() => {
@@ -138,6 +147,33 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0, reduceMotion = 
             pressAnimationRef.current?.stop();
         };
     }, [activeGlowAnim, isActive, reduceMotion, scaleAnim]);
+
+    useEffect(() => {
+        attentionBlinkAnim.stopAnimation();
+
+        if (!attentionDot || reduceMotion) {
+            attentionBlinkAnim.setValue(1);
+            return undefined;
+        }
+
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(attentionBlinkAnim, {
+                    toValue: 0.2,
+                    duration: 600,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(attentionBlinkAnim, {
+                    toValue: 1,
+                    duration: 600,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+
+        animation.start();
+        return () => animation.stop();
+    }, [attentionBlinkAnim, attentionDot, reduceMotion]);
 
     const handlePressIn = () => {
         if (reduceMotion) {
@@ -184,6 +220,7 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0, reduceMotion = 
             activeOpacity={0.9}
             accessibilityRole="tab"
             accessibilityLabel={`${translateUiText(label)}${badgeLabel}`}
+            accessibilityHint={attentionDot ? translateUiText("Game action required") : undefined}
             accessibilityState={{ selected: isActive }}
         >
             <Animated.View
@@ -234,6 +271,14 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0, reduceMotion = 
                                 </Text>
                             </View>
                         )}
+                        {attentionDot && badge === 0 && (
+                            <Animated.View
+                                style={[
+                                    styles.attentionDot,
+                                    { opacity: attentionBlinkAnim },
+                                ]}
+                            />
+                        )}
                     </View>
                     <Text
                         style={[
@@ -254,9 +299,15 @@ const TabItem = ({ iconKey, label, isActive, onPress, badge = 0, reduceMotion = 
  *   currentTab: string,
  *   onTabChange: (tab: 'home' | 'memories' | 'games' | 'chats') => void,
  *   chatBadge?: number,
+ *   gamesNeedAttention?: boolean,
  * }} props
  */
-export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
+export const BottomTabBar = ({
+    currentTab,
+    onTabChange,
+    chatBadge = 0,
+    gamesNeedAttention = false,
+}) => {
     const insets = useSafeAreaInsets();
     const { reduceMotion, reduceTransparency } = useAccessibilityPreferences();
     const {
@@ -285,6 +336,7 @@ export const BottomTabBar = ({ currentTab, onTabChange, chatBadge = 0 }) => {
                     isActive={currentTab === tab.key}
                     onPress={() => onTabChange(tab.key)}
                     badge={tab.key === 'chats' ? chatBadge : 0}
+                    attentionDot={tab.key === 'games' && gamesNeedAttention}
                     reduceMotion={reduceMotion}
                 />
             ))}
@@ -448,6 +500,17 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: fontWeight('700'),
         color: '#FFFFFF',
+    },
+    attentionDot: {
+        position: 'absolute',
+        top: -4,
+        right: -7,
+        width: 9,
+        height: 9,
+        borderRadius: 5,
+        backgroundColor: colors.error,
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
     },
 });
 

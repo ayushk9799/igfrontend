@@ -3,6 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
     // Puzzle
+    pendingPuzzles: [],
     pendingPuzzle: null,
     selectedPuzzle: null,
 
@@ -22,6 +23,9 @@ const gamesSlice = createSlice({
     initialState,
     reducers: {
         // Puzzle actions
+        setPendingPuzzles: (state, action) => {
+            state.pendingPuzzles = action.payload || [];
+        },
         setPendingPuzzle: (state, action) => {
             state.pendingPuzzle = action.payload;
         },
@@ -57,6 +61,7 @@ const gamesSlice = createSlice({
 });
 
 export const {
+    setPendingPuzzles,
     setPendingPuzzle,
     setSelectedPuzzle,
     setPendingTicTacToe,
@@ -70,6 +75,7 @@ export const {
 
 // Selectors
 export const selectGames = (state) => state.games;
+export const selectPendingPuzzles = (state) => state.games.pendingPuzzles;
 export const selectPendingPuzzle = (state) => state.games.pendingPuzzle;
 export const selectPendingTicTacToe = (state) => state.games.pendingTicTacToe;
 export const selectActiveTicTacToe = (state) => state.games.activeTicTacToe;

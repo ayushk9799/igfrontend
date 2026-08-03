@@ -64,7 +64,7 @@ import { getRequiredOnboardingScreen, needsRelationshipStartDate } from '../util
 import useReducedMotion from '../hooks/useReducedMotion';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
-import { setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
+import { clearGames, setPendingPuzzles, setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { getContentLanguage, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 import { prefetchPuzzleTexture } from '../utils/puzzleTextureCache';
@@ -1709,16 +1709,22 @@ export const AppNavigator = () => {
             const response = await fetch(`${API_BASE}/api/puzzle/pending/${userId}`);
             const data = await response.json();
             if (data.success && data.data.length > 0) {
-                const nextPuzzle = data.data[0];
+                const nextPuzzle = data.data.find((puzzle) => {
+                    const partnerId = puzzle.partnerId?._id || puzzle.partnerId;
+                    return partnerId && String(partnerId) === String(userId);
+                }) || data.data[0];
+                dispatch(setPendingPuzzles(data.data));
                 dispatch(setPendingPuzzle(nextPuzzle)); // Show first pending puzzle
                 prefetchPuzzleTexture(
                     nextPuzzle._id || nextPuzzle.id,
                     nextPuzzle.imageUrl
                 );
             } else {
+                dispatch(setPendingPuzzles([]));
                 dispatch(setPendingPuzzle(null));
             }
         } catch (err) {
+            dispatch(setPendingPuzzles([]));
             dispatch(setPendingPuzzle(null));
         }
     };
@@ -1882,6 +1888,34 @@ export const AppNavigator = () => {
             dispatch(setPendingWordle(null));
         }
     };
+
+    // Socket events keep game demand current while connected. Reconcile all
+    // three game types on login and whenever the app returns to the foreground
+    // in case an event arrived while the app was suspended or disconnected.
+    useEffect(() => {
+        const userId = userData?.id || userData?._id;
+        if (!userData?.isAuthenticated || !userId) return undefined;
+
+        const refreshPendingGames = () => {
+            Promise.allSettled([
+                fetchPendingPuzzle(userId),
+                fetchPendingTicTacToe(userId),
+                fetchPendingWordle(userId),
+            ]);
+        };
+
+        refreshPendingGames();
+        const subscription = AppState.addEventListener('change', (nextState) => {
+            if (nextState === 'active') {
+                refreshPendingGames();
+            }
+        });
+
+        return () => subscription?.remove();
+        // Fetch helpers are scoped to this navigator; identity controls when
+        // reconciliation should be installed and rerun.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userData?.id, userData?._id, userData?.isAuthenticated]);
 
     // Handle login - save user and navigate based on pairing status
     const handleLogin = (user, token) => {
@@ -2230,6 +2264,7 @@ export const AppNavigator = () => {
             disconnect(); // Explicitly disconnect socket
             clearAuth();
             dispatch(logout());
+            dispatch(clearGames());
             setPendingInvite(null);
             setCurrentScreen('login');
         });
@@ -2258,6 +2293,7 @@ export const AppNavigator = () => {
                     disconnect(); // Explicitly disconnect socket
                     clearAuth();
                     dispatch(logout());
+                    dispatch(clearGames());
                     setPendingInvite(null);
                     setCurrentScreen('login');
                 });
@@ -2281,6 +2317,7 @@ export const AppNavigator = () => {
             disconnect(); // Explicitly disconnect socket
             clearAuth();
             dispatch(logout());
+            dispatch(clearGames());
             setPendingInvite(null);
             setCurrentScreen('login');
         });

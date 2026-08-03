@@ -27,7 +27,7 @@ import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether, selectIsPremium, updateUser } from '../store/slices/userSlice';
 import { selectGames } from '../store/slices/gamesSlice';
-import { selectDuelBadgeCount } from '../store/slices/notificationsSlice';
+import { selectDuelBadgeCount, selectGamesNeedAttention } from '../store/slices/notificationsSlice';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { API_BASE } from '../constants/Api';
 import { getCoupleTodayChallenge } from '../utils/answerApi';
@@ -270,6 +270,7 @@ export const MainTabNavigator = ({
 
     // Duel notification badge count
     const duelBadgeCount = useSelector(selectDuelBadgeCount);
+    const gamesNeedAttention = useSelector(selectGamesNeedAttention);
 
     const refreshTopicProgress = useCallback(async () => {
         const userId = userData?._id || userData?.id;
@@ -1107,6 +1108,7 @@ export const MainTabNavigator = ({
                     currentTab={currentTab}
                     onTabChange={handleBottomTabChange}
                     chatBadge={chatBadge}
+                    gamesNeedAttention={gamesNeedAttention}
                 />
             )}
 

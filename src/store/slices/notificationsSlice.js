@@ -2,7 +2,26 @@
 // No new state needed — just selectors that read from the games slice
 
 import { createSelector } from '@reduxjs/toolkit';
-import { selectPendingPuzzle, selectPendingTicTacToe, selectPendingWordle } from './gamesSlice';
+import {
+    selectPendingPuzzle,
+    selectPendingPuzzles,
+    selectPendingTicTacToe,
+    selectPendingWordle,
+} from './gamesSlice';
+
+const selectCurrentUserId = (state) => state.user?.id || state.user?._id || null;
+
+const getEntityId = (entity) => entity?._id || entity?.id || entity || null;
+
+const isPuzzleActionableForUser = (puzzle, userId) => {
+    if (!puzzle || !userId) return false;
+
+    const partnerId = getEntityId(puzzle.partnerId);
+    const isRecipient = partnerId && String(partnerId) === String(userId);
+    const isActive = ['pending', 'in_progress'].includes(puzzle.status);
+
+    return isRecipient && isActive;
+};
 
 /**
  * Selector that derives a list of duel notification objects from the games state.
@@ -56,4 +75,30 @@ export const selectDuelNotifications = createSelector(
 export const selectDuelBadgeCount = createSelector(
     [selectDuelNotifications],
     (notifications) => notifications.length
+);
+
+/**
+ * Whether the Games bottom tab should show its action-needed dot.
+ *
+ * A sent puzzle or a game where it is the partner's turn is deliberately not
+ * considered actionable. The indicator remains visible until the underlying
+ * turn/challenge is completed rather than clearing merely because the tab was
+ * opened.
+ */
+export const selectGamesNeedAttention = createSelector(
+    [
+        selectPendingPuzzles,
+        selectPendingPuzzle,
+        selectPendingTicTacToe,
+        selectPendingWordle,
+        selectCurrentUserId,
+    ],
+    (pendingPuzzles, pendingPuzzle, pendingTicTacToe, pendingWordle, userId) => {
+        const puzzles = pendingPuzzles?.length ? pendingPuzzles : [pendingPuzzle];
+        const hasPuzzleToPlay = puzzles.some((puzzle) => (
+            isPuzzleActionableForUser(puzzle, userId)
+        ));
+
+        return hasPuzzleToPlay || !!pendingTicTacToe || !!pendingWordle;
+    }
 );
