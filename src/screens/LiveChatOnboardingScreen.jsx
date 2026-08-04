@@ -326,9 +326,9 @@ const LiveChatOnboardingScreen = ({ onComplete }) => {
                             style={styles.buttonShadow}
                         >
                             <LinearGradient
-                                colors={['#FF6B82', '#F45170']}
+                                colors={['#FF5E97', '#FFA1C9']}
                                 start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
+                                end={{ x: 1, y: 0 }}
                                 style={styles.continueButton}
                             >
                                 <Text style={styles.continueText}>
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.2,
         shadowRadius: 18,
-        elevation: 8,
+        elevation: 0,
     },
     previewStatusBar: {
         height: 32,
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 8,
-        elevation: 2,
+        elevation: 0,
     },
     previewCameraButton: {
         width: 40,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
-        elevation: 2,
+        elevation: 0,
     },
     previewHeaderTitle: {
         color: '#1B1237',
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
-        elevation: 3,
+        elevation: 0,
     },
     videoTile: {
         width: 102,
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.32,
         shadowRadius: 0.6,
-        elevation: 1,
+        elevation: 0,
     },
     letterKeyText: {
         color: '#111111',
@@ -696,11 +696,11 @@ const styles = StyleSheet.create({
         width: '100%',
         marginTop: 4,
         borderRadius: 24,
-        shadowColor: '#F45170',
+        shadowColor: '#FF5E97',
         shadowOpacity: 0.22,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 8 },
-        elevation: 4,
+        elevation: 0,
     },
     continueButton: {
         height: 48,

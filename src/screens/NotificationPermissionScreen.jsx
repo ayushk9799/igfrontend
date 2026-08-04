@@ -96,51 +96,51 @@ const NotificationPermissionScreen = ({ onComplete }) => {
         notif3Opacity.setValue(0);
 
         Animated.sequence([
-            Animated.delay(300), // Briefly wait for the screen entrance
+            Animated.delay(220), // Briefly wait for the screen entrance
 
             // 1st notification pops
             Animated.parallel([
                 Animated.spring(notif1Scale, {
                     toValue: 1,
-                    friction: 7,
-                    tension: 70,
+                    friction: 8,
+                    tension: 90,
                     useNativeDriver: true,
                 }),
                 Animated.timing(notif1Opacity, {
                     toValue: 1,
-                    duration: 120,
+                    duration: 90,
                     useNativeDriver: true,
                 })
             ]),
-            Animated.delay(300),
+            Animated.delay(180),
 
             // 2nd notification pops
             Animated.parallel([
                 Animated.spring(notif2Scale, {
                     toValue: 1,
-                    friction: 7,
-                    tension: 70,
+                    friction: 8,
+                    tension: 90,
                     useNativeDriver: true,
                 }),
                 Animated.timing(notif2Opacity, {
                     toValue: 1,
-                    duration: 120,
+                    duration: 90,
                     useNativeDriver: true,
                 })
             ]),
-            Animated.delay(300),
+            Animated.delay(180),
 
             // 3rd notification pops
             Animated.parallel([
                 Animated.spring(notif3Scale, {
                     toValue: 1,
-                    friction: 7,
-                    tension: 70,
+                    friction: 8,
+                    tension: 90,
                     useNativeDriver: true,
                 }),
                 Animated.timing(notif3Opacity, {
                     toValue: 1,
-                    duration: 120,
+                    duration: 90,
                     useNativeDriver: true,
                 })
             ])
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 6,
-        elevation: 3,
+        elevation: 0,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.5)',
     },
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
-        elevation: 5,
+        elevation: 0,
     },
     allowButtonGradient: {
         flex: 1,

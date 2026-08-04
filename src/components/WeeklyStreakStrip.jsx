@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.11,
         shadowRadius: 18,
-        elevation: 4,
+        elevation: 0,
     },
     bare: {
         marginBottom: spacing.sm,

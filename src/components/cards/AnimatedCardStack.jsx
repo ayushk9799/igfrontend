@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
         top: 24,
         right: 24,
         zIndex: 4,
-        elevation: 4,
+        elevation: 0,
         paddingHorizontal: 10,
         paddingVertical: 6,
         borderRadius: 14,

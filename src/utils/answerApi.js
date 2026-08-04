@@ -34,6 +34,25 @@ export const submitAnswer = async (userId, challengeId, taskIndex, answer, answe
 };
 
 /**
+ * Mark the user's side of a Daily Challenge complete.
+ * The backend sends one bundled notification to the partner on the first call.
+ */
+export const completeDailyChallenge = async (userId, challengeId) => {
+    try {
+        const response = await apiFetch(`${API_BASE}/api/answers/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, challengeId }),
+        });
+
+        return await response.json();
+    } catch (error) {
+        console.error('❌ [COMPLETE_DAILY_CHALLENGE] Error:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
  * Get user's answers for a challenge
  */
 export const getUserAnswers = async (challengeId, userId) => {

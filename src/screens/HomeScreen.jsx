@@ -961,7 +961,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 16,
-        elevation: 16,
+        elevation: 0,
     },
     videoCallGuideArrow: {
         position: 'absolute',
@@ -1079,7 +1079,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 6,
             },
             android: {
-                elevation: 4,
+                elevation: 0,
             },
         }),
     },
@@ -1234,7 +1234,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 14,
             },
             android: {
-                elevation: 5,
+                elevation: 0,
             },
         }),
     },
@@ -1393,7 +1393,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 12,
             },
             android: {
-                elevation: 5,
+                elevation: 0,
             },
         }),
     },
@@ -1469,7 +1469,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 8,
             },
             android: {
-                elevation: 4,
+                elevation: 0,
             },
         }),
     },
@@ -1522,7 +1522,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 12,
             },
             android: {
-                elevation: 5,
+                elevation: 0,
             },
         }),
     },

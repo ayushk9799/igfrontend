@@ -139,9 +139,9 @@ const LiveCallOnboardingScreen = ({ onComplete }) => {
                         style={styles.buttonShadow}
                     >
                         <LinearGradient
-                            colors={['#FF6B82', '#F45170']}
+                            colors={['#FF5E97', '#FFA1C9']}
                             start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                            end={{ x: 1, y: 0 }}
                             style={styles.continueButton}
                         >
                             <Text style={styles.continueText}>{translateUiText("Keep going")}</Text>
@@ -214,11 +214,11 @@ const styles = StyleSheet.create({
         width: '100%',
         marginTop: 6,
         borderRadius: 24,
-        shadowColor: '#F45170',
+        shadowColor: '#FF5E97',
         shadowOpacity: 0.22,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 8 },
-        elevation: 4,
+        elevation: 0,
     },
     continueButton: {
         height: 48,

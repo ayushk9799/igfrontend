@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 20,
             },
             android: {
-                elevation: 24,
+                elevation: 0,
             },
         }),
     },
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 4,
             },
             android: {
-                elevation: 2,
+                elevation: 0,
             },
         }),
     },
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 6,
             },
             android: {
-                elevation: 1.5,
+                elevation: 0,
             },
         }),
     },
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
-        elevation: 4,
+        elevation: 0,
     },
     shareButtonDisabled: {
         backgroundColor: '#E2E8F0',
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
-        elevation: 2,
+        elevation: 0,
     },
     partnerTitle: {
         fontSize: 14,

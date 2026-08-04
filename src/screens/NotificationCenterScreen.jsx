@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,
-        elevation: 3,
+        elevation: 0,
     },
     headerTitle: {
         fontSize: 20,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     iconCircle: {
         width: 46,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,
-        elevation: 3,
+        elevation: 0,
     },
     emptyTitle: {
         fontSize: 18,

@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.08,
         shadowRadius: 20,
-        elevation: 4,
+        elevation: 0,
         marginBottom: spacing.lg,
     },
     emojiContainer: {
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
-        elevation: 1,
+        elevation: 0,
     },
     emojiText: {
         fontSize: 32,
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.04,
         shadowRadius: 12,
-        elevation: 2,
+        elevation: 0,
     },
     questionHeader: {
         flexDirection: 'row',
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.02,
         shadowRadius: 4,
-        elevation: 1,
+        elevation: 0,
     },
     answerText: {
         fontSize: 13,
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.12,
         shadowRadius: 12,
-        elevation: 3,
+        elevation: 0,
         flexDirection: 'row',
         gap: 8,
     },

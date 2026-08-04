@@ -1727,7 +1727,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.08,
         shadowRadius: 12,
-        elevation: 3,
+        elevation: 0,
     },
     headerTitle: {
         fontSize: 24,
@@ -1754,7 +1754,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     restartButtonDisabled: {
         opacity: 0.5,
@@ -1829,7 +1829,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 18,
             },
             android: {
-                elevation: 4,
+                elevation: 0,
             },
         }),
     },
@@ -1840,7 +1840,7 @@ const styles = StyleSheet.create({
         shadowColor: '#A855F7',
         shadowOpacity: 0.18,
         shadowRadius: 18,
-        elevation: 7,
+        elevation: 0,
     },
     cardSymbolContainer: {
         width: 48,
@@ -1898,7 +1898,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
-        elevation: 3,
+        elevation: 0,
     },
     vsBadgeText: {
         fontSize: 12,
@@ -2003,7 +2003,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 24,
             },
             android: {
-                elevation: 8,
+                elevation: 0,
             },
         }),
     },
@@ -2057,7 +2057,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.9,
         shadowRadius: 12,
-        elevation: 4,
+        elevation: 0,
     },
     winningLineCore: {
         position: 'absolute',
@@ -2109,7 +2109,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.14,
         shadowRadius: 12,
-        elevation: 4,
+        elevation: 0,
     },
     restartGameButtonDisabled: {
         opacity: 0.65,

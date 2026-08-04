@@ -17,11 +17,13 @@ import ExpoImageCropTool from 'expo-image-crop-tool';
 import { Camera } from 'react-native-camera-kit';
 
 import { categoryConfig } from './categoryConfig';
-import { cardStyles as styles } from './cardStyles';
 import { colors } from '../../theme';
 import { uploadImageToS3 } from '../../utils/uploadApi';
 import { fontFamily } from '../../constants/fonts';
 import { translateUiText } from '../../i18n/uiTranslation';
+
+// Keep camera framing, gallery cropping, and previews visually identical.
+const PHOTO_ASPECT_RATIO = 0.82;
 
 /**
  * TakePhotoCard - Card for capturing or selecting photos
@@ -141,6 +143,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
             const cropResult = await ExpoImageCropTool.openCropperAsync({
                 imageUri: sourceUri,
                 shape: 'rectangle',
+                aspectRatio: PHOTO_ASPECT_RATIO,
                 format: 'jpeg',
                 compressImageQuality: 0.9,
             });
@@ -224,23 +227,25 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
 
                 {previewUri ? (
                     <>
-                        <View style={styles.cameraBoxContainer}>
-                            <Image
-                                source={{ uri: typeof previewUri === 'string' ? previewUri : previewUri?.uri }}
-                                style={[
-                                    styles.previewInCameraBox,
-                                    previewUri?.isFrontCamera && { transform: [{ scaleX: -1 }] }
-                                ]}
-                                resizeMode="cover"
-                            />
+                        <View style={photoStyles.previewArea}>
+                            <View style={photoStyles.previewFrame}>
+                                <Image
+                                    source={{ uri: typeof previewUri === 'string' ? previewUri : previewUri?.uri }}
+                                    style={[
+                                        photoStyles.previewImage,
+                                        previewUri?.isFrontCamera && photoStyles.frontCameraPreview
+                                    ]}
+                                    resizeMode="cover"
+                                />
+                            </View>
                         </View>
-                        <View style={styles.photoActionsRow}>
-                            <TouchableOpacity onPress={handleRetake} style={[styles.photoActionBtn, { backgroundColor: colors.borderLight }]}>
+                        <View style={photoStyles.photoActionsRow}>
+                            <TouchableOpacity onPress={handleRetake} style={[photoStyles.photoActionBtn, { backgroundColor: colors.borderLight }]}>
                                 <Text style={{ color: colors.text, fontWeight: '600', fontFamily: fontFamily.bold }}>{translateUiText("Retake")}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={handleUsePhoto}
-                                style={[styles.photoActionBtn, { backgroundColor: config.color }]}
+                                style={[photoStyles.photoActionBtn, { backgroundColor: config.color }]}
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? (
@@ -295,6 +300,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                                 flashMode={cameraType === 'front' ? 'off' : 'auto'}
                                 focusMode={"on"}
                                 zoomMode={"on"}
+                                resizeMode="cover"
                             />
                         </View>
                     </View>
@@ -383,6 +389,48 @@ const photoStyles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
     },
 
+    previewArea: {
+        flex: 1,
+        minHeight: 0,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: spacing.sm,
+    },
+    previewFrame: {
+        flex: 1,
+        aspectRatio: PHOTO_ASPECT_RATIO,
+        maxWidth: '100%',
+        borderRadius: 24,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.55)',
+    },
+    previewImage: {
+        width: '100%',
+        height: '100%',
+    },
+    frontCameraPreview: {
+        transform: [{ scaleX: -1 }],
+    },
+    photoActionsRow: {
+        flexDirection: 'row',
+        flexShrink: 0,
+        gap: spacing.md,
+        paddingBottom: spacing.xs,
+    },
+    photoActionBtn: {
+        flex: 1,
+        minHeight: 48,
+        paddingVertical: spacing.sm,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.30)',
+    },
+
     bottomBar: {
         width: '90%',
         alignSelf: 'center',
@@ -406,7 +454,7 @@ const photoStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.20,
         shadowRadius: 10,
-        elevation: 7,
+        elevation: 0,
     },
     cameraContentArea: {
         flex: 1,
@@ -440,7 +488,7 @@ const cameraStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.10,
         shadowRadius: 8,
-        elevation: 3,
+        elevation: 0,
     },
     cameraTitle: {
         fontSize: 18,
@@ -450,13 +498,15 @@ const cameraStyles = StyleSheet.create({
     },
     cameraArea: {
         flex: 1,
+        minHeight: 0,
         justifyContent: 'center',
         alignItems: 'center',
         paddingVertical: spacing.md,
     },
     cameraBox: {
-        width: '100%',
-        aspectRatio: 0.82,
+        flex: 1,
+        aspectRatio: PHOTO_ASPECT_RATIO,
+        maxWidth: '100%',
         borderRadius: 24,
         overflow: 'hidden',
         backgroundColor: '#000',
@@ -466,16 +516,17 @@ const cameraStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.18,
         shadowRadius: 20,
-        elevation: 8,
+        elevation: 0,
     },
     cameraFill: {
         flex: 1,
     },
     controlsRow: {
         flexDirection: 'row',
+        flexShrink: 0,
         justifyContent: 'space-evenly',
         alignItems: 'center',
-        paddingVertical: spacing.lg,
+        paddingVertical: spacing.md,
         paddingHorizontal: spacing.md,
     },
     controlBtn: {
@@ -491,7 +542,7 @@ const cameraStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 10,
-        elevation: 4,
+        elevation: 0,
     },
     captureBtn: {
         width: 76,
@@ -506,7 +557,7 @@ const cameraStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.20,
         shadowRadius: 14,
-        elevation: 6,
+        elevation: 0,
     },
     captureBtnInner: {
         width: 60,

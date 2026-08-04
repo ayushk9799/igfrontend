@@ -1146,7 +1146,7 @@ const cardShadow = Platform.select({
         shadowRadius: 18,
     },
     android: {
-        elevation: 5,
+        elevation: 0,
     },
 });
 
@@ -1341,7 +1341,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.15,
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 4 },
-        elevation: 3,
+        elevation: 0,
         position: 'relative',
     },
     specialDateCardGradient: {
@@ -1461,7 +1461,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
-        elevation: 5,
+        elevation: 0,
     },
     emptyButtonGradient: {
         flex: 1,
@@ -1834,7 +1834,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
-        elevation: 2,
+        elevation: 0,
     },
     momentPreviewCopy: {
         flex: 1,

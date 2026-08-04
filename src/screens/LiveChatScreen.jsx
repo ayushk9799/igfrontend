@@ -1672,14 +1672,14 @@ const styles = StyleSheet.create({
         borderColor: '#F5CBDD', backgroundColor: 'rgba(255,255,255,0.86)',
         alignItems: 'center', justifyContent: 'center',
         shadowColor: '#C25A86', shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.1, shadowRadius: 10, elevation: 2,
+        shadowOpacity: 0.1, shadowRadius: 10, elevation: 0,
     },
     backButton: {
         width: 44, height: 44, borderRadius: 22,
         backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#FAE8FF',
         justifyContent: 'center', alignItems: 'center',
         shadowColor: '#C084FC', shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
+        shadowOpacity: 0.08, shadowRadius: 12, elevation: 0,
     },
     headerTitle: {
         color: '#1B1237', fontSize: 26, fontFamily: fontFamily.extraBold,
@@ -1714,7 +1714,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.96)', borderWidth: 1, borderColor: '#F2BFD3',
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
         shadowColor: '#9A4168', shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.16, shadowRadius: 16, elevation: 8,
+        shadowOpacity: 0.16, shadowRadius: 16, elevation: 0,
     },
     errorText: { color: '#7A3655', fontSize: 12, flex: 1, fontFamily: fontFamily.medium },
     settingsText: { color: '#D84F86', fontSize: 12, fontFamily: fontFamily.bold },
@@ -1737,7 +1737,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -8 },
         shadowOpacity: 0.22,
         shadowRadius: 24,
-        elevation: 14,
+        elevation: 0,
     },
     instructionHandle: {
         width: 44,
@@ -1871,7 +1871,7 @@ const styles = StyleSheet.create({
         borderRadius: 18, overflow: 'visible', backgroundColor: 'rgba(255,255,255,0.9)',
         borderWidth: 1.5, borderColor: '#F1C9DA',
         shadowColor: '#C15E89', shadowOffset: { width: 0, height: 7 },
-        shadowOpacity: 0.1, shadowRadius: 14, elevation: 3,
+        shadowOpacity: 0.1, shadowRadius: 14, elevation: 0,
     },
     myMessageRow: { alignSelf: 'flex-end', borderColor: '#E5C9F1' },
     videoTile: {
@@ -1943,7 +1943,7 @@ const styles = StyleSheet.create({
         borderColor: '#F0B9D0', backgroundColor: 'rgba(255,255,255,0.92)',
         flexDirection: 'row', alignItems: 'flex-end', padding: 6,
         shadowColor: '#C15E89', shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.1, shadowRadius: 12, elevation: 3,
+        shadowOpacity: 0.1, shadowRadius: 12, elevation: 0,
     },
     input: {
         flex: 1, minHeight: 42, maxHeight: 90, color: '#1B1237', fontSize: 16,

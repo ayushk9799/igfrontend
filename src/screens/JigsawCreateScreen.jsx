@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 6,
             },
             android: {
-                elevation: 3,
+                elevation: 0,
             },
         }),
     },
@@ -799,7 +799,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.16,
         shadowRadius: 20,
-        elevation: 6,
+        elevation: 0,
     },
     dashedBox: {
         flex: 1,
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.25,
         shadowRadius: 12,
-        elevation: 4,
+        elevation: 0,
     },
     grantCameraGradient: {
         flex: 1,
@@ -909,7 +909,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.2,
         shadowRadius: 10,
-        elevation: 4,
+        elevation: 0,
         marginBottom: 6,
     },
     controlLabel: {
@@ -927,7 +927,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 12,
-        elevation: 5,
+        elevation: 0,
         marginBottom: 18,
     },
     captureRingGradient: {
@@ -964,7 +964,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 16,
             },
             android: {
-                elevation: 5,
+                elevation: 0,
             },
         }),
     },

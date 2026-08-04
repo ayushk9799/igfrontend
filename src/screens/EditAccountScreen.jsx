@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 7 },
         shadowOpacity: 0.2,
         shadowRadius: 14,
-        elevation: 5,
+        elevation: 0,
     },
     avatarPlaceholder: {
         alignItems: 'center',
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 7 },
         shadowOpacity: 0.11,
         shadowRadius: 18,
-        elevation: 3,
+        elevation: 0,
     },
     fieldGroup: {
         marginBottom: 20,
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.24,
         shadowRadius: 12,
-        elevation: 4,
+        elevation: 0,
     },
     saveDisabled: {
         opacity: 0.5,

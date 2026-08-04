@@ -97,35 +97,35 @@ export const shadows = {
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 3,
-        elevation: 1,
+        elevation: 0,
     },
     sm: {
         shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.07,
         shadowRadius: 6,
-        elevation: 2,
+        elevation: 0,
     },
     md: {
         shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.09,
         shadowRadius: 12,
-        elevation: 4,
+        elevation: 0,
     },
     lg: {
         shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.12,
         shadowRadius: 20,
-        elevation: 8,
+        elevation: 0,
     },
     xl: {
         shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 16 },
         shadowOpacity: 0.15,
         shadowRadius: 28,
-        elevation: 12,
+        elevation: 0,
     },
 
     // Glow Effects
@@ -134,35 +134,35 @@ export const shadows = {
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 20,
-        elevation: 8,
+        elevation: 0,
     },
     glowIntense: {
         shadowColor: '#FF758F',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.5,
         shadowRadius: 35,
-        elevation: 15,
+        elevation: 0,
     },
     glowPurple: {
         shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 20,
-        elevation: 8,
+        elevation: 0,
     },
     glowBlue: {
         shadowColor: '#93C5FD',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 20,
-        elevation: 8,
+        elevation: 0,
     },
     glowGold: {
         shadowColor: '#FBBF24',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 20,
-        elevation: 8,
+        elevation: 0,
     },
 
     // Depth Shadows (for 3D effect)
@@ -171,14 +171,14 @@ export const shadows = {
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.12,
         shadowRadius: 24,
-        elevation: 10,
+        elevation: 0,
     },
     depthHeavy: {
         shadowColor: '#2E1E3C',
         shadowOffset: { width: 0, height: 20 },
         shadowOpacity: 0.18,
         shadowRadius: 36,
-        elevation: 18,
+        elevation: 0,
     },
 
     // Card Shadows
@@ -187,14 +187,14 @@ export const shadows = {
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.08,
         shadowRadius: 16,
-        elevation: 6,
+        elevation: 0,
     },
     cardHover: {
         shadowColor: '#FF758F',
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.12,
         shadowRadius: 24,
-        elevation: 10,
+        elevation: 0,
     },
 
     // Floating element shadows
@@ -203,7 +203,7 @@ export const shadows = {
         shadowOffset: { width: 0, height: 15 },
         shadowOpacity: 0.15,
         shadowRadius: 28,
-        elevation: 14,
+        elevation: 0,
     },
 };
 

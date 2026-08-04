@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -5 },
         shadowOpacity: 0.14,
         shadowRadius: 18,
-        elevation: 20,
+        elevation: 0,
     },
     handle: {
         alignSelf: 'center',
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
         shadowColor: '#FF758F',
         shadowOpacity: 0.22,
         shadowRadius: 18,
-        elevation: 3,
+        elevation: 0,
     },
     lottie: {
         width: 210,
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 7 },
         shadowOpacity: 0.22,
         shadowRadius: 12,
-        elevation: 5,
+        elevation: 0,
     },
     disabled: {
         opacity: 0.65,

@@ -1614,7 +1614,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.18,
         shadowRadius: 18,
-        elevation: 6,
+        elevation: 0,
     },
     loaderMarkCompact: {
         width: 68,
@@ -1680,7 +1680,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 6,
-        elevation: 2,
+        elevation: 0,
     },
     headerTitle: {
         fontFamily: fontFamily.extraBold,
@@ -1734,7 +1734,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 6,
-        elevation: 2,
+        elevation: 0,
     },
     gridToggleBtnActive: {
         backgroundColor: colors.primarySoft,
@@ -1752,7 +1752,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 6,
-        elevation: 2,
+        elevation: 0,
     },
     moveText: {
         fontFamily: fontFamily.extraBold,
@@ -1815,7 +1815,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.12,
         shadowRadius: 16,
-        elevation: 8,
+        elevation: 0,
         overflow: 'visible',
     },
     puzzleGridFrame: {
@@ -1886,7 +1886,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.25,
         shadowRadius: 24,
-        elevation: 12,
+        elevation: 0,
         borderWidth: 1.5,
         borderColor: '#F3E8FF',
     },
@@ -1904,7 +1904,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     expiredEmoji: {
         fontSize: 38,
@@ -1969,7 +1969,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 10,
-        elevation: 5,
+        elevation: 0,
     },
     expiredPrimaryButtonText: {
         color: '#FFFFFF',
@@ -2011,7 +2011,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 8,
             },
             android: {
-                elevation: 4,
+                elevation: 0,
             },
         }),
     },
@@ -2048,7 +2048,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.12,
         shadowRadius: 16,
-        elevation: 8,
+        elevation: 0,
     },
     referencePreviewImage: {
         width: '100%',
@@ -2080,7 +2080,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
-        elevation: 3,
+        elevation: 0,
     },
     trayTitle: {
         fontFamily: fontFamily.bold,

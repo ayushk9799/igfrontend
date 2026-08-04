@@ -610,7 +610,7 @@ const voiceStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.2,
         shadowRadius: 10,
-        elevation: 6,
+        elevation: 0,
         marginBottom: spacing.sm,
     },
     instructionText: {
@@ -660,7 +660,7 @@ const voiceStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.12,
         shadowRadius: 16,
-        elevation: 5,
+        elevation: 0,
     },
     playButton: {
         width: 60,
@@ -774,7 +774,7 @@ const voiceStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.24,
         shadowRadius: 14,
-        elevation: 8,
+        elevation: 0,
     },
     idleSubmitDisabled: {
         opacity: 0.55,

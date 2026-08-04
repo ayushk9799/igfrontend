@@ -703,7 +703,7 @@ const createStyles = (isCompactHeight) => StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
-        elevation: 6,
+        elevation: 0,
     },
     cardLabel: {
         fontSize: 12,
@@ -763,7 +763,7 @@ const createStyles = (isCompactHeight) => StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
-        elevation: 6,
+        elevation: 0,
     },
     codeInput: {
         backgroundColor: '#FFF5F8',
@@ -804,7 +804,7 @@ const createStyles = (isCompactHeight) => StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 12,
-        elevation: 4,
+        elevation: 0,
     },
     shareButtonGradient: {
         flex: 1,
@@ -865,7 +865,7 @@ const createStyles = (isCompactHeight) => StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.25,
         shadowRadius: 12,
-        elevation: 4,
+        elevation: 0,
     },
     connectedContinueText: {
         color: '#FFFFFF',

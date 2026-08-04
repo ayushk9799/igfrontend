@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,
-        elevation: 3,
+        elevation: 0,
     },
     brandLogo: {
         width: isCompactHeight ? 107 : 123,
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
-        elevation: 5,
+        elevation: 0,
     },
     continueButtonGradient: {
         flex: 1,

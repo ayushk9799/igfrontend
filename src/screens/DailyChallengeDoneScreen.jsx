@@ -696,7 +696,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
-        elevation: 4,
+        elevation: 0,
     },
     streakGainText: {
         fontFamily: fontFamily.extraBold,
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 12,
-        elevation: 5,
+        elevation: 0,
     },
     primaryButtonDisabled: {
         opacity: 0.62,

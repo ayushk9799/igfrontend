@@ -1027,7 +1027,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     headerTextBlock: {
         flex: 1,
@@ -1117,7 +1117,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.07,
         shadowRadius: 16,
-        elevation: 3,
+        elevation: 0,
     },
     setCardContent: {
         width: '100%',
@@ -1260,7 +1260,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.18,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     startButtonText: {
         color: '#FFFFFF',
