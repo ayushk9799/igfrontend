@@ -942,7 +942,7 @@ export default function TopicQuestionsV2Screen({
             style={styles.screen}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <GestureHandlerRootView style={styles.container}>
+            <GestureHandlerRootView style={[styles.container, selectedSet && showSummary && styles.summaryContainer]}>
                 {questionChatToOpen ? (
                     <ChatScreen
                         chatId={questionChatToOpen._id}
@@ -964,7 +964,10 @@ export default function TopicQuestionsV2Screen({
                             topicTitle={topicTitle}
                             selectedSet={selectedSet}
                             userId={effectiveUserId}
+                            userName={userName}
                             partnerName={partnerName}
+                            userAvatar={effectiveUserAvatar}
+                            partnerAvatar={effectivePartnerAvatar}
                             onBack={() => {
                                 if (summaryReturnsToQuestions && tasks.length > 0) {
                                     setSummaryReturnsToQuestions(false);
@@ -1007,6 +1010,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingTop: Platform.OS === 'ios' ? 58 : 36,
+    },
+    summaryContainer: {
+        paddingTop: 0,
     },
     header: {
         flexDirection: 'row',

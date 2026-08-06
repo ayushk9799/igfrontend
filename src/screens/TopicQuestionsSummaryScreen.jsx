@@ -1,93 +1,396 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
     ActivityIndicator,
     Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Circle } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 
-import { colors, spacing, borderRadius } from '../theme';
-import { fontFamily } from '../constants/fonts';
+import VoiceBubble from '../components/chat/VoiceBubble';
 import { QuestionsV2Api } from '../api/questionsV2Api';
+import { fontFamily } from '../constants/fonts';
 import { translateUiText } from '../i18n/uiTranslation';
+import { spacing } from '../theme';
 
-const formatLabels = {
-    deep: 'Deep',
-    neverhaveiever: 'Never Have I Ever',
-    likelyto: 'Likely To',
-    wouldyourather: 'Would You Rather',
-    thisorthat: 'This or That',
-    slider: 'Slider',
-    voicerecord: 'Voice',
-    takephoto: 'Photo',
+const FORMAT_THEME = {
+    deep: {
+        accent: '#D32764', secondary: '#6B527A', tint: '#FFF0F5', badge: 'Deep Talk', icon: '♥',
+    },
+    likelyto: {
+        accent: '#C92C68', secondary: '#8F204D', tint: '#FFF0F6', badge: 'Likely To', icon: '♡',
+    },
+    voicerecord: {
+        accent: '#6D3CA1', secondary: '#D53470', tint: '#F4ECFF', badge: 'Voice Notes', icon: '▥',
+    },
+    takephoto: {
+        accent: '#C9255A', secondary: '#C9255A', tint: '#FFF0F4', badge: 'Photo Set', icon: '▣',
+    },
+    slider: {
+        accent: '#39104E', secondary: '#D93C70', tint: '#F3EAF7', badge: 'Slider', icon: '♥',
+    },
+    wouldyourather: {
+        accent: '#C92C68', secondary: '#7D285B', tint: '#FFF0F6', badge: 'Would You Rather', icon: '♡',
+        choiceIndex: { backgroundColor: '#FBE4EE' },
+        choiceIndexText: { color: '#B82B61' },
+        choiceLeft: { backgroundColor: '#FFF0F6', borderColor: '#F6CDDD' },
+        choiceRight: { backgroundColor: '#F7ECF8', borderColor: '#E7D0EA' },
+        choiceResultSame: { backgroundColor: '#F9E5EF' },
+        choiceResultDifferent: { backgroundColor: '#F5EAF7' },
+        choiceResultDifferentText: { color: '#7D285B' },
+        footer: ['#D94278', '#9D285F'],
+    },
+    thisorthat: {
+        accent: '#0B8F8B', secondary: '#DF4B7D', tint: '#E9FAF8', badge: 'This or That', icon: '♥',
+        footer: ['#079A95', '#07827F'],
+    },
 };
 
-const getSetEmoji = (format, title) => {
-    const titleLower = (title || '').toLowerCase();
-    const formatLower = (format || '').toLowerCase();
-
-    if (titleLower.includes('spicy') || titleLower.includes('hot') || titleLower.includes('dirty')) return '🔥';
-    if (titleLower.includes('love') || titleLower.includes('romance') || titleLower.includes('date')) return '💖';
-    if (titleLower.includes('deep') || titleLower.includes('soul') || titleLower.includes('intimate')) return '🔮';
-    if (titleLower.includes('fun') || titleLower.includes('game') || titleLower.includes('play')) return '🎉';
-    if (titleLower.includes('ice') || titleLower.includes('break')) return '🧊';
-    if (titleLower.includes('future') || titleLower.includes('dream') || titleLower.includes('plan')) return '🚀';
-    if (titleLower.includes('conflict') || titleLower.includes('hard') || titleLower.includes('tough')) return '🛡️';
-
-    if (formatLower.includes('deep')) return '💭';
-    if (formatLower.includes('neverhaveiever')) return '🙅';
-    if (formatLower.includes('likelyto')) return '📈';
-    if (formatLower.includes('wouldyourather')) return '🤔';
-    if (formatLower.includes('thisorthat')) return '⚖️';
-    if (formatLower.includes('slider')) return '🎚️';
-    if (formatLower.includes('voicerecord')) return '🎙️';
-    if (formatLower.includes('takephoto')) return '📸';
-
-    return '✨';
+const HOME_GRADIENT = {
+    colors: ['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2'],
+    locations: [0, 0.34, 0.72, 1],
+    start: { x: 0.25, y: 0 },
+    end: { x: 0.75, y: 1 },
 };
 
-const getFormatColors = (format) => {
-    switch (format) {
-        case 'deep':
-            return { primary: '#0D9488', bg: '#E6F7F0', gradient: ['#E6F7F0', '#F0FDFA'] };
-        case 'neverhaveiever':
-            return { primary: '#7C3AED', bg: '#F3E8FF', gradient: ['#F3E8FF', '#F9F5FF'] };
-        case 'likelyto':
-            return { primary: '#DB2777', bg: '#FCE7F3', gradient: ['#FCE7F3', '#FDF2F8'] };
-        case 'wouldyourather':
-            return { primary: '#2563EB', bg: '#EFF6FF', gradient: ['#EFF6FF', '#F8FAFC'] };
-        case 'thisorthat':
-            return { primary: '#D97706', bg: '#FEF3C7', gradient: ['#FEF3C7', '#FFFDF5'] };
-        case 'slider':
-            return { primary: '#475569', bg: '#F1F5F9', gradient: ['#F1F5F9', '#F8FAFC'] };
-        case 'voicerecord':
-            return { primary: '#4F46E5', bg: '#EEF2F6', gradient: ['#EEF2F6', '#F5F7FA'] };
-        case 'takephoto':
-            return { primary: '#E11D48', bg: '#FFF1F2', gradient: ['#FFF1F2', '#FFF8F8'] };
-        default:
-            return { primary: '#7C3AED', bg: '#F3E8FF', gradient: ['#F3E8FF', '#F9F5FF'] };
-    }
-};
+const COMPARISON_FORMATS = new Set(['wouldyourather', 'thisorthat']);
+const isPresent = value => value !== null && value !== undefined;
+const isRemoteUri = value => typeof value === 'string' && /^https?:\/\//i.test(value);
+const answerValue = value => (
+    value && typeof value === 'object' && value.value !== undefined ? value.value : value
+);
+const avatarSource = value => (
+    typeof value === 'string' && value.length > 0 ? { uri: value } : value
+);
+const initialFor = name => (name || '?').trim().charAt(0).toUpperCase();
 
+function BackIcon({ color = '#2B1238', size = 24 }) {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Path d="M15 18l-6-6 6-6" stroke={color} strokeWidth={2.7} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+    );
+}
 
+function Avatar({ uri, name, size = 44, ringColor = '#FFFFFF' }) {
+    const source = avatarSource(uri);
+    return (
+        <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, borderColor: ringColor }]}>
+            {source ? (
+                <Image source={source} style={styles.avatarImage} resizeMode="cover" />
+            ) : (
+                <LinearGradient colors={['#F3C6D8', '#DCC9F4']} style={styles.avatarFallback}>
+                    <Text style={[styles.avatarInitial, { fontSize: size * 0.4 }]}>{initialFor(name)}</Text>
+                </LinearGradient>
+            )}
+        </View>
+    );
+}
+
+function Header({ title, format, theme, subtitle, onBack }) {
+    return (
+        <View style={styles.header}>
+            <TouchableOpacity onPress={onBack} style={styles.headerBack} activeOpacity={0.75}>
+                <BackIcon />
+            </TouchableOpacity>
+            <View style={styles.headerCenter}>
+                <Text style={styles.headerTitle}>{title}</Text>
+                <View style={[styles.formatBadge, { backgroundColor: theme.tint, borderColor: `${theme.accent}2F` }]}>
+                    <Text style={[styles.formatBadgeText, { color: theme.accent }]}>
+                        {theme.icon}  {translateUiText(theme.badge)}
+                    </Text>
+                </View>
+                {!!subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
+            </View>
+            <View style={styles.headerSpacer} />
+        </View>
+    );
+}
+
+function PromptCard({ index, prompt, theme }) {
+    return (
+        <View style={[styles.promptCard, { borderColor: `${theme.accent}55` }]}>
+            <View style={styles.numberBadge}>
+                <Text style={styles.numberText}>{index + 1}</Text>
+            </View>
+            <Text style={styles.promptText}>{prompt}</Text>
+        </View>
+    );
+}
+
+function ContinueLink({ label = 'Continue this chat', color, onPress }) {
+    if (!onPress) return null;
+    return (
+        <TouchableOpacity onPress={onPress} style={styles.continueLink} activeOpacity={0.7}>
+            <Text style={[styles.continueText, { color }]}>{translateUiText(label)}  →</Text>
+        </TouchableOpacity>
+    );
+}
+
+function Divider({ color }) {
+    return (
+        <View style={styles.dividerRow}>
+            <View style={[styles.dividerLine, { backgroundColor: `${color}20` }]} />
+            <Text style={[styles.dividerHeart, { color: `${color}55` }]}>♡</Text>
+            <View style={[styles.dividerLine, { backgroundColor: `${color}20` }]} />
+        </View>
+    );
+}
+
+function Pending({ isUser }) {
+    return (
+        <View style={styles.pendingBubble}>
+            <Text style={styles.pendingText}>
+                {translateUiText(isUser ? 'Tap to answer ✍️' : 'Waiting...')}
+            </Text>
+        </View>
+    );
+}
+
+function ConversationRow({ item, index, theme, userName, partnerName, userAvatar, partnerAvatar, onPress }) {
+    const entries = [
+        { name: partnerName, avatar: partnerAvatar, answer: item.partnerAnswer, isUser: false },
+        { name: userName || translateUiText('You'), avatar: userAvatar, answer: item.userAnswer, isUser: true },
+    ];
+
+    return (
+        <View style={styles.itemBlock}>
+            <PromptCard index={index} prompt={item.prompt} theme={theme} />
+            <View style={styles.conversation}>
+                {entries.map(entry => (
+                    <View key={`${item.questionId}-${entry.isUser}`} style={[styles.chatLine, entry.isUser && styles.chatLineUser]}>
+                        {!entry.isUser && <Avatar uri={entry.avatar} name={entry.name} size={42} />}
+                        <View style={[styles.chatContent, entry.isUser && styles.chatContentUser]}>
+                            {isPresent(entry.answer) ? (
+                                <View style={[
+                                    styles.textBubble,
+                                    entry.isUser ? styles.userTextBubble : styles.partnerTextBubble,
+                                ]}>
+                                    <Text style={styles.answerText}>{String(answerValue(entry.answer))}</Text>
+                                </View>
+                            ) : <Pending isUser={entry.isUser} />}
+                        </View>
+                        {entry.isUser && <Avatar uri={entry.avatar} name={entry.name} size={42} ringColor="#FFE3EC" />}
+                    </View>
+                ))}
+            </View>
+            <ContinueLink color={theme.accent} onPress={onPress} />
+            <Divider color={theme.accent} />
+        </View>
+    );
+}
+
+function VoiceRow({ item, index, theme, userName, partnerName, userAvatar, partnerAvatar, onPress }) {
+    const entries = [
+        { name: partnerName, avatar: partnerAvatar, answer: item.partnerAnswer, isUser: false },
+        { name: userName, avatar: userAvatar, answer: item.userAnswer, isUser: true },
+    ];
+    return (
+        <View style={styles.itemBlock}>
+            <PromptCard index={index} prompt={item.prompt} theme={theme} />
+            <View style={styles.conversation}>
+                {entries.map(entry => (
+                    <View key={`${item.questionId}-${entry.isUser}`} style={[styles.chatLine, entry.isUser && styles.chatLineUser]}>
+                        {!entry.isUser && <Avatar uri={entry.avatar} name={entry.name} size={42} />}
+                        <View style={[styles.voiceContent, entry.isUser && styles.voiceContentUser]}>
+                            {isPresent(entry.answer) ? (
+                                <View style={[styles.voiceBubble, entry.isUser ? styles.userVoiceBubble : styles.partnerVoiceBubble]}>
+                                    <VoiceBubble audioUri={answerValue(entry.answer)} isSent={!entry.isUser} />
+                                </View>
+                            ) : <Pending isUser={entry.isUser} />}
+                        </View>
+                        {entry.isUser && <Avatar uri={entry.avatar} name={entry.name} size={42} ringColor="#FFE3EC" />}
+                    </View>
+                ))}
+            </View>
+            <ContinueLink color={theme.secondary} onPress={onPress} />
+            <Divider color={theme.secondary} />
+        </View>
+    );
+}
+
+function PhotoAnswer({ answer, name, avatar, isUser }) {
+    return (
+        <View style={[styles.photoAnswerRow, isUser && styles.photoAnswerRowUser]}>
+            {!isUser && <Avatar uri={avatar} name={name} size={38} />}
+            <View style={[styles.photoContent, isUser && styles.photoContentUser]}>
+                {isRemoteUri(answerValue(answer)) ? (
+                    <View style={styles.photoFrame}>
+                        <Image source={{ uri: answerValue(answer) }} style={styles.photoImage} resizeMode="cover" />
+                    </View>
+                ) : <Pending isUser={isUser} />}
+            </View>
+            {isUser && <Avatar uri={avatar} name={name} size={38} ringColor="#FFE3EC" />}
+        </View>
+    );
+}
+
+function PhotoRow({ item, index, theme, userName, partnerName, userAvatar, partnerAvatar, onPress }) {
+    return (
+        <View style={styles.itemBlock}>
+            <PromptCard index={index} prompt={item.prompt} theme={theme} />
+            <PhotoAnswer answer={item.partnerAnswer} name={partnerName} avatar={partnerAvatar} isUser={false} />
+            <PhotoAnswer answer={item.userAnswer} name={userName} avatar={userAvatar} isUser />
+            <ContinueLink label="Open this memory" color={theme.accent} onPress={onPress} />
+            <Divider color={theme.accent} />
+        </View>
+    );
+}
+
+function SliderMarker({ value, min, max, color, avatar, name, top, alignRight }) {
+    const numeric = Number(answerValue(value));
+    if (!Number.isFinite(numeric)) return null;
+    const range = Math.max(1, max - min);
+    const percent = Math.max(0, Math.min(100, ((numeric - min) / range) * 100));
+    return (
+        <View style={[styles.sliderMarker, { left: `${percent}%`, top }]}>
+            <View style={[styles.markerRing, { borderColor: color }]}>
+                <Avatar uri={avatar} name={name} size={34} ringColor="#FFFFFF" />
+            </View>
+            <View style={[styles.markerTag, alignRight && styles.markerTagRight, { borderColor: color }]}>
+                <Text style={[styles.markerTagText, { color }]} numberOfLines={1}>{numeric}</Text>
+            </View>
+        </View>
+    );
+}
+
+function SliderRow({ item, index, theme, userName, partnerName, userAvatar, partnerAvatar, onPress }) {
+    const min = Number.isFinite(Number(item.minValue)) ? Number(item.minValue) : 1;
+    const max = Number.isFinite(Number(item.maxValue)) ? Number(item.maxValue) : 5;
+    const userVal = Number(answerValue(item.userAnswer));
+    const partnerVal = Number(answerValue(item.partnerAnswer));
+    const both = Number.isFinite(userVal) && Number.isFinite(partnerVal);
+    const distance = both ? Math.abs(userVal - partnerVal) : null;
+    const ticks = Array.from({ length: Math.min(10, Math.max(2, max - min + 1)) }, (_, i) => min + i);
+    return (
+        <TouchableOpacity style={styles.sliderCard} onPress={onPress} activeOpacity={onPress ? 0.84 : 1}>
+            <View style={styles.sliderQuestionRow}>
+                <View style={styles.sliderIndex}><Text style={styles.sliderIndexText}>{index + 1}</Text></View>
+                <Text style={styles.sliderPrompt}>{item.prompt}</Text>
+            </View>
+            <View style={styles.tickLabels}>
+                {ticks.map(tick => <Text key={tick} style={styles.tickText}>{tick}</Text>)}
+            </View>
+            <View style={styles.sliderPlot}>
+                <View style={styles.sliderTrack} />
+                <View style={styles.tickDots}>
+                    {ticks.map(tick => <View key={tick} style={styles.tickDot} />)}
+                </View>
+                <SliderMarker value={item.userAnswer} min={min} max={max} color="#2866C8" avatar={userAvatar} name={translateUiText('You')} top={-20} />
+                <SliderMarker value={item.partnerAnswer} min={min} max={max} color="#E94778" avatar={partnerAvatar} name={partnerName} top={40} alignRight />
+            </View>
+            <View style={styles.sliderEnds}>
+                <Text style={styles.sliderEndText}>{item.minLabel || translateUiText('Not yet')}</Text>
+                <Text style={styles.sliderEndText}>{item.maxLabel || translateUiText('Completely')}</Text>
+            </View>
+            {both && (
+                <View style={styles.syncPill}>
+                    <Text style={styles.syncPillText}>
+                        {distance === 0 ? '💜  Same spot' : distance === 1 ? '💔  Very close · 1 apart' : `↔  ${distance} apart`}
+                    </Text>
+                </View>
+            )}
+        </TouchableOpacity>
+    );
+}
+
+const normalizeOption = option => (
+    option && typeof option === 'object'
+        ? { value: option.value, label: option.label ?? option.value }
+        : { value: option, label: option }
+);
+
+function ChoiceRow({ item, index, theme, userName, partnerName, userAvatar, partnerAvatar, onPress }) {
+    const rawOptions = item.optionItems?.length ? item.optionItems : item.options;
+    const options = (rawOptions?.length ? rawOptions : ['Option A', 'Option B']).slice(0, 2).map(normalizeOption);
+    const userChoice = answerValue(item.userAnswer);
+    const partnerChoice = answerValue(item.partnerAnswer);
+    const same = isPresent(userChoice) && isPresent(partnerChoice) && String(userChoice) === String(partnerChoice);
+    const selected = (choice, answer) => isPresent(answer) && String(choice.value) === String(answer);
+
+    return (
+        <TouchableOpacity style={styles.choiceCard} onPress={onPress} activeOpacity={onPress ? 0.84 : 1}>
+            <View style={[styles.choiceHeading, { borderColor: `${theme.accent}55` }]}>
+                <View style={styles.choiceIndex}>
+                    <Text style={styles.choiceIndexText}>{index + 1}</Text>
+                </View>
+                <Text style={styles.choicePrompt}>{item.prompt}</Text>
+            </View>
+            <View style={styles.choiceColumns}>
+                {options.map((choice, choiceIndex) => (
+                    <View key={String(choice.value)} style={[
+                        styles.choiceOption,
+                        choiceIndex === 0
+                            ? (theme.choiceLeft || styles.choiceOptionLeft)
+                            : (theme.choiceRight || styles.choiceOptionRight),
+                    ]}>
+                        <Text style={[styles.choiceLabel, { color: choiceIndex === 0 ? theme.accent : theme.secondary }]}>
+                            {translateUiText(String(choice.label))}
+                        </Text>
+                        <View style={styles.choiceAvatars}>
+                            {selected(choice, partnerChoice) && (
+                                <View style={styles.choicePerson}>
+                                    <Avatar uri={partnerAvatar} name={partnerName} size={42} />
+                                </View>
+                            )}
+                            {selected(choice, userChoice) && (
+                                <View style={styles.choicePerson}>
+                                    <Avatar uri={userAvatar} name={userName} size={42} />
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                ))}
+            </View>
+            {isPresent(userChoice) && isPresent(partnerChoice) && (
+                <View style={[
+                    styles.choiceResult,
+                    same
+                        ? (theme.choiceResultSame || styles.choiceResultSame)
+                        : (theme.choiceResultDifferent || styles.choiceResultDifferent),
+                ]}>
+                    <Text style={[
+                        styles.choiceResultText,
+                        same ? { color: theme.accent } : (theme.choiceResultDifferentText || styles.choiceResultTextDifferent),
+                    ]}>
+                        {same ? `✓  ${translateUiText('Same pick')}` : `↝  ${translateUiText('Different picks')}`}
+                    </Text>
+                </View>
+            )}
+            {!same && <ContinueLink color={theme.accent} onPress={onPress} />}
+        </TouchableOpacity>
+    );
+}
+
+function SliderHero({ summary }) {
+    const similarity = Number.isFinite(summary.similarityPercent) ? summary.similarityPercent : 0;
+    return (
+        <View style={styles.sliderHero}>
+            <View style={styles.brokenHeart}><Text style={styles.brokenHeartText}>💔</Text></View>
+            <View>
+                <Text style={styles.similarityText}>{similarity}% {translateUiText('in sync')}</Text>
+                <Text style={styles.similaritySub}>{translateUiText('Across')} {summary.bothAnswered || 0} {translateUiText('ratings')}</Text>
+            </View>
+        </View>
+    );
+}
 
 export default function TopicQuestionsSummaryScreen({
     topic,
-    topicTitle,
     selectedSet,
     userId,
+    userName = 'You',
     partnerName = 'Your Love',
+    userAvatar = null,
+    partnerAvatar = null,
     onBack,
-    onNavigateToPremium,
-    isPremium = false,
     hasPartner = false,
-    onLinkPartner = () => { },
+    onLinkPartner = () => {},
     onAnswerQuestion,
     onOpenQuestionChat,
 }) {
@@ -95,653 +398,251 @@ export default function TopicQuestionsSummaryScreen({
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
     const format = selectedSet?.format || 'deep';
-    const setColors = getFormatColors(format);
-    const emoji = getSetEmoji(format, selectedSet?.title);
+    const theme = FORMAT_THEME[format] || FORMAT_THEME.deep;
 
     const fetchReport = useCallback(async () => {
-        if (!hasPartner) return;
+        if (!hasPartner) {
+            setLoading(false);
+            onLinkPartner?.();
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
-            const response = await QuestionsV2Api.getSetReport({
-                topicId: topic,
-                setId: selectedSet.setId,
-                userId,
-            });
-            if (response.success) {
-                setReport(response.data);
-            } else {
-                if (response.message === 'User has no partner linked' && onLinkPartner) {
-                    onLinkPartner();
-                    return;
-                }
-                setError(response.message || 'Failed to load summary');
-            }
+            const response = await QuestionsV2Api.getSetReport({ topicId: topic, setId: selectedSet?.setId, userId });
+            if (response.success) setReport(response.data);
+            else if (response.message === 'User has no partner linked') onLinkPartner?.();
+            else setError(response.message || response.error || 'Failed to load summary');
         } catch (err) {
-            if (err.message === 'User has no partner linked' && onLinkPartner) {
-                onLinkPartner();
-                return;
-            }
-            setError(err.message || 'An error occurred loading summary');
+            setError(err.message || 'Failed to load summary');
         } finally {
             setLoading(false);
         }
-    }, [topic, selectedSet?.setId, userId, hasPartner, onLinkPartner]);
+    }, [hasPartner, onLinkPartner, selectedSet?.setId, topic, userId]);
 
-    useEffect(() => {
-        fetchReport();
-    }, [fetchReport]);
+    useEffect(() => { fetchReport(); }, [fetchReport]);
 
-    const formatAnswer = (ans, formatType) => {
-        if (ans === null || ans === undefined) return '—';
-        if (formatType === 'likelyto') {
-            return ans === 'you' ? translateUiText("Me") : ans === 'partner' ? partnerName : translateUiText(ans);
-        }
-        if (formatType === 'neverhaveiever') {
-            return ans === 'have' || ans === 'I have'
-                ? translateUiText("I Have 🙋")
-                : translateUiText("Never 🙅");
-        }
-        if (formatType === 'takephoto') {
-            return translateUiText("Captured Photo 📸");
-        }
-        if (formatType === 'voicerecord') {
-            return translateUiText("Voice Note 🎙️");
-        }
-        return String(ans);
-    };
-
-    const renderAnswerPreview = (ans, formatType, isCurrentUser) => {
-        if (ans === null || ans === undefined) {
-            return (
-                <View style={[styles.pendingBubble, isCurrentUser && styles.userPendingBubble]}>
-                    <Text style={[styles.pendingText, isCurrentUser && styles.userPendingText]}>
-                        {isCurrentUser ? translateUiText("Tap to answer ✍️") : translateUiText("Waiting...")}
-                    </Text>
-                </View>
-            );
-        }
-
-        const displayVal = formatAnswer(ans, formatType);
-        const bubbleBg = isCurrentUser ? setColors.bg : '#F1F5F9';
-        const textColor = isCurrentUser ? setColors.primary : '#334155';
-
-        if (formatType === 'takephoto' && typeof ans === 'string' && ans.startsWith('http')) {
-            return (
-                <Image source={{ uri: ans }} style={styles.answerPhoto} resizeMode="cover" />
-            );
-        }
-
-        return (
-            <View style={[styles.answerBubble, { backgroundColor: bubbleBg }]}>
-                <Text style={[styles.answerText, { color: textColor }]}>
-                    {displayVal}
-                </Text>
-            </View>
-        );
-    };
+    const items = report?.items || [];
+    const summary = report?.summary || { totalQuestions: items.length, bothAnswered: 0, matched: 0, similarityPercent: null };
+    const subtitle = useMemo(() => {
+        if (format === 'voicerecord') return `🔒  ${translateUiText('Only you two can hear these')}`;
+        if (format === 'takephoto') return `${summary.bothAnswered || 0} ${translateUiText('moments shared')}`;
+        if (COMPARISON_FORMATS.has(format)) return `☆  ${summary.matched || 0} ${translateUiText('shared favorites')}`;
+        if (format === 'slider') return null;
+        return `${summary.bothAnswered || 0} ${translateUiText('questions answered together')}`;
+    }, [format, summary.bothAnswered, summary.matched]);
 
     if (loading) {
         return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color={setColors.primary} />
-                <Text style={styles.loadingText}>{translateUiText("Loading Summary...")}</Text>
-            </View>
+            <LinearGradient {...HOME_GRADIENT} style={styles.center}>
+                <ActivityIndicator size="large" color={theme.accent} />
+                <Text style={styles.loadingText}>{translateUiText('Loading your answers...')}</Text>
+            </LinearGradient>
         );
     }
 
     if (error) {
         return (
-            <View style={styles.center}>
+            <LinearGradient {...HOME_GRADIENT} style={styles.center}>
                 <Text style={styles.errorText}>{translateUiText(error)}</Text>
-                <TouchableOpacity
-                    style={[styles.primaryButton, { backgroundColor: setColors.primary }]}
-                    onPress={fetchReport}
-                >
-                    <Text style={styles.primaryButtonText}>{translateUiText("Try Again")}</Text>
+                <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.accent }]} onPress={fetchReport}>
+                    <Text style={styles.footerText}>{translateUiText('Try Again')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryButton} onPress={onBack}>
-                    <Text style={styles.secondaryButtonText}>{translateUiText("Back to Sets")}</Text>
-                </TouchableOpacity>
-            </View>
+                <TouchableOpacity onPress={onBack} style={styles.errorBack}><Text>{translateUiText('Back to Sets')}</Text></TouchableOpacity>
+            </LinearGradient>
         );
     }
 
-    const items = report?.items || [];
-    const summary = report?.summary || { totalQuestions: items.length, bothAnswered: 0 };
-    const similarity = summary.similarityPercent;
+    const openItem = item => {
+        const hasAnswer = isPresent(item.userAnswer) || isPresent(item.partnerAnswer) || item.chatId;
+        if (hasAnswer) onOpenQuestionChat?.(item);
+        else onAnswerQuestion?.(item);
+    };
 
-    const ringSize = 100;
-    const ringStroke = 10;
-    const ringRadius = (ringSize - ringStroke) / 2;
-    const ringCircumference = 2 * Math.PI * ringRadius;
+    const renderItem = (item, index) => {
+        const rowKey = item.questionId || index;
+        const common = {
+            item,
+            index,
+            theme,
+            userName,
+            partnerName,
+            userAvatar,
+            partnerAvatar,
+            onPress: () => openItem(item),
+        };
+        if (format === 'voicerecord') return <VoiceRow key={rowKey} {...common} />;
+        if (format === 'takephoto') return <PhotoRow key={rowKey} {...common} />;
+        if (format === 'slider') return <SliderRow key={rowKey} {...common} />;
+        if (COMPARISON_FORMATS.has(format)) return <ChoiceRow key={rowKey} {...common} />;
+        return <ConversationRow key={rowKey} {...common} />;
+    };
 
     return (
-        <LinearGradient
-            colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
-            locations={[0, 0.34, 0.72, 1]}
-            start={{ x: 0.25, y: 0 }}
-            end={{ x: 0.75, y: 1 }}
-            style={styles.screen}
-        >
-            {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-                <TouchableOpacity onPress={onBack} style={styles.headerBackBtn}>
-                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-                        <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                    </Svg>
-                </TouchableOpacity>
-                <View style={styles.headerTextBlock}>
-                    <Text style={styles.headerTitle} numberOfLines={1}>{selectedSet?.title}</Text>
-                    <View style={[styles.headerBadge, { backgroundColor: setColors.bg }]}>
-                        <Text style={[styles.headerBadgeText, { color: setColors.primary }]}>
-                            {formatLabels[format] || format}
-                        </Text>
+        <LinearGradient {...HOME_GRADIENT} style={styles.screen}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 10 }]}
+            >
+                <Header title={selectedSet?.title || report?.title} format={format} theme={theme} subtitle={subtitle} onBack={onBack} />
+                {format === 'slider' && <SliderHero summary={summary} />}
+                {items.length ? items.map(renderItem) : (
+                    <View style={styles.emptyCard}>
+                        <Text style={styles.emptyEmoji}>♡</Text>
+                        <Text style={styles.emptyText}>{translateUiText('No answers yet')}</Text>
                     </View>
-                </View>
-                <View style={styles.headerSpacer} />
-            </View>
-
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-               
-
-
-                {items.map((item, idx) => {
-                    const isMatch = item.match === true;
-                    const isUnanswered = item.userAnswer === null || item.userAnswer === undefined;
-                    const hasUserAnswer = item.userAnswer !== null && item.userAnswer !== undefined;
-                    const hasPartnerAnswer = item.partnerAnswer !== null && item.partnerAnswer !== undefined;
-                    const shouldOpenChat = hasUserAnswer || hasPartnerAnswer || item.chatId;
-                   
-                    const handlePress = () => {
-                        if (shouldOpenChat) {
-                            onOpenQuestionChat?.(item);
-                            return;
-                        }
-                        if (isUnanswered) {
-                            onAnswerQuestion?.(item);
-                        }
-                    };
-
-                    return (
-                        <TouchableOpacity
-                            key={item.questionId || idx}
-                            style={[styles.questionCard, isUnanswered && !shouldOpenChat && styles.unansweredQuestionCard]}
-                            onPress={handlePress}
-                            activeOpacity={0.82}
-                        >
-                            <View style={styles.questionHeader}>
-                                <View style={[styles.indexBadge, { backgroundColor: setColors.bg }]}>
-                                    <Text style={[styles.indexText, { color: setColors.primary }]}>
-                                        {idx + 1}
-                                    </Text>
-                                </View>
-                                <Text style={styles.questionPrompt}>
-                                    {item.prompt}
-                                </Text>
-                                {isMatch && (
-                                    <View style={styles.matchBadge}>
-                                        <Text style={styles.matchText}>{translateUiText("Match!")}</Text>
-                                    </View>
-                                )}
-                            </View>
-
-                            <View style={styles.answersContainer}>
-                                <View style={styles.answerBox}>
-                                    <Text style={styles.answerLabel}>{translateUiText("You")}</Text>
-                                    {renderAnswerPreview(item.userAnswer, format, true)}
-                                </View>
-
-                                <View style={styles.heartContainer}>
-                                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                                        <Path
-                                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                                            fill={isMatch ? '#FF758F' : 'transparent'}
-                                            stroke={isMatch ? '#FF758F' : '#D0C8D9'}
-                                            strokeWidth={isMatch ? 0 : 2}
-                                        />
-                                    </Svg>
-                                </View>
-
-                                <View style={styles.answerBox}>
-                                    <Text style={styles.answerLabel}>{partnerName}</Text>
-                                    {renderAnswerPreview(item.partnerAnswer, format, false)}
-                                </View>
-                            </View>
-                        </TouchableOpacity>
-                    );
-                })}
-
-                <TouchableOpacity
-                    style={[styles.doneBtn, { backgroundColor: setColors.primary }]}
-                    onPress={onBack}
-                >
-                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                        <Path d="M19 12H5M12 19l-7-7 7-7" stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                    </Svg>
-                    <Text style={styles.doneBtnText}>{translateUiText("Back to Sets")}</Text>
-                </TouchableOpacity>
+                )}
             </ScrollView>
+            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom - 8, 10) }]}>
+                <TouchableOpacity onPress={onBack} activeOpacity={0.82}>
+                    <LinearGradient
+                        colors={['#FF5E97', '#FFA1C9']}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.footerButton}
+                    >
+                        <BackIcon color="#FFFFFF" size={21} />
+                        <Text style={styles.footerText}>{translateUiText('Back to Sets')}</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
+            </View>
         </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
-    screen: {
-        flex: 1,
+    screen: { flex: 1 },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+    loadingText: { marginTop: 14, color: '#75647F', fontFamily: fontFamily.medium, fontSize: 15 },
+    errorText: { color: '#B42355', fontFamily: fontFamily.bold, fontSize: 16, textAlign: 'center', marginBottom: 18 },
+    retryButton: { paddingHorizontal: 28, paddingVertical: 13, borderRadius: 24 },
+    errorBack: { padding: 16 },
+    scrollContent: { paddingHorizontal: 18, paddingBottom: 104 },
+    header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 22 },
+    headerBack: {
+        width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.86)',
+        alignItems: 'center', justifyContent: 'center', shadowColor: '#4A174D', shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.08, shadowRadius: 12, elevation: 2,
     },
-    center: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: spacing.xl,
+    headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
+    headerSpacer: { width: 48 },
+    headerTitle: { color: '#2A1235', fontFamily: fontFamily.extraBold, fontSize: 22, textAlign: 'center', lineHeight: 27 },
+    formatBadge: { marginTop: 8, borderRadius: 15, paddingVertical: 4, paddingHorizontal: 12, borderWidth: 1 },
+    formatBadgeText: { fontFamily: fontFamily.bold, fontSize: 13 },
+    headerSubtitle: { color: '#776582', fontFamily: fontFamily.medium, fontSize: 14, marginTop: 10, textAlign: 'center' },
+    avatar: { overflow: 'hidden', borderWidth: 2, backgroundColor: '#F5E7EF' },
+    avatarImage: { width: '100%', height: '100%' },
+    avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    avatarInitial: { color: '#452452', fontFamily: fontFamily.extraBold },
+    itemBlock: { marginBottom: 2 },
+    promptCard: {
+        backgroundColor: '#8F204D', borderRadius: 22, borderWidth: 1, minHeight: 112,
+        alignItems: 'flex-start', justifyContent: 'flex-start', paddingHorizontal: 17, paddingTop: 27, paddingBottom: 18,
     },
-    loadingText: {
-        marginTop: spacing.md,
-        color: '#7C6E8F',
-        fontSize: 16,
-        fontFamily: fontFamily.medium,
+    numberBadge: {
+        position: 'absolute', left: -8, top: -12, width: 34, height: 34, borderRadius: 17,
+        borderWidth: 2, borderColor: '#8F204D', backgroundColor: '#FFFFFF',
+        alignItems: 'center', justifyContent: 'center',
     },
-    errorText: {
-        color: '#FF758F',
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: spacing.lg,
-        fontFamily: fontFamily.medium,
+    numberText: { color: '#8F204D', fontFamily: fontFamily.extraBold, fontSize: 15 },
+    promptText: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 19, lineHeight: 25, textAlign: 'left' },
+    conversation: { marginTop: 22, gap: 16 },
+    chatLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    chatLineUser: { justifyContent: 'flex-end' },
+    chatContent: { maxWidth: '78%' },
+    chatContentUser: { alignItems: 'flex-end' },
+    voiceContent: { maxWidth: '80%', minWidth: '66%' },
+    voiceContentUser: { alignItems: 'flex-end' },
+    personLabel: { color: '#5E3E70', fontFamily: fontFamily.bold, fontSize: 14, marginBottom: 5 },
+    personLabelUser: { textAlign: 'right' },
+    textBubble: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, minHeight: 48, justifyContent: 'center' },
+    partnerTextBubble: { backgroundColor: '#F1EDF4', borderTopLeftRadius: 5, borderWidth: 1, borderColor: '#E3DCE8' },
+    userTextBubble: { backgroundColor: '#FFE7EF', borderTopRightRadius: 5, borderWidth: 1, borderColor: '#FFC5D6' },
+    answerText: { color: '#25122F', fontFamily: fontFamily.regular, fontSize: 16, lineHeight: 22 },
+    pendingBubble: { minWidth: 128, borderRadius: 14, borderWidth: 1, borderStyle: 'dashed', borderColor: '#E7B7C7', padding: 12, backgroundColor: '#FFF9FB' },
+    pendingText: { color: '#AD6A82', fontFamily: fontFamily.medium, fontSize: 13, textAlign: 'center' },
+    continueLink: { alignSelf: 'center', paddingVertical: 16, paddingHorizontal: 10 },
+    continueText: { fontFamily: fontFamily.bold, fontSize: 15 },
+    dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 34 },
+    dividerLine: { flex: 1, height: 1 },
+    dividerHeart: { fontSize: 20, paddingHorizontal: 12 },
+    voiceBubble: { width: '100%', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
+    partnerVoiceBubble: { backgroundColor: '#EEE7FD', borderColor: '#D9CBFA' },
+    userVoiceBubble: { backgroundColor: '#FFE8EF', borderColor: '#FFC4D5' },
+    photoAnswerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, marginTop: 18 },
+    photoAnswerRowUser: { justifyContent: 'flex-end' },
+    photoContent: { width: '73%' },
+    photoContentUser: { alignItems: 'flex-end' },
+    photoFrame: { width: '100%', height: 170, borderRadius: 18, overflow: 'hidden', backgroundColor: '#F2E8EC', borderWidth: 3, borderColor: '#FFFFFF' },
+    photoImage: { width: '100%', height: '100%' },
+    sliderHero: {
+        flexDirection: 'row', alignItems: 'center', gap: 18, backgroundColor: 'rgba(255,255,255,0.86)', borderRadius: 22,
+        padding: 22, marginBottom: 16, shadowColor: '#444477', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 2,
     },
-    primaryButton: {
-        borderRadius: borderRadius.lg,
-        paddingHorizontal: spacing.xl,
-        paddingVertical: spacing.md,
-        marginBottom: spacing.sm,
+    brokenHeart: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#F9E4EF', alignItems: 'center', justifyContent: 'center' },
+    brokenHeartText: { fontSize: 34 },
+    similarityText: { color: '#2B103D', fontFamily: fontFamily.extraBold, fontSize: 27 },
+    similaritySub: { color: '#6E5D79', fontFamily: fontFamily.medium, fontSize: 15, marginTop: 4 },
+    sliderCard: {
+        backgroundColor: 'rgba(255,255,255,0.90)', borderRadius: 24, padding: 18, marginBottom: 16, minHeight: 285,
+        shadowColor: '#495073', shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 2,
     },
-    primaryButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontFamily: fontFamily.bold,
-    },
-    secondaryButton: {
-        paddingVertical: spacing.sm,
-    },
-    secondaryButtonText: {
-        color: '#7C6E8F',
-        fontSize: 15,
-        fontFamily: fontFamily.medium,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: spacing.lg,
-        paddingBottom: spacing.md,
-        backgroundColor: 'transparent',
-    },
-    headerBackBtn: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: 'rgba(255, 255, 255, 0.86)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#F7DDEA',
-    },
-    headerTextBlock: {
-        flex: 1,
-        marginHorizontal: spacing.md,
-        alignItems: 'center',
-    },
-    headerSpacer: {
-        width: 42,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: colors.text,
-        textAlign: 'center',
-        fontFamily: fontFamily.bold,
-    },
-    headerBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 6,
-        marginTop: 4,
-    },
-    headerBadgeText: {
-        fontSize: 11,
-        fontFamily: fontFamily.bold,
-        fontWeight: '700',
-    },
-    scrollContent: {
-        padding: spacing.lg,
-        paddingBottom: spacing.xl * 2,
-    },
-    heroCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.92)',
-        borderRadius: 24,
-        padding: spacing.xl,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.8)',
-        shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.08,
-        shadowRadius: 20,
-        elevation: 0,
-        marginBottom: spacing.lg,
-    },
-    emojiContainer: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: spacing.md,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 0,
-    },
-    emojiText: {
-        fontSize: 32,
-    },
-    heroTitle: {
-        fontSize: 22,
-        fontFamily: fontFamily.extraBold,
-        fontWeight: '800',
-        color: '#2E1E3C',
-        textAlign: 'center',
-        marginBottom: 6,
-    },
-    heroSubtitle: {
-        fontSize: 14.5,
-        fontFamily: fontFamily.medium,
-        color: '#7C6E8F',
-        textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: spacing.lg,
-    },
-    similaritySection: {
-        width: '100%',
-        alignItems: 'center',
-    },
-    ringContainer: {
-        position: 'relative',
-        width: 100,
-        height: 100,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: spacing.md,
-    },
-    ringTextContainer: {
-        position: 'absolute',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    ringText: {
-        fontSize: 22,
-        fontFamily: fontFamily.extraBold,
-        fontWeight: '800',
-    },
-    ringLabel: {
-        fontSize: 10,
-        fontFamily: fontFamily.medium,
-        color: '#A396B2',
-    },
-    matchIndicator: {
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: spacing.lg,
-    },
-    matchLabelText: {
-        fontSize: 13,
-        fontFamily: fontFamily.bold,
-        fontWeight: '700',
-    },
-    statsGrid: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(46, 30, 60, 0.05)',
-        paddingTop: spacing.md,
-        marginTop: spacing.sm,
-    },
-    statBox: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    statValue: {
-        fontSize: 20,
-        fontFamily: fontFamily.extraBold,
-        fontWeight: '800',
-        color: '#2E1E3C',
-    },
-    statLabel: {
-        fontSize: 12,
-        fontFamily: fontFamily.medium,
-        color: '#7C6E8F',
-        marginTop: 2,
-    },
-    statDivider: {
-        width: 1,
-        height: 24,
-        backgroundColor: 'rgba(46, 30, 60, 0.08)',
-    },
-    nonComparableSection: {
-        alignItems: 'center',
-        width: '100%',
-    },
-    nonComparableBadge: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-        marginBottom: spacing.sm,
-    },
-    nonComparableText: {
-        fontSize: 14,
-        fontFamily: fontFamily.bold,
-        fontWeight: '700',
-    },
-    nonComparableSub: {
-        fontSize: 13,
-        fontFamily: fontFamily.medium,
-        color: '#7C6E8F',
-        textAlign: 'center',
-    },
-    inProgressSection: {
-        width: '100%',
-        alignItems: 'center',
-        marginTop: spacing.md,
-        paddingTop: spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(46, 30, 60, 0.05)',
-    },
-    progressBarBg: {
-        width: '100%',
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#FFF0F3',
-        overflow: 'hidden',
-        marginBottom: spacing.sm,
-    },
-    progressBarFill: {
-        height: '100%',
-        borderRadius: 4,
-    },
-    inProgressText: {
-        fontSize: 12,
-        fontFamily: fontFamily.medium,
-        color: '#7C6E8F',
-        textAlign: 'center',
-        lineHeight: 16,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontFamily: fontFamily.bold,
-        fontWeight: '700',
-        color: '#2E1E3C',
-        marginBottom: spacing.md,
-        marginTop: spacing.md,
-    },
-    questionCard: {
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: 20,
-        padding: spacing.md,
-        marginBottom: spacing.md,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.88)',
-        shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.04,
-        shadowRadius: 12,
-        elevation: 0,
-    },
-    questionHeader: {
-        flexDirection: 'row',
+    sliderQuestionRow: {
+        backgroundColor: '#8F204D', borderRadius: 18, paddingHorizontal: 14, paddingTop: 27, paddingBottom: 14,
         alignItems: 'flex-start',
-        marginBottom: spacing.md,
-        gap: spacing.sm,
     },
-    indexBadge: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 2,
+    sliderIndex: {
+        position: 'absolute', left: -8, top: -12, width: 34, height: 34, borderRadius: 17,
+        backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#8F204D', alignItems: 'center', justifyContent: 'center',
     },
-    indexText: {
-        fontSize: 12,
-        fontFamily: fontFamily.bold,
-        fontWeight: '700',
+    sliderIndexText: { color: '#8F204D', fontFamily: fontFamily.extraBold, fontSize: 15 },
+    sliderPrompt: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, lineHeight: 23 },
+    tickLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 22, paddingHorizontal: 8 },
+    tickText: { color: '#40344E', fontFamily: fontFamily.medium, fontSize: 13 },
+    sliderPlot: { height: 105, marginHorizontal: 10, marginTop: 8, justifyContent: 'center' },
+    sliderTrack: { height: 3, borderRadius: 2, backgroundColor: '#D5D4DF' },
+    tickDots: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between' },
+    tickDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#AAA7BC' },
+    sliderMarker: { position: 'absolute', width: 80, marginLeft: -21, alignItems: 'center', zIndex: 2 },
+    markerRing: { width: 44, height: 44, borderRadius: 22, borderWidth: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
+    markerTag: { backgroundColor: '#FFFFFF', borderWidth: 1, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3, marginTop: 2, maxWidth: 82 },
+    markerTagRight: {},
+    markerTagText: { fontFamily: fontFamily.bold, fontSize: 11 },
+    sliderEnds: { flexDirection: 'row', justifyContent: 'space-between' },
+    sliderEndText: { color: '#201729', fontFamily: fontFamily.medium, fontSize: 12, maxWidth: '40%' },
+    syncPill: { alignSelf: 'center', backgroundColor: '#F3E9F7', borderRadius: 18, paddingVertical: 7, paddingHorizontal: 18, marginTop: 14 },
+    syncPillText: { color: '#4A245E', fontFamily: fontFamily.bold, fontSize: 13 },
+    choiceCard: {
+        backgroundColor: 'rgba(255,255,255,0.91)', borderRadius: 24, padding: 14, marginBottom: 16,
+        shadowColor: '#684A62', shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 2,
     },
-    questionPrompt: {
-        flex: 1,
-        fontSize: 15,
-        fontFamily: fontFamily.bold,
-        fontWeight: '700',
-        color: '#2E1E3C',
-        lineHeight: 22,
+    choiceHeading: {
+        minHeight: 104, alignItems: 'flex-start', justifyContent: 'flex-start',
+        paddingHorizontal: 14, paddingTop: 27, paddingBottom: 14,
+        backgroundColor: '#8F204D', borderRadius: 18, borderWidth: 1,
     },
-    matchBadge: {
-        backgroundColor: '#D1FAE5',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 8,
-        alignSelf: 'flex-start',
+    choiceIndex: {
+        position: 'absolute', left: -8, top: -12, width: 34, height: 34, borderRadius: 17,
+        backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#8F204D', alignItems: 'center', justifyContent: 'center',
     },
-    matchText: {
-        fontSize: 10,
-        fontFamily: fontFamily.bold,
-        fontWeight: '700',
-        color: '#059669',
-    },
-    answersContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(46, 30, 60, 0.05)',
-        paddingTop: spacing.md,
-    },
-    answerBox: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    answerLabel: {
-        fontSize: 11,
-        fontFamily: fontFamily.medium,
-        color: '#A396B2',
-        marginBottom: 6,
-    },
-    answerBubble: {
-        paddingVertical: spacing.sm,
-        paddingHorizontal: spacing.md,
-        borderRadius: 12,
-        width: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 44,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.02,
-        shadowRadius: 4,
-        elevation: 0,
-    },
-    answerText: {
-        fontSize: 13,
-        fontFamily: fontFamily.bold,
-        fontWeight: '600',
-        textAlign: 'center',
-    },
-    answerPhoto: {
-        width: '100%',
-        height: 80,
-        borderRadius: 12,
-    },
-    pendingBubble: {
-        backgroundColor: '#FFF9FB',
-        paddingVertical: spacing.sm,
-        paddingHorizontal: spacing.md,
-        borderRadius: 12,
-        width: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 44,
-        borderWidth: 1,
-        borderStyle: 'dashed',
-        borderColor: '#FFD3E0',
-    },
-    pendingText: {
-        fontSize: 12,
-        fontFamily: fontFamily.medium,
-        fontStyle: 'italic',
-        color: '#FF758F',
-    },
-    userPendingBubble: {
-        backgroundColor: '#FFF0F3',
-        borderColor: '#FF758F',
-        borderStyle: 'solid',
-    },
-    userPendingText: {
-        color: '#FF4568',
-        fontWeight: '700',
-        fontStyle: 'normal',
-    },
-    unansweredQuestionCard: {
-        borderWidth: 1.5,
-        borderColor: 'rgba(255, 117, 143, 0.3)',
-    },
-    heartContainer: {
-        paddingHorizontal: spacing.sm,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    doneBtn: {
-        borderRadius: 28,
-        paddingVertical: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: spacing.lg,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        elevation: 0,
-        flexDirection: 'row',
-        gap: 8,
-    },
-    doneBtnText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontFamily: fontFamily.bold,
-        fontWeight: '700',
-    },
+    choiceIndexText: { color: '#8F204D', fontFamily: fontFamily.extraBold, fontSize: 15 },
+    choicePrompt: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, lineHeight: 23, textAlign: 'left' },
+    choiceColumns: { flexDirection: 'row', gap: 8, marginTop: 18 },
+    choiceOption: { flex: 1, borderRadius: 18, minHeight: 130, alignItems: 'center', padding: 12, borderWidth: 1 },
+    choiceOptionLeft: { backgroundColor: '#EAF9F7', borderColor: '#CBECE8' },
+    choiceOptionRight: { backgroundColor: '#FFF0F6', borderColor: '#F8CDDD' },
+    choiceLabel: { fontFamily: fontFamily.extraBold, fontSize: 16, textAlign: 'center' },
+    choiceAvatars: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 },
+    choicePerson: { alignItems: 'center' },
+    choicePersonName: { color: '#321B3B', fontFamily: fontFamily.bold, fontSize: 11, marginTop: 2, maxWidth: 60 },
+    choiceResult: { alignSelf: 'center', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 7, marginTop: 12 },
+    choiceResultSame: { backgroundColor: '#E5FAF5' },
+    choiceResultDifferent: { backgroundColor: '#FFF0E8' },
+    choiceResultText: { fontFamily: fontFamily.bold, fontSize: 13 },
+    choiceResultTextDifferent: { color: '#9A4D34' },
+    emptyCard: { backgroundColor: 'rgba(255,255,255,0.82)', padding: 34, borderRadius: 24, alignItems: 'center' },
+    emptyEmoji: { color: '#D9678D', fontSize: 34 },
+    emptyText: { color: '#725C7D', fontFamily: fontFamily.bold, fontSize: 16, marginTop: 8 },
+    footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 18, paddingTop: 8, backgroundColor: 'transparent' },
+    footerButton: { height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
+    footerText: { color: '#FFFFFF', fontFamily: fontFamily.bold, fontSize: 17 },
 });
