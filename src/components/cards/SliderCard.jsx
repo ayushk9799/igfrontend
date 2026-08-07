@@ -11,7 +11,6 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 
-import { categoryConfig, defaultConfig } from './categoryConfig';
 import { cardStyles } from './cardStyles';
 import {
     spacing
@@ -27,6 +26,8 @@ const CARD_CONTENT_HORIZONTAL_PADDING = spacing.lg * 2;
 const SLIDER_WIDTH = Math.max(220, CARD_WIDTH - CARD_BORDER_WIDTH * 2 - CARD_CONTENT_HORIZONTAL_PADDING - spacing.lg * 2);
 const KNOB_SIZE = 44;
 const TRACK_HEIGHT = 12;
+const DEEP_RED = '#7A1024';
+const RED_ACCENT = '#B51E3A';
 
 /**
  * SliderCard - Rate something on a scale with an animated slider
@@ -50,8 +51,6 @@ const SliderCard = React.memo(({
     showAlreadyAnsweredOverlay = true,
     onNavigateToPremium = () => { },
 }) => {
-    const config = categoryConfig[task.category] || categoryConfig.slider || defaultConfig;
-
     // Slider configuration from task
     const minValue = task.minValue || 1;
     const maxValue = task.maxValue || 10;
@@ -167,7 +166,7 @@ const SliderCard = React.memo(({
     }
 
     return (
-        <LinearGradient colors={['#24CE6D', '#1FB75E']} style={styles.cardInner}>
+        <LinearGradient colors={['#8F1830', '#560A18']} style={styles.cardInner}>
             {/* Already Answered Overlay */}
             {isAnswered && showAlreadyAnsweredOverlay && (
                 <View style={cardStyles.answeredOverlay}>
@@ -190,7 +189,7 @@ const SliderCard = React.memo(({
                 <View style={styles.topRow}>
                     <View style={styles.categoryBadge}>
                         <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
-                            <Path d="M12 2L14.95 8.02L21.6 8.98L16.8 13.66L17.93 20.28L12 17.16L6.07 20.28L7.2 13.66L2.4 8.98L9.05 8.02L12 2Z" fill="#16B98F" />
+                            <Path d="M12 2L14.95 8.02L21.6 8.98L16.8 13.66L17.93 20.28L12 17.16L6.07 20.28L7.2 13.66L2.4 8.98L9.05 8.02L12 2Z" fill="#F3A1B0" />
                         </Svg>
                         <Text style={styles.categoryText}>{translateUiText("Rate It")}</Text>
                     </View>
@@ -219,7 +218,7 @@ const SliderCard = React.memo(({
                         {/* Progress Fill */}
                         <Animated.View style={[styles.trackFill, progressStyle]}>
                             <LinearGradient
-                                colors={['#18C79A', '#63E1C0']}
+                                colors={[RED_ACCENT, '#E55A72']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={styles.trackFillGradient}
@@ -239,7 +238,7 @@ const SliderCard = React.memo(({
                                         { left: position - 1 },
                                         tick === currentValue && [
                                             styles.activeTick,
-                                            { backgroundColor: config.color },
+                                            { backgroundColor: RED_ACCENT },
                                         ]
                                     ]}
                                 />
@@ -249,7 +248,7 @@ const SliderCard = React.memo(({
 
                     {/* Draggable Knob */}
                     <GestureDetector gesture={panGesture}>
-                        <Animated.View style={[styles.knob, knobStyle, { borderColor: config.color }]}>
+                        <Animated.View style={[styles.knob, knobStyle, { borderColor: DEEP_RED }]}>
                             <LinearGradient
                                 colors={['#FFFFFF', '#FFF1F7']}
                                 style={styles.knobGradient}
@@ -499,7 +498,7 @@ const styles = StyleSheet.create({
         borderColor: 'transparent',
     },
     submitText: {
-        color: '#0D7C5F',
+        color: DEEP_RED,
         fontSize: 16,
         fontWeight: '800',
         fontFamily: fontFamily.bold,

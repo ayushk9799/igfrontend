@@ -198,6 +198,7 @@ export const AppNavigator = () => {
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
     const [selectedQuestionV2Chat, setSelectedQuestionV2Chat] = useState(null);
+    const [pendingQuestionSetRoute, setPendingQuestionSetRoute] = useState(null);
     const [homeInitialTab, setHomeInitialTab] = useState(null); // Track which tab to open in MainTabNavigator
     const [lastHomeTab, setLastHomeTab] = useState('home'); // Remember active tab before opening full-screen routes
     const [versionGate, setVersionGate] = useState({ status: 'checking', policy: null });
@@ -1062,6 +1063,21 @@ export const AppNavigator = () => {
         };
 
         try {
+            if (
+                data.notificationKind === 'set_answering'
+                && data.topicId
+                && data.setId
+            ) {
+                setSelectedCategory({ id: data.topicId });
+                setPendingQuestionSetRoute({
+                    topicId: data.topicId,
+                    setId: data.setId,
+                });
+                setHomeInitialTab(null);
+                setCurrentScreen('questions');
+                return;
+            }
+
             if (data.route === 'dailyChallenge' || data.tab === 'dailyChallenge') {
                 openHomeTab('dailyChallenge');
                 return;
@@ -1370,6 +1386,26 @@ export const AppNavigator = () => {
         const handleQuestionChatV2Notification = (data = {}) => {
             if (!data.chatId) return;
             if (currentScreen === 'questionChatV2' && sameId(selectedQuestionV2Chat?._id, data.chatId)) return;
+
+            if (data.notificationKind === 'set_answering') {
+                showRoutedLocalNotification({
+                    title: data.title || translateUiTemplate("{{0}} is answering {{1}}…", [
+                        data.senderName || partnerName,
+                        data.setTitle || translateUiText("a question set"),
+                    ]),
+                    body: data.body || translateUiText("View or answer now!"),
+                    data: {
+                        type: 'questionChatV2',
+                        notificationKind: 'set_answering',
+                        chatId: data.chatId,
+                        topicId: data.topicId,
+                        setId: data.setId,
+                        questionId: data.questionId || '',
+                        answerSessionId: data.answerSessionId || '',
+                    },
+                });
+                return;
+            }
 
             showRoutedLocalNotification({
                 title: data.questionText || translateUiText("Question chat"),
@@ -2710,6 +2746,12 @@ export const AppNavigator = () => {
                             hasPartner={!!userData.partnerId}
                             onLinkPartner={openPartnerCode}
                             onNavigateToPremium={() => navigate('premium')}
+                            initialSetId={
+                                pendingQuestionSetRoute?.topicId === selectedCategory.id
+                                    ? pendingQuestionSetRoute.setId
+                                    : null
+                            }
+                            onInitialSetHandled={() => setPendingQuestionSetRoute(null)}
                             onOpenQuestionChat={(item) => {
                                 openQuestionV2Chat({
                                     ...item,

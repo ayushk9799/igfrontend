@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
@@ -17,6 +17,10 @@ import { QuestionsV2Api } from '../api/questionsV2Api';
 import { fontFamily } from '../constants/fonts';
 import { translateUiText } from '../i18n/uiTranslation';
 import { spacing } from '../theme';
+import {
+    mergeQuestionReportWithLocalAnswers,
+    QuestionReportCache,
+} from '../services/questionReportCache';
 
 const FORMAT_THEME = {
     deep: {
@@ -242,18 +246,39 @@ function PhotoRow({ item, index, theme, userName, partnerName, userAvatar, partn
     );
 }
 
-function SliderMarker({ value, min, max, color, avatar, name, top, alignRight }) {
-    const numeric = Number(answerValue(value));
+const sliderPercent = (value, min, max) => {
+    const resolvedValue = answerValue(value);
+    if (!isPresent(resolvedValue) || (typeof resolvedValue === 'string' && !resolvedValue.trim())) {
+        return null;
+    }
+    const numeric = Number(resolvedValue);
     if (!Number.isFinite(numeric)) return null;
     const range = Math.max(1, max - min);
     const percent = Math.max(0, Math.min(100, ((numeric - min) / range) * 100));
+    return { numeric, percent };
+};
+
+function SliderMarker({ value, min, max, color, avatar, label, placement = 'above' }) {
+    const position = sliderPercent(value, min, max);
+    if (!position) return null;
+    const isBelow = placement === 'below';
+
     return (
-        <View style={[styles.sliderMarker, { left: `${percent}%`, top }]}>
-            <View style={[styles.markerRing, { borderColor: color }]}>
-                <Avatar uri={avatar} name={name} size={34} ringColor="#FFFFFF" />
-            </View>
-            <View style={[styles.markerTag, alignRight && styles.markerTagRight, { borderColor: color }]}>
-                <Text style={[styles.markerTagText, { color }]} numberOfLines={1}>{numeric}</Text>
+        <View
+            style={[
+                styles.sliderMarker,
+                isBelow && styles.sliderMarkerBelow,
+                {
+                    left: `${position.percent}%`,
+                },
+            ]}
+        >
+            <View style={styles.markerPin}>
+                {isBelow && <View style={[styles.markerPointerUp, { borderBottomColor: color }]} />}
+                <View style={[styles.markerRing, { borderColor: color }]}>
+                    <Avatar uri={avatar} name={label} size={28} ringColor="#FFFFFF" />
+                </View>
+                {!isBelow && <View style={[styles.markerPointerDown, { borderTopColor: color }]} />}
             </View>
         </View>
     );
@@ -261,11 +286,21 @@ function SliderMarker({ value, min, max, color, avatar, name, top, alignRight })
 
 function SliderRow({ item, index, theme, userName, partnerName, userAvatar, partnerAvatar, onPress }) {
     const min = Number.isFinite(Number(item.minValue)) ? Number(item.minValue) : 1;
-    const max = Number.isFinite(Number(item.maxValue)) ? Number(item.maxValue) : 5;
-    const userVal = Number(answerValue(item.userAnswer));
-    const partnerVal = Number(answerValue(item.partnerAnswer));
-    const both = Number.isFinite(userVal) && Number.isFinite(partnerVal);
+    const max = Number.isFinite(Number(item.maxValue)) ? Number(item.maxValue) : 10;
+    const rawUserValue = answerValue(item.userAnswer);
+    const rawPartnerValue = answerValue(item.partnerAnswer);
+    const hasUserAnswer = isPresent(rawUserValue)
+        && !(typeof rawUserValue === 'string' && !rawUserValue.trim());
+    const hasPartnerAnswer = isPresent(rawPartnerValue)
+        && !(typeof rawPartnerValue === 'string' && !rawPartnerValue.trim());
+    const userVal = hasUserAnswer ? Number(rawUserValue) : null;
+    const partnerVal = hasPartnerAnswer ? Number(rawPartnerValue) : null;
+    const both = hasUserAnswer
+        && hasPartnerAnswer
+        && Number.isFinite(userVal)
+        && Number.isFinite(partnerVal);
     const distance = both ? Math.abs(userVal - partnerVal) : null;
+    const partnerLabel = String(partnerName || translateUiText('Partner')).trim().split(/\s+/)[0];
     const ticks = Array.from({ length: Math.min(10, Math.max(2, max - min + 1)) }, (_, i) => min + i);
     return (
         <TouchableOpacity style={styles.sliderCard} onPress={onPress} activeOpacity={onPress ? 0.84 : 1}>
@@ -273,16 +308,52 @@ function SliderRow({ item, index, theme, userName, partnerName, userAvatar, part
                 <View style={styles.sliderIndex}><Text style={styles.sliderIndexText}>{index + 1}</Text></View>
                 <Text style={styles.sliderPrompt}>{item.prompt}</Text>
             </View>
-            <View style={styles.tickLabels}>
-                {ticks.map(tick => <Text key={tick} style={styles.tickText}>{tick}</Text>)}
-            </View>
             <View style={styles.sliderPlot}>
                 <View style={styles.sliderTrack} />
                 <View style={styles.tickDots}>
-                    {ticks.map(tick => <View key={tick} style={styles.tickDot} />)}
+                    {ticks.map(tick => {
+                        const isUserSelection = Number.isFinite(userVal) && userVal === tick;
+                        const isPartnerSelection = Number.isFinite(partnerVal) && partnerVal === tick;
+                        return (
+                            <View
+                                key={tick}
+                                style={[
+                                    styles.tickDot,
+                                    isUserSelection && !isPartnerSelection && styles.userTickDot,
+                                    isPartnerSelection && !isUserSelection && styles.partnerTickDot,
+                                    isUserSelection && isPartnerSelection && styles.sharedTickDot,
+                                ]}
+                            >
+                                <Text
+                                    style={[
+                                        styles.tickNumber,
+                                        (isUserSelection || isPartnerSelection) && styles.selectedTickNumber,
+                                    ]}
+                                >
+                                    {tick}
+                                </Text>
+                            </View>
+                        );
+                    })}
                 </View>
-                <SliderMarker value={item.userAnswer} min={min} max={max} color="#2866C8" avatar={userAvatar} name={translateUiText('You')} top={-20} />
-                <SliderMarker value={item.partnerAnswer} min={min} max={max} color="#E94778" avatar={partnerAvatar} name={partnerName} top={40} alignRight />
+                <SliderMarker
+                    value={item.userAnswer}
+                    min={min}
+                    max={max}
+                    color="#2866C8"
+                    avatar={userAvatar}
+                    label={translateUiText('You')}
+                    placement="above"
+                />
+                <SliderMarker
+                    value={item.partnerAnswer}
+                    min={min}
+                    max={max}
+                    color="#E94778"
+                    avatar={partnerAvatar}
+                    label={partnerLabel}
+                    placement="below"
+                />
             </View>
             <View style={styles.sliderEnds}>
                 <Text style={styles.sliderEndText}>{item.minLabel || translateUiText('Not yet')}</Text>
@@ -368,13 +439,24 @@ function ChoiceRow({ item, index, theme, userName, partnerName, userAvatar, part
 }
 
 function SliderHero({ summary }) {
-    const similarity = Number.isFinite(summary.similarityPercent) ? summary.similarityPercent : 0;
+    const hasComparison = summary.bothAnswered > 0
+        && Number.isFinite(summary.similarityPercent);
     return (
         <View style={styles.sliderHero}>
-            <View style={styles.brokenHeart}><Text style={styles.brokenHeartText}>💔</Text></View>
+            <View style={styles.brokenHeart}>
+                <Text style={styles.brokenHeartText}>{hasComparison ? '💞' : '💗'}</Text>
+            </View>
             <View>
-                <Text style={styles.similarityText}>{similarity}% {translateUiText('in sync')}</Text>
-                <Text style={styles.similaritySub}>{translateUiText('Across')} {summary.bothAnswered || 0} {translateUiText('ratings')}</Text>
+                <Text style={styles.similarityText}>
+                    {hasComparison
+                        ? `${summary.similarityPercent}% ${translateUiText('in sync')}`
+                        : translateUiText('Waiting to compare')}
+                </Text>
+                <Text style={styles.similaritySub}>
+                    {hasComparison
+                        ? `${translateUiText('Across')} ${summary.bothAnswered} ${translateUiText('ratings')}`
+                        : translateUiText('Both answers will appear here')}
+                </Text>
             </View>
         </View>
     );
@@ -393,13 +475,38 @@ export default function TopicQuestionsSummaryScreen({
     onLinkPartner = () => {},
     onAnswerQuestion,
     onOpenQuestionChat,
+    optimisticReport = null,
+    refreshVersion = 0,
 }) {
     const insets = useSafeAreaInsets();
-    const [report, setReport] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const initialReportRef = useRef(undefined);
+    if (initialReportRef.current === undefined) {
+        const cachedReport = QuestionReportCache.get({
+            topicId: topic,
+            setId: selectedSet?.setId,
+            userId,
+        });
+        initialReportRef.current = mergeQuestionReportWithLocalAnswers(
+            cachedReport,
+            optimisticReport,
+        );
+    }
+    const reportRef = useRef(initialReportRef.current);
+    const [report, setReport] = useState(initialReportRef.current);
+    const [loading, setLoading] = useState(!initialReportRef.current);
     const [error, setError] = useState(null);
     const format = selectedSet?.format || 'deep';
     const theme = FORMAT_THEME[format] || FORMAT_THEME.deep;
+
+    useEffect(() => {
+        if (!initialReportRef.current) return;
+        QuestionReportCache.set({
+            topicId: topic,
+            setId: selectedSet?.setId,
+            userId,
+            report: initialReportRef.current,
+        });
+    }, [selectedSet?.setId, topic, userId]);
 
     const fetchReport = useCallback(async () => {
         if (!hasPartner) {
@@ -407,21 +514,38 @@ export default function TopicQuestionsSummaryScreen({
             onLinkPartner?.();
             return;
         }
-        setLoading(true);
+        setLoading(!reportRef.current);
         setError(null);
         try {
             const response = await QuestionsV2Api.getSetReport({ topicId: topic, setId: selectedSet?.setId, userId });
-            if (response.success) setReport(response.data);
+            if (response.success) {
+                reportRef.current = response.data;
+                setReport(response.data);
+                QuestionReportCache.set({
+                    topicId: topic,
+                    setId: selectedSet?.setId,
+                    userId,
+                    report: response.data,
+                });
+            }
             else if (response.message === 'User has no partner linked') onLinkPartner?.();
-            else setError(response.message || response.error || 'Failed to load summary');
+            else if (!reportRef.current) setError(response.message || response.error || 'Failed to load summary');
         } catch (err) {
-            setError(err.message || 'Failed to load summary');
+            if (!reportRef.current) setError(err.message || 'Failed to load summary');
         } finally {
             setLoading(false);
         }
     }, [hasPartner, onLinkPartner, selectedSet?.setId, topic, userId]);
 
-    useEffect(() => { fetchReport(); }, [fetchReport]);
+    useEffect(() => { fetchReport(); }, [fetchReport, refreshVersion]);
+
+    useEffect(() => {
+        if (!optimisticReport) return;
+        const merged = mergeQuestionReportWithLocalAnswers(reportRef.current, optimisticReport);
+        reportRef.current = merged;
+        setReport(merged);
+        setLoading(false);
+    }, [optimisticReport]);
 
     const items = report?.items || [];
     const summary = report?.summary || { totalQuestions: items.length, bothAnswered: 0, matched: 0, similarityPercent: null };
@@ -596,20 +720,35 @@ const styles = StyleSheet.create({
     },
     sliderIndexText: { color: '#8F204D', fontFamily: fontFamily.extraBold, fontSize: 15 },
     sliderPrompt: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, lineHeight: 23 },
-    tickLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 22, paddingHorizontal: 8 },
-    tickText: { color: '#40344E', fontFamily: fontFamily.medium, fontSize: 13 },
-    sliderPlot: { height: 105, marginHorizontal: 10, marginTop: 8, justifyContent: 'center' },
-    sliderTrack: { height: 3, borderRadius: 2, backgroundColor: '#D5D4DF' },
-    tickDots: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between' },
-    tickDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#AAA7BC' },
-    sliderMarker: { position: 'absolute', width: 80, marginLeft: -21, alignItems: 'center', zIndex: 2 },
-    markerRing: { width: 44, height: 44, borderRadius: 22, borderWidth: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
-    markerTag: { backgroundColor: '#FFFFFF', borderWidth: 1, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3, marginTop: 2, maxWidth: 82 },
-    markerTagRight: {},
-    markerTagText: { fontFamily: fontFamily.bold, fontSize: 11 },
+    sliderPlot: { height: 112, marginHorizontal: 24, marginTop: 12 },
+    sliderTrack: { position: 'absolute', left: 0, right: 0, top: 54, height: 3, borderRadius: 2, backgroundColor: '#D5D4DF' },
+    tickDots: { position: 'absolute', left: -5, right: -5, top: 46, flexDirection: 'row', justifyContent: 'space-between' },
+    tickDot: {
+        width: 18, height: 18, borderRadius: 9, backgroundColor: '#F8F6FA', borderWidth: 1,
+        borderColor: '#BEB7C8', alignItems: 'center', justifyContent: 'center',
+    },
+    userTickDot: { backgroundColor: '#2866C8', borderColor: '#2866C8' },
+    partnerTickDot: { backgroundColor: '#E94778', borderColor: '#E94778' },
+    sharedTickDot: { backgroundColor: '#85529F', borderColor: '#85529F' },
+    tickNumber: { color: '#60556B', fontFamily: fontFamily.extraBold, fontSize: 9, textAlign: 'center' },
+    selectedTickNumber: { color: '#FFFFFF' },
+    sliderMarker: { position: 'absolute', top: 2, width: 72, marginLeft: -36, alignItems: 'center', zIndex: 2 },
+    sliderMarkerBelow: { top: 64 },
+    markerPin: { alignItems: 'center' },
+    markerRing: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
+    markerPointerDown: {
+        width: 0, height: 0, marginTop: -1,
+        borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8,
+        borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    },
+    markerPointerUp: {
+        width: 0, height: 0, marginBottom: -1,
+        borderLeftWidth: 6, borderRightWidth: 6, borderBottomWidth: 8,
+        borderLeftColor: 'transparent', borderRightColor: 'transparent',
+    },
     sliderEnds: { flexDirection: 'row', justifyContent: 'space-between' },
     sliderEndText: { color: '#201729', fontFamily: fontFamily.medium, fontSize: 12, maxWidth: '40%' },
-    syncPill: { alignSelf: 'center', backgroundColor: '#F3E9F7', borderRadius: 18, paddingVertical: 7, paddingHorizontal: 18, marginTop: 14 },
+    syncPill: { alignSelf: 'center', backgroundColor: '#F3E9F7', borderRadius: 18, paddingVertical: 7, paddingHorizontal: 18, marginTop: 10 },
     syncPillText: { color: '#4A245E', fontFamily: fontFamily.bold, fontSize: 13 },
     choiceCard: {
         backgroundColor: 'rgba(255,255,255,0.91)', borderRadius: 24, padding: 14, marginBottom: 16,

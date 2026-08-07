@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontFamily: fontFamily.extraBold,
-        fontSize: 32,
+        fontSize: 26,
         fontWeight: fontWeight('800'),
         color: '#202B5E',
         letterSpacing: -0.5,
@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
     },
     headerSubtitle: {
         fontFamily: fontFamily.medium,
-        fontSize: 16,
+        fontSize: 12,
         lineHeight: 22,
         color: '#7F7AA5',
         fontWeight: fontWeight('500'),

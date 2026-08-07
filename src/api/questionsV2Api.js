@@ -28,6 +28,16 @@ const buildQuery = (params = {}) => {
 };
 
 export const QuestionsV2Api = {
+    getContentManifest: async (revision) => {
+        try {
+            const query = buildQuery({ revision });
+            const response = await apiFetch(`${QUESTIONS_V2_BASE}/content-manifest${query}`);
+            return parseJson(response);
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    },
+
     getTopics: async (userId) => {
         try {
             const query = buildQuery({ userId });
@@ -71,12 +81,30 @@ export const QuestionsV2Api = {
         }
     },
 
-    submitAnswer: async ({ userId, topicId, setId, questionId, answer, answerType = 'text', cursor }) => {
+    submitAnswer: async ({
+        userId,
+        topicId,
+        setId,
+        questionId,
+        answer,
+        answerType = 'text',
+        cursor,
+        answerSessionId,
+    }) => {
         try {
             const response = await apiFetch(`${QUESTIONS_V2_BASE}/answer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, topicId, setId, questionId, answer, answerType, cursor }),
+                body: JSON.stringify({
+                    userId,
+                    topicId,
+                    setId,
+                    questionId,
+                    answer,
+                    answerType,
+                    cursor,
+                    ...(answerSessionId ? { answerSessionId } : {}),
+                }),
             });
             return parseJson(response);
         } catch (error) {
