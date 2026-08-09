@@ -364,7 +364,7 @@ const cardShadow = Platform.select({
         shadowRadius: 12,
     },
     android: {
-        elevation: 3,
+        elevation: 0,
     },
 });
 

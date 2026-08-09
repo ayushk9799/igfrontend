@@ -1473,7 +1473,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 6,
             },
             android: {
-                elevation: 3,
+                elevation: 0,
             },
         }),
     },
@@ -1600,7 +1600,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 10,
             },
             android: {
-                elevation: 6,
+                elevation: 0,
             },
         }),
     },
@@ -1636,7 +1636,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 4,
             },
             android: {
-                elevation: 5,
+                elevation: 0,
                 shadowColor: '#8B5CF6',
             },
         }),
@@ -1710,7 +1710,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 12,
             },
             android: {
-                elevation: 3,
+                elevation: 0,
             },
         }),
     },
@@ -1788,7 +1788,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 8,
             },
             android: {
-                elevation: 4,
+                elevation: 0,
             },
         }),
     },
@@ -1817,7 +1817,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
-        elevation: 5,
+        elevation: 0,
     },
     nudgeButtonGradient: {
         flex: 1,

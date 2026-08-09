@@ -217,9 +217,9 @@ const OnboardingFeaturesScreen = ({ onComplete }) => {
                     <View style={styles.footer}>
                         <TouchableOpacity activeOpacity={0.86} onPress={handleNext} style={styles.nextButtonShadow}>
                             <LinearGradient
-                                colors={['#FF6B82', '#F45170']}
+                                colors={['#FF5E97', '#FFA1C9']}
                                 start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
+                                end={{ x: 1, y: 0 }}
                                 style={styles.nextButton}
                             >
                                 <Text style={styles.nextText}>{translateUiText("Next")}</Text>
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.08,
         shadowRadius: 10,
-        elevation: 2,
+        elevation: 0,
     },
     featureIconContainer: {
         position: 'absolute',
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.12,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 0,
         zIndex: 2,
     },
     featureIcon: {
@@ -418,11 +418,11 @@ const styles = StyleSheet.create({
     nextButtonShadow: {
         width: '100%',
         borderRadius: 24,
-        shadowColor: '#F45170',
+        shadowColor: '#FF5E97',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 12,
-        elevation: 4,
+        elevation: 0,
     },
     nextButton: {
         height: 48,

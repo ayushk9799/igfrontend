@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowOffset: { width: 0, height: 4 },
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     content: {
         paddingHorizontal: 20,
@@ -785,7 +785,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowOffset: { width: 0, height: 6 },
         shadowRadius: 14,
-        elevation: 3,
+        elevation: 0,
     },
     lockWidgetTileWide: {
         width: '54%',
@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowOffset: { width: 0, height: 6 },
         shadowRadius: 14,
-        elevation: 3,
+        elevation: 0,
     },
     lockWidgetTileFull: {
         width: '100%',
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowOffset: { width: 0, height: 6 },
         shadowRadius: 14,
-        elevation: 3,
+        elevation: 0,
     },
     lockPhonePreview: {
         height: 170,
@@ -1149,7 +1149,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.18,
         shadowOffset: { width: 0, height: 12 },
         shadowRadius: 28,
-        elevation: 12,
+        elevation: 0,
     },
     modalIconCircle: {
         width: 56,

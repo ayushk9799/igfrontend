@@ -77,6 +77,8 @@ const getIconForType = (type) => {
             return <TicTacToeIcon />;
         case 'wordle':
             return <WordleIcon />;
+        case 'wordsearch':
+            return <WordleIcon />;
         default:
             return null;
     }
@@ -127,6 +129,7 @@ export const NotificationCenterScreen = ({
     onJigsawPlay,
     onTicTacToePress,
     onWordlePress,
+    onWordSearchPress,
 }) => {
     const notifications = useSelector(selectDuelNotifications);
     const insets = useSafeAreaInsets();
@@ -148,6 +151,9 @@ export const NotificationCenterScreen = ({
                     break;
                 case 'wordle':
                     onWordlePress?.(item.game);
+                    break;
+                case 'wordsearch':
+                    onWordSearchPress?.(item.game);
                     break;
             }
         }, 300);
@@ -223,7 +229,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,
-        elevation: 3,
+        elevation: 0,
     },
     headerTitle: {
         fontSize: 20,
@@ -250,7 +256,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     iconCircle: {
         width: 46,
@@ -293,7 +299,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,
-        elevation: 3,
+        elevation: 0,
     },
     emptyTitle: {
         fontSize: 18,

@@ -216,9 +216,9 @@ const QuestionsOnboardingScreen = ({ onComplete }) => {
                     >
                         <TouchableOpacity onPress={finish} activeOpacity={0.86} style={styles.buttonShadow}>
                             <LinearGradient
-                                colors={['#FF6B82', '#F45170']}
+                                colors={['#FF5E97', '#FFA1C9']}
                                 start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
+                                end={{ x: 1, y: 0 }}
                                 style={styles.continueButton}
                             >
                                 <Text style={styles.continueText}>{translateUiText("Continue")}</Text>
@@ -233,7 +233,7 @@ const QuestionsOnboardingScreen = ({ onComplete }) => {
 
 const cardShadow = Platform.select({
     ios: { shadowColor: '#C084FC', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 14 },
-    android: { elevation: 5 },
+    android: { elevation: 0 },
 });
 
 const styles = StyleSheet.create({
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
         height: 40,
     },
     footer: { paddingTop: 10, paddingHorizontal: 6, alignItems: 'center' },
-    buttonShadow: { width: '100%', borderRadius: 24, shadowColor: '#F45170', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+    buttonShadow: { width: '100%', borderRadius: 24, shadowColor: '#FF5E97', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 0 },
     continueButton: { height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
     continueText: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, fontWeight: fontWeight('800') },
 });

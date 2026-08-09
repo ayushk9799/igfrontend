@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.12,
         shadowRadius: 16,
-        elevation: 4,
+        elevation: 0,
     },
     socialButtonContent: {
         flexDirection: 'row',

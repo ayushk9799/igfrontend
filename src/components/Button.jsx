@@ -253,6 +253,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         overflow: 'hidden',
         ...shadows.sm,
+        elevation: 0,
     },
     gradientBackground: {
         ...StyleSheet.absoluteFillObject,

@@ -1060,7 +1060,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
         zIndex: 10,
     },
     restoreButton: {
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.25,
         shadowRadius: 14,
-        elevation: 5,
+        elevation: 0,
     },
     purchaseSuccessText: {
         color: colors.textSecondary,
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.06,
         shadowRadius: 8,
-        elevation: 1,
+        elevation: 0,
     },
     planCardSelected: {
         borderColor: colors.primary,
@@ -1278,7 +1278,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     subscribeButtonDisabled: {
         opacity: 0.6,
@@ -1342,7 +1342,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
-        elevation: 2,
+        elevation: 0,
     },
     premiumStatusHeader: {
         flexDirection: 'row',
@@ -1411,7 +1411,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.15,
         shadowRadius: 18,
-        elevation: 4,
+        elevation: 0,
     },
     processingText: {
         color: colors.text,

@@ -848,7 +848,7 @@ export const CallOverlay = () => {
 
 const styles = StyleSheet.create({
     incomingBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(35,20,43,0.42)' },
-    incomingSheet: { maxHeight: '92%', backgroundColor: '#FFF9FC', borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 20, paddingTop: 10, shadowColor: '#321B33', shadowOpacity: 0.18, shadowRadius: 24, elevation: 24 },
+    incomingSheet: { maxHeight: '92%', backgroundColor: '#FFF9FC', borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 20, paddingTop: 10, shadowColor: '#321B33', shadowOpacity: 0.18, shadowRadius: 24, elevation: 0 },
     incomingScrollContent: { paddingBottom: 2 },
     sheetHandle: { alignSelf: 'center', width: 42, height: 5, borderRadius: 3, backgroundColor: '#DDCFD9', marginBottom: 20 },
     sheetAvatar: { width: 68, height: 68, borderRadius: 24, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
@@ -892,7 +892,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.26,
         shadowRadius: 20,
-        elevation: 22,
+        elevation: 0,
     },
     callPermissionTitle: {
         color: '#2E2030',
@@ -972,7 +972,7 @@ const styles = StyleSheet.create({
     incomingActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
     declineAction: { flex: 1, minHeight: 54, borderRadius: 18, backgroundColor: '#FBE8EB', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
     declineActionLabel: { color: '#C7465B', fontFamily: fontFamily.bold, fontSize: 15 },
-    acceptAction: { flex: 1.2, minHeight: 54, borderRadius: 18, backgroundColor: '#35A978', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: '#237553', shadowOpacity: 0.18, shadowRadius: 8, elevation: 4 },
+    acceptAction: { flex: 1.2, minHeight: 54, borderRadius: 18, backgroundColor: '#35A978', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: '#237553', shadowOpacity: 0.18, shadowRadius: 8, elevation: 0 },
     acceptActionLabel: { color: '#FFF', fontFamily: fontFamily.bold, fontSize: 15 },
     fullScreen: { flex: 1, backgroundColor: '#2F2233' },
     callSurfaceTapTarget: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
@@ -986,7 +986,7 @@ const styles = StyleSheet.create({
     voiceRing: { position: 'absolute', borderWidth: 3, borderColor: 'rgba(216,79,134,0.9)', backgroundColor: 'rgba(216,79,134,0.08)' },
     voiceOuterRing: { width: 210, height: 210, borderRadius: 105 },
     voiceInnerRing: { width: 174, height: 174, borderRadius: 87 },
-    remoteAvatar: { width: 146, height: 146, borderRadius: 73, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.94)', borderWidth: 3, borderColor: 'rgba(255,255,255,0.92)', shadowColor: '#582F59', shadowOpacity: 0.22, shadowRadius: 18, elevation: 8 },
+    remoteAvatar: { width: 146, height: 146, borderRadius: 73, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.94)', borderWidth: 3, borderColor: 'rgba(255,255,255,0.92)', shadowColor: '#582F59', shadowOpacity: 0.22, shadowRadius: 18, elevation: 0 },
     remoteAvatarImage: { width: 146, height: 146 },
     remoteAvatarText: { color: '#C74983', fontFamily: fontFamily.bold, fontSize: 64 },
     remotePlaceholderName: { color: '#49394D', fontFamily: fontFamily.bold, fontSize: 25, marginTop: 8 },
@@ -1002,7 +1002,7 @@ const styles = StyleSheet.create({
     headerMutedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: 'rgba(20,14,22,0.42)' },
     headerMutedText: { color: '#FFF', fontFamily: fontFamily.medium, fontSize: 9 },
     minimizeButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.28)' },
-    localPreview: { position: 'absolute', right: 12, top: 8, width: 96, height: 136, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.88)', backgroundColor: '#E6DDF9', shadowColor: '#251628', shadowOpacity: 0.3, shadowRadius: 12, elevation: 12 },
+    localPreview: { position: 'absolute', right: 12, top: 8, width: 96, height: 136, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.88)', backgroundColor: '#E6DDF9', shadowColor: '#251628', shadowOpacity: 0.3, shadowRadius: 12, elevation: 0 },
     localPreviewCompact: { right: 10, width: 82, height: 108, borderRadius: 15 },
     localVideo: { flex: 1 },
     localCameraOff: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -1013,7 +1013,7 @@ const styles = StyleSheet.create({
     localCameraOffText: { color: '#FFF', fontFamily: fontFamily.medium, fontSize: 8 },
     controlsPanel: { flexDirection: 'row', flexWrap: 'nowrap', justifyContent: 'space-evenly', alignItems: 'center', gap: 4, marginHorizontal: 8, marginTop: 8, marginBottom: 24, paddingVertical: 14, paddingHorizontal: 4, borderRadius: 28, backgroundColor: 'rgba(26,18,29,0.68)' },
     controlsPanelCompact: { marginHorizontal: 6, marginTop: 6, marginBottom: 10, paddingVertical: 8, gap: 2 },
-    floatingBubble: { position: 'absolute', width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT, zIndex: 2000, elevation: 25, overflow: 'hidden', borderRadius: 22, borderWidth: 2, borderColor: '#FFF', backgroundColor: '#E6DDF9', shadowColor: '#30192F', shadowOpacity: 0.28, shadowRadius: 12 },
+    floatingBubble: { position: 'absolute', width: BUBBLE_WIDTH, height: BUBBLE_HEIGHT, zIndex: 2000, elevation: 0, overflow: 'hidden', borderRadius: 22, borderWidth: 2, borderColor: '#FFF', backgroundColor: '#E6DDF9', shadowColor: '#30192F', shadowOpacity: 0.28, shadowRadius: 12 },
     bubbleVideo: { ...StyleSheet.absoluteFillObject },
     bubbleTapArea: { ...StyleSheet.absoluteFillObject },
     inCallBadge: { position: 'absolute', top: 8, left: 8, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(36,24,40,0.65)' },
@@ -1027,7 +1027,7 @@ const styles = StyleSheet.create({
     failedMessage: { marginTop: 8, color: '#766778', fontFamily: fontFamily.regular, fontSize: 14, lineHeight: 20, textAlign: 'center' },
     failedCloseButton: { minWidth: 120, minHeight: 48, marginTop: 20, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#D84F86' },
     failedCloseText: { color: '#FFF', fontFamily: fontFamily.bold, fontSize: 15 },
-    errorToast: { position: 'absolute', left: 20, right: 20, bottom: 92, zIndex: 3000, elevation: 30, backgroundColor: '#3E303F', paddingHorizontal: 16, paddingVertical: 13, borderRadius: 16 },
+    errorToast: { position: 'absolute', left: 20, right: 20, bottom: 92, zIndex: 3000, elevation: 0, backgroundColor: '#3E303F', paddingHorizontal: 16, paddingVertical: 13, borderRadius: 16 },
     errorToastText: { color: '#FFF', fontFamily: fontFamily.medium, fontSize: 13, textAlign: 'center' },
 });
 

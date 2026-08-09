@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
@@ -17,6 +18,20 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
     const [isFocused, setIsFocused] = useState(false);
     const config = categoryConfig[task.category] || defaultConfig;
     const lastTaskIdRef = useRef(task._id);
+    const KeyboardContainer = Platform.OS === 'android'
+        ? KeyboardAwareScrollView
+        : KeyboardAvoidingView;
+    const keyboardContainerProps = Platform.OS === 'android'
+        ? {
+            bottomOffset: 72,
+            contentContainerStyle: styles.keyboardContent,
+            keyboardShouldPersistTaps: 'handled',
+            showsVerticalScrollIndicator: false,
+        }
+        : {
+            behavior: 'padding',
+            keyboardVerticalOffset: 140,
+        };
 
     // Reset answer only when task ID actually changes (not during swipe gestures)
     useEffect(() => {
@@ -61,10 +76,9 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
             colors={['#C084FC', '#7C3AED']}
             style={styles.cardContainer}
         >
-            <KeyboardAvoidingView
-                style={styles.keyboardAvoid}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 140 : 0}
+            <KeyboardContainer
+                style={styles.keyboardContainer}
+                {...keyboardContainerProps}
             >
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                     <View style={styles.cardContent}>
@@ -141,7 +155,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
 
                     </View>
                 </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
+            </KeyboardContainer>
         </LinearGradient>
     );
 });
@@ -154,8 +168,11 @@ const styles = StyleSheet.create({
         borderWidth: 6,
         borderColor: 'rgba(255, 255, 255, 0.20)',
     },
-    keyboardAvoid: {
+    keyboardContainer: {
         flex: 1,
+    },
+    keyboardContent: {
+        flexGrow: 1,
     },
     cardContent: {
         flex: 1,
@@ -221,19 +238,32 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xs,
         borderWidth: 1.5,
         borderColor: 'rgba(255, 255, 255, 0.18)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 0,
+            },
+        }),
     },
     inputContainerFocused: {
         backgroundColor: 'rgba(255, 255, 255, 0.16)',
         borderColor: 'rgba(255, 255, 255, 0.5)',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.22,
-        shadowRadius: 20,
-        elevation: 8,
+        ...Platform.select({
+            ios: {
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.22,
+                shadowRadius: 20,
+            },
+            android: {
+                elevation: 0,
+                minHeight: 190,
+            },
+        }),
     },
     textInput: {
         color: '#FFFFFF',
@@ -242,6 +272,11 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlignVertical: 'top',
         fontFamily: fontFamily.medium,
+        ...Platform.select({
+            android: {
+                minHeight: 120,
+            },
+        }),
     },
     inputFooter: {
         width: '100%',
@@ -272,11 +307,17 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 4,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 0,
+            },
+        }),
     },
     submitButtonText: {
         fontSize: 14,

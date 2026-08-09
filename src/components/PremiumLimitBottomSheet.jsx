@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -8 },
         shadowOpacity: 0.16,
         shadowRadius: 22,
-        elevation: 20,
+        elevation: 0,
     },
     handle: {
         width: 44,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 7 },
         shadowOpacity: 0.22,
         shadowRadius: 12,
-        elevation: 5,
+        elevation: 0,
     },
     upgradeButtonText: {
         color: '#FFFFFF',

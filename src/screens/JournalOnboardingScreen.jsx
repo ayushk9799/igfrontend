@@ -252,9 +252,9 @@ const JournalOnboardingScreen = ({ onComplete }) => {
                 >
                     <TouchableOpacity onPress={finish} activeOpacity={0.86} style={styles.buttonShadow}>
                         <LinearGradient
-                            colors={['#FF6B82', '#F45170']}
+                            colors={['#FF5E97', '#FFA1C9']}
                             start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                            end={{ x: 1, y: 0 }}
                             style={styles.continueButton}
                         >
                             <Text style={styles.continueText}>{translateUiText("Continue")}</Text>
@@ -297,15 +297,15 @@ const styles = StyleSheet.create({
     timeline: { flex: 1 }, timelineContent: { paddingVertical: 4, paddingBottom: 16, gap: 14 }, timelineRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
     dateCard: { width: 54, paddingVertical: 6, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.76)', alignItems: 'center', borderWidth: 1, borderColor: '#F3DCE8' },
     dateMonth: { color: '#9B7F92', fontFamily: fontFamily.medium, fontSize: 11 }, dateDay: { color: '#36263C', fontFamily: fontFamily.bold, fontSize: 22, lineHeight: 25 }, dateYear: { color: '#A38F9F', fontSize: 11 },
-    milestoneCard: { flex: 1, minHeight: 76, overflow: 'hidden', borderRadius: 18, paddingLeft: 15, paddingRight: 12, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: '#FFFFFF', shadowColor: '#9D4D78', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 5 },
+    milestoneCard: { flex: 1, minHeight: 76, overflow: 'hidden', borderRadius: 18, paddingLeft: 15, paddingRight: 12, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: '#FFFFFF', shadowColor: '#9D4D78', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 0 },
     metEvent: { backgroundColor: '#F3D4E2' }, firstDateEvent: { backgroundColor: '#EFDFC7' }, movedInEvent: { backgroundColor: '#D8E5DF' },
     milestoneEmoji: { width: 34, textAlign: 'center', fontSize: 25 }, milestoneCopy: { flex: 1, minWidth: 0, paddingHorizontal: 9 }, cardTitle: { color: '#38253C', fontFamily: fontFamily.bold, fontSize: 14 }, cardMeta: { marginTop: 4, color: '#95788C', fontFamily: fontFamily.medium, fontSize: 10 },
     officialCard: { backgroundColor: '#DDD5EF' }, storyEnding: { marginLeft: 64, paddingTop: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }, storyLine: { width: 24, height: 1, backgroundColor: '#DFAFC7' }, storyHeart: { color: '#E26498', fontSize: 11 }, continuesText: { color: '#B65A86', fontFamily: fontFamily.bold, fontSize: 11, fontStyle: 'italic' },
-    photoCard: { flex: 1, overflow: 'hidden', borderRadius: 18, backgroundColor: '#DCCFE4', borderWidth: 2, borderColor: '#FFFFFF', shadowColor: '#9D4D78', shadowOpacity: 0.16, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 5 }, memoryPhoto: { width: '100%', height: 148, backgroundColor: '#F8C7DA' },
+    photoCard: { flex: 1, overflow: 'hidden', borderRadius: 18, backgroundColor: '#DCCFE4', borderWidth: 2, borderColor: '#FFFFFF', shadowColor: '#9D4D78', shadowOpacity: 0.16, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 0 }, memoryPhoto: { width: '100%', height: 148, backgroundColor: '#F8C7DA' },
     photoBadges: { position: 'absolute', right: 8, top: 118, flexDirection: 'row', gap: 5 }, photoBadge: { overflow: 'hidden', color: '#FFFFFF', backgroundColor: 'rgba(46,30,60,0.76)', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, fontFamily: fontFamily.bold, fontSize: 10 },
     photoCopy: { paddingHorizontal: 11, paddingVertical: 9 }, photoTitle: { color: '#38253C', fontFamily: fontFamily.bold, fontSize: 13 }, cardBody: { marginTop: 3, color: '#735F78', fontFamily: fontFamily.regular, fontSize: 10, lineHeight: 13 },
     footer: { paddingTop: 10, paddingHorizontal: 8, alignItems: 'center' },
-    buttonShadow: { width: '100%', borderRadius: 24, shadowColor: '#F45170', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+    buttonShadow: { width: '100%', borderRadius: 24, shadowColor: '#FF5E97', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 0 },
     continueButton: { height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
     continueText: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, fontWeight: fontWeight('800') },
 });

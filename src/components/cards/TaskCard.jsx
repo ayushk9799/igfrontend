@@ -158,7 +158,7 @@ const lockedStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.5,
         shadowRadius: 12,
-        elevation: 8,
+        elevation: 0,
     },
     premiumTitle: {
         fontSize: 20,
@@ -188,7 +188,7 @@ const lockedStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.4,
         shadowRadius: 12,
-        elevation: 8,
+        elevation: 0,
     },
     unlockButtonContent: {
         flexDirection: 'row',

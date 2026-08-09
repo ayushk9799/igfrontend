@@ -739,7 +739,7 @@ const createStyles = (width, height) => {
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
-        elevation: 6,
+        elevation: 0,
     },
     dashedBox: {
         flex: 1,
@@ -801,7 +801,7 @@ const createStyles = (width, height) => {
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
-        elevation: 5,
+        elevation: 0,
         zIndex: 3,
     },
     grantButtonGradient: {
@@ -855,7 +855,7 @@ const createStyles = (width, height) => {
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.2,
         shadowRadius: 10,
-        elevation: 4,
+        elevation: 0,
         marginBottom: 8,
     },
     controlLabel: {
@@ -872,7 +872,7 @@ const createStyles = (width, height) => {
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 12,
-        elevation: 5,
+        elevation: 0,
         marginBottom: 20,
     },
     controlDisabled: {

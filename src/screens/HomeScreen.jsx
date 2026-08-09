@@ -105,16 +105,26 @@ const getTimeUntilLabel = (targetDate, now) => {
     return translateUiTemplate("{{0}}h {{1}}m left", [hours, minutes]);
 };
 
-const getHeartSymbol = (heartState) => {
-    if (heartState === 'full') return '♥';
-    if (heartState === 'half') return '◐';
-    return '♡';
-};
-
 const HomeText = ({ children, style, ...props }) => (
     <Text {...props} style={[{ fontFamily: fontFamily.regular }, style]} maxFontSizeMultiplier={1.2}>
         {children}
     </Text>
+);
+
+const RitualStreakCount = ({ count = 0 }) => (
+    <View
+        style={styles.ritualStreakCount}
+        accessible
+        accessibilityLabel={translateUiTemplate("{{0}} day streak", [count])}
+    >
+        <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M12 21.2C11.4 20.7 10.5 19.9 9.4 18.9C5.2 15.2 2 12.2 2 8.2C2 5.2 4.2 3 7.2 3C9.1 3 10.8 3.9 12 5.3C13.2 3.9 14.9 3 16.8 3C19.8 3 22 5.2 22 8.2C22 12.2 18.8 15.2 14.6 18.9C13.5 19.9 12.6 20.7 12 21.2Z"
+                fill="#FF4568"
+            />
+        </Svg>
+        <HomeText style={styles.ritualStreakNumber}>{count}</HomeText>
+    </View>
 );
 
 const CONNECTION_TOPICS = Object.values(TOPIC_CATEGORIES);
@@ -229,9 +239,7 @@ const HomeScreen = ({
     const ritualStreak = todayChallenge?.streak || null;
     const heartState = ritualStreak?.heartState || 'empty';
     const ritualTimeLeft = getTimeUntilLabel(todayChallenge?.closesAt, now);
-    const ritualStreakText = ritualStreak?.currentStreak > 0
-        ? `${ritualStreak.currentStreak} day streak`
-        : 'Start the streak';
+    const ritualStreakCount = Number(ritualStreak?.currentStreak) || 0;
 
     const showNudge = hasPartner && isYourMoodStale;
     const nudgeKey = yourMood?.updatedAt || 'missing-mood';
@@ -624,10 +632,8 @@ const HomeScreen = ({
                                 >
                                     <View style={styles.featureCardHeader}>
                                         <View style={styles.cardTitleRowBetween}>
-                                            <View style={styles.cardTitleRow}>
-                                                <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>{translateUiText("Daily Ritual")}</HomeText>
-                                                <HomeText style={styles.ritualHeartStatus}>{getHeartSymbol(heartState)}</HomeText>
-                                            </View>
+                                            <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>{translateUiText("Daily Ritual")}</HomeText>
+                                            <RitualStreakCount count={ritualStreakCount} />
                                         </View>
                                     </View>
                                     <View style={[styles.ritualPaper, styles.completedRitualPaper]}>
@@ -655,10 +661,8 @@ const HomeScreen = ({
                                 >
                                     <View style={styles.featureCardHeader}>
                                         <View style={styles.cardTitleRowBetween}>
-                                            <View style={styles.cardTitleRow}>
-                                                <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>{translateUiText("Daily Ritual")}</HomeText>
-                                                <HomeText style={styles.ritualHeartStatus}>{getHeartSymbol(heartState)}</HomeText>
-                                            </View>
+                                            <HomeText style={[styles.smallCardTitle, styles.ritualCardTitle]}>{translateUiText("Daily Ritual")}</HomeText>
+                                            <RitualStreakCount count={ritualStreakCount} />
                                         </View>
                                     </View>
                                     <View style={styles.ritualPaper}>
@@ -883,7 +887,7 @@ const cardShadow = Platform.select({
         shadowRadius: 18,
     },
     android: {
-        elevation: 5,
+        elevation: 0,
     },
 });
 
@@ -961,7 +965,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 16,
-        elevation: 16,
+        elevation: 0,
     },
     videoCallGuideArrow: {
         position: 'absolute',
@@ -1079,7 +1083,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 6,
             },
             android: {
-                elevation: 4,
+                elevation: 0,
             },
         }),
     },
@@ -1234,7 +1238,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 14,
             },
             android: {
-                elevation: 5,
+                elevation: 0,
             },
         }),
     },
@@ -1353,25 +1357,28 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 8,
+        width: '100%',
     },
     cardTitleHeart: {
         marginTop: -1,
     },
-    ritualHeartStatus: {
-        color: '#FF4568',
-        fontSize: 17,
-        lineHeight: 18,
-        fontWeight: fontWeight('900'),
-        fontFamily: fontFamily.bold,
+    ritualStreakCount: {
+        minWidth: 47,
+        height: 28,
+        paddingHorizontal: 9,
+        borderRadius: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.78)',
     },
-    ritualStreakBadge: {
+    ritualStreakNumber: {
         color: '#A71F1F',
-        fontSize: 10,
-        lineHeight: 13,
+        fontSize: 17,
+        lineHeight: 20,
         fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
-        maxWidth: 76,
-        textAlign: 'right',
     },
     scribblePaper: {
         position: 'absolute',
@@ -1393,7 +1400,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 12,
             },
             android: {
-                elevation: 5,
+                elevation: 0,
             },
         }),
     },
@@ -1469,7 +1476,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 8,
             },
             android: {
-                elevation: 4,
+                elevation: 0,
             },
         }),
     },
@@ -1522,7 +1529,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 12,
             },
             android: {
-                elevation: 5,
+                elevation: 0,
             },
         }),
     },

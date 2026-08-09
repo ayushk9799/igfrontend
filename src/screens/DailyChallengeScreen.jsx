@@ -6,7 +6,6 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
@@ -24,13 +23,13 @@ import DailyChallengeDoneScreen from './DailyChallengeDoneScreen';
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import { API_BASE } from '../constants/Api';
-import { submitAnswer, getCoupleTodayChallenge } from '../utils/answerApi';
+import { submitAnswer, completeDailyChallenge, getCoupleTodayChallenge } from '../utils/answerApi';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../store/slices/userSlice';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 const CARD_HEIGHT = height * 0.7;
 
 const mergeTodayRitualState = (streak, updates) => {
@@ -148,6 +147,8 @@ export default function DailyChallengeScreen({
       .filter(index => index !== null)
   );
   const pendingAnswersRef = useRef(new Map());
+  const answerSavePromisesRef = useRef(new Set());
+  const completionRequestRef = useRef(null);
 
   useEffect(() => {
     if (!userId) return undefined;
@@ -196,6 +197,8 @@ export default function DailyChallengeScreen({
       setUserAnswers([]);
       setInitiallyAnsweredTaskIndexes([]);
       pendingAnswersRef.current.clear();
+      answerSavePromisesRef.current.clear();
+      completionRequestRef.current = null;
       setIsComplete(false);
 
       if (json.success && challengeData?._id && json.data?.answers) {
@@ -288,9 +291,47 @@ export default function DailyChallengeScreen({
     setCurrentIndex(newIndex);
   }, []);
 
-  const handleStackComplete = useCallback(() => {
+  const handleStackComplete = useCallback(async () => {
     setHasReachedEndOfStack(true);
-  }, []);
+    setIsComplete(true);
+    setShowConfetti(true);
+    setRitualStatus(previous => mergeTodayRitualState(previous, {
+      youComplete: true,
+    }));
+
+    if (!userId || !challenge?._id || completionRequestRef.current) return;
+
+    const completionRequest = (async () => {
+      // An answer is saved without blocking the card animation. Let any such
+      // request finish before marking the whole stack complete on the server.
+      await Promise.allSettled([...answerSavePromisesRef.current]);
+      const result = await completeDailyChallenge(userId, challenge._id);
+
+      if (result.success && result.data?.ritual) {
+        setRitualStatus(previous => ({
+          ...previous,
+          ...result.data.ritual,
+          week: result.data.ritual.week || previous?.week,
+        }));
+      }
+
+      return result;
+    })();
+
+    completionRequestRef.current = completionRequest;
+    await completionRequest;
+  }, [userId, challenge?._id]);
+
+  useEffect(() => {
+    if (hasAnsweredAllTasks || hasReachedEndOfStack || hasMovedPastVisibleCards) {
+      handleStackComplete();
+    }
+  }, [
+    handleStackComplete,
+    hasAnsweredAllTasks,
+    hasReachedEndOfStack,
+    hasMovedPastVisibleCards,
+  ]);
 
   // Callback to submit answer to backend
   const handleAnswerSubmit = useCallback((taskIndex, answer, answerType = 'text') => {
@@ -309,19 +350,14 @@ export default function DailyChallengeScreen({
     } else {
       // Store 'answered' placeholder in DailyAnswers for progress tracking only
       // Actual answer content is stored in Chat model below
-      submitAnswer(userId, challenge._id, taskIndex, 'answered', answerType)
-        .then(result => {
-          if (result.success && result.data?.ritual) {
-            setRitualStatus(previous => ({
-              ...previous,
-              ...result.data.ritual,
-              week: result.data.ritual.week || previous?.week,
-            }));
-            setShowConfetti(true);
-          }
-        })
+      const savePromise = submitAnswer(userId, challenge._id, taskIndex, 'answered', answerType);
+      answerSavePromisesRef.current.add(savePromise);
+      savePromise
         .catch(() => {
           // The local transition should not wait for persistence.
+        })
+        .finally(() => {
+          answerSavePromisesRef.current.delete(savePromise);
         });
     }
 
@@ -355,9 +391,6 @@ export default function DailyChallengeScreen({
     if (!pendingAnswer) return;
 
     pendingAnswersRef.current.delete(taskIndex);
-    setRitualStatus(previous => mergeTodayRitualState(previous, {
-      youComplete: true,
-    }));
     setUserAnswers(prev => {
       const updated = [...prev];
       updated[taskIndex] = pendingAnswer;
@@ -509,7 +542,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 0,
   },
   backBtnText: { fontFamily: fontFamily.bold, fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 
@@ -532,7 +565,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 0,
   },
   headerContent: { marginLeft: spacing.md, flex: 1 },
   headerTitle: { fontFamily: fontFamily.extraBold, fontSize: 22, fontWeight: '800', color: colors.text },

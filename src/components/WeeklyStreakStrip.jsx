@@ -20,6 +20,7 @@ const HEART_PATH =
 
 const STATE_LABELS = {
     full: 'Both completed',
+    protected: 'Streak protected',
     half: 'One partner completed',
     missed: 'Missed',
     'today-empty': 'Not completed yet',
@@ -68,6 +69,8 @@ const MiniHeart = ({
 
     const fill = state === 'full'
         ? '#F44778'
+        : state === 'protected'
+            ? '#F3B43F'
         : state === 'missed'
             ? '#D8D1DB'
             : '#FFFFFF';
@@ -212,7 +215,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.11,
         shadowRadius: 18,
-        elevation: 4,
+        elevation: 0,
     },
     bare: {
         marginBottom: spacing.sm,

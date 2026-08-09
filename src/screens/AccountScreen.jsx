@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -8 },
         shadowOpacity: 0.16,
         shadowRadius: 20,
-        elevation: 18,
+        elevation: 0,
     },
     languageSheetHandle: {
         alignSelf: 'center',
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 7 },
         shadowOpacity: 0.14,
         shadowRadius: 18,
-        elevation: 4,
+        elevation: 0,
     },
     avatarContainer: {
         position: 'relative',
@@ -972,7 +972,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 5 },
         shadowOpacity: 0.18,
         shadowRadius: 10,
-        elevation: 4,
+        elevation: 0,
     },
     avatarImage: {
         width: '100%',
@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 0,
     },
     uploadProgressOverlay: {
         position: 'absolute',
@@ -1056,7 +1056,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.14,
         shadowRadius: 12,
-        elevation: 3,
+        elevation: 0,
     },
     partnerAvatarRing: {
         width: 58,
@@ -1068,7 +1068,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.18,
         shadowRadius: 7,
-        elevation: 3,
+        elevation: 0,
     },
     partnerAvatarImage: {
         width: '100%',
@@ -1134,7 +1134,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.18,
         shadowRadius: 16,
-        elevation: 5,
+        elevation: 0,
     },
     connectPartnerIconCircle: {
         width: 64,
@@ -1165,7 +1165,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 10,
-        elevation: 4,
+        elevation: 0,
     },
     connectPartnerButton: {
         flexDirection: 'row',
@@ -1203,7 +1203,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     menuContent: {
         flex: 1,
@@ -1240,7 +1240,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.15,
         shadowRadius: 16,
-        elevation: 5,
+        elevation: 0,
     },
     premiumCardHeader: {
         flexDirection: 'row',
@@ -1305,7 +1305,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 14,
             },
             android: {
-                elevation: 5,
+                elevation: 0,
             },
         }),
     },
@@ -1391,7 +1391,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     allowNotifText: {
         flex: 1,
@@ -1459,7 +1459,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     headerTitleWrap: {
         flex: 1,

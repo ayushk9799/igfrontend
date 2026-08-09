@@ -16,7 +16,7 @@ import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { createSafeAudioPlayer } from '../utils/safeAudioPlayer';
+import { useAudioPlayer } from 'expo-audio';
 
 import { colors, spacing, borderRadius } from '../theme';
 import { fontFamily } from '../constants/fonts';
@@ -38,6 +38,10 @@ import {
     checkSlotOverlap,
 } from '../features/jigsaw/pieceGeometry';
 import {
+    createSpectatorMoveAudioState,
+    registerSpectatorMoveUpdate,
+} from '../features/jigsaw/spectatorMoveAudio';
+import {
     getTrayContentWidth,
     JigsawBoardCanvas,
     JigsawDraggedPiece,
@@ -50,6 +54,7 @@ const PUZZLE_DURATION_MS = 5 * 60 * 1000;
 const SHOW_DEV_NUMBERS = false; // Set to false to hide dev tools in production
 const TRAY_PIECE_HEIGHT = 110;
 const TRAY_CANVAS_CHUNK_SIZE = 25;
+const JIGSAW_SOUND = require('../../assets/sounds/jigsaw-impact.wav');
 
 
 /**
@@ -146,6 +151,9 @@ const PuzzleLoader = ({ pulseAnim, glowAnim, compact = false }) => (
 const JigsawPuzzleScreen = ({ navigation, route }) => {
     const { puzzleId, puzzleData: initialData } = route.params || {};
     const { getPuzzle, startPuzzle, movePiece } = usePuzzle();
+    const jigsawPlayer = useAudioPlayer(JIGSAW_SOUND, {
+        keepAudioSessionActive: true,
+    });
 
     const activePuzzleId = puzzleId || initialData?._id || initialData?.id;
     const initialNormalizedPieces = React.useMemo(() => (
@@ -323,50 +331,42 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
     }, []);
 
     const trayScrollViewRef = useRef(null);
-    const audioPlayerRef = useRef(null);
-    const jigsawSoundUriRef = useRef(null);
-    const jigsawSoundPlayingRef = useRef(false);
-    const jigsawSoundTimeoutRef = useRef(null);
     const moveQueueRef = useRef(Promise.resolve());
+    const spectatorMoveAudioStateRef = useRef(createSpectatorMoveAudioState(
+        activePuzzleId,
+        initialData?.moveCount
+    ));
 
-    useEffect(() => {
-        audioPlayerRef.current = createSafeAudioPlayer();
-        const soundAsset = require('../../assets/sounds/jigsaw.mp3');
-        jigsawSoundUriRef.current = Image.resolveAssetSource(soundAsset).uri;
-
-        return () => {
-            if (jigsawSoundTimeoutRef.current) {
-                clearTimeout(jigsawSoundTimeoutRef.current);
-            }
-            audioPlayerRef.current?.stopPlayer().catch(() => {});
-        };
-    }, []);
-
-    const playJigsawSound = useCallback(async () => {
+    const playJigsawSound = useCallback(() => {
         try {
-            if (!audioPlayerRef.current) return;
-            const soundUri = jigsawSoundUriRef.current;
-            if (!soundUri) return;
-
-            if (jigsawSoundPlayingRef.current) {
-                await audioPlayerRef.current.stopPlayer().catch(() => {});
-            }
-
-            await audioPlayerRef.current.startPlayer(soundUri);
-            await audioPlayerRef.current.setVolume(1.0);
-            jigsawSoundPlayingRef.current = true;
-
-            if (jigsawSoundTimeoutRef.current) {
-                clearTimeout(jigsawSoundTimeoutRef.current);
-            }
-            jigsawSoundTimeoutRef.current = setTimeout(() => {
-                jigsawSoundPlayingRef.current = false;
-            }, 700);
+            jigsawPlayer.pause();
+            jigsawPlayer.seekTo(0, 0, 0);
+            jigsawPlayer.play();
         } catch (error) {
-            jigsawSoundPlayingRef.current = false;
             console.error('Failed to play jigsaw sound:', error);
         }
-    }, []);
+    }, [jigsawPlayer]);
+
+    const registerSpectatorPuzzleUpdate = useCallback((updatedPuzzle) => {
+        const updatedCreatorId = updatedPuzzle?.creatorId?._id
+            || updatedPuzzle?.creatorId;
+        if (!currentUserId || String(updatedCreatorId) !== String(currentUserId)) {
+            return;
+        }
+
+        const observation = registerSpectatorMoveUpdate(
+            spectatorMoveAudioStateRef.current,
+            updatedPuzzle?._id || updatedPuzzle?.id || activePuzzleId,
+            updatedPuzzle?.moveCount
+        );
+        spectatorMoveAudioStateRef.current = observation.state;
+
+        // A backgrounded screen is not being watched. Advancing the watermark
+        // above prevents old moves from replaying when the app becomes active.
+        if (observation.shouldPlaySound && AppState.currentState === 'active') {
+            playJigsawSound();
+        }
+    }, [activePuzzleId, currentUserId, playJigsawSound]);
 
     // Load puzzle data
     useEffect(() => {
@@ -377,6 +377,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         getPuzzle(targetId).then((result) => {
             if (result.success && isMounted) {
                 const loadedPuzzle = result.data;
+                registerSpectatorPuzzleUpdate(loadedPuzzle);
                 const loadedPieces = helperNormalizePieces(loadedPuzzle.pieces, loadedPuzzle.gridSize);
                 setPuzzle(loadedPuzzle);
                 setPieces(loadedPieces);
@@ -392,7 +393,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         return () => {
             isMounted = false;
         };
-    }, [activePuzzleId, getPuzzle]);
+    }, [activePuzzleId, getPuzzle, registerSpectatorPuzzleUpdate]);
 
     // Gameplay is enabled only after the single local texture has been decoded
     // by Skia. No individual puzzle piece performs image loading.
@@ -569,6 +570,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
                 && String(eventData.puzzleId) === currentTargetId
                 && updated
             ) {
+                registerSpectatorPuzzleUpdate(updated);
                 setPuzzle(updated);
                 if (updated.pieces && Array.isArray(updated.pieces)) {
                     const normalizedPieces = helperNormalizePieces(
@@ -605,7 +607,14 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         return () => {
             socket.off('puzzle:updated', handleSocketUpdate);
         };
-    }, [expireLocally, playCelebration, puzzle?._id, puzzleId, socket]);
+    }, [
+        expireLocally,
+        playCelebration,
+        puzzle?._id,
+        puzzleId,
+        registerSpectatorPuzzleUpdate,
+        socket,
+    ]);
 
     // Setter live view must also work when the solver is on an older client
     // that only persists moves through REST and does not share live socket
@@ -632,6 +641,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
             if (cancelled || !result?.success || !result.data) return;
 
             const updated = result.data;
+            registerSpectatorPuzzleUpdate(updated);
             const updatedPieces = helperNormalizePieces(updated.pieces, updated.gridSize);
             setPuzzle(updated);
             setPieces(updatedPieces);
@@ -667,6 +677,7 @@ const JigsawPuzzleScreen = ({ navigation, route }) => {
         isSpectator,
         playCelebration,
         puzzle?.status,
+        registerSpectatorPuzzleUpdate,
     ]);
 
     useEffect(() => {
@@ -1603,7 +1614,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.18,
         shadowRadius: 18,
-        elevation: 6,
+        elevation: 0,
     },
     loaderMarkCompact: {
         width: 68,
@@ -1669,7 +1680,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 6,
-        elevation: 2,
+        elevation: 0,
     },
     headerTitle: {
         fontFamily: fontFamily.extraBold,
@@ -1723,7 +1734,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 6,
-        elevation: 2,
+        elevation: 0,
     },
     gridToggleBtnActive: {
         backgroundColor: colors.primarySoft,
@@ -1741,7 +1752,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 6,
-        elevation: 2,
+        elevation: 0,
     },
     moveText: {
         fontFamily: fontFamily.extraBold,
@@ -1804,7 +1815,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.12,
         shadowRadius: 16,
-        elevation: 8,
+        elevation: 0,
         overflow: 'visible',
     },
     puzzleGridFrame: {
@@ -1875,7 +1886,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.25,
         shadowRadius: 24,
-        elevation: 12,
+        elevation: 0,
         borderWidth: 1.5,
         borderColor: '#F3E8FF',
     },
@@ -1893,7 +1904,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 10,
-        elevation: 3,
+        elevation: 0,
     },
     expiredEmoji: {
         fontSize: 38,
@@ -1958,7 +1969,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 10,
-        elevation: 5,
+        elevation: 0,
     },
     expiredPrimaryButtonText: {
         color: '#FFFFFF',
@@ -2000,7 +2011,7 @@ const styles = StyleSheet.create({
                 shadowRadius: 8,
             },
             android: {
-                elevation: 4,
+                elevation: 0,
             },
         }),
     },
@@ -2037,7 +2048,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.12,
         shadowRadius: 16,
-        elevation: 8,
+        elevation: 0,
     },
     referencePreviewImage: {
         width: '100%',
@@ -2069,7 +2080,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
-        elevation: 3,
+        elevation: 0,
     },
     trayTitle: {
         fontFamily: fontFamily.bold,

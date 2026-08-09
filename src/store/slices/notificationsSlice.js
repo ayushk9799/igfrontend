@@ -2,15 +2,35 @@
 // No new state needed — just selectors that read from the games slice
 
 import { createSelector } from '@reduxjs/toolkit';
-import { selectPendingPuzzle, selectPendingTicTacToe, selectPendingWordle } from './gamesSlice';
+import {
+    selectPendingPuzzle,
+    selectPendingPuzzles,
+    selectPendingTicTacToe,
+    selectPendingWordle,
+    selectPendingWordSearch,
+} from './gamesSlice';
+
+const selectCurrentUserId = (state) => state.user?.id || state.user?._id || null;
+
+const getEntityId = (entity) => entity?._id || entity?.id || entity || null;
+
+const isPuzzleActionableForUser = (puzzle, userId) => {
+    if (!puzzle || !userId) return false;
+
+    const partnerId = getEntityId(puzzle.partnerId);
+    const isRecipient = partnerId && String(partnerId) === String(userId);
+    const isActive = ['pending', 'in_progress'].includes(puzzle.status);
+
+    return isRecipient && isActive;
+};
 
 /**
  * Selector that derives a list of duel notification objects from the games state.
  * Each notification has: id, type, title, message, color, game (raw data).
  */
 export const selectDuelNotifications = createSelector(
-    [selectPendingPuzzle, selectPendingTicTacToe, selectPendingWordle],
-    (pendingPuzzle, pendingTicTacToe, pendingWordle) => {
+    [selectPendingPuzzle, selectPendingTicTacToe, selectPendingWordle, selectPendingWordSearch],
+    (pendingPuzzle, pendingTicTacToe, pendingWordle, pendingWordSearch) => {
         const notifications = [];
 
         if (pendingPuzzle) {
@@ -46,6 +66,17 @@ export const selectDuelNotifications = createSelector(
             });
         }
 
+        if (pendingWordSearch) {
+            notifications.push({
+                id: 'wordsearch',
+                type: 'wordsearch',
+                title: 'Word Search',
+                message: "It's your turn to find a word!",
+                color: '#865EDC',
+                game: pendingWordSearch,
+            });
+        }
+
         return notifications;
     }
 );
@@ -56,4 +87,42 @@ export const selectDuelNotifications = createSelector(
 export const selectDuelBadgeCount = createSelector(
     [selectDuelNotifications],
     (notifications) => notifications.length
+);
+
+/**
+ * Which game cards, and therefore whether the Games bottom tab, should show
+ * an action-needed dot.
+ *
+ * A sent puzzle or a game where it is the partner's turn is deliberately not
+ * considered actionable. The indicator remains visible until the underlying
+ * turn/challenge is completed rather than clearing merely because the tab was
+ * opened.
+ */
+export const selectGameAttentionByType = createSelector(
+    [
+        selectPendingPuzzles,
+        selectPendingPuzzle,
+        selectPendingTicTacToe,
+        selectPendingWordle,
+        selectPendingWordSearch,
+        selectCurrentUserId,
+    ],
+    (pendingPuzzles, pendingPuzzle, pendingTicTacToe, pendingWordle, pendingWordSearch, userId) => {
+        const puzzles = pendingPuzzles?.length ? pendingPuzzles : [pendingPuzzle];
+        const hasPuzzleToPlay = puzzles.some((puzzle) => (
+            isPuzzleActionableForUser(puzzle, userId)
+        ));
+
+        return {
+            puzzle: hasPuzzleToPlay,
+            tictactoe: !!pendingTicTacToe,
+            wordle: !!pendingWordle,
+            wordsearch: !!pendingWordSearch,
+        };
+    }
+);
+
+export const selectGamesNeedAttention = createSelector(
+    [selectGameAttentionByType],
+    (attentionByType) => Object.values(attentionByType).some(Boolean)
 );

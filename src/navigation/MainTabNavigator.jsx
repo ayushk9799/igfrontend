@@ -1,7 +1,7 @@
 // Main Tab Navigator - Home with Bottom Tabs
 // Now uses Redux for global state instead of prop drilling
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, PanResponder, AppState, Linking, Platform } from 'react-native';
+import { View, StyleSheet, BackHandler, Modal, Animated, Dimensions, Easing, PanResponder, AppState, Linking, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
@@ -27,7 +27,11 @@ import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether, selectIsPremium, updateUser } from '../store/slices/userSlice';
 import { selectGames } from '../store/slices/gamesSlice';
-import { selectDuelBadgeCount } from '../store/slices/notificationsSlice';
+import {
+    selectDuelBadgeCount,
+    selectGameAttentionByType,
+    selectGamesNeedAttention,
+} from '../store/slices/notificationsSlice';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { API_BASE } from '../constants/Api';
 import { getCoupleTodayChallenge } from '../utils/answerApi';
@@ -80,6 +84,7 @@ export const MainTabNavigator = ({
     onRefreshPuzzle,
     onTicTacToePress,
     onWordlePress,
+    onWordSearchPress,
     onPremiumPress,
     onLogout,
     onDeleteAccount,
@@ -133,6 +138,44 @@ export const MainTabNavigator = ({
     const yearlyOfferDelayRef = useRef(null);
     const lastAutoOpenedMoodRef = React.useRef(null);
     const currentTabRef = useRef(currentTab);
+    const topicTransition = useRef(new Animated.Value(0)).current;
+    const topicTransitioningRef = useRef(false);
+
+    const openTopicQuestions = useCallback((topicId) => {
+        if (!topicId || topicTransitioningRef.current) return;
+
+        topicTransitioningRef.current = true;
+        topicTransition.stopAnimation();
+        topicTransition.setValue(0);
+        setSelectedTopic(topicId);
+        setCurrentTab('topicQuestions');
+
+        requestAnimationFrame(() => {
+            Animated.timing(topicTransition, {
+                toValue: 1,
+                duration: 300,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+            }).start(() => {
+                topicTransitioningRef.current = false;
+            });
+        });
+    }, [topicTransition]);
+
+    const closeTopicQuestions = useCallback(() => {
+        topicTransitioningRef.current = true;
+        topicTransition.stopAnimation();
+        Animated.timing(topicTransition, {
+            toValue: 0,
+            duration: 260,
+            easing: Easing.inOut(Easing.cubic),
+            useNativeDriver: true,
+        }).start(() => {
+            topicTransitioningRef.current = false;
+            setCurrentTab('home');
+            setSelectedTopic(null);
+        });
+    }, [topicTransition]);
 
     const [isAccountMounted, setIsAccountMounted] = useState(openAccountOnMount);
     const isAccountVisibleRef = useRef(isAccountVisible);
@@ -266,10 +309,12 @@ export const MainTabNavigator = ({
         || userData?.partnerIsPremium === true;
     const yearlyOfferUserId = userData?._id || userData?.id;
     const games = useSelector(selectGames);
-    const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle } = games;
+    const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle, pendingWordSearch, activeWordSearch } = games;
 
     // Duel notification badge count
     const duelBadgeCount = useSelector(selectDuelBadgeCount);
+    const gameAttentionByType = useSelector(selectGameAttentionByType);
+    const gamesNeedAttention = useSelector(selectGamesNeedAttention);
 
     const refreshTopicProgress = useCallback(async () => {
         const userId = userData?._id || userData?.id;
@@ -851,6 +896,10 @@ export const MainTabNavigator = ({
                 setIsAccountVisible(true);
                 return true;
             }
+            if (currentTab === 'topicQuestions') {
+                closeTopicQuestions();
+                return true;
+            }
             if (currentTab !== 'home') {
                 handleBottomTabChange('home');
                 return true; // Prevent default (app exit)
@@ -860,7 +909,7 @@ export const MainTabNavigator = ({
 
         const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
         return () => backHandler.remove();
-    }, [handleBottomTabChange, currentTab, isAccountVisible, shouldReturnToAccountFromTab]);
+    }, [closeTopicQuestions, handleBottomTabChange, currentTab, isAccountVisible, shouldReturnToAccountFromTab]);
 
     const renderScreen = () => {
         switch (currentTab) {
@@ -948,10 +997,14 @@ export const MainTabNavigator = ({
                         pendingTicTacToe={pendingTicTacToe}
                         activeWordle={activeWordle}
                         pendingWordle={pendingWordle}
+                        activeWordSearch={activeWordSearch}
+                        pendingWordSearch={pendingWordSearch}
+                        attentionByGame={gameAttentionByType}
                         onJigsawCreate={onJigsawCreate}
                         onJigsawPlay={onJigsawPlay}
                         onTicTacToePress={onTicTacToePress}
                         onWordlePress={onWordlePress}
+                        onWordSearchPress={onWordSearchPress}
                         onRefreshPuzzle={onRefreshPuzzle}
                         onVideoCallPress={handleCallPress}
                         callActive={callActive}
@@ -978,7 +1031,7 @@ export const MainTabNavigator = ({
                         hasPartner={hasPartner}
                         onLinkPartner={onFindPartner}
                         onNavigateToPremium={onPremiumPress}
-                        onBack={() => setCurrentTab('home')}
+                        onBack={closeTopicQuestions}
                     />
                 );
             case 'account':
@@ -1022,7 +1075,28 @@ export const MainTabNavigator = ({
 
     return (
         <View style={styles.container}>
-            <View style={[styles.screenContainer, currentTab !== 'home' && styles.hiddenScreen]}>
+            <Animated.View
+                pointerEvents={currentTab === 'home' ? 'auto' : 'none'}
+                style={[
+                    styles.screenContainer,
+                    currentTab !== 'home' && currentTab !== 'topicQuestions' && styles.hiddenScreen,
+                    currentTab === 'topicQuestions' && [
+                        styles.topicTransitionLayer,
+                        {
+                            opacity: topicTransition.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [1, 0.94],
+                            }),
+                            transform: [{
+                                translateX: topicTransition.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0, -SCREEN_WIDTH * 0.18],
+                                }),
+                            }],
+                        },
+                    ],
+                ]}
+            >
                 <HomeScreen
                     topicProgress={topicProgressById}
                     hasPartner={hasPartner}
@@ -1055,8 +1129,7 @@ export const MainTabNavigator = ({
                         if (category) {
                             const topicConfig = TOPIC_CATEGORIES[category.id || category];
                             if (topicConfig) {
-                                setSelectedTopic(category.id || category);
-                                setCurrentTab('topicQuestions');
+                                openTopicQuestions(category.id || category);
                                 return;
                             } else {
                                 if (!hasPartner) {
@@ -1094,8 +1167,25 @@ export const MainTabNavigator = ({
                     onYearlyOfferPress={() => setIsYearlyOfferDue(true)}
                     onYearlyOfferExpire={expireYearlyOfferWindow}
                 />
-            </View>
-            {renderScreen()}
+            </Animated.View>
+            {currentTab === 'topicQuestions' ? (
+                <Animated.View
+                    style={[
+                        styles.topicTransitionLayer,
+                        styles.topicTransitionForeground,
+                        {
+                            transform: [{
+                                translateX: topicTransition.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [SCREEN_WIDTH, 0],
+                                }),
+                            }],
+                        },
+                    ]}
+                >
+                    {renderScreen()}
+                </Animated.View>
+            ) : renderScreen()}
             {!isMoodVisible
                 && !widgetSheet
                 && !isScribbleLiveFullscreen
@@ -1107,6 +1197,7 @@ export const MainTabNavigator = ({
                     currentTab={currentTab}
                     onTabChange={handleBottomTabChange}
                     chatBadge={chatBadge}
+                    gamesNeedAttention={gamesNeedAttention}
                 />
             )}
 
@@ -1216,6 +1307,7 @@ export const MainTabNavigator = ({
                     onJigsawPlay={onJigsawPlay}
                     onTicTacToePress={onTicTacToePress}
                     onWordlePress={onWordlePress}
+                    onWordSearchPress={onWordSearchPress}
                 />
             </Modal>
 
@@ -1297,6 +1389,13 @@ const styles = StyleSheet.create({
     },
     hiddenScreen: {
         display: 'none',
+    },
+    topicTransitionLayer: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    topicTransitionForeground: {
+        zIndex: 2,
+        backgroundColor: colors.background,
     },
     accountOverlay: {
         zIndex: 9999,

@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.6,
         shadowRadius: 20,
-        elevation: 12,
+        elevation: 0,
     },
     iconCircleGradient: {
         ...StyleSheet.absoluteFillObject,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.5,
         shadowRadius: 16,
-        elevation: 10,
+        elevation: 0,
     },
     unlockButtonContent: {
         flexDirection: 'row',

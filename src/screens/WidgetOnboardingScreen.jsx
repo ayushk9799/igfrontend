@@ -35,6 +35,9 @@ const CANVAS_PLACED_Y = PHONE_PREVIEW_TOP
     + (PHONE_PREVIEW_HEIGHT * 0.245)
     - (SHOWCASE_HEIGHT / 2);
 const PARTNER_PHOTO_SIZE = IS_COMPACT ? 240 : 260;
+const TOGETHER_DEMO_ELAPSED_SECONDS = (1096 * 86400) + (21 * 3600) + (25 * 60) + 31;
+const CANVAS_ANIMATION_SPEED = 3;
+const CANVAS_PLACEMENT_DURATION = 900;
 
 const partnerPhotoPreviews = [
     { image: require('../../assets/photo-crops-final/01-moon-sky.png'), caption: "Good evening" },
@@ -190,16 +193,18 @@ const DistanceWidget = ({ reducedMotion }) => {
 
 const TogetherWidget = ({ relationshipStartDate }) => {
     const [now, setNow] = useState(Date.now());
+    const demoStartTime = useRef(now - (TOGETHER_DEMO_ELAPSED_SECONDS * 1000)).current;
 
     useEffect(() => {
         const interval = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(interval);
     }, []);
 
-    const start = new Date(relationshipStartDate).getTime();
-    const elapsed = Number.isFinite(start)
-        ? Math.max(0, Math.floor((now - start) / 1000))
-        : (1096 * 86400) + (21 * 3600) + (25 * 60) + 31;
+    const relationshipStartTime = new Date(relationshipStartDate).getTime();
+    const startTime = Number.isFinite(relationshipStartTime)
+        ? relationshipStartTime
+        : demoStartTime;
+    const elapsed = Math.max(0, Math.floor((now - startTime) / 1000));
     const parts = [
         { value: Math.floor(elapsed / 86400), label: translateUiText("days") },
         { value: String(Math.floor((elapsed % 86400) / 3600)).padStart(2, '0'), label: translateUiText("hr") },
@@ -254,13 +259,13 @@ const CanvasWidget = ({ isActive, reducedMotion }) => {
         Animated.parallel([
             Animated.timing(phoneOpacity, {
                 toValue: 1,
-                duration: reducedMotion ? 0 : 1350,
+                duration: reducedMotion ? 0 : CANVAS_PLACEMENT_DURATION,
                 easing: Easing.out(Easing.cubic),
                 useNativeDriver: true,
             }),
             Animated.timing(placement, {
                 toValue: 1,
-                duration: reducedMotion ? 0 : 1350,
+                duration: reducedMotion ? 0 : CANVAS_PLACEMENT_DURATION,
                 easing: Easing.inOut(Easing.cubic),
                 useNativeDriver: true,
             }),
@@ -295,6 +300,7 @@ const CanvasWidget = ({ isActive, reducedMotion }) => {
                     source={require('../../assets/flower1.lottie')}
                     autoPlay={false}
                     loop={false}
+                    speed={CANVAS_ANIMATION_SPEED}
                     resizeMode="contain"
                     onAnimationFinish={placeWidgetOnPhone}
                     style={styles.canvasLottie}
@@ -561,9 +567,9 @@ const WidgetOnboardingScreen = ({
                 >
                     <TouchableOpacity onPress={continueFlow} activeOpacity={0.86} style={styles.buttonShadow}>
                         <LinearGradient
-                            colors={['#FF6B82', '#F45170']}
+                            colors={['#FF5E97', '#FFA1C9']}
                             start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                            end={{ x: 1, y: 0 }}
                             style={styles.continueButton}
                         >
                             <Text style={styles.continueText}>{activeIndex === slides.length - 1 ? translateUiText("Get started") : translateUiText("Continue")}</Text>
@@ -587,14 +593,14 @@ const styles = StyleSheet.create({
     slide: { width: SCREEN_WIDTH, alignItems: 'center', justifyContent: 'center' },
     canvasShowcase: { width: SCREEN_WIDTH, height: SHOWCASE_HEIGHT, alignItems: 'center', justifyContent: 'center' },
     canvasPhonePreview: { position: 'absolute', top: PHONE_PREVIEW_TOP, width: PHONE_PREVIEW_WIDTH, height: PHONE_PREVIEW_HEIGHT },
-    canvasWidget: { width: CANVAS_WIDGET_WIDTH, height: CANVAS_WIDGET_HEIGHT, borderRadius: 28, overflow: 'hidden', backgroundColor: '#FFFDFB', borderWidth: 3, borderColor: '#E4A0BC', alignItems: 'center', justifyContent: 'center', shadowColor: '#A9587D', shadowOpacity: 0.22, shadowRadius: 16, shadowOffset: { width: 0, height: 9 }, elevation: 7 },
+    canvasWidget: { width: CANVAS_WIDGET_WIDTH, height: CANVAS_WIDGET_HEIGHT, borderRadius: 28, overflow: 'hidden', backgroundColor: '#FFFDFB', borderWidth: 3, borderColor: '#E4A0BC', alignItems: 'center', justifyContent: 'center', shadowColor: '#A9587D', shadowOpacity: 0.22, shadowRadius: 16, shadowOffset: { width: 0, height: 9 }, elevation: 0 },
     canvasLottie: { width: '116%', height: '116%' },
-    partnerPhotoPreview: { width: PARTNER_PHOTO_SIZE, height: PARTNER_PHOTO_SIZE, borderRadius: 28, overflow: 'hidden', backgroundColor: '#EBDDE6', borderWidth: 1.5, borderColor: '#FFFFFF', shadowColor: '#8D5270', shadowOpacity: 0.24, shadowRadius: 16, shadowOffset: { width: 0, height: 9 }, elevation: 8 },
+    partnerPhotoPreview: { width: PARTNER_PHOTO_SIZE, height: PARTNER_PHOTO_SIZE, borderRadius: 28, overflow: 'hidden', backgroundColor: '#EBDDE6', borderWidth: 1.5, borderColor: '#FFFFFF', shadowColor: '#8D5270', shadowOpacity: 0.24, shadowRadius: 16, shadowOffset: { width: 0, height: 9 }, elevation: 0 },
     partnerPhotoLayer: { ...StyleSheet.absoluteFillObject },
     partnerPhotoImage: { width: '100%', height: '100%' },
     partnerPhotoCaption: { position: 'absolute', left: 12, bottom: 12, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.48)' },
     partnerPhotoCaptionText: { color: '#FFFFFF', fontFamily: fontFamily.medium, fontWeight: fontWeight('500'), fontSize: 12, lineHeight: 15 },
-    distanceWidget: { width: DISTANCE_WIDGET_WIDTH, height: DISTANCE_WIDGET_HEIGHT, borderRadius: 31, overflow: 'hidden', shadowColor: '#6759D6', shadowOpacity: 0.34, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+    distanceWidget: { width: DISTANCE_WIDGET_WIDTH, height: DISTANCE_WIDGET_HEIGHT, borderRadius: 31, overflow: 'hidden', shadowColor: '#6759D6', shadowOpacity: 0.34, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 0 },
     nightGlow: { position: 'absolute', width: 220, height: 180, borderRadius: 110, right: -36, top: 5, backgroundColor: 'rgba(132,119,246,0.22)' },
     nightStar: { position: 'absolute', width: 3, height: 3, borderRadius: 2, backgroundColor: '#FFFFFF', shadowColor: '#FFFFFF', shadowOpacity: 0.9, shadowRadius: 3 },
     nightStarOne: { left: 42, top: 59 },
@@ -636,7 +642,7 @@ const styles = StyleSheet.create({
     showcaseCaption: { color: '#8A7185', fontFamily: fontFamily.medium, fontSize: 13, lineHeight: 17, textAlign: 'center' },
     showcaseCaptionStrong: { color: '#4A3047', fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },
     footer: { minHeight: 92, paddingHorizontal: 26, paddingTop: 10, justifyContent: 'flex-end', alignItems: 'center' },
-    buttonShadow: { width: '100%', borderRadius: 24, shadowColor: '#F45170', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+    buttonShadow: { width: '100%', borderRadius: 24, shadowColor: '#FF5E97', shadowOpacity: 0.22, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 0 },
     continueButton: { height: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
     continueText: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, fontWeight: fontWeight('800') },
 });

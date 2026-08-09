@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 16,
         zIndex: 5,
-        elevation: 5,
+        elevation: 0,
     },
     mascotPlaceholder: {
         height: isCompactHeight ? 36 : 46,
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.16,
         shadowRadius: 18,
-        elevation: 4,
+        elevation: 0,
     },
     inputContainerFocused: {
         borderColor: '#FFE3EC',
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.3,
         shadowRadius: 16,
-        elevation: 5,
+        elevation: 0,
         marginTop: 2,
     },
     continueButtonGradient: {
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
-        elevation: 4,
+        elevation: 0,
     },
     continueButtonDisabled: {
         opacity: 0.45,

@@ -51,6 +51,7 @@ export const Card = ({
                 return {
                     backgroundColor: colors.surface,
                     ...shadows.md,
+                    elevation: 0,
                 };
             default:
                 return {

@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 16 },
         shadowOpacity: 0.28,
         shadowRadius: 28,
-        elevation: 18,
+        elevation: 0,
     },
     cardSurface: {
         width: '100%',
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.26,
         shadowRadius: 14,
-        elevation: 6,
+        elevation: 0,
     },
     buttonPressed: {
         opacity: 0.9,

@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
         borderColor: '#FFFFFF',
         ...Platform.select({
             ios: { shadowColor: '#8D5270', shadowOpacity: 0.23, shadowRadius: 15, shadowOffset: { width: 0, height: 9 } },
-            android: { elevation: 8 },
+            android: { elevation: 0 },
         }),
     },
     photo: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },

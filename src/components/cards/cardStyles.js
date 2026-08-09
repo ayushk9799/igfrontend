@@ -150,7 +150,7 @@ export const cardStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.22,
         shadowRadius: 16,
-        elevation: 8,
+        elevation: 0,
     },
     avatarDragging: { shadowOpacity: 0.3, shadowRadius: 20 },
     avatarGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
@@ -202,7 +202,7 @@ export const cardStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.14,
         shadowRadius: 14,
-        elevation: 5,
+        elevation: 0,
     },
     choiceCardSelected: { borderColor: 'transparent' },
     choiceGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
@@ -248,7 +248,7 @@ export const cardStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.14,
         shadowRadius: 18,
-        elevation: 8,
+        elevation: 0,
     },
     camera: {
         // Position 16:9 camera centered in 1:1 box
@@ -384,7 +384,7 @@ export const cardStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
-        elevation: 10,
+        elevation: 0,
         maxWidth: '80%',
     },
     answeredEmoji: {
@@ -472,6 +472,6 @@ export const cardStyles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 0,
     },
 });

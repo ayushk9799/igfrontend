@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Animated,
     BackHandler,
+    Image,
     Platform,
     StyleSheet,
     Text,
@@ -324,11 +325,20 @@ const WidgetSetupBottomSheet = ({
     const locationAccessBlocked = (Platform.OS === 'ios' && ['denied', 'restricted'].includes(locationPermissionStatus?.status))
         || /settings/i.test(locationMessage || '');
 
+    const isOwnSharingDisabled = hasPartner && hasCompleteLocationAccess && distanceReason === 'sharing_disabled';
     const isWaitingForPartner = hasPartner && hasCompleteLocationAccess && (
         distanceReason === 'partner_sharing_disabled' ||
         distanceReason === 'missing_location'
     );
     const isCheckingPartner = hasPartner && hasCompleteLocationAccess && distanceReason === 'checking';
+    const shouldShowLocationSettingsGuide = locationAccessBlocked || (
+        hasCompleteLocationAccess
+        && hasPartner
+        && !isOwnSharingDisabled
+        && !isWaitingForPartner
+        && !!locationMessage
+    );
+    const shouldHidePermissionRows = locationAccessBlocked && !hasCompleteLocationAccess;
 
     const locationStatusLabel = !hasForegroundLocation
         ? 'Not active'
@@ -338,6 +348,8 @@ const WidgetSetupBottomSheet = ({
             ? 'Partner needed'
         : isCheckingPartner
             ? 'Checking partner status...'
+        : isOwnSharingDisabled
+            ? 'Location sharing is off'
         : isWaitingForPartner
             ? translateUiTemplate("Waiting for {{0}} ⏳", [partnerName])
             : translateUiText("Location is on");
@@ -352,6 +364,8 @@ const WidgetSetupBottomSheet = ({
             ? 'Your location is ready. Connect with your partner to see the distance between you.'
         : isCheckingPartner
             ? translateUiTemplate("Connecting to check location sharing with {{0}}...", [partnerName])
+        : isOwnSharingDisabled
+            ? translateUiTemplate("Turn on location sharing to show the distance between you and {{0}}.", [partnerName])
         : isWaitingForPartner
             ? translateUiTemplate("{{0}} still needs to enable location. Your distance will appear automatically once you’re both sharing.", [partnerName])
             : translateUiTemplate("Your location is ready. We’ll use it to keep the distance between you and {{0}} updated.", [partnerName]);
@@ -415,7 +429,7 @@ const WidgetSetupBottomSheet = ({
                     {displayKind === 'distance' && (
                         <>
                             <LocationPreview
-                                enabled={hasCompleteLocationAccess}
+                                enabled={hasCompleteLocationAccess && !isOwnSharingDisabled}
                                 statusLabel={locationStatusLabel}
                                 isWaiting={isWaitingForPartner}
                             />
@@ -436,13 +450,23 @@ const WidgetSetupBottomSheet = ({
                                 <Text style={styles.locationCopy}>{locationCopy}</Text>
                             )}
 
-                            <View style={styles.permissionList}>
-                                <PermissionRow icon="➤" label={translateUiText("While using the app")} complete={hasForegroundLocation} />
-                                <PermissionRow icon="▣" label={Platform.OS === 'ios' ? translateUiText("Always allow") : translateUiText("Allow in background")} complete={hasBackgroundLocation} />
-                            </View>
+                            {!shouldHidePermissionRows && (
+                                <View style={styles.permissionList}>
+                                    <PermissionRow icon="➤" label={translateUiText("While using the app")} complete={hasForegroundLocation} />
+                                    <PermissionRow icon="▣" label={Platform.OS === 'ios' ? translateUiText("Always allow") : translateUiText("Allow in background")} complete={hasBackgroundLocation} />
+                                </View>
+                            )}
 
                             {!!locationMessage && <Text style={styles.inlineMessage}>{translateUiText(locationMessage)}</Text>}
                             {!!reminderSentText && <Text style={styles.successMessage}>{translateUiText(reminderSentText)}</Text>}
+                            {shouldShowLocationSettingsGuide && (
+                                <Image
+                                    accessibilityLabel={translateUiText('Select Always in Location settings')}
+                                    resizeMode="contain"
+                                    source={require('../../assets/open_settings_distance.png')}
+                                    style={styles.locationSettingsGuideImage}
+                                />
+                            )}
 
                             {locationAccessBlocked ? (
                                 <ActionButton onPress={onOpenSettings}>
@@ -466,6 +490,12 @@ const WidgetSetupBottomSheet = ({
                                 </ActionButton>
                             ) : !hasPartner ? (
                                 <ActionButton onPress={onConnectPartner}>{translateUiText("Connect Partner")}</ActionButton>
+                            ) : isOwnSharingDisabled ? (
+                                <ActionButton disabled={isLocationLoading} onPress={onEnableLocation}>
+                                    {isLocationLoading
+                                        ? translateUiText("Turning on...")
+                                        : translateUiText("Turn on location sharing")}
+                                </ActionButton>
                             ) : isWaitingForPartner ? (
                                 <>
                                     <ActionButton disabled={isRemindLoading} onPress={handleRemindPress}>
@@ -535,7 +565,7 @@ const styles = StyleSheet.create({
     sheet: { paddingHorizontal: 20, paddingTop: 10 },
     handle: { width: 42, height: 5, borderRadius: 3, backgroundColor: '#D7D0D8', alignSelf: 'center', marginBottom: 20 },
     locationPreview: { height: 124, borderRadius: 24, backgroundColor: '#FFF7FB', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingBottom: 24, overflow: 'hidden' },
-    initialBubble: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 3 },
+    initialBubble: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 0 },
     initialBubblePink: { backgroundColor: '#F66D9D' },
     initialBubblePurple: { backgroundColor: '#A47DE2' },
     initialText: { color: '#FFFFFF', fontSize: 20, fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },
@@ -597,6 +627,22 @@ const styles = StyleSheet.create({
     chevron: { color: '#8A818D', fontSize: 25 },
     inlineMessage: { color: '#9A6039', fontSize: 12, lineHeight: 17, textAlign: 'center', marginHorizontal: 12, marginBottom: 12, fontFamily: fontFamily.regular },
     locationCopy: { color: '#5F5262', fontSize: 14, lineHeight: 20, textAlign: 'center', marginHorizontal: 12, marginTop: 14, fontFamily: fontFamily.regular },
+    locationSettingsGuideImage: {
+        width: 240,
+        height: 147,
+        alignSelf: 'center',
+        marginTop: 2,
+        marginBottom: 10,
+        borderWidth: 2,
+        borderColor: '#CFC7D2',
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#392A40',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 7,
+        elevation: 6,
+    },
     actionButton: { width: '100%', height: 52, borderRadius: 17, overflow: 'hidden', marginTop: 2 },
     actionGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     actionButtonText: { color: '#FFFFFF', fontSize: 15, fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },
@@ -606,11 +652,11 @@ const styles = StyleSheet.create({
     quietAction: { alignSelf: 'center', paddingHorizontal: 22, paddingVertical: 14 },
     quietActionText: { color: '#74469B', fontSize: 14, fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },
     photoStack: { height: 150, alignItems: 'center', justifyContent: 'center' },
-    photoTile: { position: 'absolute', width: 142, height: 118, borderRadius: 25, borderWidth: 4, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', elevation: 5 },
+    photoTile: { position: 'absolute', width: 142, height: 118, borderRadius: 25, borderWidth: 4, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', elevation: 0 },
     photoTileLeft: { left: '10%', backgroundColor: '#FFD8E5', transform: [{ rotate: '-5deg' }] },
     photoTileRight: { right: '10%', backgroundColor: '#DDD4FF', transform: [{ rotate: '5deg' }] },
     photoTileEmoji: { fontSize: 42 },
-    photoHeart: { position: 'absolute', bottom: 6, width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', elevation: 5 },
+    photoHeart: { position: 'absolute', bottom: 6, width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', elevation: 0 },
     photoHeartText: { color: '#EE6898', fontSize: 20 },
     readyPill: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', borderRadius: 15, paddingHorizontal: 13, paddingVertical: 6, backgroundColor: '#F1EFF1', marginBottom: 15 },
     readyDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#56B84F', marginRight: 7 },
@@ -622,7 +668,7 @@ const styles = StyleSheet.create({
     photoActionIcon: { color: '#C35B9B', fontSize: 30, marginBottom: 9 },
     photoActionText: { color: '#573A67', fontSize: 14, fontFamily: fontFamily.bold, fontWeight: fontWeight('700') },
     cameraPermissionPreview: { height: 142, alignItems: 'center', justifyContent: 'center' },
-    cameraIconCircle: { width: 92, height: 92, borderRadius: 46, alignItems: 'center', justifyContent: 'center', elevation: 7 },
+    cameraIconCircle: { width: 92, height: 92, borderRadius: 46, alignItems: 'center', justifyContent: 'center', elevation: 0 },
     cameraIcon: { color: '#FFFFFF', fontSize: 40 },
     cameraStatusRow: { height: 52, borderRadius: 17, borderWidth: 1, borderColor: '#E8E2E9', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
     cameraStatusIcon: { color: '#D58C27', fontSize: 18, marginRight: 10 },
@@ -654,7 +700,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 4,
-        elevation: 2,
+        elevation: 0,
     },
     tabSelectorText: {
         fontSize: 12,
@@ -722,7 +768,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowOffset: { width: 0, height: 4 },
         shadowRadius: 10,
-        elevation: 4,
+        elevation: 0,
     },
     timeWidgetHeaderRow: {
         flexDirection: 'row',
