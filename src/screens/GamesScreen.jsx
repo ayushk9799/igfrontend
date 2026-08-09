@@ -28,6 +28,16 @@ const gameAssets = {
     wordle: require('../../assets/images/games/wordle.png'),
 };
 
+const WordSearchPreview = () => (
+    <View style={styles.wordSearchPreview} accessible={false}>
+        {['L', 'O', 'V', 'E', 'A', 'R', 'T', 'S', 'M'].map((letter, index) => (
+            <View key={`${letter}-${index}`} style={[styles.previewCell, [0, 4, 8].includes(index) && styles.previewCellFound]}>
+                <Text style={styles.previewLetter}>{letter}</Text>
+            </View>
+        ))}
+    </View>
+);
+
 const ArrowIcon = ({ color, size = 12 }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path
@@ -100,11 +110,14 @@ const GamesScreen = ({
     pendingTicTacToe,
     activeWordle,
     pendingWordle,
+    activeWordSearch,
+    pendingWordSearch,
     attentionByGame = {},
     onJigsawCreate,
     onJigsawPlay,
     onTicTacToePress,
     onWordlePress,
+    onWordSearchPress,
     onRefreshPuzzle,
     onVideoCallPress,
     callActive = false,
@@ -116,7 +129,7 @@ const GamesScreen = ({
     const blinkAnim = useRef(new Animated.Value(1)).current;
     const refreshPuzzleRef = useRef(onRefreshPuzzle);
     const refreshedExpiredPuzzleRef = useRef(null);
-    const cardMinHeight = Math.max(152, Math.min(168, width * 0.42));
+    const cardHeight = Math.max(120, Math.min(132, width * 0.33));
     const [showVideoCallGuide, setShowVideoCallGuide] = useState(false);
     const [puzzleNow, setPuzzleNow] = useState(Date.now());
     const videoCallGuideStorageKey = useMemo(() => {
@@ -295,6 +308,24 @@ const GamesScreen = ({
             needsAttention: !!attentionByGame.wordle,
             onPress: () => onWordlePress?.(pendingWordle || activeWordle),
         },
+        {
+            key: 'wordsearch',
+            title: pendingWordSearch
+                ? translateUiText('Your turn')
+                : activeWordSearch?.mode === 'duel'
+                    ? translateUiTemplate("{{0}}'s turn", [partnerName])
+                    : translateUiText('Word search'),
+            subtitle: translateUiText('Find hidden words together.'),
+            buttonLabel: activeWordSearch ? translateUiText('Resume') : translateUiText('Play now'),
+            gradient: ['#A47AEF', '#7450CF'],
+            accent: '#8058D4',
+            icon: 'letter',
+            preview: 'wordsearch',
+            cardStyle: styles.wordSearchCard,
+            active: !!pendingWordSearch,
+            needsAttention: !!attentionByGame.wordsearch,
+            onPress: () => onWordSearchPress?.(pendingWordSearch || activeWordSearch),
+        },
     ];
 
     return (
@@ -390,7 +421,7 @@ const GamesScreen = ({
                         {games.map((game) => (
                             <TouchableOpacity
                                 key={game.key}
-                                style={[styles.gameCard, { minHeight: cardMinHeight }, game.cardStyle]}
+                                style={[styles.gameCard, { height: cardHeight }, game.cardStyle]}
                                 onPress={game.onPress}
                                 activeOpacity={0.9}
                                 accessibilityRole="button"
@@ -425,9 +456,9 @@ const GamesScreen = ({
                                         <View style={[styles.iconChip, { backgroundColor: `${game.accent}24` }]}>
                                             <GameIcon type={game.icon} color={game.accent} size={18} />
                                         </View>
+                                        <Text style={styles.gameTitle} numberOfLines={2}>{game.title}</Text>
                                     </View>
-                                    <Text style={styles.gameTitle} numberOfLines={2}>{game.title}</Text>
-                                    <Text style={styles.gameSubtitle} numberOfLines={2}>{game.subtitle}</Text>
+                                    <Text style={styles.gameSubtitle} numberOfLines={1}>{game.subtitle}</Text>
                                     <LinearGradient
                                         colors={game.gradient}
                                         start={{ x: 0, y: 0 }}
@@ -440,12 +471,14 @@ const GamesScreen = ({
                                         </View>
                                     </LinearGradient>
                                 </View>
-                                <Image
-                                    source={game.image}
-                                    style={[styles.gameImage, game.imageStyle]}
-                                    resizeMode="contain"
-                                    accessible={false}
-                                />
+                                {game.preview === 'wordsearch' ? <WordSearchPreview /> : (
+                                    <Image
+                                        source={game.image}
+                                        style={[styles.gameImage, game.imageStyle]}
+                                        resizeMode="contain"
+                                        accessible={false}
+                                    />
+                                )}
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -646,7 +679,7 @@ const styles = StyleSheet.create({
         bottom: 4,
     },
     listContainer: {
-        gap: 16,
+        gap: 10,
         zIndex: 1,
     },
     gameCard: {
@@ -655,7 +688,7 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         borderColor: 'rgba(255,255,255,0.8)',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 8,
         overflow: 'hidden',
         shadowColor: '#E4BCD7',
         shadowOffset: { width: 0, height: 8 },
@@ -664,30 +697,63 @@ const styles = StyleSheet.create({
         elevation: 0,
     },
     puzzleCard: {
-        backgroundColor: '#FFF2E8',
+        backgroundColor: '#FFE9D8',
     },
     ticCard: {
-        backgroundColor: '#F6E9FF',
+        backgroundColor: '#EEDCFF',
     },
     wordleCard: {
-        backgroundColor: '#E7FBF7',
+        backgroundColor: '#D9F5EF',
+    },
+    wordSearchCard: {
+        backgroundColor: '#EEE2FF',
+    },
+    wordSearchPreview: {
+        position: 'absolute',
+        right: 17,
+        bottom: 12,
+        width: 92,
+        height: 92,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        padding: 5,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.82)',
+        transform: [{ rotate: '5deg' }],
+    },
+    previewCell: {
+        width: 27,
+        height: 27,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 7,
+    },
+    previewCellFound: {
+        backgroundColor: '#79D7C5',
+    },
+    previewLetter: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 13,
+        color: '#4C3B5E',
     },
     cardCopy: {
-        width: '52%',
-        justifyContent: 'center',
+        width: '58%',
+        height: '100%',
+        justifyContent: 'flex-start',
         zIndex: 2,
     },
     iconChip: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
+        width: 30,
+        height: 30,
+        borderRadius: 9,
         alignItems: 'center',
         justifyContent: 'center',
     },
     headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
+        gap: 8,
+        marginBottom: 2,
     },
     cardStatus: {
         position: 'absolute',
@@ -749,28 +815,30 @@ const styles = StyleSheet.create({
         height: '94%',
     },
     gameTitle: {
+        flex: 1,
+        flexShrink: 1,
         color: '#202B5E',
         fontFamily: fontFamily.extraBold,
-        fontSize: 18,
+        fontSize: 16,
+        lineHeight: 18,
         fontWeight: fontWeight('800'),
         letterSpacing: -0.2,
-        marginTop: 4,
     },
     gameSubtitle: {
         color: '#7E7D91',
         fontFamily: fontFamily.medium,
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: fontWeight('500'),
-        lineHeight: 16,
-        marginTop: 3,
+        lineHeight: 14,
+        marginTop: 2,
     },
     cta: {
         alignSelf: 'flex-start',
-        height: 36,
-        borderRadius: 18,
-        paddingLeft: 16,
-        paddingRight: 6,
-        marginTop: 10,
+        height: 30,
+        borderRadius: 15,
+        paddingLeft: 13,
+        paddingRight: 5,
+        marginTop: 'auto',
         alignItems: 'center',
         flexDirection: 'row',
         gap: 8,
@@ -782,9 +850,9 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight('800'),
     },
     ctaArrow: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(255,255,255,0.7)',

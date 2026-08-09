@@ -7,6 +7,7 @@ import {
     selectPendingPuzzles,
     selectPendingTicTacToe,
     selectPendingWordle,
+    selectPendingWordSearch,
 } from './gamesSlice';
 
 const selectCurrentUserId = (state) => state.user?.id || state.user?._id || null;
@@ -28,8 +29,8 @@ const isPuzzleActionableForUser = (puzzle, userId) => {
  * Each notification has: id, type, title, message, color, game (raw data).
  */
 export const selectDuelNotifications = createSelector(
-    [selectPendingPuzzle, selectPendingTicTacToe, selectPendingWordle],
-    (pendingPuzzle, pendingTicTacToe, pendingWordle) => {
+    [selectPendingPuzzle, selectPendingTicTacToe, selectPendingWordle, selectPendingWordSearch],
+    (pendingPuzzle, pendingTicTacToe, pendingWordle, pendingWordSearch) => {
         const notifications = [];
 
         if (pendingPuzzle) {
@@ -65,6 +66,17 @@ export const selectDuelNotifications = createSelector(
             });
         }
 
+        if (pendingWordSearch) {
+            notifications.push({
+                id: 'wordsearch',
+                type: 'wordsearch',
+                title: 'Word Search',
+                message: "It's your turn to find a word!",
+                color: '#865EDC',
+                game: pendingWordSearch,
+            });
+        }
+
         return notifications;
     }
 );
@@ -92,9 +104,10 @@ export const selectGameAttentionByType = createSelector(
         selectPendingPuzzle,
         selectPendingTicTacToe,
         selectPendingWordle,
+        selectPendingWordSearch,
         selectCurrentUserId,
     ],
-    (pendingPuzzles, pendingPuzzle, pendingTicTacToe, pendingWordle, userId) => {
+    (pendingPuzzles, pendingPuzzle, pendingTicTacToe, pendingWordle, pendingWordSearch, userId) => {
         const puzzles = pendingPuzzles?.length ? pendingPuzzles : [pendingPuzzle];
         const hasPuzzleToPlay = puzzles.some((puzzle) => (
             isPuzzleActionableForUser(puzzle, userId)
@@ -104,6 +117,7 @@ export const selectGameAttentionByType = createSelector(
             puzzle: hasPuzzleToPlay,
             tictactoe: !!pendingTicTacToe,
             wordle: !!pendingWordle,
+            wordsearch: !!pendingWordSearch,
         };
     }
 );

@@ -1,4 +1,4 @@
-// Games Slice - Manages puzzle, TicTacToe, Wordle states
+// Games Slice - Manages puzzle and duel game states
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
@@ -16,6 +16,11 @@ const initialState = {
     pendingWordle: null,      // Game where I need to guess
     activeWordle: null,       // Active game as creator (waiting for partner)
     selectedWordle: null,     // Currently viewing game
+
+    // Word Search
+    pendingWordSearch: null,  // Active duel where it is my turn
+    activeWordSearch: null,   // Any active word-search game
+    selectedWordSearch: null,
 };
 
 const gamesSlice = createSlice({
@@ -55,6 +60,16 @@ const gamesSlice = createSlice({
             state.selectedWordle = action.payload;
         },
 
+        setPendingWordSearch: (state, action) => {
+            state.pendingWordSearch = action.payload;
+        },
+        setActiveWordSearch: (state, action) => {
+            state.activeWordSearch = action.payload;
+        },
+        setSelectedWordSearch: (state, action) => {
+            state.selectedWordSearch = action.payload;
+        },
+
         // Clear all games
         clearGames: () => initialState,
     },
@@ -70,6 +85,9 @@ export const {
     setPendingWordle,
     setActiveWordle,
     setSelectedWordle,
+    setPendingWordSearch,
+    setActiveWordSearch,
+    setSelectedWordSearch,
     clearGames,
 } = gamesSlice.actions;
 
@@ -81,5 +99,7 @@ export const selectPendingTicTacToe = (state) => state.games.pendingTicTacToe;
 export const selectActiveTicTacToe = (state) => state.games.activeTicTacToe;
 export const selectPendingWordle = (state) => state.games.pendingWordle;
 export const selectActiveWordle = (state) => state.games.activeWordle;
+export const selectPendingWordSearch = (state) => state.games.pendingWordSearch;
+export const selectActiveWordSearch = (state) => state.games.activeWordSearch;
 
 export default gamesSlice.reducer;

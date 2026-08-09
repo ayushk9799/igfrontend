@@ -37,6 +37,7 @@ import JigsawCreateScreen from '../screens/JigsawCreateScreen';
 import JigsawPuzzleScreen from '../screens/JigsawPuzzleScreen';
 import TicTacToeScreen from '../screens/TicTacToeScreen';
 import WordleScreen from '../screens/WordleScreen';
+import WordSearchScreen from '../screens/WordSearchScreen';
 import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
 import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
 import FreeScreen from '../screens/FreeScreen';
@@ -64,7 +65,7 @@ import { getRequiredOnboardingScreen, needsRelationshipStartDate } from '../util
 import useReducedMotion from '../hooks/useReducedMotion';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
-import { clearGames, setPendingPuzzles, setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle } from '../store/slices/gamesSlice';
+import { clearGames, setPendingPuzzles, setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle, setPendingWordSearch, setActiveWordSearch, setSelectedWordSearch } from '../store/slices/gamesSlice';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { getContentLanguage, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 import { prefetchPuzzleTexture } from '../utils/puzzleTextureCache';
@@ -183,7 +184,7 @@ export const AppNavigator = () => {
     // Redux state
     const userData = useSelector(state => state.user);
     const games = useSelector(state => state.games);
-    const { pendingPuzzle, selectedPuzzle, pendingTicTacToe, activeTicTacToe, selectedTicTacToe, pendingWordle, activeWordle, selectedWordle } = games;
+    const { pendingPuzzle, selectedPuzzle, pendingTicTacToe, activeTicTacToe, selectedTicTacToe, pendingWordle, activeWordle, selectedWordle, selectedWordSearch } = games;
     const togetherWidgetStartDate = getTogetherWidgetStartDate(userData);
 
     // Local state (navigation & UI only)
@@ -210,6 +211,7 @@ export const AppNavigator = () => {
     const [partnerCodeOverlayStep, setPartnerCodeOverlayStep] = useState('partnerCode');
     const accountReturnPendingRef = useRef(false);
     const [activeJigsawPuzzle, setActiveJigsawPuzzle] = useState(null);
+    const wordSearchFetchRequestRef = useRef(0);
 
     useEffect(() => {
         const screenIndex = INTRO_ONBOARDING_SCREENS.indexOf(currentScreen);
@@ -918,6 +920,20 @@ export const AppNavigator = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket, userData?.id]);
 
+    // Keep the Games card and attention badge synchronized with duel turns.
+    useEffect(() => {
+        const userId = userData?.id || userData?._id;
+        if (!socket || !userId) return undefined;
+        const handleWordSearchUpdate = () => fetchPendingWordSearch(userId);
+        socket.on('wordsearch:invited', handleWordSearchUpdate);
+        socket.on('wordsearch:updated', handleWordSearchUpdate);
+        return () => {
+            socket.off('wordsearch:invited', handleWordSearchUpdate);
+            socket.off('wordsearch:updated', handleWordSearchUpdate);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [socket, userData?.id, userData?._id]);
+
     // Listen for partner:paired socket event (when someone pairs with us in real-time)
     useEffect(() => {
         if (!socket || !userData?.id) return;
@@ -1168,6 +1184,24 @@ export const AppNavigator = () => {
                     if (game) {
                         dispatch(setSelectedWordle(game));
                         setCurrentScreen('wordle');
+                    } else {
+                        openHomeTab('games');
+                    }
+                    break;
+                }
+
+                case 'wordsearch': {
+                    let game = null;
+                    if (data.gameId && currentUserId) {
+                        const json = await fetchJson(`${API_BASE}/api/word-search/${data.gameId}?userId=${currentUserId}`);
+                        game = json.success ? json.data : null;
+                    } else if (currentUserId) {
+                        const json = await fetchJson(`${API_BASE}/api/word-search/active/${currentUserId}`);
+                        game = json.success ? json.data : null;
+                    }
+                    if (game) {
+                        dispatch(setSelectedWordSearch(game));
+                        setCurrentScreen('wordSearch');
                     } else {
                         openHomeTab('games');
                     }
@@ -1529,6 +1563,23 @@ export const AppNavigator = () => {
             });
         };
 
+        const handleWordSearchUpdate = (data = {}) => {
+            if (!data.gameId || currentScreenRef.current === 'wordSearch') return;
+            const isInvitation = data.eventName === 'wordsearch:invited';
+            const foundByPartner = data.foundBy && String(data.foundBy) !== String(userId);
+            // Timer restoration, reconnect reconciliation, abandonment, and
+            // generic board syncs are not notification-worthy user actions.
+            if (!isInvitation && !foundByPartner) return;
+
+            showRoutedLocalNotification({
+                title: translateUiText(isInvitation ? 'Word Search Challenge' : 'Word Search'),
+                body: isInvitation
+                    ? translateUiTemplate('{{0}} challenged you to play', [partnerName])
+                    : translateUiTemplate('{{0}} found {{1}}', [partnerName, data.foundWord || translateUiText('a word')]),
+                data: { type: 'wordsearch', gameId: data.gameId },
+            });
+        };
+
         const handleNudgeReceived = (data = {}) => {
             showRoutedLocalNotification({
                 title: translateUiText("Partner Nudge"),
@@ -1553,6 +1604,8 @@ export const AppNavigator = () => {
         socket.on('wordle:invite', handleWordleInvite);
         socket.on('wordle:update', handleWordleUpdate);
         socket.on('wordle:newGame', handleWordleInvite);
+        socket.on('wordsearch:invited', handleWordSearchUpdate);
+        socket.on('wordsearch:updated', handleWordSearchUpdate);
         socket.on('nudge:received', handleNudgeReceived);
 
         return () => {
@@ -1568,6 +1621,8 @@ export const AppNavigator = () => {
             socket.off('wordle:invite', handleWordleInvite);
             socket.off('wordle:update', handleWordleUpdate);
             socket.off('wordle:newGame', handleWordleInvite);
+            socket.off('wordsearch:invited', handleWordSearchUpdate);
+            socket.off('wordsearch:updated', handleWordSearchUpdate);
             socket.off('nudge:received', handleNudgeReceived);
         };
     }, [
@@ -1925,8 +1980,39 @@ export const AppNavigator = () => {
         }
     };
 
+    const fetchPendingWordSearch = async (userId) => {
+        if (!userId) return;
+        const requestId = ++wordSearchFetchRequestRef.current;
+        try {
+            const [duelResponse, singleResponse] = await Promise.all([
+                fetch(`${API_BASE}/api/word-search/active/${userId}?mode=duel`),
+                fetch(`${API_BASE}/api/word-search/active/${userId}?mode=single`),
+            ]);
+            const [duelData, singleData] = await Promise.all([
+                duelResponse.json(),
+                singleResponse.json(),
+            ]);
+            if (requestId !== wordSearchFetchRequestRef.current) return;
+            const duelGame = duelData.success ? duelData.data : null;
+            const game = duelGame || (singleData.success ? singleData.data : null);
+            dispatch(setActiveWordSearch(game));
+            if (game && currentScreenRef.current === 'wordSearch') {
+                // Keep an already-mounted board aligned after reconnects,
+                // foreground refreshes, and replacement challenges.
+                dispatch(setSelectedWordSearch(game));
+            }
+            const isMyDuelTurn = duelGame
+                && String(duelGame.currentTurn?._id || duelGame.currentTurn) === String(userId);
+            dispatch(setPendingWordSearch(isMyDuelTurn ? duelGame : null));
+        } catch (error) {
+            if (requestId !== wordSearchFetchRequestRef.current) return;
+            dispatch(setActiveWordSearch(null));
+            dispatch(setPendingWordSearch(null));
+        }
+    };
+
     // Socket events keep game demand current while connected. Reconcile all
-    // three game types on login and whenever the app returns to the foreground
+    // all game types on login and whenever the app returns to the foreground
     // in case an event arrived while the app was suspended or disconnected.
     useEffect(() => {
         const userId = userData?.id || userData?._id;
@@ -1937,6 +2023,7 @@ export const AppNavigator = () => {
                 fetchPendingPuzzle(userId),
                 fetchPendingTicTacToe(userId),
                 fetchPendingWordle(userId),
+                fetchPendingWordSearch(userId),
             ]);
         };
 
@@ -2633,6 +2720,10 @@ export const AppNavigator = () => {
                             dispatch(setSelectedWordle(gameData));
                             navigate('wordle');
                         }}
+                        onWordSearchPress={(gameData) => {
+                            dispatch(setSelectedWordSearch(gameData));
+                            navigate('wordSearch');
+                        }}
                         onPremiumPress={() => navigate('premium')}
                         onLogout={handleLogout}
                         onDeleteAccount={handleDeleteAccount}
@@ -2848,6 +2939,27 @@ export const AppNavigator = () => {
                         onLinkPartner={openPartnerCode}
                         hasPremiumAccess={hasActiveCouplePremium(userData)}
                         onRequestPremium={() => showPremiumLimitSheet('wordle')}
+                    />
+                );
+
+            case 'wordSearch':
+                return (
+                    <WordSearchScreen
+                        navigation={{
+                            goBack: () => {
+                                fetchPendingWordSearch(userData?.id || userData?._id);
+                                navigateHomeTab('games');
+                            },
+                            navigate,
+                        }}
+                        route={{
+                            params: {
+                                gameId: selectedWordSearch?._id,
+                                gameData: selectedWordSearch,
+                                partnerId: userData.partnerId,
+                                partnerName: userData.partnerUsername || 'Partner',
+                            }
+                        }}
                     />
                 );
 

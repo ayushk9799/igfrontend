@@ -9,6 +9,7 @@ const makeState = ({
     pendingPuzzle = null,
     pendingTicTacToe = null,
     pendingWordle = null,
+    pendingWordSearch = null,
 } = {}) => ({
     user: { id: userId },
     games: {
@@ -16,6 +17,7 @@ const makeState = ({
         pendingPuzzle,
         pendingTicTacToe,
         pendingWordle,
+        pendingWordSearch,
     },
 });
 
@@ -83,6 +85,14 @@ describe('selectGamesNeedAttention', () => {
         expect(selectGamesNeedAttention(state)).toBe(true);
     });
 
+    it('returns true when Word Search is waiting for the current turn', () => {
+        const state = makeState({
+            pendingWordSearch: { _id: 'search-1', currentTurn: 'user-1' },
+        });
+
+        expect(selectGamesNeedAttention(state)).toBe(true);
+    });
+
     it('returns false when no game needs action', () => {
         expect(selectGamesNeedAttention(makeState())).toBe(false);
     });
@@ -102,6 +112,7 @@ describe('selectGamesNeedAttention', () => {
             puzzle: true,
             tictactoe: false,
             wordle: true,
+            wordsearch: false,
         });
     });
 });

@@ -84,6 +84,7 @@ export const MainTabNavigator = ({
     onRefreshPuzzle,
     onTicTacToePress,
     onWordlePress,
+    onWordSearchPress,
     onPremiumPress,
     onLogout,
     onDeleteAccount,
@@ -308,7 +309,7 @@ export const MainTabNavigator = ({
         || userData?.partnerIsPremium === true;
     const yearlyOfferUserId = userData?._id || userData?.id;
     const games = useSelector(selectGames);
-    const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle } = games;
+    const { pendingPuzzle, pendingTicTacToe, activeTicTacToe, pendingWordle, activeWordle, pendingWordSearch, activeWordSearch } = games;
 
     // Duel notification badge count
     const duelBadgeCount = useSelector(selectDuelBadgeCount);
@@ -996,11 +997,14 @@ export const MainTabNavigator = ({
                         pendingTicTacToe={pendingTicTacToe}
                         activeWordle={activeWordle}
                         pendingWordle={pendingWordle}
+                        activeWordSearch={activeWordSearch}
+                        pendingWordSearch={pendingWordSearch}
                         attentionByGame={gameAttentionByType}
                         onJigsawCreate={onJigsawCreate}
                         onJigsawPlay={onJigsawPlay}
                         onTicTacToePress={onTicTacToePress}
                         onWordlePress={onWordlePress}
+                        onWordSearchPress={onWordSearchPress}
                         onRefreshPuzzle={onRefreshPuzzle}
                         onVideoCallPress={handleCallPress}
                         callActive={callActive}
@@ -1303,6 +1307,7 @@ export const MainTabNavigator = ({
                     onJigsawPlay={onJigsawPlay}
                     onTicTacToePress={onTicTacToePress}
                     onWordlePress={onWordlePress}
+                    onWordSearchPress={onWordSearchPress}
                 />
             </Modal>
 
