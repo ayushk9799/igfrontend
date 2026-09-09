@@ -38,6 +38,7 @@ import {
 import { createSafeAudioPlayer } from '../utils/safeAudioPlayer';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Camera, Settings, Video, VideoOff } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import { useSocketContext } from '../context/SocketContext';
 import { useCall } from '../calling/CallContext';
@@ -155,7 +156,7 @@ export default function LiveChatScreen({
     onBack,
     hasPremiumAccess = false,
     onRequestPremium,
-    onOpenFreeScreen,
+    onUpgrade,
 }) {
     const { width } = useWindowDimensions();
     const insets = useSafeAreaInsets();
@@ -798,6 +799,7 @@ export default function LiveChatScreen({
                 setPartnerMessage(data.message);
                 setPartnerTyping(false);
                 playMessageSound('receive');
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
             }
         };
         const onPartnerTyping = data => {
@@ -1223,6 +1225,7 @@ export default function LiveChatScreen({
             clientMessageId,
         });
         playMessageSound('send');
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         messageInputRef.current?.focus();
         pendingMessageTimeoutRef.current = setTimeout(() => {
             if (pendingMessageRef.current?.clientMessageId !== clientMessageId) return;
@@ -1279,12 +1282,12 @@ export default function LiveChatScreen({
 
     const handleFreeTierUpgrade = useCallback(() => {
         Keyboard.dismiss();
-        if (onOpenFreeScreen) {
-            onOpenFreeScreen();
+        if (onUpgrade) {
+            onUpgrade();
             return;
         }
         onRequestPremium?.();
-    }, [onOpenFreeScreen, onRequestPremium]);
+    }, [onUpgrade, onRequestPremium]);
 
     const partnerDisplayText = partnerMessage?.text || '';
     const myDisplayText = myMessage?.text || '';

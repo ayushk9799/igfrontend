@@ -40,7 +40,6 @@ import WordleScreen from '../screens/WordleScreen';
 import WordSearchScreen from '../screens/WordSearchScreen';
 import AvatarSelectionScreen from '../screens/AvatarSelectionScreen';
 import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
-import FreeScreen from '../screens/FreeScreen';
 import PartnerPremiumPurchaseModal from '../components/PartnerPremiumPurchaseModal';
 import PartnerConnectedModal from '../components/PartnerConnectedModal';
 import PremiumLimitBottomSheet from '../components/PremiumLimitBottomSheet';
@@ -191,7 +190,6 @@ export const AppNavigator = () => {
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
     const [hasPlayedSplashAnimation, setHasPlayedSplashAnimation] = useState(false);
     const [isGamePremiumVisible, setIsGamePremiumVisible] = useState(false);
-    const [gamePremiumStep, setGamePremiumStep] = useState('free');
     const gamePremiumDismissRef = useRef(null);
     const [premiumLimitFeature, setPremiumLimitFeature] = useState(null);
     const [yourMood, setYourMood] = useState(null);
@@ -243,16 +241,12 @@ export const AppNavigator = () => {
 
 
     const closeGamePremium = useCallback(() => {
-        const shouldQueueYearlyOffer = gamePremiumStep === 'premium';
         setIsGamePremiumVisible(false);
-        setGamePremiumStep('free');
         const onDismiss = gamePremiumDismissRef.current;
         gamePremiumDismissRef.current = null;
         onDismiss?.();
-        if (shouldQueueYearlyOffer) {
-            setYearlyOfferRequestId(previous => previous + 1);
-        }
-    }, [gamePremiumStep]);
+        setYearlyOfferRequestId(previous => previous + 1);
+    }, []);
 
     const showPremiumLimitSheet = useCallback((feature) => {
         setPremiumLimitFeature(feature);
@@ -265,7 +259,6 @@ export const AppNavigator = () => {
     const handlePremiumLimitUpgrade = useCallback(() => {
         setPremiumLimitFeature(null);
         gamePremiumDismissRef.current = null;
-        setGamePremiumStep('free');
         setIsGamePremiumVisible(true);
     }, []);
 
@@ -295,7 +288,6 @@ export const AppNavigator = () => {
         setPremiumLimitFeature(null);
         if (isGamePremiumVisible) {
             setIsGamePremiumVisible(false);
-            setGamePremiumStep('free');
         }
     }, [currentScreen, isGamePremiumVisible]);
 
@@ -1823,7 +1815,6 @@ export const AppNavigator = () => {
     // Use startTransition for non-blocking navigation
     const navigate = (screen) => {
         if (screen === 'premium') {
-            setGamePremiumStep('free');
             setIsGamePremiumVisible(true);
             return;
         }
@@ -2185,7 +2176,8 @@ export const AppNavigator = () => {
     );
 
     const showOnboardingPremiumOnce = async () => {
-        setCurrentScreen('freeScreen');
+        await handleOnboardingOfferShown();
+        setCurrentScreen('onboardingPremium');
     };
 
     const handleOnboardingOfferShown = async () => {
@@ -2651,14 +2643,6 @@ export const AppNavigator = () => {
                     />
                 );
 
-            case 'freeScreen':
-                return (
-                    <FreeScreen
-                        onContinue={() => setCurrentScreen('onboardingPremium')}
-                        onShown={handleOnboardingOfferShown}
-                    />
-                );
-
             case 'notificationPermission':
                 return (
                     <NotificationPermissionScreen
@@ -2701,7 +2685,7 @@ export const AppNavigator = () => {
                             navigate('liveChat');
                         }}
                         onRequestDrawPremium={() => showPremiumLimitSheet('drawTogether')}
-                        onOpenDrawFreeScreen={handlePremiumLimitUpgrade}
+                        onOpenDrawUpgrade={handlePremiumLimitUpgrade}
                         onAvatarPress={() => navigate('avatarSelection')}
                         onFindPartner={openPartnerCode}
                         onNavigateFromAccount={navigateFromAccount}
@@ -2762,7 +2746,7 @@ export const AppNavigator = () => {
                         userId={userData?._id || userData?.id}
                         hasPremiumAccess={hasActiveCouplePremium(userData)}
                         onRequestPremium={() => showPremiumLimitSheet('drawTogether')}
-                        onOpenFreeScreen={handlePremiumLimitUpgrade}
+                        onUpgrade={handlePremiumLimitUpgrade}
                         initialPaths={partnerScribble?.paths}
                         initialCanvasWidth={partnerScribble?.canvasWidth}
                         initialCanvasHeight={partnerScribble?.canvasHeight}
@@ -2987,7 +2971,7 @@ export const AppNavigator = () => {
                         partnerAvatar={userData?.partnerAvatarThumbnail || userData?.partnerAvatar}
                         hasPremiumAccess={hasActiveCouplePremium(userData)}
                         onRequestPremium={() => showPremiumLimitSheet('liveChat')}
-                        onOpenFreeScreen={handlePremiumLimitUpgrade}
+                        onUpgrade={handlePremiumLimitUpgrade}
                         onBack={() => {
                             clearLiveChatActive();
                             setHomeInitialTab('chats');
@@ -3124,16 +3108,9 @@ export const AppNavigator = () => {
                 statusBarTranslucent={true}
                 onRequestClose={closeGamePremium}
             >
-                {gamePremiumStep === 'free' ? (
-                    <FreeScreen
-                        onContinue={() => setGamePremiumStep('premium')}
-                        onClose={closeGamePremium}
-                    />
-                ) : (
-                    <OnboardingPremiumScreen
-                        onBack={closeGamePremium}
-                    />
-                )}
+                <OnboardingPremiumScreen
+                    onBack={closeGamePremium}
+                />
             </Modal>
             <PremiumLimitBottomSheet
                 visible={Boolean(premiumLimitFeature)}

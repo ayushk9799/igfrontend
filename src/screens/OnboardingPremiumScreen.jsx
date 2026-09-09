@@ -35,7 +35,7 @@ import {
     resolveOfferingPackages,
 } from '../utils/premiumOffering';
 
-const ONBOARDING_OFFERING_IDS = ['onboarding', 'onbording'];
+const ONBOARDING_OFFERING_ID = 'basic-plan';
 
 // Close (cross) icon
 const CloseIcon = () => (
@@ -179,6 +179,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
     const [restoring, setRestoring] = useState(false);
     const [loadError, setLoadError] = useState(false);
     const [annualTrialPeriod, setAnnualTrialPeriod] = useState(null);
+    const [weeklyTrialPeriod, setWeeklyTrialPeriod] = useState(null);
     const [purchasePending, setPurchasePending] = useState(false);
     const [reduceMotion, setReduceMotion] = useState(false);
     const insets = useSafeAreaInsets();
@@ -393,29 +394,39 @@ export default function OnboardingPremiumScreen({ onBack }) {
         }
     };
 
-    const updateAnnualTrialEligibility = async (annualPackage) => {
-        const freeTrialPeriod = getFreeTrialPeriod(annualPackage, Platform.OS);
-        let trialIsEligible = false;
+    const checkPackageTrialEligibility = async (pkg) => {
+        const freeTrialPeriod = getFreeTrialPeriod(pkg, Platform.OS);
+        if (!freeTrialPeriod) return null;
 
-        if (freeTrialPeriod && Platform.OS === 'android') {
+        if (Platform.OS === 'android') {
             // Google only returns subscription options available to this customer.
-            trialIsEligible = true;
-        } else if (freeTrialPeriod && Platform.OS === 'ios') {
+            return freeTrialPeriod;
+        } else if (Platform.OS === 'ios') {
             try {
-                const productId = annualPackage?.product?.identifier;
+                const productId = pkg?.product?.identifier;
                 if (productId) {
                     const eligibility = await Purchases.checkTrialOrIntroductoryPriceEligibility([productId]);
-                    trialIsEligible = eligibility?.[productId]?.status
+                    const isEligible = eligibility?.[productId]?.status
                         === Purchases.INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE;
+                    return isEligible ? freeTrialPeriod : null;
                 }
             } catch {
                 // RevenueCat recommends hiding intro messaging when eligibility is unknown.
-                trialIsEligible = false;
+                return null;
             }
         }
+        return null;
+    };
+
+    const updateTrialEligibility = async (annualPackage, weeklyPackage) => {
+        const [annualTrial, weeklyTrial] = await Promise.all([
+            checkPackageTrialEligibility(annualPackage),
+            checkPackageTrialEligibility(weeklyPackage),
+        ]);
 
         if (mountedRef.current) {
-            setAnnualTrialPeriod(trialIsEligible ? freeTrialPeriod : null);
+            setAnnualTrialPeriod(annualTrial);
+            setWeeklyTrialPeriod(weeklyTrial);
         }
     };
 
@@ -427,15 +438,18 @@ export default function OnboardingPremiumScreen({ onBack }) {
             setLoadError(false);
             const allOfferings = await Purchases.getOfferings();
             if (!mountedRef.current) return;
-            const onboardingOffering = ONBOARDING_OFFERING_IDS
-                .map(id => allOfferings?.all?.[id])
-                .find(Boolean) || null;
+
+            const onboardingOffering = allOfferings?.all?.[ONBOARDING_OFFERING_ID]
+                || allOfferings?.current
+                || null;
             resolvedPackages = resolveOfferingPackages(onboardingOffering);
 
             if (onboardingOffering && resolvedPackages.availablePackages.length > 0) {
                 setOffering(onboardingOffering);
                 if (resolvedPackages.annual) {
                     setSelectedPlan('annual');
+                } else if (resolvedPackages.weekly) {
+                    setSelectedPlan('weekly');
                 } else if (resolvedPackages.monthly) {
                     setSelectedPlan('monthly');
                 } else {
@@ -444,12 +458,14 @@ export default function OnboardingPremiumScreen({ onBack }) {
             } else {
                 setOffering(null);
                 setAnnualTrialPeriod(null);
+                setWeeklyTrialPeriod(null);
             }
         } catch (e) {
-            console.error(`Error fetching RevenueCat offerings "${ONBOARDING_OFFERING_IDS.join(', ')}":`, e);
+            console.error(`Error fetching RevenueCat offering "${ONBOARDING_OFFERING_ID}":`, e);
             if (mountedRef.current) {
                 setOffering(null);
                 setAnnualTrialPeriod(null);
+                setWeeklyTrialPeriod(null);
                 setLoadError(true);
             }
         } finally {
@@ -461,7 +477,10 @@ export default function OnboardingPremiumScreen({ onBack }) {
             // trial checks continue independently without blocking checkout.
             Promise.allSettled([
                 checkEntitlements(),
-                updateAnnualTrialEligibility(resolvedPackages?.annual || null),
+                updateTrialEligibility(
+                    resolvedPackages?.annual || null,
+                    resolvedPackages?.weekly || null,
+                ),
             ]);
         }
     };
@@ -469,14 +488,24 @@ export default function OnboardingPremiumScreen({ onBack }) {
     const {
         annual: annualPackage,
         monthly: monthlyPackage,
+        weekly: weeklyPackage,
         fallback: fallbackPackage,
     } = resolveOfferingPackages(offering);
-    const selectedPackage = selectedPlan === 'monthly'
-        ? monthlyPackage
-        : selectedPlan === 'annual'
-            ? annualPackage
-            : fallbackPackage;
+    const selectedPackage = selectedPlan === 'weekly'
+        ? weeklyPackage
+        : selectedPlan === 'monthly'
+            ? monthlyPackage
+            : selectedPlan === 'annual'
+                ? annualPackage
+                : fallbackPackage;
     const annualHasFreeTrial = !!annualTrialPeriod;
+    const weeklyHasFreeTrial = !!weeklyTrialPeriod;
+    const currentTrialPeriod = selectedPlan === 'annual'
+        ? annualTrialPeriod
+        : selectedPlan === 'weekly'
+            ? weeklyTrialPeriod
+            : null;
+    const currentPlanHasFreeTrial = !!currentTrialPeriod;
     const isPremium = !!(user?.isPremium || getPremiumEntitlement({ entitlements: { active: entitlements || {} } }));
     const premiumFromPartner = user?.premiumSource === 'partner';
     const premiumPlan = premiumFromPartner
@@ -528,19 +557,21 @@ export default function OnboardingPremiumScreen({ onBack }) {
         }
     };
 
+    const formattedWeeklyPrice = weeklyPackage?.product?.priceString || '';
     const formattedMonthlyPrice = monthlyPackage?.product?.priceString || '';
 
     const annualPrice = annualPackage?.product?.price || 0;
     const annualCurrency = annualPackage?.product?.currencyCode || null;
+    const annualWeeklyEquivalent = annualPrice / 52;
+    const formattedAnnualWeeklyEquivalent = formatCurrencyPrice(annualWeeklyEquivalent, annualCurrency);
     const annualMonthlyEquivalent = annualPrice / 12;
     const formattedAnnualMonthlyEquivalent = annualPackage?.product?.pricePerMonthString
         || formatCurrencyPrice(annualMonthlyEquivalent, annualCurrency);
     const formattedAnnualPrice = annualPackage?.product?.priceString || '';
 
-    const savingsPercent = calculateSavingsPercent(
-        monthlyPackage?.product?.price,
-        annualPackage?.product?.price,
-    );
+    const savingsPercent = weeklyPackage?.product?.price
+        ? calculateSavingsPercent(weeklyPackage.product.price, annualPrice, 52)
+        : calculateSavingsPercent(monthlyPackage?.product?.price, annualPrice, 12);
 
     const formatTrialPeriod = (period) => {
         const normalized = normalizeTrialPeriod(period);
@@ -760,7 +791,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 />
 
                 {/* Plan Selection Cards */}
-                {!isPremium && !purchasePending && (monthlyPackage || annualPackage || fallbackPackage) && (
+                {!isPremium && !purchasePending && (weeklyPackage || monthlyPackage || annualPackage || fallbackPackage) && (
                     <View style={styles.planCardsContainer}>
                         {/* Yearly Plan Option */}
                         {annualPackage && (
@@ -777,15 +808,15 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 <View style={styles.planDetailsCol}>
                                     <Text style={styles.planTitleText}>{translateUiText("Yearly")}</Text>
                                     <Text style={styles.planPriceText}>
-                                        {translateUiTemplate("{{0}} / month", [formattedAnnualMonthlyEquivalent])}<Text style={styles.planSubText}> {translateUiText("per couple")}</Text>
+                                        {translateUiTemplate("{{0}} / year", [formattedAnnualPrice])}<Text style={styles.planSubText}> {translateUiText("per couple")}</Text>
                                     </Text>
                                     <Text style={styles.planTrialText}>
                                         {annualHasFreeTrial
                                             ? translateUiTemplate(
-                                                "{{0}} free trial, then {{1}} / year",
-                                                [formatTrialPeriod(annualTrialPeriod), formattedAnnualPrice],
+                                                "{{0}} free trial · effective {{1}} / week",
+                                                [formatTrialPeriod(annualTrialPeriod), formattedAnnualWeeklyEquivalent],
                                             )
-                                            : translateUiTemplate("{{0}} / year", [formattedAnnualPrice])}
+                                            : translateUiTemplate("effective {{0}} / week", [formattedAnnualWeeklyEquivalent])}
                                     </Text>
                                 </View>
                                 <View style={styles.planRadioCol}>
@@ -797,6 +828,38 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                         <Text style={styles.saveBadgeText}>{translateUiTemplate("SAVE {{0}}%", [savingsPercent])}</Text>
                                     </View>
                                 )}
+                            </Pressable>
+                        )}
+
+                        {/* Weekly Plan Option */}
+                        {weeklyPackage && (
+                            <Pressable
+                                onPress={() => setSelectedPlan('weekly')}
+                                accessibilityRole="radio"
+                                accessibilityLabel={translateUiText("Weekly plan")}
+                                accessibilityState={{ checked: selectedPlan === 'weekly' }}
+                                style={[
+                                    styles.planCard,
+                                    selectedPlan === 'weekly' && styles.planCardSelected,
+                                ]}
+                            >
+                                <View style={styles.planDetailsCol}>
+                                    <Text style={styles.planTitleText}>{translateUiText("Weekly")}</Text>
+                                    <Text style={styles.planPriceText}>
+                                        {translateUiTemplate("{{0}} / week", [formattedWeeklyPrice])}<Text style={styles.planSubText}> {translateUiText("per couple")}</Text>
+                                    </Text>
+                                    {weeklyHasFreeTrial && (
+                                        <Text style={styles.planTrialText}>
+                                            {translateUiTemplate(
+                                                "{{0}} free trial, then {{1}} / week",
+                                                [formatTrialPeriod(weeklyTrialPeriod), formattedWeeklyPrice],
+                                            )}
+                                        </Text>
+                                    )}
+                                </View>
+                                <View style={styles.planRadioCol}>
+                                    {selectedPlan === 'weekly' ? <RadioCircleChecked /> : <RadioCircleOutline />}
+                                </View>
                             </Pressable>
                         )}
 
@@ -875,14 +938,16 @@ export default function OnboardingPremiumScreen({ onBack }) {
                                 <Text style={styles.subscribeButtonText}>
                                     {purchasing
                                         ? translateUiText("Processing...")
-                                        : selectedPlan === 'annual' && annualHasFreeTrial
-                                            ? translateUiText("Try free for 7 Days")
+                                        : currentPlanHasFreeTrial
+                                            ? (currentTrialPeriod?.value === 7 && currentTrialPeriod?.unit === 'day'
+                                                ? translateUiText("Try free for 7 Days")
+                                                : translateUiTemplate("Try free for {{0}}", [formatTrialPeriod(currentTrialPeriod)]))
                                             : translateUiText("Start now")}
                                 </Text>
                             </LinearGradient>
                         </TouchableOpacity>
                         <Text style={styles.paymentNoteText}>
-                            {selectedPlan === 'annual' && annualHasFreeTrial
+                            {currentPlanHasFreeTrial
                                 ? translateUiText("No payment due now")
                                 : translateUiText("Cancel anytime, no commitment")}
                         </Text>

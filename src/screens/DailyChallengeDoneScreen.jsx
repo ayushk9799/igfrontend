@@ -4,7 +4,6 @@ import {
     Dimensions,
     Easing,
     Image,
-    Platform,
     ScrollView,
     StyleSheet,
     StatusBar,
@@ -572,11 +571,6 @@ export default function DailyChallengeDoneScreen({
         streakGainTranslateY,
     ]);
 
-    const androidStatusBarHeight = StatusBar.currentHeight || 0;
-    const fadeOverlayHeight = Platform.OS === 'android'
-        ? Math.max(insets.top, androidStatusBarHeight) + 40
-        : Math.max(insets.top + 28, 64);
-
     const handlePrimaryPress = async () => {
         if (isActionPending) return;
 
@@ -617,10 +611,6 @@ export default function DailyChallengeDoneScreen({
             />
             <BottomPinkLandscape />
             <FallingPetals />
-            <View
-                style={[styles.topFadeGradient, { height: fadeOverlayHeight }]}
-                pointerEvents="none"
-            />
 
             {showConfetti && isFullHeart && (
                 <ConfettiCannon
@@ -781,7 +771,7 @@ export default function DailyChallengeDoneScreen({
                         activeOpacity={0.65}
                         accessibilityRole="button"
                     >
-                        <Text style={styles.backText}>← Back to Home</Text>
+                        <Text style={styles.backText}>Back to Home</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -817,14 +807,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.16,
         shadowRadius: 2,
         elevation: 0,
-    },
-    topFadeGradient: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 20,
-        backgroundColor: 'rgba(255, 235, 242, 0.9)',
     },
     content: {
         flexGrow: 1,
@@ -1033,7 +1015,7 @@ const styles = StyleSheet.create({
     backButton: {
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.sm,
-        marginTop: spacing.xs,
+        marginTop: spacing.lg,
     },
     backText: {
         fontFamily: fontFamily.bold,

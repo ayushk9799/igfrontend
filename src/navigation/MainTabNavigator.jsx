@@ -14,7 +14,6 @@ import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
 import ChatListScreen from '../screens/ChatListScreen';
 import NotificationCenterScreen from '../screens/NotificationCenterScreen';
 import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
-import FreeScreen from '../screens/FreeScreen';
 import MoodScreen from '../screens/MoodScreen';
 import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
 import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
@@ -92,7 +91,7 @@ export const MainTabNavigator = ({
     onNavigateFromAccount,
     onLiveChatPress,
     onRequestDrawPremium,
-    onOpenDrawFreeScreen,
+    onOpenDrawUpgrade,
     canAutoOpenMoodPrompt = true,
     openAccountOnMount = false,
     onAccountRestoreHandled,
@@ -108,7 +107,6 @@ export const MainTabNavigator = ({
     const [isEditAccountVisible, setIsEditAccountVisible] = useState(false);
     const [shouldReturnToAccountFromTab, setShouldReturnToAccountFromTab] = useState(false);
     const [isHomePremiumVisible, setIsHomePremiumVisible] = useState(false);
-    const [homePremiumStep, setHomePremiumStep] = useState('free');
     const [isNotificationVisible, setIsNotificationVisible] = useState(false);
     const [isMoodVisible, setIsMoodVisible] = useState(false);
     const [isMoodRefreshPrompt, setIsMoodRefreshPrompt] = useState(false);
@@ -966,7 +964,7 @@ export const MainTabNavigator = ({
                         userId={userData?._id || userData?.id}
                         hasPremiumAccess={hasPremiumAccess}
                         onRequestPremium={onRequestDrawPremium}
-                        onOpenFreeScreen={onOpenDrawFreeScreen}
+                        onUpgrade={onOpenDrawUpgrade}
                         initialPaths={partnerScribble?.paths}
                         initialLiveMode={openScribbleLiveMode}
                         initialCanvasWidth={partnerScribble?.canvasWidth}
@@ -1159,7 +1157,6 @@ export const MainTabNavigator = ({
                     isLocationSetup={userData?.locationSharingEnabled === true}
                     onDistanceSetupPress={() => openWidgetSheet('distance')}
                     onPremiumPress={() => {
-                        setHomePremiumStep('free');
                         setIsHomePremiumVisible(true);
                     }}
                     hasPremiumAccess={hasPremiumAccess}
@@ -1246,7 +1243,6 @@ export const MainTabNavigator = ({
                                 onFindPartner?.();
                             }}
                             onNavigateToPremium={() => {
-                                setHomePremiumStep('free');
                                 setIsHomePremiumVisible(true);
                             }}
                             onWidgetsPress={() => {
@@ -1272,27 +1268,16 @@ export const MainTabNavigator = ({
                 transparent={false}
                 statusBarTranslucent={true}
                 onRequestClose={() => {
-                    const shouldShowYearlyOffer = homePremiumStep === 'premium';
                     setIsHomePremiumVisible(false);
-                    setHomePremiumStep('free');
-                    if (shouldShowYearlyOffer) {
-                        scheduleYearlyOffer();
-                    }
+                    scheduleYearlyOffer();
                 }}
             >
-                {homePremiumStep === 'free' ? (
-                    <FreeScreen
-                        onContinue={() => setHomePremiumStep('premium')}
-                    />
-                ) : (
-                    <OnboardingPremiumScreen
-                        onBack={() => {
-                            setIsHomePremiumVisible(false);
-                            setHomePremiumStep('free');
-                            scheduleYearlyOffer();
-                        }}
-                    />
-                )}
+                <OnboardingPremiumScreen
+                    onBack={() => {
+                        setIsHomePremiumVisible(false);
+                        scheduleYearlyOffer();
+                    }}
+                />
             </Modal>
 
             <Modal

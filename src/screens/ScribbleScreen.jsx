@@ -693,7 +693,7 @@ export const ScribbleScreen = ({
     userId,
     hasPremiumAccess = false,
     onRequestPremium,
-    onOpenFreeScreen,
+    onUpgrade,
 }) => {
     const freeUsageStorageKey = getLiveDrawUsageKey(userId);
     const [paths, setPaths] = useState(() => normalizePaths(initialPaths, 'initial'));
@@ -1617,7 +1617,7 @@ export const ScribbleScreen = ({
                             </Text>
                         </Text>
                         <TouchableOpacity
-                            onPress={onOpenFreeScreen}
+                            onPress={onUpgrade || onRequestPremium}
                             activeOpacity={0.72}
                             accessibilityRole="button"
                         >

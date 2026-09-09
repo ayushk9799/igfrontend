@@ -76,28 +76,30 @@ const EmojiItem = memo(({ mood, isSelected, onSelect }) => {
 const MoodListHeader = ({ onBack, partnerName, isRefreshPrompt, moodUpdatedAt, selectedMood }) => {
     const timeAgo = formatTimeAgo(moodUpdatedAt);
     const title = isRefreshPrompt
-        ? translateUiTemplate("Last mood updated {{0}}", [timeAgo])
+        ? translateUiText("Refresh your vibe")
         : translateUiText("How are you feeling?");
     const subtitle = isRefreshPrompt
-        ? translateUiTemplate("Let {{0}} know how you feel now", [partnerName])
+        ? (moodUpdatedAt
+            ? translateUiTemplate("Updated {{0}} • Let {{1}} know", [timeAgo, partnerName])
+            : translateUiTemplate("Let {{0}} know how you feel now", [partnerName]))
         : translateUiTemplate("Let {{0}} know your vibe ✨", [partnerName]);
 
     return (
         <View style={styles.header}>
             <View style={styles.headerText}>
                 <View style={styles.headerTitleRow}>
-                    <Text style={styles.title}>{title}</Text>
-                    <View style={styles.headerMoodStatus}>
-                        <View style={[
-                            styles.moodStatusDot,
-                            selectedMood && styles.moodStatusDotActive,
-                        ]} />
-                        <Text style={styles.headerMoodStatusText} numberOfLines={1}>
-                            {selectedMood
-                                ? translateUiText(selectedMood.label)
-                                : translateUiText("Select a mood")}
-                        </Text>
-                    </View>
+                    <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                    {selectedMood ? (
+                        <View style={styles.headerMoodStatus}>
+                            <View style={[
+                                styles.moodStatusDot,
+                                styles.moodStatusDotActive,
+                            ]} />
+                            <Text style={styles.headerMoodStatusText} numberOfLines={1}>
+                                {translateUiText(selectedMood.label)}
+                            </Text>
+                        </View>
+                    ) : null}
                 </View>
                 <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
@@ -416,7 +418,8 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 13,
         color: colors.textSecondary,
-        marginTop: 1,
+        marginTop: 2,
+        lineHeight: 18,
     },
     gridRow: {
         gap: GRID_GAP,

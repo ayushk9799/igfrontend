@@ -498,7 +498,7 @@ const VoiceRecordCard = React.memo(({
                                                         strokeLinejoin="round"
                                                     />
                                                 </Svg>
-                                                <Text style={voiceStyles.submitText}>{translateUiText("✓ Submit")}</Text>
+                                                <Text style={voiceStyles.submitText}>{translateUiText("Submit")}</Text>
                                             </>
                                         )}
                                     </View>
@@ -515,7 +515,16 @@ const VoiceRecordCard = React.memo(({
                             style={[voiceStyles.idleSubmitButton, !recordingUri && voiceStyles.idleSubmitDisabled]}
                             disabled={!recordingUri}
                         >
-                            <Text style={voiceStyles.idleSubmitText}>{translateUiText("✓ Submit")}</Text>
+                            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"
+                                    stroke="#FFFFFF"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
+                            <Text style={voiceStyles.idleSubmitText}>{translateUiText("Submit")}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -537,7 +546,7 @@ const voiceStyles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: spacing.lg,
         paddingTop: spacing.lg,
-        paddingBottom: spacing.md,
+        paddingBottom: spacing.xl,
     },
     answeredContent: {
         opacity: 0.3,
@@ -594,7 +603,7 @@ const voiceStyles = StyleSheet.create({
     previewRecordingContainer: {
         justifyContent: 'space-between',
         paddingTop: spacing['2xl'],
-        paddingBottom: spacing.xs,
+        paddingBottom: spacing.md,
     },
     voiceMicButton: {
         width: 100,
@@ -714,7 +723,7 @@ const voiceStyles = StyleSheet.create({
         alignSelf: 'center',
         flexDirection: 'row',
         gap: spacing.md,
-        paddingBottom: spacing.xs,
+        paddingBottom: spacing.sm,
     },
     discardButton: {
         flex: 1,
@@ -764,10 +773,14 @@ const voiceStyles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'flex-end',
         alignItems: 'center',
+        paddingBottom: spacing.sm,
     },
     idleSubmitButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.xs,
         paddingVertical: 14,
-        paddingHorizontal: 28,
+        paddingHorizontal: 24,
         borderRadius: 25,
         backgroundColor: '#F64D7E',
         shadowColor: '#F64D7E',

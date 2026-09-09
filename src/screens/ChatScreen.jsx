@@ -7,12 +7,11 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Platform,
-    Keyboard,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
-import LinearGradient from 'react-native-linear-gradient';
 import GradientBackground from '../components/GradientBackground';
 import { colors, spacing, borderRadius } from '../theme';
 import { API_BASE } from '../constants/Api';
@@ -40,15 +39,26 @@ export default function ChatScreen({
     const socket = useSocket();
     const flatListRef = useRef(null);
     const userData = useSelector(selectUser);
+    const bottomInset = Math.max(insets.bottom, 12);
 
+    const hasInitialMessages = Array.isArray(initialChat?.messages) && initialChat.messages.length > 0;
     const [chat, setChat] = useState(initialChat || null);
-    const [messages, setMessages] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [messages, setMessages] = useState(hasInitialMessages ? initialChat.messages : []);
+    const [loading, setLoading] = useState(!initialChat || (!hasInitialMessages && !initialChat.prompt && !initialChat.questionText));
     const [sending, setSending] = useState(false);
     const [partnerTyping, setPartnerTyping] = useState(false);
     const [showQuestionCard, setShowQuestionCard] = useState(true);
-    const [questionExpanded, setQuestionExpanded] = useState(false);
     const isQuestionV2Chat = chatMode === 'questionV2';
+
+    // Keep chat and messages synced if initialChat prop updates
+    useEffect(() => {
+        if (initialChat) {
+            setChat(initialChat);
+            if (Array.isArray(initialChat.messages) && initialChat.messages.length > 0 && messages.length === 0) {
+                setMessages(initialChat.messages);
+            }
+        }
+    }, [initialChat]);
 
     // Fetch chat and messages
     const fetchChat = useCallback(async () => {
@@ -82,7 +92,7 @@ export default function ChatScreen({
             const handleQuestionV2Message = (data) => {
                 if (data.chatId !== chatId || !data.message) return;
                 setMessages(prev => {
-                    const exists = prev.some(m => m._id === data.message._id);
+                    const exists = prev.some(m => String(m._id) === String(data.message._id));
                     return exists ? prev : [...prev, data.message];
                 });
             };
@@ -94,16 +104,26 @@ export default function ChatScreen({
             };
         }
 
-        // Join chat room
-        socket.emit('chat:join', { chatId });
+        const joinAndMarkRead = () => {
+            socket.emit('chat:join', { chatId });
+            socket.emit('chat:read', { chatId });
+        };
+
+        // Join chat room & mark as read on mount
+        joinAndMarkRead();
+
+        // Re-join chat room if socket reconnects
+        socket.on('connect', joinAndMarkRead);
 
         // Listen for new messages
         const handleNewMessage = (data) => {
             if (data.message && data.message.chatId === chatId) {
                 const newMsg = data.message;
+                const newSenderId = String(newMsg.senderId?._id || newMsg.senderId);
+                const currentUserId = String(userId);
 
                 // If it's our own message, replace the temp message instead of adding duplicate
-                if (newMsg.senderId === userId || newMsg.senderId?._id === userId) {
+                if (newSenderId === currentUserId) {
                     setMessages(prev => {
                         // Check if we have a temp message with similar content (our optimistic add)
                         const tempIndex = prev.findIndex(m =>
@@ -118,16 +138,21 @@ export default function ChatScreen({
                         }
 
                         // No temp found, check if message already exists by _id
-                        const exists = prev.some(m => m._id === newMsg._id);
+                        const exists = prev.some(m => String(m._id) === String(newMsg._id));
                         if (exists) return prev;
 
                         return [...prev, newMsg];
                     });
                 } else {
-                    // Partner's message - just add it
+                    // Partner's message - clear partner typing state immediately
+                    setPartnerTyping(false);
+
+                    // Haptic feedback for incoming message
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+
+                    // Add partner message
                     setMessages(prev => {
-                        // Check if already exists
-                        const exists = prev.some(m => m._id === newMsg._id);
+                        const exists = prev.some(m => String(m._id) === String(newMsg._id));
                         if (exists) return prev;
                         return [...prev, newMsg];
                     });
@@ -140,18 +165,18 @@ export default function ChatScreen({
 
         // Listen for typing indicator
         const handleTyping = (data) => {
-            if (data.chatId === chatId && data.userId !== userId) {
+            if (data.chatId === chatId && String(data.userId) !== String(userId)) {
                 setPartnerTyping(data.isTyping);
             }
         };
 
         // Listen for read receipts - update messages when partner reads them
         const handleReadReceipt = (data) => {
-            if (data.chatId === chatId && data.readBy !== userId) {
+            if (data.chatId === chatId && String(data.readBy) !== String(userId)) {
                 // Partner read our messages - update all our sent messages to show as read
                 setMessages(prev => prev.map(msg => {
                     // Only mark our own messages as read
-                    const isSent = msg.senderId === userId || msg.senderId?._id === userId;
+                    const isSent = String(msg.senderId?._id || msg.senderId) === String(userId);
                     if (isSent && !msg.isRead) {
                         return { ...msg, isRead: true, readAt: data.readAt };
                     }
@@ -164,11 +189,9 @@ export default function ChatScreen({
         socket.on('chat:typing', handleTyping);
         socket.on('chat:readReceipt', handleReadReceipt);
 
-        // Mark as read on mount
-        socket.emit('chat:read', { chatId });
-
         return () => {
             socket.emit('chat:leave', { chatId });
+            socket.off('connect', joinAndMarkRead);
             socket.off('chat:newMessage', handleNewMessage);
             socket.off('chat:typing', handleTyping);
             socket.off('chat:readReceipt', handleReadReceipt);
@@ -178,6 +201,9 @@ export default function ChatScreen({
     // Send message handler
     const handleSend = useCallback(async (content) => {
         if (!content.trim() || sending) return;
+
+        // Haptic feedback for sent message
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
         setSending(true);
 
@@ -219,8 +245,8 @@ export default function ChatScreen({
                 // Use socket for real-time
                 socket.emit('chat:message', { chatId, content: content.trim() });
             } else {
-                // Fallback to HTTP
-                const response = await fetch(`${API_BASE}/api/chat/${chatId}/message`, {
+                // Fallback to HTTP via apiFetch
+                const response = await apiFetch(`${API_BASE}/api/chat/${chatId}/message`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, content: content.trim() }),
@@ -232,6 +258,8 @@ export default function ChatScreen({
                     setMessages(prev =>
                         prev.map(m => m._id === tempMessage._id ? json.data : m)
                     );
+                } else {
+                    setMessages(prev => prev.filter(m => m._id !== tempMessage._id));
                 }
             }
         } catch (err) {
@@ -256,28 +284,30 @@ export default function ChatScreen({
         return [...messages].reverse();
     }, [messages]);
 
-
-
-
-
     const renderMessage = ({ item, index }) => {
-        const isSent = item.senderId === userId || item.senderId?._id === userId;
+        const itemSenderId = String(item.senderId?._id || item.senderId);
+        const currentUserId = String(userId);
+        const isSent = itemSenderId === currentUserId;
+
         // For Inverted list: Check previous index (which is visually 'below') or if first index (bottom-most)
         // This places avatar at the BOTTOM of the message group
-        const showAvatar = index === 0 ||
-            (allMessages[index - 1]?.senderId !== item.senderId);
+        const prevSenderId = index > 0
+            ? String(allMessages[index - 1]?.senderId?._id || allMessages[index - 1]?.senderId)
+            : null;
+        const showAvatar = index === 0 || (prevSenderId !== itemSenderId);
 
         // Prioritize local storage/thumbnails for instant display
         let avatarSource = item.senderId?.avatar;
 
         if (isSent) {
             // For me: Use my local thumbnail if available, then my local full avatar
-            avatarSource = userData.avatarThumbnail || userData.avatar || avatarSource;
+            avatarSource = userData?.avatarThumbnail || userData?.avatar || avatarSource;
         } else {
             // For partner: Check if this message is from my partner (it should be in a 2-person chat)
             // and use their cached thumbnail if available
-            if (userData.partnerId && (item.senderId === userData.partnerId || item.senderId?._id === userData.partnerId)) {
-                avatarSource = userData.partnerAvatarThumbnail || userData.partnerAvatar || avatarSource;
+            const partnerId = userData?.partnerId ? String(userData.partnerId) : null;
+            if (partnerId && itemSenderId === partnerId) {
+                avatarSource = userData?.partnerAvatarThumbnail || userData?.partnerAvatar || avatarSource;
             }
         }
 
@@ -299,28 +329,17 @@ export default function ChatScreen({
         if (!chat || !showQuestionCard) return null;
 
         const questionText = isQuestionV2Chat ? chat.prompt : chat.questionText;
+        if (!questionText) return null;
 
         return (
-            <TouchableOpacity
-                style={styles.questionCard}
-                onPress={() => setQuestionExpanded(!questionExpanded)}
-                activeOpacity={0.9}
-            >
-                <View style={[
-                    styles.questionCardGradient,
-                    !questionExpanded && styles.questionCardCollapsed
-                ]}>
-                    <Text
-                        style={styles.questionText}
-                        numberOfLines={questionExpanded ? undefined : 2}
-                    >
-                        {questionText}
-                    </Text>
-                    <Text style={styles.tapHint}>
-                        {questionExpanded ? translateUiText("Tap to collapse") : translateUiText("Tap to expand")}
-                    </Text>
-                </View>
-            </TouchableOpacity>
+            <View style={styles.questionCard}>
+                <Text
+                    style={styles.questionText}
+                    numberOfLines={3}
+                >
+                    {questionText}
+                </Text>
+            </View>
         );
     };
 
@@ -353,32 +372,29 @@ export default function ChatScreen({
         <GradientBackground variant="light" showOrbs={true} showParticles={true}>
             {/* Header */}
             <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                <TouchableOpacity
+                    onPress={onBack}
+                    style={styles.backButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={translateUiText("Back to chats")}
+                    activeOpacity={0.8}
+                >
+                    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                         <Path
                             d="M15 18l-6-6 6-6"
-                            stroke={colors.text}
-                            strokeWidth={2.5}
+                            stroke="#1B1237"
+                            strokeWidth={2}
                             strokeLinecap="round"
                             strokeLinejoin="round"
                         />
                     </Svg>
-                    <Text style={styles.backText}>{translateUiText("Chats")}</Text>
                 </TouchableOpacity>
 
-                {/* Centered avatar and name */}
+                {/* Centered typing status */}
                 <View style={styles.headerCenter}>
-                    <View style={styles.headerAvatar}>
-                        <Text style={styles.headerAvatarText}>
-                            {partnerName?.charAt(0)?.toUpperCase() || '?'}
-                        </Text>
-                    </View>
-                    <View style={styles.headerTextContainer}>
-                        <Text style={styles.headerName}>{partnerName}</Text>
-                        {partnerTyping && (
-                            <Text style={styles.headerTypingText}>{translateUiText("typing...")}</Text>
-                        )}
-                    </View>
+                    {partnerTyping && (
+                        <Text style={styles.headerTypingText}>{translateUiText("typing...")}</Text>
+                    )}
                 </View>
 
                 {/* Spacer for centering */}
@@ -387,31 +403,29 @@ export default function ChatScreen({
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior="padding"
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? -(bottomInset - 6) : 0}
             >
-
                 {/* Question card */}
                 {renderQuestionCard()}
 
-                {/* Messages */}
+                {/* Messages: Inverted FlatList where ListHeaderComponent renders at the visual bottom (near newest messages/input) */}
                 <FlatList
                     ref={flatListRef}
                     data={allMessages}
                     renderItem={renderMessage}
-                    keyExtractor={(item) => item._id}
+                    keyExtractor={(item, index) => item._id || item.id || `msg-${index}`}
                     style={{ flex: 1 }}
                     inverted
                     contentContainerStyle={styles.messagesContent}
                     showsVerticalScrollIndicator={false}
-
-                    ListFooterComponent={renderTypingIndicator}
+                    ListHeaderComponent={renderTypingIndicator}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="interactive"
                 />
 
-                {/* Input */}
-                <View style={{ marginBottom: 15 }}>
+                {/* Input with safe bottom inset */}
+                <View style={{ marginBottom: bottomInset }}>
                     <ChatInput
                         onSend={handleSend}
                         onTyping={handleTyping}
@@ -442,14 +456,19 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
     },
     backButton: {
-        flexDirection: 'row',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        justifyContent: 'center',
         alignItems: 'center',
-        minWidth: 60,
-    },
-    backText: {
-        fontSize: 17,
-        color: colors.text,
-        marginLeft: 2,
+        shadowColor: '#C084FC',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 0,
     },
     headerCenter: {
         flexDirection: 'row',
@@ -458,165 +477,40 @@ const styles = StyleSheet.create({
         flex: 1,
         gap: 8,
     },
-    headerAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#FFFFFF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
-        shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 0,
-    },
-    headerAvatarText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: colors.primary,
-    },
-    headerName: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: colors.text,
-    },
-    headerTextContainer: {
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-    },
     headerTypingText: {
         fontSize: 12,
         color: colors.textSecondary,
         fontStyle: 'italic',
     },
     headerSpacer: {
-        minWidth: 70,
-
+        width: 44,
+        height: 44,
     },
     questionCard: {
-        borderRadius: 12,
-        overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginHorizontal: spacing.md,
+        marginTop: spacing.xs,
+        marginBottom: spacing.xs,
         shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 0,
-        marginHorizontal: spacing.md,
-        marginTop: spacing.xs,
-        marginBottom: spacing.xs,
-    },
-    questionCardGradient: {
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 8,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
-    },
-    questionCardCollapsed: {
-        maxHeight: 80,
-    },
-    questionLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: colors.textSecondary,
-        marginBottom: 8,
     },
     questionText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
         color: colors.text,
-        lineHeight: 22,
-        marginBottom: 6,
-    },
-    tapHint: {
-        fontSize: 11,
-        color: colors.textSecondary,
-        textAlign: 'center',
-        marginTop: 4,
-    },
-    collapseHintContainer: {
-        alignItems: 'center',
-    },
-    collapseHint: {
-        fontSize: 12,
-        color: colors.textSecondary,
-        fontWeight: '500',
-    },
-    answersContainer: {
-        borderTopWidth: 1,
-        borderTopColor: '#FAE8FF',
-        paddingTop: spacing.md,
-        marginTop: spacing.xs,
-        gap: spacing.sm,
-    },
-    answerCard: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: spacing.sm,
-    },
-    answerAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    answerAvatarText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: colors.primary,
-    },
-    answerContent: {
-        flex: 1,
-    },
-    answerLabel: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: colors.textSecondary,
-        marginBottom: 2,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    answerText: {
-        fontSize: 14,
-        color: colors.text,
-        lineHeight: 20,
+        lineHeight: 21,
     },
     messagesContent: {
         paddingVertical: spacing.md,
         flexGrow: 1,
-    },
-    emptyMessages: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: spacing.xxl,
-        paddingHorizontal: spacing.xl,
-    },
-    emptyIconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: spacing.md,
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: colors.text,
-        marginBottom: spacing.xs,
-    },
-    emptyText: {
-        fontSize: 14,
-        color: colors.textSecondary,
-        textAlign: 'center',
-        lineHeight: 20,
     },
     typingContainer: {
         flexDirection: 'row',
@@ -647,43 +541,5 @@ const styles = StyleSheet.create({
     typingText: {
         fontSize: 13,
         color: colors.textSecondary,
-    },
-    // Answer message styles
-    answerMessageContainer: {
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.xs,
-    },
-    answerMessageBubble: {
-        maxWidth: '80%',
-        borderRadius: borderRadius.lg,
-        padding: spacing.md,
-        borderWidth: 2,
-        borderStyle: 'dashed',
-    },
-    answerSent: {
-        alignSelf: 'flex-end',
-        backgroundColor: colors.primary + '15',
-        borderColor: colors.primary + '40',
-    },
-    answerReceived: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#FFFFFF',
-        borderColor: '#FAE8FF',
-    },
-    answerMessageLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: colors.textSecondary,
-        marginBottom: 4,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    answerMessageText: {
-        fontSize: 15,
-        color: colors.text,
-        lineHeight: 21,
-    },
-    answerTextSent: {
-        color: colors.text,
     },
 });

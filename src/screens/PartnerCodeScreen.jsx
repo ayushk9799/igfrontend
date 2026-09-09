@@ -16,6 +16,7 @@ import {
     Share,
     ScrollView,
     useWindowDimensions,
+    Platform,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -143,6 +144,7 @@ export const PartnerCodeScreen = ({
     onClose = null,
 }) => {
     const [enteredCode, setEnteredCode] = useState('');
+    const [isInputFocused, setIsInputFocused] = useState(false);
     const [isPairing, setIsPairing] = useState(false);
     const [pairingStatus, setPairingStatus] = useState('');
     const [copied, setCopied] = useState(false);
@@ -206,6 +208,7 @@ export const PartnerCodeScreen = ({
     }, [fadeAnim, slideAnim, isAlreadyPaired]);
 
     const handleFocus = () => {
+        setIsInputFocused(true);
         Animated.timing(shareCardAnim, {
             toValue: 0,
             duration: 250,
@@ -214,6 +217,7 @@ export const PartnerCodeScreen = ({
     };
 
     const handleBlur = () => {
+        setIsInputFocused(false);
         Animated.timing(shareCardAnim, {
             toValue: 1,
             duration: 250,
@@ -430,13 +434,22 @@ export const PartnerCodeScreen = ({
                 <Sparkle x={width * 0.9} y={height * 0.35} size={7} delay={1200} />
                 <Sparkle x={width * 0.05} y={height * 0.45} size={6} delay={800} />
 
-                {/* Brand Logo - fixed at top */}
+                {/* Brand Logo & Skip Button - fixed at top */}
                 <View style={[styles.brandContainer, { paddingTop: insets.top + 10 }]}>
                     <Image
                         source={require('../../assets/images/penguin-text-logo.png')}
                         style={styles.brandLogo}
                         resizeMode="contain"
                     />
+                    <TouchableOpacity
+                        onPress={onSkip}
+                        style={styles.headerSkipButton}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText("Skip")}
+                    >
+                        <Text style={styles.headerSkipText}>{translateUiText("Skip")}</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <ScrollView
@@ -547,7 +560,11 @@ export const PartnerCodeScreen = ({
                         <View style={styles.enterCodeCard}>
                             <Text style={styles.cardLabel}>{translateUiText("Enter your Partner Code")}</Text>
                             <TextInput
-                                style={[styles.codeInput, isPairing && styles.codeInputDisabled]}
+                                style={[
+                                    styles.codeInput,
+                                    Platform.OS === 'android' && !enteredCode && { letterSpacing: 0 },
+                                    isPairing && styles.codeInputDisabled,
+                                ]}
                                 value={enteredCode}
                                 onChangeText={(text) => {
                                     const formatted = text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -559,12 +576,14 @@ export const PartnerCodeScreen = ({
                                 }}
                                 onFocus={handleFocus}
                                 onBlur={handleBlur}
-                                placeholder={translateUiText("ABC123")}
+                                placeholder={isInputFocused ? '' : translateUiText("ABC123")}
                                 placeholderTextColor="#D1A3B8"
                                 maxLength={6}
                                 autoCapitalize="characters"
                                 autoCorrect={false}
                                 editable={!isPairing}
+                                cursorColor="#FF5E97"
+                                selectionColor="#FF5E97"
                                 accessibilityLabel={translateUiText("Enter your partner code")}
                             />
 
@@ -576,18 +595,6 @@ export const PartnerCodeScreen = ({
                                 </View>
                             )}
                         </View>
-                    </Animated.View>
-
-                    {/* Skip Button */}
-                    <Animated.View style={[styles.skipContainer, { opacity: fadeAnim }]}>
-                        <TouchableOpacity
-                            onPress={onSkip}
-                            activeOpacity={0.7}
-                            accessibilityRole="button"
-                            accessibilityLabel={translateUiText("Connect with a partner later")}
-                        >
-                            <Text style={styles.skipText}>{translateUiText("I'll do this later →")}</Text>
-                        </TouchableOpacity>
                     </Animated.View>
                     </Animated.View>
                 </ScrollView>
@@ -624,7 +631,25 @@ const createStyles = (isCompactHeight) => StyleSheet.create({
         left: 0,
         right: 0,
         paddingHorizontal: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         zIndex: 10,
+    },
+    headerSkipButton: {
+        minWidth: 44,
+        minHeight: 36,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: -4,
+    },
+    headerSkipText: {
+        fontFamily: fontFamily.bold,
+        fontSize: 14,
+        fontWeight: fontWeight('700'),
+        color: '#FF5E97',
     },
     brandLogo: {
         width: isCompactHeight ? 120 : 140,
@@ -774,7 +799,8 @@ const createStyles = (isCompactHeight) => StyleSheet.create({
         fontWeight: '800',
         color: navy,
         textAlign: 'center',
-        letterSpacing: 6,
+        letterSpacing: Platform.select({ ios: 6, android: 4, default: 6 }),
+        includeFontPadding: false,
         marginBottom: isCompactHeight ? 12 : 16,
         borderWidth: 1.5,
         borderColor: '#FFE4EC',
@@ -815,16 +841,6 @@ const createStyles = (isCompactHeight) => StyleSheet.create({
         fontSize: isCompactHeight ? 12 : 13,
         fontWeight: '800',
         color: '#FFFFFF',
-    },
-    skipContainer: {
-        alignItems: 'center',
-        marginTop: isCompactHeight ? 16 : 24,
-        paddingVertical: 10,
-    },
-    skipText: {
-        fontSize: 14,
-        color: '#7380A1',
-        fontWeight: '600',
     },
     connectedContainer: {
         flex: 1,

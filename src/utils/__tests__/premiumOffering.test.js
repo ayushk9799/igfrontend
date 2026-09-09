@@ -16,6 +16,7 @@ describe('premium offering helpers', () => {
         })).toEqual({
             annual,
             monthly,
+            weekly: null,
             fallback: custom,
             availablePackages: [custom, monthly, annual],
         });
@@ -54,9 +55,25 @@ describe('premium offering helpers', () => {
         expect(normalizeTrialPeriod('invalid')).toBeNull();
     });
 
+    test('resolves weekly package from available packages', () => {
+        const weekly = { identifier: '$rc_weekly', packageType: 'WEEKLY' };
+        const annual = { identifier: '$rc_annual', packageType: 'ANNUAL' };
+        expect(resolveOfferingPackages({
+            availablePackages: [weekly, annual],
+        })).toEqual({
+            annual,
+            monthly: null,
+            weekly,
+            fallback: null,
+            availablePackages: [weekly, annual],
+        });
+    });
+
     test('only reports meaningful positive savings', () => {
         expect(calculateSavingsPercent(10, 90)).toBe(25);
         expect(calculateSavingsPercent(10, 120)).toBeNull();
         expect(calculateSavingsPercent(0, 90)).toBeNull();
+        // Weekly savings with 52 multiplier: $2/week = $104/year vs $52/year = 50% savings
+        expect(calculateSavingsPercent(2, 52, 52)).toBe(50);
     });
 });

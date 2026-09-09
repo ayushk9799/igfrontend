@@ -78,7 +78,6 @@ const ChatInput = ({
     partnerName = 'Partner',
 }) => {
     const [message, setMessage] = useState('');
-    const [inputHeight, setInputHeight] = useState(44);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const inputRef = useRef(null);
     const sendButtonScale = useRef(new Animated.Value(1)).current;
@@ -145,7 +144,6 @@ const ChatInput = ({
             onSend(trimmedMessage);
             inputRef.current?.clear();
             setMessage('');
-            setInputHeight(44);
 
             if (onTyping) {
                 onTyping(false);
@@ -156,33 +154,20 @@ const ChatInput = ({
         }
     };
 
-    const handleContentSizeChange = (event) => {
-        const height = event.nativeEvent.contentSize.height;
-        const newHeight = Math.min(Math.max(44, height + 16), 120);
-        setInputHeight(newHeight);
-    };
-
     return (
         <View style={[styles.wrapper, keyboardVisible && Platform.OS === 'ios' && styles.wrapperKeyboardActive]}>
             <View style={styles.container}>
-                {/* Plus button */}
-
-
-                {/* Microphone button */}
-
-
                 {/* Input field */}
                 <View style={styles.inputContainer}>
                     <TextInput
                         ref={inputRef}
-                        style={[styles.input, { height: Math.max(40, inputHeight - 8) }]}
+                        style={styles.input}
                         value={message}
                         onChangeText={handleChangeText}
                         placeholder={translateUiTemplate("Message {{0}}...", [partnerName])}
-                        placeholderTextColor="rgba(255,255,255,0.4)"
+                        placeholderTextColor={colors.textMuted}
                         multiline
                         maxLength={maxLength}
-                        onContentSizeChange={handleContentSizeChange}
                         editable={!disabled}
                         returnKeyType="default"
                         blurOnSubmit={false}
@@ -203,7 +188,7 @@ const ChatInput = ({
                         disabled={!canSend}
                         activeOpacity={0.8}
                     >
-                        <SendIcon size={18} color={canSend ? '#FFFFFF' : '#9CA3AF'} />
+                        <SendIcon size={18} color={canSend ? '#FFFFFF' : colors.textLight} />
                     </TouchableOpacity>
                 </Animated.View>
             </View>
@@ -223,62 +208,53 @@ const styles = StyleSheet.create({
     },
     container: {
         flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#1A1A1A',
-        borderRadius: 50,
-        paddingHorizontal: 8,
-        paddingVertical: 8,
-        shadowColor: '#000',
+        alignItems: 'flex-end',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 26,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        shadowColor: '#C084FC',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 15,
+        shadowRadius: 12,
         elevation: 0,
-        borderWidth: 1,
-        borderColor: '#2A2A2A',
-    },
-    plusButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#2A2A2A',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    micButton: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 4,
+        borderWidth: 1.5,
+        borderColor: '#FAE8FF',
+        minHeight: 52,
     },
     inputContainer: {
         flex: 1,
         marginHorizontal: 8,
-
-
+        justifyContent: 'center',
+        minHeight: 38,
     },
     input: {
         fontSize: 16,
-        color: '#FFFFFF',
-        paddingVertical: Platform.OS === 'ios' ? 6 : 6,
+        color: colors.text,
+        minHeight: 38,
+        maxHeight: 100,
+        paddingTop: Platform.OS === 'ios' ? 8 : 6,
+        paddingBottom: Platform.OS === 'ios' ? 8 : 6,
+        paddingHorizontal: 0,
         lineHeight: 20,
-
+        textAlignVertical: 'center',
     },
     sendButtonWrapper: {
         marginLeft: 4,
+        marginBottom: 1,
     },
     sendButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
         justifyContent: 'center',
         alignItems: 'center',
     },
     sendButtonActive: {
-        backgroundColor: '#9B8AFB',
+        backgroundColor: colors.primary,
     },
     sendButtonDisabled: {
-        backgroundColor: '#2A2A2A',
+        backgroundColor: '#F7EEFA',
     },
 });
 

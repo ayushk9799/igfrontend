@@ -23,12 +23,15 @@ export const resolveOfferingPackages = (offering) => {
     const monthly = offering?.monthly
         || availablePackages.find(pkg => packageMatches(pkg, 'MONTHLY', ['monthly', 'month']))
         || null;
+    const weekly = offering?.weekly
+        || availablePackages.find(pkg => packageMatches(pkg, 'WEEKLY', ['weekly', 'week']))
+        || null;
     const selectedIdentifiers = new Set(
-        [annual?.identifier, monthly?.identifier].filter(Boolean),
+        [annual?.identifier, monthly?.identifier, weekly?.identifier].filter(Boolean),
     );
     const fallback = availablePackages.find(pkg => !selectedIdentifiers.has(pkg?.identifier)) || null;
 
-    return { annual, monthly, fallback, availablePackages };
+    return { annual, monthly, weekly, fallback, availablePackages };
 };
 
 export const getFreeTrialPeriod = (pkg, platform) => {
@@ -74,13 +77,15 @@ export const normalizeTrialPeriod = (period) => {
     };
 };
 
-export const calculateSavingsPercent = (monthlyPrice, annualPrice) => {
-    const monthly = Number(monthlyPrice);
+export const calculateSavingsPercent = (basePrice, annualPrice, multiplier = 12) => {
+    const base = Number(basePrice);
     const annual = Number(annualPrice);
-    if (!Number.isFinite(monthly) || !Number.isFinite(annual) || monthly <= 0 || annual < 0) {
+    const periods = Number(multiplier) || 12;
+    if (!Number.isFinite(base) || !Number.isFinite(annual) || base <= 0 || annual < 0) {
         return null;
     }
 
-    const savings = Math.round(((monthly * 12) - annual) / (monthly * 12) * 100);
+    const fullYearCost = base * periods;
+    const savings = Math.round(((fullYearCost - annual) / fullYearCost) * 100);
     return savings > 0 && savings < 100 ? savings : null;
 };

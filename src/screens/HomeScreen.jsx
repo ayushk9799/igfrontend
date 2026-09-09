@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { getPenguinMoodImage } from '../constants/PenguinMoods';
+import { getEmojiById, getEmojiByLabel } from '../constants/Moods';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
@@ -234,15 +235,80 @@ const HomeScreen = ({
         [partnerScribble?.paths]
     );
     const isYourMoodStale = hasPartner && isMoodStale(yourMood, now);
+    const isPartnerMoodStale = hasPartner && isMoodStale(partnerMood, now);
+
+    const yourMoodLabel = useMemo(() => {
+        if (!yourMood) return null;
+        const config = (yourMood?.id && getEmojiById(yourMood.id)) || (yourMood?.label && getEmojiByLabel(yourMood.label));
+        const label = config?.label || yourMood?.label;
+        return label ? translateUiText(label) : null;
+    }, [yourMood]);
+
+    const partnerMoodLabel = useMemo(() => {
+        if (!partnerMood) return null;
+        const config = (partnerMood?.id && getEmojiById(partnerMood.id)) || (partnerMood?.label && getEmojiByLabel(partnerMood.label));
+        const label = config?.label || partnerMood?.label;
+        return label ? translateUiText(label) : null;
+    }, [partnerMood]);
+
+    const moodBanner = useMemo(() => {
+        if (!hasPartner) return null;
+
+        // Case 1: Both are unset or stale
+        if (isYourMoodStale && isPartnerMoodStale) {
+            return {
+                text: yourMood?.updatedAt
+                    ? translateUiText("Mood is old. Tap to refresh 💛")
+                    : translateUiText("Neither of you set a vibe • Tap here 💛"),
+                shouldNudge: true,
+                key: `stale_both_${yourMood?.updatedAt || 'none'}`,
+            };
+        }
+
+        // Case 2: Partner set, but you haven't (or yours is stale)
+        if (isYourMoodStale && !isPartnerMoodStale && partnerMoodLabel) {
+            return {
+                text: translateUiTemplate("{{0}} is feeling {{1}}! Tap to set yours 💛", [partnerName, partnerMoodLabel]),
+                shouldNudge: true,
+                key: `partner_${partnerMood?.updatedAt || 'set'}_you_stale`,
+            };
+        }
+
+        // Case 3: You set, but partner hasn't (or partner's is stale)
+        if (!isYourMoodStale && isPartnerMoodStale && yourMoodLabel) {
+            return {
+                text: translateUiTemplate("You're feeling {{0}} • Waiting for {{1}} 💛", [yourMoodLabel, partnerName]),
+                shouldNudge: false,
+                key: `you_${yourMood?.updatedAt || 'set'}_partner_stale`,
+            };
+        }
+
+        // Case 4: Both are set & fresh!
+        if (partnerMoodLabel && yourMoodLabel) {
+            return {
+                text: translateUiTemplate("{{0}}: {{1}} • You: {{2}} ✨", [partnerName, partnerMoodLabel, yourMoodLabel]),
+                shouldNudge: false,
+                key: `both_${partnerMood?.updatedAt}_${yourMood?.updatedAt}`,
+            };
+        }
+
+        return {
+            text: isYourMoodStale
+                ? translateUiText("How are you feeling? Tap here 💛")
+                : translateUiText("Tap to update mood 💛"),
+            shouldNudge: isYourMoodStale,
+            key: 'fallback',
+        };
+    }, [hasPartner, isPartnerMoodStale, isYourMoodStale, partnerMood?.updatedAt, partnerMoodLabel, partnerName, yourMood?.updatedAt, yourMoodLabel]);
+
+    const showNudge = Boolean(moodBanner?.shouldNudge);
+    const nudgeKey = moodBanner?.key || 'missing-mood';
     const isChallengeComplete = todayChallenge?.progress?.isComplete || false;
     const completedCount = todayChallenge?.progress?.completedCount || 0;
     const ritualStreak = todayChallenge?.streak || null;
     const heartState = ritualStreak?.heartState || 'empty';
     const ritualTimeLeft = getTimeUntilLabel(todayChallenge?.closesAt, now);
     const ritualStreakCount = Number(ritualStreak?.currentStreak) || 0;
-
-    const showNudge = hasPartner && isYourMoodStale;
-    const nudgeKey = yourMood?.updatedAt || 'missing-mood';
 
     let currentTask = null;
     if (todayChallenge?.challenge?.tasks) {
@@ -549,10 +615,10 @@ const HomeScreen = ({
                                 style={[styles.heroImage, fullWidthImageStyle]}
                             />
                         </Animated.View>
-                        {showNudge && (
+                        {hasPartner && moodBanner && (
                             <Animated.View style={[
                                 styles.moodNudgeBadge,
-                                {
+                                showNudge && {
                                     transform: [
                                         { scale: badgePulseAnim },
                                         { rotate: badgeRotation }
@@ -560,9 +626,7 @@ const HomeScreen = ({
                                 }
                             ]}>
                                 <HomeText style={styles.moodNudgeText}>
-                                    {yourMood?.updatedAt
-                                        ? translateUiText("Mood is old. Tap to refresh 💛")
-                                        : translateUiText("How are you feeling? Tap here 💛")}
+                                    {moodBanner.text}
                                 </HomeText>
                             </Animated.View>
                         )}
@@ -1071,6 +1135,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 12,
         alignSelf: 'center',
+        maxWidth: '92%',
         backgroundColor: '#FFFFFF',
         paddingHorizontal: 16,
         paddingVertical: 8,
@@ -1092,6 +1157,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: fontWeight('700'),
         fontFamily: fontFamily.bold,
+        textAlign: 'center',
     },
     heroSparkleOne: {
         position: 'absolute',
