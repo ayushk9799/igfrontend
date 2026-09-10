@@ -29,6 +29,7 @@ import { useSocketContext } from '../context/SocketContext';
 import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { storage } from '../utils/authStorage';
 import { getUiLocale, translateUiText } from '../i18n/uiTranslation';
+import { trackEvent } from '../utils/analytics';
 
 const { width, height } = Dimensions.get('window');
 const CANVAS_SIZE = width - 40;
@@ -1304,6 +1305,7 @@ export const ScribbleScreen = ({
             }));
 
             socket.emit('scribble:send', createScribblePayload(pathsToSend));
+            trackEvent('scribble_sent', { strokes_count: paths.length });
 
             setLastSentSignature(getPathsSignature(paths));
             setCurrentPath('');

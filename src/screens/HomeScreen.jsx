@@ -268,7 +268,7 @@ const HomeScreen = ({
         // Case 2: Partner set, but you haven't (or yours is stale)
         if (isYourMoodStale && !isPartnerMoodStale && partnerMoodLabel) {
             return {
-                text: translateUiTemplate("{{0}} is feeling {{1}}! Tap to set yours 💛", [partnerName, partnerMoodLabel]),
+                text: translateUiTemplate("Partner is feeling {{0}}! Tap to set yours 💛", [partnerMoodLabel]),
                 shouldNudge: true,
                 key: `partner_${partnerMood?.updatedAt || 'set'}_you_stale`,
             };
@@ -277,7 +277,7 @@ const HomeScreen = ({
         // Case 3: You set, but partner hasn't (or partner's is stale)
         if (!isYourMoodStale && isPartnerMoodStale && yourMoodLabel) {
             return {
-                text: translateUiTemplate("You're feeling {{0}} • Waiting for {{1}} 💛", [yourMoodLabel, partnerName]),
+                text: translateUiTemplate("You're feeling {{0}} • Waiting for partner 💛", [yourMoodLabel]),
                 shouldNudge: false,
                 key: `you_${yourMood?.updatedAt || 'set'}_partner_stale`,
             };
@@ -286,7 +286,7 @@ const HomeScreen = ({
         // Case 4: Both are set & fresh!
         if (partnerMoodLabel && yourMoodLabel) {
             return {
-                text: translateUiTemplate("{{0}}: {{1}} • You: {{2}} ✨", [partnerName, partnerMoodLabel, yourMoodLabel]),
+                text: translateUiTemplate("Partner: {{0}} • You: {{1}} ✨", [partnerMoodLabel, yourMoodLabel]),
                 shouldNudge: false,
                 key: `both_${partnerMood?.updatedAt}_${yourMood?.updatedAt}`,
             };
@@ -299,7 +299,7 @@ const HomeScreen = ({
             shouldNudge: isYourMoodStale,
             key: 'fallback',
         };
-    }, [hasPartner, isPartnerMoodStale, isYourMoodStale, partnerMood?.updatedAt, partnerMoodLabel, partnerName, yourMood?.updatedAt, yourMoodLabel]);
+    }, [hasPartner, isPartnerMoodStale, isYourMoodStale, partnerMood?.updatedAt, partnerMoodLabel, yourMood?.updatedAt, yourMoodLabel]);
 
     const showNudge = Boolean(moodBanner?.shouldNudge);
     const nudgeKey = moodBanner?.key || 'missing-mood';

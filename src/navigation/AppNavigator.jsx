@@ -62,6 +62,7 @@ import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { updateOnboardingProfile, updateOnboardingStep } from '../api/onboardingApi';
 import { getRequiredOnboardingScreen, needsRelationshipStartDate } from '../utils/onboardingFlow';
 import useReducedMotion from '../hooks/useReducedMotion';
+import { trackScreen, trackEvent, setAnalyticsUser, clearAnalyticsUser } from '../utils/analytics';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
 import { clearGames, setPendingPuzzles, setPendingPuzzle, setPendingTicTacToe, setActiveTicTacToe, setPendingWordle, setActiveWordle, setSelectedPuzzle, setSelectedTicTacToe, setSelectedWordle, setPendingWordSearch, setActiveWordSearch, setSelectedWordSearch } from '../store/slices/gamesSlice';
@@ -419,10 +420,19 @@ export const AppNavigator = () => {
 
     useEffect(() => {
         userDataRef.current = userData;
+        if (userData?._id || userData?.id) {
+            setAnalyticsUser(userData._id || userData.id, {
+                has_partner: Boolean(userData.partner || userData.partnerId),
+                is_premium: Boolean(userData.isPremium),
+            });
+        }
     }, [userData]);
 
     useEffect(() => {
         currentScreenRef.current = currentScreen;
+        if (currentScreen) {
+            trackScreen(currentScreen);
+        }
     }, [currentScreen]);
 
     const auditDistanceLocationPermission = useCallback(async () => {
@@ -2040,6 +2050,11 @@ export const AppNavigator = () => {
             connect();
             registerFCMToken();
             syncDeviceInfo(user.id);
+            setAnalyticsUser(user.id || user._id, {
+                has_partner: Boolean(user.partnerId || user.partner),
+                is_premium: Boolean(user.isPremium),
+            });
+            trackEvent('login', { method: 'credential' });
 
             const requiredScreen = getRequiredOnboardingScreen(user);
             if (requiredScreen !== 'home') {
@@ -2374,6 +2389,8 @@ export const AppNavigator = () => {
 
     // Handle logout - clear auth and go to login
     const handleLogout = () => {
+        trackEvent('logout');
+        clearAnalyticsUser();
         cancelPartnerInviteReminders().catch(() => { });
         startTransition(() => {
             disconnect(); // Explicitly disconnect socket

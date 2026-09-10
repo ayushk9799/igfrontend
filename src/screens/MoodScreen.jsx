@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius } from '../theme';
 import { emojis } from '../constants/Moods';
 import { formatRelativeTime, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { trackEvent } from '../utils/analytics';
 
 const { width, height } = Dimensions.get('window');
 
@@ -186,6 +187,10 @@ export const MoodScreen = ({
 
     const handleShare = useCallback(() => {
         if (!selectedMood) return;
+        trackEvent('mood_shared', {
+            mood_id: selectedMood.id,
+            mood_label: selectedMood.label,
+        });
         onMoodSelect(selectedMood);
         closeSheet();
     }, [closeSheet, selectedMood, onMoodSelect]);

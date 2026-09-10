@@ -22,6 +22,7 @@ import { selectUser } from '../store/slices/userSlice';
 import { CALL_STATE, ICE_FAILURE_TIMEOUT_MS, STUN_URLS } from './callConstants';
 import { collectSanitizedStats, getCandidateType } from './callDiagnostics';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { trackEvent } from '../utils/analytics';
 
 const CallContext = createContext(null);
 const RemoteAudioLevelContext = createContext(0);
@@ -242,6 +243,7 @@ export const CallProvider = ({ children }) => {
         if (notifyServer && socket && call?.callId) {
             socket.emit('call:end', { callId: call.callId, reason });
         }
+        trackEvent('call_ended', { outcome, reason, failure_code: failureCode || 'none' });
         await sendDiagnostic({ outcome, failureCode });
         resetCall();
         if (message) notifyError(message);
@@ -455,6 +457,7 @@ export const CallProvider = ({ children }) => {
                 diagnosticRef.current.signalingCompleted = true;
                 diagnosticRef.current.timeToConnectedMs = Date.now() - new Date(diagnosticRef.current.startedAt).getTime();
                 setCallState(CALL_STATE.CONNECTED);
+                trackEvent('call_connected');
                 if (!userMinimizedCallRef.current) setIsExpanded(true);
             } else if (state === 'failed') {
                 const failure = connectionFailure();
@@ -600,6 +603,7 @@ export const CallProvider = ({ children }) => {
         setCallState(CALL_STATE.OUTGOING);
         setIsExpanded(true);
         setPermissionIssue(null);
+        trackEvent('call_started', { media_type: pendingCall.mediaType });
 
         const statuses = await refreshPermissionStatuses();
 

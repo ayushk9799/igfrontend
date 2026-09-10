@@ -22,6 +22,7 @@ import WidgetInstructionsBottomSheet from '../components/WidgetInstructionsBotto
 import YearlyOfferBottomSheet from '../components/YearlyOfferBottomSheet';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
+import { trackScreen } from '../utils/analytics';
 import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether, selectIsPremium, updateUser } from '../store/slices/userSlice';
@@ -266,6 +267,9 @@ export const MainTabNavigator = ({
     }, [currentTab, onTabChange]);
 
     useEffect(() => {
+        if (currentTab) {
+            trackScreen(`Tab_${currentTab}`);
+        }
         if (currentTab !== 'canvas') {
             setIsScribbleLiveFullscreen(false);
             setOpenScribbleLiveMode(false);

@@ -34,6 +34,7 @@ import {
     normalizeTrialPeriod,
     resolveOfferingPackages,
 } from '../utils/premiumOffering';
+import { trackEvent, trackScreen } from '../utils/analytics';
 
 const ONBOARDING_OFFERING_ID = 'basic-plan';
 
@@ -243,6 +244,8 @@ export default function OnboardingPremiumScreen({ onBack }) {
     }, [reduceMotion, screenEntrance]);
 
     useEffect(() => {
+        trackScreen('OnboardingPremiumScreen');
+        trackEvent('paywall_viewed', { source: 'onboarding' });
         const init = async () => {
             await getOfferingsAndEntitlements();
         };
@@ -312,6 +315,11 @@ export default function OnboardingPremiumScreen({ onBack }) {
                 updateUserStorage(optimisticPremium);
                 dispatch(setPremiumStatus(optimisticPremium));
                 if (mountedRef.current) {
+                    trackEvent('purchase_succeeded', {
+                        plan_id: selectedPlan || pkg?.product?.identifier,
+                        price: pkg?.product?.price,
+                        currency: pkg?.product?.currencyCode,
+                    });
                     setEntitlements(active);
                     setPurchaseSucceeded(true);
                     setPurchasePending(false);
