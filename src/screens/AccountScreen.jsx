@@ -368,13 +368,12 @@ export const AccountScreen = ({
                             style={styles.backButton}
                             onPress={onBack}
                             activeOpacity={0.7}
+                            accessibilityRole="button"
+                            accessibilityLabel={translateUiText("Back")}
                         >
                             <BackArrowIcon />
                         </TouchableOpacity>
-                        <View style={styles.headerTitleWrap}>
-                            <Text style={styles.headerTitle}>{t('account.settings')}</Text>
-                        </View>
-                        <View style={styles.headerSpacer} />
+                        <Text style={styles.headerTitle} numberOfLines={1}>{t('account.settings')}</Text>
                     </View>
                 )}
 
@@ -1461,18 +1460,11 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 0,
     },
-    headerTitleWrap: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    headerSpacer: {
-        width: 42,
-    },
     headerTitle: {
         fontSize: 20,
         fontWeight: '800',
         color: navy,
-        textAlign: 'center',
+        marginLeft: 12,
     },
 });
 
