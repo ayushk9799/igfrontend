@@ -9,7 +9,9 @@
     "start": "react-native start",
     "test": "jest",
     "sync:wordle-dictionary": "node scripts/sync-wordle-dictionary.cjs",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "update:preview": "npx eas-cli@latest update --channel preview --platform all",
+    "update:production": "npx eas-cli@latest update --channel production --platform all"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.14",
@@ -36,6 +38,7 @@
     "expo-localization": "~17.0.9",
     "expo-modules-core": "^3.0.29",
     "expo-store-review": "~9.0.8",
+    "expo-updates": "~29.0.20",
     "expo-video": "~3.0.16",
     "i18next": "^26.3.6",
     "lottie-react-native": "^7.3.5",
@@ -79,6 +82,7 @@
     "@react-native/metro-config": "0.82.1",
     "@react-native/typescript-config": "0.82.1",
     "@types/jest": "^29.5.13",
+    "babel-preset-expo": "~54.0.10",
     "@types/react": "~19.1.10",
     "@types/react-test-renderer": "^19.1.0",
     "eslint": "^8.19.0",
