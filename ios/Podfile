@@ -41,17 +41,41 @@ target 'frontend' do
   pod 'RecaptchaInterop', :modular_headers => true
 
   post_install do |installer|
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
-      end
-    end
-
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 15.1
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        end
+      end
+
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        end
+      end
+    end
+
+    # Fix Swift 6 memberwise initializer conflict in RevenueCat PaywallColor.swift
+    paywall_color_file = File.join(installer.sandbox.root, 'RevenueCat/Sources/Paywalls/PaywallColor.swift')
+    if File.exist?(paywall_color_file)
+      File.chmod(0644, paywall_color_file)
+      content = File.read(paywall_color_file)
+      redundant_ext_init = %Q{    /// "Designated" initializer\n    private init(stringRepresentation: String, underlyingColor: (any Sendable)?) {\n        self.stringRepresentation = stringRepresentation\n        self._underlyingColor = underlyingColor\n    }}
+      struct_prop = "    // Only available from iOS 13\n    fileprivate var _underlyingColor: (any Sendable)?\n\n}"
+      struct_init = "    // Only available from iOS 13\n    fileprivate var _underlyingColor: (any Sendable)?\n\n    fileprivate init(stringRepresentation: String, underlyingColor: (any Sendable)?) {\n        self.stringRepresentation = stringRepresentation\n        self._underlyingColor = underlyingColor\n    }\n\n}"
+      if content.include?(redundant_ext_init)
+        content = content.sub(redundant_ext_init, '')
+        content = content.sub(struct_prop, struct_init)
+        File.write(paywall_color_file, content)
+      end
+    end
   end
 end

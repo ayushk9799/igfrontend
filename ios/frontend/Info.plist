@@ -2,19 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>GIDClientID</key>
-	<string>971652730552-mvq7kri596hl81lip50td5vd81n7u0ol.apps.googleusercontent.com</string>
-	<key>GIDServerClientID</key>
-	<string>971652730552-1g49usqdnhu2dc1rh5lh6p9i7cocov9m.apps.googleusercontent.com</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.971652730552-mvq7kri596hl81lip50td5vd81n7u0ol</string>
-			</array>
-		</dict>
-	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -35,8 +22,21 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.971652730552-mvq7kri596hl81lip50td5vd81n7u0ol</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>GIDClientID</key>
+	<string>971652730552-mvq7kri596hl81lip50td5vd81n7u0ol.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>971652730552-1g49usqdnhu2dc1rh5lh6p9i7cocov9m.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -48,16 +48,16 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Penguin uses your camera for video calls and to take photos for daily challenges.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs access to your photo library to select photos for daily challenges.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Penguin Couple uses your location to show your distance from your partner in the Distance widget.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Penguin uses background location only to keep your Distance widget updated when you meaningfully move.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Penguin uses background location only to keep your Distance widget updated when you meaningfully move.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Penguin Couple uses your location to show your distance from your partner in the Distance widget.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Penguin uses your microphone for calls and voice messages with your partner.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to select photos for daily challenges.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>
