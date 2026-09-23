@@ -223,6 +223,7 @@ export default function LiveChatScreen({
     const localStreamRef = useRef(null);
     const remoteStreamRef = useRef(null);
     const pendingCandidatesRef = useRef([]);
+    const iceServersRef = useRef([{ urls: STUN_URLS }]);
     const negotiationTimeoutRef = useRef(null);
     const mountedRef = useRef(true);
     const cameraPermissionAttemptedRef = useRef(false);
@@ -530,7 +531,7 @@ export default function LiveChatScreen({
     ) => {
         closePeerConnection({ preservePendingCandidates });
         const pc = new RTCPeerConnection({
-            iceServers: [{ urls: STUN_URLS }],
+            iceServers: iceServersRef.current,
             iceCandidatePoolSize: 4,
         });
         peerConnectionRef.current = pc;
@@ -684,6 +685,7 @@ export default function LiveChatScreen({
         }
 
         const onJoined = async data => {
+            if (data.iceServers?.length) iceServersRef.current = data.iceServers;
             sessionIdRef.current = data.sessionId;
             participantCountRef.current = data.participantCount || 1;
             setParticipantCount(data.participantCount || 1);
@@ -708,6 +710,7 @@ export default function LiveChatScreen({
         };
         const onPartnerJoined = async data => {
             if (data.sessionId !== sessionIdRef.current) return;
+            if (data.iceServers?.length) iceServersRef.current = data.iceServers;
             participantCountRef.current = data.participantCount || 2;
             setParticipantCount(data.participantCount || 2);
             if (data.shouldOffer) shouldOfferRef.current = true;

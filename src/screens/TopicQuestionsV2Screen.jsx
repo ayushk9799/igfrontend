@@ -195,6 +195,7 @@ const SetStatusAvatar = ({
     complete,
     progress = 0,
     ringColor,
+    textColor,
     variant = 'user',
 }) => {
     const avatarSource = getAvatarSource(avatar);
@@ -217,7 +218,13 @@ const SetStatusAvatar = ({
                 {avatarSource ? (
                     <Image source={avatarSource} style={styles.statusAvatarImage} resizeMode="cover" />
                 ) : (
-                    <Text style={styles.statusAvatarInitial} allowFontScaling={false}>
+                    <Text
+                        style={[
+                            styles.statusAvatarInitial,
+                            textColor ? { color: textColor } : null,
+                        ]}
+                        allowFontScaling={false}
+                    >
                         {getAvatarInitial(name)}
                     </Text>
                 )}
@@ -968,8 +975,8 @@ export default function TopicQuestionsV2Screen({
     const renderSingleQuestionHeader = () => (
         <View style={styles.header}>
             <View style={styles.headerSpacer} />
-            <View style={styles.headerTextBlock}>
-                <Text style={styles.headerTitle}>{translateUiText("Answer Question")}</Text>
+            <View style={styles.singleQuestionTextBlock}>
+                <Text style={styles.singleQuestionTitle}>{translateUiText("Answer Question")}</Text>
             </View>
             <TouchableOpacity onPress={() => setSingleQuestionToAnswer(null)} style={styles.headerBackBtn}>
                 <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -1029,7 +1036,7 @@ export default function TopicQuestionsV2Screen({
 
     const renderHeader = () => (
         <View style={styles.header}>
-            <TouchableOpacity onPress={handleBack} style={styles.headerBackBtn}>
+            <TouchableOpacity onPress={handleBack} style={styles.headerBackBtn} activeOpacity={0.7}>
                 <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
                     <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
@@ -1051,9 +1058,7 @@ export default function TopicQuestionsV2Screen({
                 >
                     <Text style={styles.viewAnswersButtonText}>{translateUiText("View Answers")}</Text>
                 </TouchableOpacity>
-            ) : (
-                <View style={styles.headerSpacer} />
-            )}
+            ) : null}
         </View>
     );
 
@@ -1092,6 +1097,9 @@ export default function TopicQuestionsV2Screen({
                         0,
                         Math.min(100, set.progress?.percentComplete || 0)
                     );
+                    const isPurpleAccent = ['#7C3AED', '#7A32D0', '#5448D9'].includes(theme.accent);
+                    const partnerRingColor = isPurpleAccent ? '#F43F5E' : '#9B63D9';
+
                     return (
                         <TouchableOpacity
                             key={set.setId}
@@ -1124,7 +1132,7 @@ export default function TopicQuestionsV2Screen({
                                         {set.title}
                                     </Text>
                                     <Text
-                                        style={[styles.setDescription, { color: theme.accent }]}
+                                        style={styles.setDescription}
                                         numberOfLines={2}
                                         allowFontScaling={false}
                                     >
@@ -1140,7 +1148,8 @@ export default function TopicQuestionsV2Screen({
                                                 name={partnerName}
                                                 complete={partnerComplete}
                                                 progress={set.partnerProgress?.percentComplete || 0}
-                                                ringColor="#9B63D9"
+                                                ringColor={partnerRingColor}
+                                                textColor={partnerRingColor}
                                                 variant="partner"
                                             />
                                         ) : null}
@@ -1150,12 +1159,13 @@ export default function TopicQuestionsV2Screen({
                                             complete={userComplete}
                                             progress={percentComplete}
                                             ringColor={theme.accent}
+                                            textColor={theme.accent}
                                             variant={set.partnerProgress ? 'userOverlap' : 'user'}
                                         />
                                     </View>
                                     {set.premium && !isPremium ? (
                                         <View style={styles.premiumBadge}>
-                                            <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+                                            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
                                                 <Path
                                                     d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2z"
                                                     fill="#D97706"
@@ -1346,27 +1356,31 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.xl,
     },
     headerBackBtn: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        backgroundColor: 'rgba(255,255,255,0.94)',
+        width: 38,
+        height: 38,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.98)',
-        shadowColor: '#9A5578',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 0,
     },
     headerTextBlock: {
+        flex: 1,
+        marginLeft: spacing.xs,
+        marginRight: spacing.sm,
+        justifyContent: 'center',
+    },
+    headerSpacer: {
+        width: 38,
+    },
+    singleQuestionTextBlock: {
         flex: 1,
         marginHorizontal: spacing.md,
         alignItems: 'center',
     },
-    headerSpacer: {
-        width: 42,
+    singleQuestionTitle: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: colors.text,
+        textAlign: 'center',
+        fontFamily: fontFamily.extraBold,
     },
     viewAnswersButton: {
         minHeight: 36,
@@ -1385,7 +1399,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '900',
         color: colors.text,
-        textAlign: 'center',
+        textAlign: 'left',
         fontFamily: fontFamily.extraBold,
     },
     headerMeta: {
@@ -1448,7 +1462,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.07,
         shadowRadius: 16,
-        elevation: 0,
+        elevation: Platform.OS === 'android' ? 2 : 0,
     },
     setCardContent: {
         width: '100%',
@@ -1458,24 +1472,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     emojiBadgeContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
         flexShrink: 0,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: 10,
         backgroundColor: 'rgba(255,255,255,0.58)',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.76)',
     },
     emojiText: {
-        fontSize: 34,
-        lineHeight: 40,
+        fontSize: 28,
+        lineHeight: 34,
     },
     setIconImage: {
-        width: 42,
-        height: 42,
+        width: 36,
+        height: 36,
     },
     setCardInfo: {
         flex: 1,
@@ -1484,7 +1498,7 @@ const styles = StyleSheet.create({
     },
     setTitle: {
         marginTop: 5,
-        fontSize: 17,
+        fontSize: 16,
         lineHeight: 20,
         fontWeight: '800',
         fontFamily: fontFamily.extraBold,
@@ -1510,15 +1524,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        minWidth: 34,
     },
     setCardRightColumn: {
-        width: 58,
+        width: 66,
         flexShrink: 0,
-        minHeight: 82,
         alignItems: 'flex-end',
-        justifyContent: 'space-between',
-        marginLeft: 6,
+        justifyContent: 'center',
+        gap: 10,
+        marginLeft: 8,
     },
     statusAvatar: {
         width: 24,
@@ -1560,9 +1573,9 @@ const styles = StyleSheet.create({
     },
     setDescription: {
         fontSize: 12,
-        lineHeight: 15,
+        lineHeight: 16,
         marginTop: 4,
-        opacity: 0.82,
+        color: '#554A60',
         fontFamily: fontFamily.medium,
     },
     premiumBadge: {
@@ -1571,9 +1584,10 @@ const styles = StyleSheet.create({
         borderRadius: 19,
         borderWidth: 1,
         borderColor: '#F59E0B',
-        backgroundColor: 'rgba(255,255,255,0.6)',
+        backgroundColor: 'rgba(255,255,255,0.7)',
         alignItems: 'center',
         justifyContent: 'center',
+        elevation: Platform.OS === 'android' ? 1 : 0,
     },
     premiumText: {
         color: '#D97706',
@@ -1587,11 +1601,12 @@ const styles = StyleSheet.create({
         borderRadius: 19,
         alignItems: 'center',
         justifyContent: 'center',
+        opacity: 0.8,
         shadowColor: '#7A315D',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.18,
-        shadowRadius: 10,
-        elevation: 0,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: Platform.OS === 'android' ? 2 : 0,
     },
     startButtonText: {
         color: '#FFFFFF',

@@ -418,6 +418,7 @@ const FullScreenCall = () => {
         cameraPermission,
         showPermissionPrompt,
         requestingDevice,
+        isPartnerRinging,
         cancelCall,
         minimizeCall,
         toggleSpeaker,
@@ -426,8 +427,10 @@ const FullScreenCall = () => {
     const isOutgoing = callState === CALL_STATE.OUTGOING;
     const outgoingStatus = showPermissionPrompt
         ? 'Video call'
-        : activeCall?.callId
+        : isPartnerRinging
         ? 'Ringing…'
+        : activeCall?.callId
+        ? 'Calling…'
         : requestingDevice === 'microphone'
             ? 'Preparing microphone…'
             : requestingDevice === 'camera'

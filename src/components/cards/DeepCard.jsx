@@ -146,7 +146,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                                 <Text
                                     style={[
                                         styles.submitButtonText,
-                                        answer.trim() ? { color: '#8B5CF6' } : styles.submitButtonTextDisabled
+                                        answer.trim() ? styles.submitButtonTextActive : styles.submitButtonTextDisabled
                                     ]}
                                 >{translateUiText("Submit")}</Text>
                             </TouchableOpacity>
@@ -156,6 +156,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                     </View>
                 </TouchableWithoutFeedback>
             </KeyboardContainer>
+            <View style={styles.cardBorderOverlay} pointerEvents="none" />
         </LinearGradient>
     );
 });
@@ -165,6 +166,10 @@ const styles = StyleSheet.create({
         flex: 1,
         borderRadius: 28,
         overflow: 'hidden',
+    },
+    cardBorderOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 28,
         borderWidth: 6,
         borderColor: 'rgba(255, 255, 255, 0.20)',
     },
@@ -176,9 +181,9 @@ const styles = StyleSheet.create({
     },
     cardContent: {
         flex: 1,
-        paddingHorizontal: spacing.lg,
-        paddingTop: spacing.lg,
-        paddingBottom: spacing.md,
+        paddingHorizontal: spacing.lg + 6,
+        paddingTop: spacing.lg + 6,
+        paddingBottom: spacing.md + 6,
     },
     topRow: {
         flexDirection: 'row',
@@ -214,7 +219,7 @@ const styles = StyleSheet.create({
     },
     questionSection: {
         justifyContent: 'center',
-        paddingHorizontal: spacing.lg,
+        paddingHorizontal: spacing.md,
         marginTop: spacing.sm,
         marginBottom: spacing.sm,
     },
@@ -229,8 +234,7 @@ const styles = StyleSheet.create({
 
     inputContainer: {
         flex: 1,
-        width: '100%',
-        alignSelf: 'center',
+        alignSelf: 'stretch',
         backgroundColor: 'rgba(255, 255, 255, 0.10)',
         borderRadius: 24,
         padding: spacing.md,
@@ -272,6 +276,8 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlignVertical: 'top',
         fontFamily: fontFamily.medium,
+        padding: 0,
+        paddingHorizontal: 0,
         ...Platform.select({
             android: {
                 minHeight: 120,
@@ -279,7 +285,7 @@ const styles = StyleSheet.create({
         }),
     },
     inputFooter: {
-        width: '100%',
+        alignSelf: 'stretch',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -323,6 +329,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '800',
         fontFamily: fontFamily.bold,
+    },
+    submitButtonTextActive: {
+        color: '#8B5CF6',
     },
     submitButtonTextDisabled: {
         color: 'rgba(255, 255, 255, 0.4)',

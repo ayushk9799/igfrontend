@@ -73,6 +73,7 @@ export const CallProvider = ({ children }) => {
     const [permissionIssue, setPermissionIssue] = useState(null);
     const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
     const [requestingDevice, setRequestingDevice] = useState(null);
+    const [isPartnerRinging, setIsPartnerRinging] = useState(false);
     const [errorMessage, setErrorMessage] = useState(null);
 
     const peerConnectionRef = useRef(null);
@@ -95,6 +96,8 @@ export const CallProvider = ({ children }) => {
     const speakerPreferenceRef = useRef(true);
     const userMinimizedCallRef = useRef(false);
     const errorTimerRef = useRef(null);
+    const iceServersRef = useRef([{ urls: STUN_URLS }]);
+    const isRestartingIceRef = useRef(false);
 
     useEffect(() => {
         activeCallRef.current = activeCall;
@@ -185,11 +188,13 @@ export const CallProvider = ({ children }) => {
         setPermissionIssue(null);
         setShowPermissionPrompt(false);
         setRequestingDevice(null);
+        setIsPartnerRinging(false);
         finishingRef.current = false;
         pendingOutgoingRef.current = false;
         startingCallRef.current = false;
         permissionActionRef.current = false;
         settingsDeviceRef.current = null;
+        isRestartingIceRef.current = false;
     }, [stopCallSounds, stopMedia]);
 
     const sendDiagnostic = useCallback(async ({ outcome, failureCode }) => {
@@ -385,7 +390,7 @@ export const CallProvider = ({ children }) => {
     const createPeerConnection = useCallback(async (callId, { attachLocalMedia = true } = {}) => {
         peerConnectionRef.current?.close();
         const pc = new RTCPeerConnection({
-            iceServers: [{ urls: STUN_URLS }],
+            iceServers: iceServersRef.current,
             iceCandidatePoolSize: 4,
         });
         peerConnectionRef.current = pc;
@@ -451,6 +456,7 @@ export const CallProvider = ({ children }) => {
         const handleConnectionChange = () => {
             const state = pc.connectionState;
             if (state === 'connected') {
+                isRestartingIceRef.current = false;
                 if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
                 if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
                 connectionTimeoutRef.current = null;
@@ -469,6 +475,19 @@ export const CallProvider = ({ children }) => {
                     message: failure.message,
                 });
             } else if (state === 'disconnected') {
+                const isCaller = activeCallRef.current?.callerId === userId;
+                if (isCaller && !isRestartingIceRef.current && socket?.connected) {
+                    isRestartingIceRef.current = true;
+                    pc.createOffer({ iceRestart: true })
+                        .then(async (offer) => {
+                            await pc.setLocalDescription(offer);
+                            socket.emit('webrtc:offer', { callId, description: offer, isIceRestart: true });
+                        })
+                        .catch((err) => {
+                            console.warn('ICE restart offer creation failed:', err);
+                        });
+                }
+
                 if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
                 disconnectTimerRef.current = setTimeout(() => {
                     if (pc.connectionState === 'disconnected') {
@@ -501,7 +520,7 @@ export const CallProvider = ({ children }) => {
             }
         }, 12_000);
         return pc;
-    }, [finishCall, socket]);
+    }, [finishCall, socket, userId]);
 
     const attachAnswerTracks = useCallback((pc) => {
         const stream = ensureLocalStream();
@@ -886,6 +905,9 @@ export const CallProvider = ({ children }) => {
                 socket.emit('call:cancel', { callId: call.callId });
                 return;
             }
+            if (call.iceServers?.length) {
+                iceServersRef.current = call.iceServers;
+            }
             pendingOutgoingRef.current = false;
             const outgoingCall = {
                 ...activeCallRef.current,
@@ -899,6 +921,9 @@ export const CallProvider = ({ children }) => {
         };
         const onIncoming = async call => {
             if (activeCallRef.current) return;
+            if (call.iceServers?.length) {
+                iceServersRef.current = call.iceServers;
+            }
             diagnosticRef.current = initialDiagnostic();
             const incomingCall = {
                 ...call,
@@ -912,6 +937,7 @@ export const CallProvider = ({ children }) => {
             setIsCameraEnabled(false);
             setPermissionIssue(null);
             setRemoteMediaState(call.partnerMediaState || initialMediaState);
+            socket?.emit('call:ringing', { callId: call.callId });
             await refreshPermissionStatuses();
         };
         const onAccepted = async data => {
@@ -936,10 +962,22 @@ export const CallProvider = ({ children }) => {
             const call = activeCallRef.current;
             if (!call || data.callId !== call.callId) return;
             try {
+                let pc = peerConnectionRef.current;
+                // If peer connection already exists and is active, renegotiate without tearing down
+                if (pc && pc.connectionState !== 'closed' && pc.remoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.description));
+                    await flushPendingCandidates();
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    socket.emit('webrtc:answer', { callId: call.callId, description: answer });
+                    return;
+                }
+
+                // Initial offer:
                 // Apply the offer before adding answer-side tracks. This lets
                 // addTrack reuse the offer's audio/video transceivers instead
                 // of creating unrelated transceivers that negotiate recv-only.
-                const pc = await createPeerConnection(call.callId, { attachLocalMedia: false });
+                pc = await createPeerConnection(call.callId, { attachLocalMedia: false });
                 await pc.setRemoteDescription(new RTCSessionDescription(data.description));
                 attachAnswerTracks(pc);
                 await flushPendingCandidates();
@@ -955,6 +993,7 @@ export const CallProvider = ({ children }) => {
             const call = activeCallRef.current;
             if (!call || data.callId !== call.callId || !peerConnectionRef.current) return;
             try {
+                isRestartingIceRef.current = false;
                 await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.description));
                 diagnosticRef.current.answerReceived = true;
                 diagnosticRef.current.signalingCompleted = true;
@@ -996,6 +1035,12 @@ export const CallProvider = ({ children }) => {
 
         socket.on('call:outgoing', onOutgoing);
         socket.on('call:incoming', onIncoming);
+        const onRinging = data => {
+            const call = activeCallRef.current;
+            if (!call || data.callId !== call.callId) return;
+            setIsPartnerRinging(true);
+        };
+        socket.on('call:ringing', onRinging);
         socket.on('call:accepted', onAccepted);
         socket.on('webrtc:offer', onOffer);
         socket.on('webrtc:answer', onAnswer);
@@ -1030,6 +1075,7 @@ export const CallProvider = ({ children }) => {
         return () => {
             socket.off('call:outgoing', onOutgoing);
             socket.off('call:incoming', onIncoming);
+            socket.off('call:ringing', onRinging);
             socket.off('call:accepted', onAccepted);
             socket.off('webrtc:offer', onOffer);
             socket.off('webrtc:answer', onAnswer);
@@ -1074,6 +1120,7 @@ export const CallProvider = ({ children }) => {
         permissionIssue,
         showPermissionPrompt,
         requestingDevice,
+        isPartnerRinging,
         errorMessage,
         dismissFailedCall,
         partnerOnline,
@@ -1100,7 +1147,7 @@ export const CallProvider = ({ children }) => {
         openPermissionSettings,
     }), [
         acceptCall, activeCall, allowCallPermissions, callState, cancelCall, continueCallWithoutPermissions,
-        dismissFailedCall, endCall, errorMessage, isCameraEnabled, isChangingAudioOutput, isExpanded, isMuted, isRemoteCameraEnabled, isSpeakerOn, localStream,
+        dismissFailedCall, endCall, errorMessage, isCameraEnabled, isChangingAudioOutput, isExpanded, isMuted, isPartnerRinging, isRemoteCameraEnabled, isSpeakerOn, localStream,
         openPermissionSettings, partnerOnline, permissionIssue,
         permissionState.camera, permissionState.microphone, rejectCall,
         remoteMediaState.microphoneEnabled, remoteStream, requestingDevice,

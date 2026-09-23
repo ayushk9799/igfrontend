@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { translateUiText } from '../i18n/uiTranslation';
+import { trackEvent } from '../utils/analytics';
 
 const FEATURE_CONTENT = {
     wordle: {
@@ -63,6 +64,8 @@ const PremiumLimitBottomSheet = ({
     const insets = useSafeAreaInsets();
     const bottomSheetRef = useRef(null);
     const hasPresentedRef = useRef(false);
+    const hasUpgradedRef = useRef(false);
+    const hasTrackedDismissRef = useRef(false);
     const [displayFeature, setDisplayFeature] = useState(feature);
     const content = FEATURE_CONTENT[displayFeature] || FEATURE_CONTENT.liveChat;
 
@@ -73,6 +76,10 @@ const PremiumLimitBottomSheet = ({
     };
 
     const handleUpgrade = () => {
+        hasUpgradedRef.current = true;
+        trackEvent('feature_limit_upgrade_clicked', {
+            feature: displayFeature,
+        });
         dismissSheet();
         onUpgrade?.();
     };
@@ -80,6 +87,11 @@ const PremiumLimitBottomSheet = ({
     useEffect(() => {
         if (visible) {
             setDisplayFeature(feature);
+            hasUpgradedRef.current = false;
+            hasTrackedDismissRef.current = false;
+            trackEvent('feature_limit_reached', {
+                feature,
+            });
             const animationFrame = requestAnimationFrame(() => {
                 hasPresentedRef.current = true;
                 bottomSheetRef.current?.present();
@@ -123,6 +135,12 @@ const PremiumLimitBottomSheet = ({
             backgroundStyle={styles.sheetBackground}
             handleComponent={null}
             onDismiss={() => {
+                if (!hasTrackedDismissRef.current && !hasUpgradedRef.current) {
+                    hasTrackedDismissRef.current = true;
+                    trackEvent('feature_limit_dismissed', {
+                        feature: displayFeature,
+                    });
+                }
                 hasPresentedRef.current = false;
                 if (visible) onClose?.();
             }}

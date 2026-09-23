@@ -1764,7 +1764,7 @@ export const ScribbleScreen = ({
             style={{ flex: 1 }}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.lg }]}>
+            <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 84 }]}>
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerTopRow}>
@@ -3076,7 +3076,7 @@ const styles = StyleSheet.create({
         width: '100%',
         alignSelf: 'stretch',
         marginTop: 0,
-        paddingBottom: spacing['2xl'],
+        paddingBottom: 8,
     },
     scribbleSendButton: {
         width: '100%',

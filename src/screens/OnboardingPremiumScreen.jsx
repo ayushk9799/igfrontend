@@ -167,7 +167,7 @@ const FloatingHeart = ({
     );
 };
 
-export default function OnboardingPremiumScreen({ onBack }) {
+export default function OnboardingPremiumScreen({ onBack, source = 'onboarding' }) {
     const dispatch = useDispatch();
     const user = useSelector(state => state.user);
     useTranslation();
@@ -199,6 +199,19 @@ export default function OnboardingPremiumScreen({ onBack }) {
             paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16,
         },
     }), [insets.bottom, insets.top]);
+
+    const handleDismiss = () => {
+        trackEvent('paywall_dismissed', { source });
+        onBack?.();
+    };
+
+    const handleSelectPlan = planId => {
+        setSelectedPlan(planId);
+        trackEvent('paywall_plan_selected', {
+            plan_id: planId,
+            source,
+        });
+    };
 
     const features = [
         { label: translateUiText("One premium covers both of you") },
@@ -245,14 +258,14 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
     useEffect(() => {
         trackScreen('OnboardingPremiumScreen');
-        trackEvent('paywall_viewed', { source: 'onboarding' });
+        trackEvent('paywall_viewed', { source });
         const init = async () => {
             await getOfferingsAndEntitlements();
         };
         init();
         // This screen intentionally performs a one-time purchase initialization.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [source]);
 
     const syncServerPremium = async (customerInfo) => {
         try {
@@ -288,6 +301,12 @@ export default function OnboardingPremiumScreen({ onBack }) {
         try {
             setPurchasing(true);
             setPurchasePending(false);
+            trackEvent('checkout_started', {
+                plan_id: selectedPlan || pkg?.product?.identifier,
+                price: pkg?.product?.price,
+                currency: pkg?.product?.currencyCode,
+                source,
+            });
 
             const purchaseResult = await Purchases.purchasePackage(pkg);
             let customerInfo = purchaseResult?.customerInfo;
@@ -319,6 +338,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                         plan_id: selectedPlan || pkg?.product?.identifier,
                         price: pkg?.product?.price,
                         currency: pkg?.product?.currencyCode,
+                        source,
                     });
                     setEntitlements(active);
                     setPurchaseSucceeded(true);
@@ -348,11 +368,19 @@ export default function OnboardingPremiumScreen({ onBack }) {
             );
         } catch (e) {
             if (e?.userCancelled) {
-                // User cancelled — do nothing
+                trackEvent('purchase_cancelled', {
+                    plan_id: selectedPlan || pkg?.product?.identifier,
+                    source,
+                });
             } else {
                 const errorCode = e?.code;
                 const errorMessage = e?.message || e?.underlyingErrorMessage || String(e);
                 console.error(`❌ Purchase error (Code: ${errorCode}):`, errorMessage);
+                trackEvent('purchase_failed', {
+                    plan_id: selectedPlan || pkg?.product?.identifier,
+                    source,
+                    error_message: errorMessage,
+                });
                 if (mountedRef.current) {
                     Alert.alert(
                         translateUiText('Purchase failed'),
@@ -370,9 +398,14 @@ export default function OnboardingPremiumScreen({ onBack }) {
     const handleRestore = async () => {
         try {
             setRestoring(true);
+            trackEvent('restore_purchases_clicked', { source });
             const customerInfo = await Purchases.restorePurchases();
             await checkEntitlements(customerInfo);
             const restoredEntitlement = getPremiumEntitlement(customerInfo);
+            trackEvent('restore_purchases_result', {
+                source,
+                success: Boolean(restoredEntitlement),
+            });
             if (mountedRef.current) {
                 const verificationStillPending = purchasePending && !restoredEntitlement;
                 setPurchasePending(verificationStillPending);
@@ -628,7 +661,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
             >
             {/* Back button (Left) */}
             <TouchableOpacity
-                onPress={onBack}
+                onPress={handleDismiss}
                 disabled={purchasing || restoring}
                 accessibilityRole="button"
                 accessibilityLabel={translateUiText("Close premium offer")}
@@ -804,7 +837,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                         {/* Yearly Plan Option */}
                         {annualPackage && (
                             <Pressable
-                                onPress={() => setSelectedPlan('annual')}
+                                onPress={() => handleSelectPlan('annual')}
                                 accessibilityRole="radio"
                                 accessibilityLabel={translateUiText("Yearly plan")}
                                 accessibilityState={{ checked: selectedPlan === 'annual' }}
@@ -842,7 +875,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                         {/* Weekly Plan Option */}
                         {weeklyPackage && (
                             <Pressable
-                                onPress={() => setSelectedPlan('weekly')}
+                                onPress={() => handleSelectPlan('weekly')}
                                 accessibilityRole="radio"
                                 accessibilityLabel={translateUiText("Weekly plan")}
                                 accessibilityState={{ checked: selectedPlan === 'weekly' }}
@@ -874,7 +907,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
                         {/* Monthly Plan Option */}
                         {monthlyPackage && (
                             <Pressable
-                                onPress={() => setSelectedPlan('monthly')}
+                                onPress={() => handleSelectPlan('monthly')}
                                 accessibilityRole="radio"
                                 accessibilityLabel={translateUiText("Monthly plan")}
                                 accessibilityState={{ checked: selectedPlan === 'monthly' }}
@@ -897,7 +930,7 @@ export default function OnboardingPremiumScreen({ onBack }) {
 
                         {fallbackPackage && (
                             <Pressable
-                                onPress={() => setSelectedPlan('fallback')}
+                                onPress={() => handleSelectPlan('fallback')}
                                 accessibilityRole="radio"
                                 accessibilityLabel={fallbackPackage.product?.title || translateUiText("Premium plan")}
                                 accessibilityState={{ checked: selectedPlan === 'fallback' }}

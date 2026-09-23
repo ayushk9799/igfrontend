@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -8,6 +8,7 @@ import {
 import LottieView from 'lottie-react-native';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { trackEvent } from '../utils/analytics';
 
 const formatCountdown = remainingMs => {
     const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
@@ -29,6 +30,7 @@ export default function HomeYearlyOfferCard({
 }) {
     const [now, setNow] = useState(Date.now());
     const remainingMs = endsAt ? Math.max(0, endsAt - now) : 0;
+    const hasTrackedImpressionRef = useRef(false);
 
     useEffect(() => {
         if (!visible || !endsAt) return undefined;
@@ -46,16 +48,34 @@ export default function HomeYearlyOfferCard({
         return () => clearInterval(timer);
     }, [endsAt, onExpire, visible]);
 
+    useEffect(() => {
+        if (visible && remainingMs > 0 && !hasTrackedImpressionRef.current) {
+            hasTrackedImpressionRef.current = true;
+            trackEvent('yearly_offer_card_viewed', {
+                remaining_seconds: Math.round(remainingMs / 1000),
+            });
+        } else if (!visible) {
+            hasTrackedImpressionRef.current = false;
+        }
+    }, [remainingMs, visible]);
+
     if (!visible || remainingMs <= 0) return null;
 
     const countdown = formatCountdown(remainingMs);
+
+    const handlePress = () => {
+        trackEvent('yearly_offer_card_clicked', {
+            remaining_seconds: Math.round(remainingMs / 1000),
+        });
+        onPress?.();
+    };
 
     return (
         <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel={translateUiTemplate("Open yearly offer, {{0}} remaining", [countdown])}
             activeOpacity={0.88}
-            onPress={onPress}
+            onPress={handlePress}
             style={styles.card}
         >
             <View style={styles.animationWrap}>

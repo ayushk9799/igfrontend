@@ -8,13 +8,28 @@ import {
     StyleSheet,
     Animated,
     Platform,
+    Easing,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { House, Gamepad2, MessageCircle, Notebook } from 'lucide-react-native';
+import { House, Gamepad2, MessageCircle, Notebook, Palette } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+
+const triggerTabHaptic = () => {
+    if (Platform.OS === 'android') {
+        ReactNativeHapticFeedback.trigger('soft', {
+            enableVibrateFallback: false,
+            ignoreAndroidSystemSettings: false,
+        });
+    } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+};
 
 const getLiquidGlassModule = () => {
     if (Platform.OS !== 'ios') return null;
@@ -30,32 +45,42 @@ const getLiquidGlassModule = () => {
     }
 };
 
+let cachedGlassAvailability = null;
+
 const getGlassAvailability = () => {
+    if (cachedGlassAvailability !== null) {
+        return cachedGlassAvailability;
+    }
+
     const liquidGlassModule = getLiquidGlassModule();
     const GlassView = liquidGlassModule?.GlassView;
 
     if (!GlassView) {
-        return {
+        cachedGlassAvailability = {
             GlassView: null,
             isApiAvailable: false,
             isLiquidGlassAvailable: false,
         };
+        return cachedGlassAvailability;
     }
 
     const isApiAvailable = !!liquidGlassModule.isGlassEffectAPIAvailable?.();
     const isLiquidGlassAvailable = !!liquidGlassModule.isLiquidGlassAvailable?.();
 
-    return {
+    cachedGlassAvailability = {
         GlassView,
         isApiAvailable,
         isLiquidGlassAvailable,
     };
+
+    return cachedGlassAvailability;
 };
 
 // Lucide icon mapping for each tab
 const iconMap = {
     home: House,
     timeline: Notebook,
+    canvas: Palette,
     games: Gamepad2,
     chats: MessageCircle,
 };
@@ -63,6 +88,7 @@ const iconMap = {
 const TABS = [
     { key: 'home', label: "Home", iconKey: 'home' },
     { key: 'memories', label: "Timeline", iconKey: 'timeline' },
+    { key: 'canvas', label: "Canvas", iconKey: 'canvas' },
     { key: 'games', label: "Games", iconKey: 'games' },
     { key: 'chats', label: "Chats", iconKey: 'chats' },
 ];
@@ -212,10 +238,17 @@ const TabItem = ({
             : translateUiTemplate(", {{0}} unread messages", [badge])
         : '';
 
+    const handlePress = () => {
+        if (!isActive) {
+            triggerTabHaptic();
+        }
+        onPress?.();
+    };
+
     return (
         <TouchableOpacity
             style={styles.tabItem}
-            onPress={onPress}
+            onPress={handlePress}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             activeOpacity={0.9}
@@ -287,6 +320,9 @@ const TabItem = ({
                             styles.tabLabel,
                             isActive && styles.tabLabelActive,
                         ]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        maxFontSizeMultiplier={1.2}
                     >
                         {label}
                     </Text>
@@ -309,9 +345,41 @@ export const BottomTabBar = ({
     onTabChange,
     chatBadge = 0,
     gamesNeedAttention = false,
+    visible = true,
 }) => {
     const insets = useSafeAreaInsets();
     const { reduceMotion, reduceTransparency } = useAccessibilityPreferences();
+    const slideAnim = useRef(new Animated.Value(visible ? 1 : 0)).current;
+    const isFirstRender = useRef(true);
+
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+
+        if (reduceMotion) {
+            slideAnim.setValue(visible ? 1 : 0);
+            return;
+        }
+
+        if (visible) {
+            Animated.spring(slideAnim, {
+                toValue: 1,
+                friction: 9,
+                tension: 55,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 220,
+                easing: Easing.in(Easing.cubic),
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [visible, reduceMotion, slideAnim]);
+
     const {
         GlassView,
         isApiAvailable,
@@ -323,10 +391,13 @@ export const BottomTabBar = ({
     const floatingOffsetStyle = {
         bottom: Platform.OS === 'android'
             ? Math.max(insets.bottom, 12)
-            : Math.max(insets.bottom - 18, 2),
-        left: Platform.OS === 'android' ? 18 : 24,
-        right: Platform.OS === 'android' ? 18 : 24,
+            : (insets.bottom > 0 ? Math.max(insets.bottom - 18, 12) : 12),
+        left: Platform.OS === 'android' ? 14 : 18,
+        right: Platform.OS === 'android' ? 14 : 18,
     };
+    const scrimHeight = Platform.OS === 'android'
+        ? Math.max(insets.bottom, 12) + 84
+        : Math.max(insets.bottom, 16) + 72;
 
     const tabBarContent = (
         <View style={styles.tabBar} accessibilityRole="tablist">
@@ -346,59 +417,112 @@ export const BottomTabBar = ({
         </View>
     );
 
+    const translateY = slideAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [160, 0],
+    });
+
     return (
-        <View
+        <Animated.View
             style={[
-                styles.container,
-                floatingOffsetStyle,
+                styles.dockRoot,
+                {
+                    transform: [{ translateY }],
+                },
             ]}
+            pointerEvents={visible ? 'box-none' : 'none'}
         >
+            <LinearGradient
+                pointerEvents="none"
+                colors={['rgba(255, 248, 252, 0)', 'rgba(255, 248, 252, 0.22)', 'rgba(255, 248, 252, 0.85)']}
+                locations={[0, 0.62, 1]}
+                style={[
+                    styles.bottomScrim,
+                    { height: scrimHeight },
+                ]}
+            />
             <View
                 style={[
-                    styles.liquidSheet,
-                    shouldUseLiquidGlass && styles.nativeLiquidSheet,
+                    styles.container,
+                    floatingOffsetStyle,
                 ]}
             >
-                {shouldUseLiquidGlass ? (
-                    <GlassView
-                        glassEffectStyle="regular"
-                        colorScheme="light"
-                        isInteractive={true}
-                        borderRadius={36}
-                        style={styles.glassSurface}
-                    >
-                        {tabBarContent}
-                    </GlassView>
-                ) : (
-                    <>
-                        {reduceTransparency ? (
-                            <View style={styles.opaqueSurface} />
-                        ) : (
-                            <BlurView intensity={42} tint="light" style={StyleSheet.absoluteFillObject} />
-                        )}
-                        {!reduceTransparency && <View style={styles.liquidTint} />}
-                        {tabBarContent}
-                    </>
-                )}
+                <View
+                    style={[
+                        styles.liquidSheet,
+                        shouldUseLiquidGlass && styles.nativeLiquidSheet,
+                    ]}
+                >
+                    {shouldUseLiquidGlass ? (
+                        <GlassView
+                            glassEffectStyle="regular"
+                            colorScheme="light"
+                            isInteractive={true}
+                            borderRadius={36}
+                            style={styles.glassSurface}
+                        >
+                            {tabBarContent}
+                        </GlassView>
+                    ) : (
+                        <>
+                            {reduceTransparency ? (
+                                <View style={styles.opaqueSurface} />
+                            ) : (
+                                <BlurView
+                                    intensity={Platform.OS === 'ios' ? 95 : 85}
+                                    tint={Platform.OS === 'ios' ? 'systemChromeMaterialLight' : 'light'}
+                                    experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : 'none'}
+                                    blurReductionFactor={4}
+                                    style={StyleSheet.absoluteFillObject}
+                                />
+                            )}
+                            <LinearGradient
+                                pointerEvents="none"
+                                colors={['rgba(255, 255, 255, 0.38)', 'rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0)']}
+                                locations={[0, 0.45, 1]}
+                                style={styles.specularGlare}
+                            />
+                            {tabBarContent}
+                        </>
+                    )}
+                </View>
             </View>
-        </View>
+        </Animated.View>
     );
 };
 
 const styles = StyleSheet.create({
+    dockRoot: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 100,
+        pointerEvents: 'box-none',
+    },
+    bottomScrim: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 99,
+    },
     container: {
         position: 'absolute',
         borderRadius: 36,
+        maxWidth: 440,
+        alignSelf: 'center',
         zIndex: 100,
         ...Platform.select({
             ios: {
                 shadowColor: '#000000',
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.08,
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.12,
                 shadowRadius: 18,
             },
             android: {
-                elevation: 0,
+                elevation: 4,
             },
         }),
     },
@@ -407,10 +531,14 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         overflow: 'hidden',
         backgroundColor: Platform.select({
-            ios: 'rgba(255,255,255,0.08)',
-            android: 'rgba(255,255,255,0.74)',
-            default: 'rgba(255,255,255,0.74)',
+            ios: 'transparent',
+            android: 'rgba(255,255,255,0.20)',
+            default: 'transparent',
         }),
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.65)',
+        borderTopColor: 'rgba(255,255,255,0.90)',
+        borderBottomColor: 'rgba(255,255,255,0.30)',
     },
     nativeLiquidSheet: {
         paddingVertical: 0,
@@ -420,10 +548,19 @@ const styles = StyleSheet.create({
         borderRadius: 36,
         paddingVertical: 4,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.65)',
+        borderTopColor: 'rgba(255,255,255,0.90)',
+        borderBottomColor: 'rgba(255,255,255,0.30)',
     },
-    liquidTint: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(255,255,255,0.34)',
+    specularGlare: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 26,
+        borderTopLeftRadius: 36,
+        borderTopRightRadius: 36,
     },
     opaqueSurface: {
         ...StyleSheet.absoluteFillObject,
@@ -442,7 +579,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         position: 'relative',
         justifyContent: 'center',
-        minWidth: 54,
+        minWidth: 46,
         minHeight: 48,
     },
 
@@ -450,8 +587,8 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 3,
         bottom: 3,
-        left: -6,
-        right: -6,
+        left: -4,
+        right: -4,
         borderRadius: 24,
         backgroundColor: 'rgba(255,255,255,0.72)',
         borderWidth: 1,
@@ -485,7 +622,7 @@ const styles = StyleSheet.create({
     },
     tabLabel: {
         fontFamily: fontFamily.medium,
-        fontSize: 11,
+        fontSize: 10.5,
         fontWeight: fontWeight('600'),
         color: '#6B6478',
         marginTop: 0,

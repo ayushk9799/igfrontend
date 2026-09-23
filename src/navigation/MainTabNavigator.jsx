@@ -22,7 +22,7 @@ import WidgetInstructionsBottomSheet from '../components/WidgetInstructionsBotto
 import YearlyOfferBottomSheet from '../components/YearlyOfferBottomSheet';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
 import BottomTabBar from '../components/BottomTabBar';
-import { trackScreen } from '../utils/analytics';
+import { trackScreen, trackEvent } from '../utils/analytics';
 import { colors } from '../theme';
 import { useSocketContext } from '../context/SocketContext';
 import { selectUser, selectHasPartner, selectPartnerName, selectDaysTogether, selectIsPremium, updateUser } from '../store/slices/userSlice';
@@ -100,7 +100,7 @@ export const MainTabNavigator = ({
     onYearlyOfferRequestHandled,
 }) => {
     const [currentTab, setCurrentTab] = useState(initialTab || 'home');
-    const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsScreen
+    const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsV2Screen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
     const [todayChallenge, setTodayChallenge] = useState(null);
     const [topicProgressById, setTopicProgressById] = useState({});
@@ -743,6 +743,9 @@ export const MainTabNavigator = ({
     }, [hasPremiumAccess, yearlyOfferUserId]);
 
     const expireYearlyOfferWindow = useCallback(() => {
+        trackEvent('yearly_offer_expired', {
+            source: 'card_timer',
+        });
         setIsYearlyOfferDue(false);
         setYearlyOfferWindowEndsAt(null);
         if (yearlyOfferUserId) {
@@ -1187,20 +1190,20 @@ export const MainTabNavigator = ({
                     {renderScreen()}
                 </Animated.View>
             ) : renderScreen()}
-            {!isMoodVisible
-                && !widgetSheet
-                && !isScribbleLiveFullscreen
-                && !isYearlyOfferSheetVisible
-                && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab)
-                && (
-                <BottomTabBar
-                    key={tabBarRenderKey}
-                    currentTab={currentTab}
-                    onTabChange={handleBottomTabChange}
-                    chatBadge={chatBadge}
-                    gamesNeedAttention={gamesNeedAttention}
-                />
-            )}
+            <BottomTabBar
+                key={tabBarRenderKey}
+                currentTab={currentTab}
+                onTabChange={handleBottomTabChange}
+                chatBadge={chatBadge}
+                gamesNeedAttention={gamesNeedAttention}
+                visible={
+                    !isMoodVisible
+                    && !widgetSheet
+                    && !isScribbleLiveFullscreen
+                    && !isYearlyOfferSheetVisible
+                    && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab)
+                }
+            />
 
             {isAccountMounted && (
                 <Animated.View
@@ -1277,6 +1280,7 @@ export const MainTabNavigator = ({
                 }}
             >
                 <OnboardingPremiumScreen
+                    source="home_banner"
                     onBack={() => {
                         setIsHomePremiumVisible(false);
                         scheduleYearlyOffer();

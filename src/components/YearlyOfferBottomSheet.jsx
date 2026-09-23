@@ -26,6 +26,7 @@ import { setCustomerInfo, setPremiumStatus } from '../store/slices/userSlice';
 import { colors } from '../theme';
 import { updateUser as updateUserStorage } from '../utils/authStorage';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { trackEvent } from '../utils/analytics';
 
 const YEARLY_OFFERING_ID = 'yearly_offer';
 const REGULAR_OFFERING_ID = 'onbording';
@@ -95,6 +96,8 @@ export default function YearlyOfferBottomSheet({
     const hasPresentedRef = useRef(false);
     const loadingOfferingRef = useRef(false);
     const presentedRef = useRef(false);
+    const hasPurchasedRef = useRef(false);
+    const hasTrackedDismissRef = useRef(false);
 
     const sheetMaxHeight = Math.min(height * 0.66, 590);
     const price = yearlyPackage?.product?.priceString || '';
@@ -185,9 +188,17 @@ export default function YearlyOfferBottomSheet({
     useEffect(() => {
         if (offerReady && !presentedRef.current) {
             presentedRef.current = true;
+            hasTrackedDismissRef.current = false;
+            hasPurchasedRef.current = false;
+            trackEvent('yearly_offer_sheet_viewed', {
+                discount_percent: discountPercentage ?? 0,
+                price: Number(yearlyPackage?.product?.price) || 0,
+                currency: yearlyPackage?.product?.currencyCode || '',
+                remaining_seconds: Math.round(remainingOfferMs / 1000),
+            });
             onPresented?.();
         }
-    }, [offerReady, onPresented]);
+    }, [discountPercentage, offerReady, onPresented, remainingOfferMs, yearlyPackage]);
 
     useEffect(() => {
         if (!visible || !offerEndsAt) return undefined;
@@ -243,16 +254,36 @@ export default function YearlyOfferBottomSheet({
         if (!yearlyPackage || purchasing) return;
 
         setPurchasing(true);
+        trackEvent('yearly_offer_purchase_started', {
+            plan_id: yearlyPackage?.product?.identifier,
+            price: Number(yearlyPackage?.product?.price) || 0,
+            currency: yearlyPackage?.product?.currencyCode || '',
+        });
         try {
             const { customerInfo } = await Purchases.purchasePackage(yearlyPackage);
             const unlocked = applyCustomerInfo(customerInfo);
             syncPremium(customerInfo);
 
             if (unlocked) {
+                hasPurchasedRef.current = true;
+                trackEvent('yearly_offer_purchase_succeeded', {
+                    plan_id: yearlyPackage?.product?.identifier,
+                    price: Number(yearlyPackage?.product?.price) || 0,
+                    currency: yearlyPackage?.product?.currencyCode || '',
+                    discount_percent: discountPercentage ?? 0,
+                });
                 onPurchased?.();
             }
         } catch (error) {
-            if (!error?.userCancelled) {
+            if (error?.userCancelled) {
+                trackEvent('yearly_offer_purchase_cancelled', {
+                    plan_id: yearlyPackage?.product?.identifier,
+                });
+            } else {
+                trackEvent('yearly_offer_purchase_failed', {
+                    plan_id: yearlyPackage?.product?.identifier,
+                    error_message: error?.message || 'unknown_error',
+                });
                 console.error('Yearly offer purchase failed:', error);
                 Alert.alert(
                     translateUiText("Purchase unavailable"),
@@ -312,6 +343,12 @@ export default function YearlyOfferBottomSheet({
             backgroundStyle={styles.sheetBackground}
             handleComponent={null}
             onDismiss={() => {
+                if (!hasTrackedDismissRef.current && !hasPurchasedRef.current) {
+                    hasTrackedDismissRef.current = true;
+                    trackEvent('yearly_offer_sheet_dismissed', {
+                        remaining_seconds: Math.round(remainingOfferMs / 1000),
+                    });
+                }
                 hasPresentedRef.current = false;
                 if (visible) onClose?.();
             }}

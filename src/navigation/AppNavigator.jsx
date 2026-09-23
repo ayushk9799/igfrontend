@@ -1227,6 +1227,13 @@ export const AppNavigator = () => {
                     setCurrentScreen('liveChat');
                     break;
 
+                case 'incoming_call':
+                    openHomeTab('home');
+                    if (socket?.connected) {
+                        socket.emit('call:getPending');
+                    }
+                    break;
+
                 case 'mood_update':
                 case 'couple_photo':
                 case 'partner_paired':
@@ -1310,6 +1317,7 @@ export const AppNavigator = () => {
             }
 
             if (remoteMessage?.data?.type === 'scribble_update') return;
+            if (remoteMessage?.data?.type === 'incoming_call') return;
             if (
                 remoteMessage?.data?.type === 'live_chat'
                 && currentScreenRef.current === 'liveChat'
@@ -3126,6 +3134,7 @@ export const AppNavigator = () => {
                 onRequestClose={closeGamePremium}
             >
                 <OnboardingPremiumScreen
+                    source={premiumLimitFeature ? `limit_${premiumLimitFeature}` : 'game_premium'}
                     onBack={closeGamePremium}
                 />
             </Modal>
