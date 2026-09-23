@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { HotUpdater } from '@hot-updater/react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -15,6 +16,7 @@ import { SocketProvider } from './src/context/SocketContext';
 import { CallProvider } from './src/calling/CallContext';
 import CallOverlay from './src/calling/CallOverlay';
 import AppNavigator from './src/navigation/AppNavigator';
+import ForceUpdateScreen from './src/components/ForceUpdateScreen';
 import { colors } from './src/theme';
 import i18n from './src/i18n';
 
@@ -61,4 +63,9 @@ const styles = StyleSheet.create({
     },
 });
 
-export default App;
+export default HotUpdater.wrap({
+    baseURL: 'https://penguin-ota.ayushkumarsanu00.workers.dev/api/check-update',
+    updateStrategy: 'appVersion',
+    requestTimeout: 3000,
+    fallbackComponent: ForceUpdateScreen,
+})(App);

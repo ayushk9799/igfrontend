@@ -1,64 +1,30 @@
 {
   "name": "Penguin",
   "displayName": "Penguin Couple",
-  "expo": {
-    "name": "Penguin",
-    "slug": "penguin",
-    "version": "1.0.0",
-    "runtimeVersion": "1",
-    "updates": {
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/92b8cabe-7f75-4eca-80d1-e4de72d9b5f8"
-    },
-    "android": {
-      "package": "com.thousandways.love",
-      "permissions": [
-        "android.permission.MODIFY_AUDIO_SETTINGS"
-      ]
-    },
-    "ios": {
-      "bundleIdentifier": "com.thousandways.love",
-      "infoPlist": {
-        "CFBundleLocalizations": [
-          "en",
-          "fr",
-          "en",
-          "fr"
-        ]
+  "plugins": [
+    "@react-native-community/datetimepicker",
+    [
+      "expo-localization",
+      {
+        "supportedLocales": {
+          "ios": [
+            "en",
+            "fr"
+          ],
+          "android": [
+            "en",
+            "fr"
+          ]
+        }
       }
-    },
-    "plugins": [
-      "@react-native-community/datetimepicker",
-      [
-        "expo-localization",
-        {
-          "supportedLocales": {
-            "ios": [
-              "en",
-              "fr"
-            ],
-            "android": [
-              "en",
-              "fr"
-            ]
-          }
-        }
-      ],
-      [
-        "expo-audio",
-        {
-          "microphonePermission": false,
-          "recordAudioAndroid": false
-        }
-      ],
-      "expo-asset"
     ],
-    "extra": {
-      "eas": {
-        "projectId": "92b8cabe-7f75-4eca-80d1-e4de72d9b5f8"
+    [
+      "expo-audio",
+      {
+        "microphonePermission": false,
+        "recordAudioAndroid": false
       }
-    },
-    "owner": "thousandways"
-  }
+    ],
+    "expo-asset"
+  ]
 }

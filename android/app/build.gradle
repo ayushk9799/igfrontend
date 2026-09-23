@@ -53,12 +53,6 @@ react {
 
     /* Autolinking */
     autolinkLibrariesWithApp()
-    //
-    // Added by install-expo-modules
-    def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
-    entryFile = file(["node", "--eval", "require(require.resolve('expo/package.json', { paths: ['" + projectRoot + "'] }) + '/../scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
-    cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json', { paths: ['" + projectRoot + "'] })] })"].execute(null, rootDir).text.trim())
-    bundleCommand = "export:embed"
 }
 
 /**

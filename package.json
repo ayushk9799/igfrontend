@@ -10,8 +10,9 @@
     "test": "jest",
     "sync:wordle-dictionary": "node scripts/sync-wordle-dictionary.cjs",
     "postinstall": "patch-package",
-    "update:preview": "npx eas-cli@latest update --channel preview --platform all",
-    "update:production": "npx eas-cli@latest update --channel production --platform all"
+    "update:ios": "hot-updater deploy -p ios -c production",
+    "update:android": "hot-updater deploy -p android -c production",
+    "update:all": "npm run update:ios && npm run update:android"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.14",
@@ -38,7 +39,7 @@
     "expo-localization": "~17.0.9",
     "expo-modules-core": "^3.0.29",
     "expo-store-review": "~9.0.8",
-    "expo-updates": "~29.0.20",
+    "@hot-updater/react-native": "^0.36.13",
     "expo-video": "~3.0.16",
     "i18next": "^26.3.6",
     "lottie-react-native": "^7.3.5",
@@ -74,6 +75,8 @@
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
+    "@hot-updater/bare": "^0.36.13",
+    "@hot-updater/cloudflare": "^0.36.13",
     "@react-native-community/cli": "20.0.0",
     "@react-native-community/cli-platform-android": "20.0.0",
     "@react-native-community/cli-platform-ios": "20.0.0",
@@ -85,12 +88,15 @@
     "babel-preset-expo": "~54.0.10",
     "@types/react": "~19.1.10",
     "@types/react-test-renderer": "^19.1.0",
+    "dotenv": "^18.0.0",
     "eslint": "^8.19.0",
+    "hot-updater": "^0.36.13",
     "jest": "^29.6.3",
     "patch-package": "^8.0.1",
     "prettier": "2.8.8",
     "react-test-renderer": "19.1.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "wrangler": "^4.86.0"
   },
   "engines": {
     "node": ">=20"

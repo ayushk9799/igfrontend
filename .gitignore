@@ -85,3 +85,5 @@ docs/
 assets/app-store/
 assets/onbording/app-store/
 output/
+dist/
+.env.hotupdater

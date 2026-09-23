@@ -1,22 +1,22 @@
 import UIKit
-import Expo
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import Firebase
 import RNBootSplash
+import HotUpdater
 
 import GoogleSignIn
 import WidgetKit
 
 @main
-class AppDelegate: ExpoAppDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
 
   var reactNativeDelegate: ReactNativeDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
 
-  override func application(
+  func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
@@ -24,12 +24,11 @@ class AppDelegate: ExpoAppDelegate {
     FirebaseApp.configure()
     
     let delegate = ReactNativeDelegate()
-    let factory = ExpoReactNativeFactory(delegate: delegate)
+    let factory = RCTReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
 
     reactNativeDelegate = delegate
     reactNativeFactory = factory
-    bindReactNativeFactory(factory)
 
     window = UIWindow(frame: UIScreen.main.bounds)
     window?.backgroundColor = UIColor(
@@ -45,11 +44,11 @@ class AppDelegate: ExpoAppDelegate {
       launchOptions: launchOptions
     )
 
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    return true
   }
   
   // Handle Google Sign-In URL redirect
-  override func application(
+  func application(
     _ app: UIApplication,
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey : Any] = [:]
@@ -57,12 +56,11 @@ class AppDelegate: ExpoAppDelegate {
     if GIDSignIn.sharedInstance.handle(url) {
       return true
     }
-    return super.application(app, open: url, options: options)
+    return false
   }
   
   // Refresh widgets when app becomes active
-  override func applicationDidBecomeActive(_ application: UIApplication) {
-    super.applicationDidBecomeActive(application)
+  func applicationDidBecomeActive(_ application: UIApplication) {
     if #available(iOS 14.0, *) {
       WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "ScribbleWidget")
       WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "CouplePhotoWidget")
@@ -70,8 +68,7 @@ class AppDelegate: ExpoAppDelegate {
   }
   
   // Refresh widgets when app enters background (closes)
-  override func applicationDidEnterBackground(_ application: UIApplication) {
-    super.applicationDidEnterBackground(application)
+  func applicationDidEnterBackground(_ application: UIApplication) {
     if #available(iOS 14.0, *) {
       WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "ScribbleWidget")
       WidgetKit.WidgetCenter.shared.reloadTimelines(ofKind: "CouplePhotoWidget")
@@ -79,8 +76,8 @@ class AppDelegate: ExpoAppDelegate {
   }
 }
 
-class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
-  override func customize(_ rootView: UIView) {
+class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
+  override func customize(_ rootView: RCTRootView) {
     super.customize(rootView)
     RNBootSplash.initWithStoryboard("BootSplash", rootView: rootView)
   }
@@ -93,7 +90,7 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
 #if DEBUG
     RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
 #else
-    Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    return HotUpdater.bundleURL()
 #endif
   }
 }
