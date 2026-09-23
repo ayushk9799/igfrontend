@@ -675,7 +675,6 @@ export const AccountScreen = ({
                     </View>
 
                     <Text style={styles.versionText}>{translateUiText("penguin couple")}</Text>
-
                     {/* Bottom Clouds */}
                     <View style={styles.cloudsContainer}>
                         <View style={[styles.cloud, styles.cloudOne]} />

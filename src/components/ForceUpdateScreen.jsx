@@ -1,21 +1,23 @@
 import React, { useEffect, useRef } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Easing,
   Image,
   StatusBar,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 
 /**
- * Penguin Couple Stealth Update Loading Screen
- * Matches BootSplash appearance identically:
- * Background #F8DDF4, centered Penguin logo, and a gentle breathing pulse animation.
- * Users perceive this as standard native app launch initialization while mandatory updates download.
+ * Penguin Couple Force Update Loading Screen
+ * Displays BootSplash background (#F8DDF4), centered Penguin logo with breathing pulse animation,
+ * and a smooth spinner with "Updating..." text during active download.
  */
-export function ForceUpdateScreen() {
+export function ForceUpdateScreen({ status, progress = 0 }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const isUpdating = status === 'UPDATING' || progress > 0;
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -48,6 +50,13 @@ export function ForceUpdateScreen() {
           resizeMode="contain"
         />
       </Animated.View>
+
+      {isUpdating && (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="small" color="#FF7597" />
+          <Text style={styles.updatingText}>Updating...</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -62,6 +71,19 @@ const styles = StyleSheet.create({
   logo: {
     width: 140,
     height: 140,
+  },
+  loaderContainer: {
+    position: 'absolute',
+    bottom: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  updatingText: {
+    marginTop: 10,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#B04B6D',
+    letterSpacing: 0.3,
   },
 });
 
