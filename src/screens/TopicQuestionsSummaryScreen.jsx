@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     Image,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -96,25 +96,6 @@ function Avatar({ uri, name, size = 44, ringColor = '#FFFFFF' }) {
     );
 }
 
-function Header({ title, format, theme, subtitle, onBack }) {
-    return (
-        <View style={styles.header}>
-            <TouchableOpacity onPress={onBack} style={styles.headerBack} activeOpacity={0.75}>
-                <BackIcon />
-            </TouchableOpacity>
-            <View style={styles.headerCenter}>
-                <Text style={styles.headerTitle}>{title}</Text>
-                <View style={[styles.formatBadge, { backgroundColor: theme.tint, borderColor: `${theme.accent}2F` }]}>
-                    <Text style={[styles.formatBadgeText, { color: theme.accent }]}>
-                        {theme.icon}  {translateUiText(theme.badge)}
-                    </Text>
-                </View>
-                {!!subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
-            </View>
-            <View style={styles.headerSpacer} />
-        </View>
-    );
-}
 
 function PromptCard({ index, prompt, theme }) {
     return (
@@ -464,6 +445,7 @@ function SliderHero({ summary }) {
 
 export default function TopicQuestionsSummaryScreen({
     topic,
+    topicTitle = '',
     selectedSet,
     userId,
     userName = 'You',
@@ -479,6 +461,38 @@ export default function TopicQuestionsSummaryScreen({
     refreshVersion = 0,
 }) {
     const insets = useSafeAreaInsets();
+    const scrollY = useRef(new Animated.Value(0)).current;
+
+    const navBgOpacity = useMemo(() => scrollY.interpolate({
+        inputRange: [15, 45],
+        outputRange: [0, 0.96],
+        extrapolate: 'clamp',
+    }), [scrollY]);
+
+    const navBorderOpacity = useMemo(() => scrollY.interpolate({
+        inputRange: [20, 50],
+        outputRange: [0, 1],
+        extrapolate: 'clamp',
+    }), [scrollY]);
+
+    const compactTitleOpacity = useMemo(() => scrollY.interpolate({
+        inputRange: [30, 65],
+        outputRange: [0, 1],
+        extrapolate: 'clamp',
+    }), [scrollY]);
+
+    const compactTitleTranslateY = useMemo(() => scrollY.interpolate({
+        inputRange: [30, 65],
+        outputRange: [6, 0],
+        extrapolate: 'clamp',
+    }), [scrollY]);
+
+    const badgeOpacity = useMemo(() => scrollY.interpolate({
+        inputRange: [10, 40],
+        outputRange: [1, 0],
+        extrapolate: 'clamp',
+    }), [scrollY]);
+
     const initialReportRef = useRef(undefined);
     if (initialReportRef.current === undefined) {
         const cachedReport = QuestionReportCache.get({
@@ -603,13 +617,29 @@ export default function TopicQuestionsSummaryScreen({
         return <ConversationRow key={rowKey} {...common} />;
     };
 
+    const displayTitle = selectedSet?.title || report?.title || topicTitle || translateUiText('Summary');
+
     return (
         <LinearGradient {...HOME_GRADIENT} style={styles.screen}>
-            <ScrollView
+            <Animated.ScrollView
+                onScroll={Animated.event(
+                    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                    { useNativeDriver: true }
+                )}
+                scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 10 }]}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    {
+                        paddingTop: insets.top + 44 + 14,
+                        paddingBottom: Math.max(insets.bottom + 20, 36),
+                    },
+                ]}
             >
-                <Header title={selectedSet?.title || report?.title} format={format} theme={theme} subtitle={subtitle} onBack={onBack} />
+                <View style={styles.largeTitleBlock}>
+                    <Text style={styles.largeTitle}>{displayTitle}</Text>
+                    {!!subtitle && <Text style={styles.largeSubtitle}>{subtitle}</Text>}
+                </View>
                 {format === 'slider' && <SliderHero summary={summary} />}
                 {items.length ? items.map(renderItem) : (
                     <View style={styles.emptyCard}>
@@ -617,18 +647,62 @@ export default function TopicQuestionsSummaryScreen({
                         <Text style={styles.emptyText}>{translateUiText('No answers yet')}</Text>
                     </View>
                 )}
-            </ScrollView>
-            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom - 8, 10) }]}>
-                <TouchableOpacity onPress={onBack} activeOpacity={0.82}>
-                    <LinearGradient
-                        colors={['#FF5E97', '#FFA1C9']}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.footerButton}
+            </Animated.ScrollView>
+
+            {/* Apple-Style Collapsing Navigation Bar */}
+            <Animated.View
+                style={[
+                    styles.stickyNavBar,
+                    {
+                        paddingTop: insets.top,
+                        height: insets.top + 44,
+                    },
+                ]}
+                pointerEvents="box-none"
+            >
+                <Animated.View
+                    style={[
+                        StyleSheet.absoluteFillObject,
+                        styles.navBarBackground,
+                        { opacity: navBgOpacity },
+                    ]}
+                />
+                <View style={styles.navBarRow}>
+                    <TouchableOpacity onPress={onBack} style={styles.navBackBtn} activeOpacity={0.7}>
+                        <BackIcon />
+                    </TouchableOpacity>
+
+                    <View style={styles.navTitleContainer} pointerEvents="none">
+                        <Animated.Text
+                            style={[
+                                styles.navCompactTitle,
+                                {
+                                    opacity: compactTitleOpacity,
+                                    transform: [{ translateY: compactTitleTranslateY }],
+                                },
+                            ]}
+                            numberOfLines={1}
+                        >
+                            {displayTitle}
+                        </Animated.Text>
+                    </View>
+
+                    <Animated.View
+                        style={[
+                            styles.navBadgeContainer,
+                            { opacity: badgeOpacity },
+                        ]}
+                        pointerEvents="box-none"
                     >
-                        <BackIcon color="#FFFFFF" size={21} />
-                        <Text style={styles.footerText}>{translateUiText('Back to Sets')}</Text>
-                    </LinearGradient>
-                </TouchableOpacity>
-            </View>
+                        <View style={[styles.formatBadge, { backgroundColor: theme.tint, borderColor: `${theme.accent}33` }]}>
+                            <Text style={[styles.formatBadgeText, { color: theme.accent }]}>
+                                {theme.icon}  {translateUiText(theme.badge)}
+                            </Text>
+                        </View>
+                    </Animated.View>
+                </View>
+                <Animated.View style={[styles.navHairline, { opacity: navBorderOpacity }]} />
+            </Animated.View>
         </LinearGradient>
     );
 }
@@ -640,19 +714,79 @@ const styles = StyleSheet.create({
     errorText: { color: '#B42355', fontFamily: fontFamily.bold, fontSize: 16, textAlign: 'center', marginBottom: 18 },
     retryButton: { paddingHorizontal: 28, paddingVertical: 13, borderRadius: 24 },
     errorBack: { padding: 16 },
-    scrollContent: { paddingHorizontal: 18, paddingBottom: 104 },
-    header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 22 },
-    headerBack: {
-        width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.86)',
-        alignItems: 'center', justifyContent: 'center', shadowColor: '#4A174D', shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.08, shadowRadius: 12, elevation: 2,
+    scrollContent: { paddingHorizontal: 18, paddingBottom: 36 },
+    stickyNavBar: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
     },
-    headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
-    headerSpacer: { width: 48 },
-    headerTitle: { color: '#2A1235', fontFamily: fontFamily.extraBold, fontSize: 22, textAlign: 'center', lineHeight: 27 },
-    formatBadge: { marginTop: 8, borderRadius: 15, paddingVertical: 4, paddingHorizontal: 12, borderWidth: 1 },
-    formatBadgeText: { fontFamily: fontFamily.bold, fontSize: 13 },
-    headerSubtitle: { color: '#776582', fontFamily: fontFamily.medium, fontSize: 14, marginTop: 10, textAlign: 'center' },
+    navBarBackground: {
+        backgroundColor: 'rgba(255, 247, 251, 0.94)',
+    },
+    navBarRow: {
+        height: 44,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+    },
+    navBackBtn: {
+        width: 38,
+        height: 38,
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        zIndex: 2,
+    },
+    navTitleContainer: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginHorizontal: 54,
+    },
+    navCompactTitle: {
+        color: '#2A1235',
+        fontFamily: fontFamily.extraBold,
+        fontSize: 16,
+        textAlign: 'center',
+    },
+    navBadgeContainer: {
+        marginLeft: 'auto',
+        zIndex: 2,
+    },
+    formatBadge: {
+        borderRadius: 14,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+    },
+    formatBadgeText: { fontFamily: fontFamily.bold, fontSize: 12 },
+    navHairline: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: 'rgba(122, 49, 93, 0.15)',
+    },
+    largeTitleBlock: {
+        marginBottom: 20,
+        paddingHorizontal: 2,
+    },
+    largeTitle: {
+        color: '#2A1235',
+        fontFamily: fontFamily.extraBold,
+        fontSize: 30,
+        lineHeight: 36,
+        letterSpacing: -0.4,
+    },
+    largeSubtitle: {
+        color: '#776582',
+        fontFamily: fontFamily.medium,
+        fontSize: 14,
+        lineHeight: 19,
+        marginTop: 4,
+    },
     avatar: { overflow: 'hidden', borderWidth: 2, backgroundColor: '#F5E7EF' },
     avatarImage: { width: '100%', height: '100%' },
     avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -781,7 +915,5 @@ const styles = StyleSheet.create({
     emptyCard: { backgroundColor: 'rgba(255,255,255,0.82)', padding: 34, borderRadius: 24, alignItems: 'center' },
     emptyEmoji: { color: '#D9678D', fontSize: 34 },
     emptyText: { color: '#725C7D', fontFamily: fontFamily.bold, fontSize: 16, marginTop: 8 },
-    footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 18, paddingTop: 8, backgroundColor: 'transparent' },
-    footerButton: { height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
     footerText: { color: '#FFFFFF', fontFamily: fontFamily.bold, fontSize: 17 },
 });
