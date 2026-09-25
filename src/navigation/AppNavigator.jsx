@@ -2977,6 +2977,7 @@ export const AppNavigator = () => {
                     <ChatScreen
                         chatId={selectedChat?._id}
                         chat={selectedChat}
+                        chatMode={selectedChat?.chatMode || (selectedChat?.isQuestionV2 ? 'questionV2' : 'legacy')}
                         userId={userData?.id}
                         userName={userData?.name || 'You'}
                         partnerName={userData?.partnerUsername || 'Partner'}
@@ -3019,7 +3020,12 @@ export const AppNavigator = () => {
                         userName={userData?.name || 'You'}
                         partnerName={userData?.partnerUsername || 'Partner'}
                         onBack={() => {
-                            navigate(selectedCategory?.id ? 'questions' : 'home');
+                            if (selectedCategory?.id) {
+                                navigate('questions');
+                            } else {
+                                setHomeInitialTab('chats');
+                                navigate('home');
+                            }
                         }}
                     />
                 );

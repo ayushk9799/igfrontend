@@ -89,6 +89,16 @@ export const fetchMemories = async ({ userId, cursor = null, limit = 20 }) => {
     return data.data;
 };
 
+export const updateMemory = async ({ memoryId, userId, ...updates }) => {
+    const response = await fetch(`${API_BASE}/api/memories/${memoryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...updates }),
+    });
+    const data = await parseJson(response);
+    return data.data;
+};
+
 export const deleteMemory = async ({ userId, memoryId }) => {
     const response = await fetch(`${API_BASE}/api/memories/${memoryId}`, {
         method: 'DELETE',
@@ -98,3 +108,4 @@ export const deleteMemory = async ({ userId, memoryId }) => {
     const data = await parseJson(response);
     return data.data;
 };
+

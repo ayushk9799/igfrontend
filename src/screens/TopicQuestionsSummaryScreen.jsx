@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import { ChevronRight, MessageCircle, Sparkles } from 'lucide-react-native';
 
 import VoiceBubble from '../components/chat/VoiceBubble';
 import { QuestionsV2Api } from '../api/questionsV2Api';
@@ -97,132 +98,240 @@ function Avatar({ uri, name, size = 44, ringColor = '#FFFFFF' }) {
 }
 
 
-function PromptCard({ index, prompt, theme }) {
+function QuestionCardHeader({ index, prompt, theme, statusPill }) {
     return (
-        <View style={[styles.promptCard, { borderColor: `${theme.accent}55` }]}>
-            <View style={styles.numberBadge}>
-                <Text style={styles.numberText}>{index + 1}</Text>
+        <View style={styles.cardHeader}>
+            <View style={styles.cardMetaRow}>
+                <View style={[styles.qIndexBadge, { backgroundColor: theme.tint, borderColor: `${theme.accent}33` }]}>
+                    <Text style={[styles.qIndexText, { color: theme.accent }]}>Q{index + 1}</Text>
+                </View>
+                {statusPill}
             </View>
-            <Text style={styles.promptText}>{prompt}</Text>
+            <Text style={styles.cardPromptText}>{prompt}</Text>
         </View>
     );
 }
 
-function ContinueLink({ label = 'Continue this chat', color, onPress }) {
+function ContinueLink({ label = 'Discuss in chat', color = '#D32764', onPress }) {
     if (!onPress) return null;
+    const isMemory = label === 'Open this memory';
+    const IconComponent = isMemory ? Sparkles : MessageCircle;
     return (
-        <TouchableOpacity onPress={onPress} style={styles.continueLink} activeOpacity={0.7}>
-            <Text style={[styles.continueText, { color }]}>{translateUiText(label)}  →</Text>
+        <TouchableOpacity onPress={onPress} style={styles.continueLinkBtn} activeOpacity={0.75}>
+            <View style={styles.continueLinkContent}>
+                <IconComponent size={14} color={color} strokeWidth={2.2} />
+                <Text style={[styles.continueLinkText, { color }]}>
+                    {translateUiText(label)}
+                </Text>
+                <ChevronRight size={13} color={color} strokeWidth={2.4} />
+            </View>
         </TouchableOpacity>
-    );
-}
-
-function Divider({ color }) {
-    return (
-        <View style={styles.dividerRow}>
-            <View style={[styles.dividerLine, { backgroundColor: `${color}20` }]} />
-            <Text style={[styles.dividerHeart, { color: `${color}55` }]}>♡</Text>
-            <View style={[styles.dividerLine, { backgroundColor: `${color}20` }]} />
-        </View>
     );
 }
 
 function Pending({ isUser }) {
     return (
-        <View style={styles.pendingBubble}>
-            <Text style={styles.pendingText}>
-                {translateUiText(isUser ? 'Tap to answer ✍️' : 'Waiting...')}
+        <View style={[styles.pendingBubble, isUser && styles.pendingBubbleUser]}>
+            <Text style={[styles.pendingText, isUser && styles.pendingTextUser]}>
+                {translateUiText(isUser ? 'Tap to answer ✍️' : 'Waiting for partner...')}
             </Text>
         </View>
     );
 }
 
 function ConversationRow({ item, index, theme, userName, partnerName, userAvatar, partnerAvatar, onPress }) {
-    const entries = [
-        { name: partnerName, avatar: partnerAvatar, answer: item.partnerAnswer, isUser: false },
-        { name: userName || translateUiText('You'), avatar: userAvatar, answer: item.userAnswer, isUser: true },
-    ];
+    const rawUserAnswer = answerValue(item.userAnswer);
+    const rawPartnerAnswer = answerValue(item.partnerAnswer);
+    const hasUserAnswer = isPresent(rawUserAnswer) && String(rawUserAnswer).trim().length > 0;
+    const hasPartnerAnswer = isPresent(rawPartnerAnswer) && String(rawPartnerAnswer).trim().length > 0;
+    const bothAnswered = hasUserAnswer && hasPartnerAnswer;
+    const partnerFirstName = partnerName ? String(partnerName).trim().split(/\s+/)[0] : translateUiText('Partner');
 
     return (
-        <View style={styles.itemBlock}>
-            <PromptCard index={index} prompt={item.prompt} theme={theme} />
-            <View style={styles.conversation}>
-                {entries.map(entry => (
-                    <View key={`${item.questionId}-${entry.isUser}`} style={[styles.chatLine, entry.isUser && styles.chatLineUser]}>
-                        {!entry.isUser && <Avatar uri={entry.avatar} name={entry.name} size={42} />}
-                        <View style={[styles.chatContent, entry.isUser && styles.chatContentUser]}>
-                            {isPresent(entry.answer) ? (
-                                <View style={[
-                                    styles.textBubble,
-                                    entry.isUser ? styles.userTextBubble : styles.partnerTextBubble,
-                                ]}>
-                                    <Text style={styles.answerText}>{String(answerValue(entry.answer))}</Text>
-                                </View>
-                            ) : <Pending isUser={entry.isUser} />}
-                        </View>
-                        {entry.isUser && <Avatar uri={entry.avatar} name={entry.name} size={42} ringColor="#FFE3EC" />}
+        <View style={styles.unifiedCard}>
+            <QuestionCardHeader
+                index={index}
+                prompt={item.prompt}
+                theme={theme}
+                statusPill={
+                    <View style={bothAnswered ? styles.statusPillBoth : styles.statusPillWaiting}>
+                        <Text style={bothAnswered ? styles.statusPillBothText : styles.statusPillWaitingText}>
+                            {bothAnswered
+                                ? `💖  ${translateUiText('Both answered')}`
+                                : hasUserAnswer
+                                    ? `⏳  ${translateUiText('Waiting for')} ${partnerFirstName}`
+                                    : `✍️  ${translateUiText('Tap to answer')}`}
+                        </Text>
                     </View>
-                ))}
+                }
+            />
+
+            <View style={styles.quotesContainer}>
+                {/* Partner Quote */}
+                <View style={styles.quoteCard}>
+                    <View style={styles.quoteHeader}>
+                        <Avatar uri={partnerAvatar} name={partnerName} size={30} />
+                        <Text style={styles.quoteAuthorName} numberOfLines={1}>{partnerName || translateUiText('Partner')}</Text>
+                    </View>
+                    {hasPartnerAnswer ? (
+                        <Text style={styles.quoteBodyText}>"{String(rawPartnerAnswer)}"</Text>
+                    ) : (
+                        <Pending isUser={false} />
+                    )}
+                </View>
+
+                {/* User Quote */}
+                <View style={[styles.quoteCard, styles.quoteCardUser]}>
+                    <View style={styles.quoteHeader}>
+                        <Avatar uri={userAvatar} name={userName} size={30} ringColor="#FFE3EC" />
+                        <Text style={styles.quoteAuthorName} numberOfLines={1}>{userName || translateUiText('You')}</Text>
+                        <Text style={styles.quoteYouTag}>({translateUiText('You')})</Text>
+                    </View>
+                    {hasUserAnswer ? (
+                        <Text style={styles.quoteBodyText}>"{String(rawUserAnswer)}"</Text>
+                    ) : (
+                        <TouchableOpacity onPress={onPress} activeOpacity={0.75}>
+                            <Pending isUser={true} />
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
+
             <ContinueLink color={theme.accent} onPress={onPress} />
-            <Divider color={theme.accent} />
         </View>
     );
 }
 
 function VoiceRow({ item, index, theme, userName, partnerName, userAvatar, partnerAvatar, onPress }) {
-    const entries = [
-        { name: partnerName, avatar: partnerAvatar, answer: item.partnerAnswer, isUser: false },
-        { name: userName, avatar: userAvatar, answer: item.userAnswer, isUser: true },
-    ];
-    return (
-        <View style={styles.itemBlock}>
-            <PromptCard index={index} prompt={item.prompt} theme={theme} />
-            <View style={styles.conversation}>
-                {entries.map(entry => (
-                    <View key={`${item.questionId}-${entry.isUser}`} style={[styles.chatLine, entry.isUser && styles.chatLineUser]}>
-                        {!entry.isUser && <Avatar uri={entry.avatar} name={entry.name} size={42} />}
-                        <View style={[styles.voiceContent, entry.isUser && styles.voiceContentUser]}>
-                            {isPresent(entry.answer) ? (
-                                <View style={[styles.voiceBubble, entry.isUser ? styles.userVoiceBubble : styles.partnerVoiceBubble]}>
-                                    <VoiceBubble audioUri={answerValue(entry.answer)} isSent={!entry.isUser} />
-                                </View>
-                            ) : <Pending isUser={entry.isUser} />}
-                        </View>
-                        {entry.isUser && <Avatar uri={entry.avatar} name={entry.name} size={42} ringColor="#FFE3EC" />}
-                    </View>
-                ))}
-            </View>
-            <ContinueLink color={theme.secondary} onPress={onPress} />
-            <Divider color={theme.secondary} />
-        </View>
-    );
-}
+    const rawUserAnswer = answerValue(item.userAnswer);
+    const rawPartnerAnswer = answerValue(item.partnerAnswer);
+    const hasUserAnswer = isPresent(rawUserAnswer);
+    const hasPartnerAnswer = isPresent(rawPartnerAnswer);
+    const bothAnswered = hasUserAnswer && hasPartnerAnswer;
+    const partnerFirstName = partnerName ? String(partnerName).trim().split(/\s+/)[0] : translateUiText('Partner');
 
-function PhotoAnswer({ answer, name, avatar, isUser }) {
     return (
-        <View style={[styles.photoAnswerRow, isUser && styles.photoAnswerRowUser]}>
-            {!isUser && <Avatar uri={avatar} name={name} size={38} />}
-            <View style={[styles.photoContent, isUser && styles.photoContentUser]}>
-                {isRemoteUri(answerValue(answer)) ? (
-                    <View style={styles.photoFrame}>
-                        <Image source={{ uri: answerValue(answer) }} style={styles.photoImage} resizeMode="cover" />
+        <View style={styles.unifiedCard}>
+            <QuestionCardHeader
+                index={index}
+                prompt={item.prompt}
+                theme={theme}
+                statusPill={
+                    <View style={bothAnswered ? styles.statusPillBoth : styles.statusPillWaiting}>
+                        <Text style={bothAnswered ? styles.statusPillBothText : styles.statusPillWaitingText}>
+                            {bothAnswered
+                                ? `🎙️  ${translateUiText('Both recorded')}`
+                                : hasUserAnswer
+                                    ? `⏳  ${translateUiText('Waiting for')} ${partnerFirstName}`
+                                    : `✍️  ${translateUiText('Tap to record')}`}
+                        </Text>
                     </View>
-                ) : <Pending isUser={isUser} />}
+                }
+            />
+
+            <View style={styles.quotesContainer}>
+                {/* Partner Voice */}
+                <View style={styles.quoteCard}>
+                    <View style={styles.quoteHeader}>
+                        <Avatar uri={partnerAvatar} name={partnerName} size={30} />
+                        <Text style={styles.quoteAuthorName} numberOfLines={1}>{partnerName || translateUiText('Partner')}</Text>
+                    </View>
+                    {hasPartnerAnswer ? (
+                        <View style={styles.voiceWrapper}>
+                            <VoiceBubble audioUri={rawPartnerAnswer} isSent={true} />
+                        </View>
+                    ) : (
+                        <Pending isUser={false} />
+                    )}
+                </View>
+
+                {/* User Voice */}
+                <View style={[styles.quoteCard, styles.quoteCardUser]}>
+                    <View style={styles.quoteHeader}>
+                        <Avatar uri={userAvatar} name={userName} size={30} ringColor="#FFE3EC" />
+                        <Text style={styles.quoteAuthorName} numberOfLines={1}>{userName || translateUiText('You')}</Text>
+                        <Text style={styles.quoteYouTag}>({translateUiText('You')})</Text>
+                    </View>
+                    {hasUserAnswer ? (
+                        <View style={styles.voiceWrapper}>
+                            <VoiceBubble audioUri={rawUserAnswer} isSent={false} />
+                        </View>
+                    ) : (
+                        <TouchableOpacity onPress={onPress} activeOpacity={0.75}>
+                            <Pending isUser={true} />
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
-            {isUser && <Avatar uri={avatar} name={name} size={38} ringColor="#FFE3EC" />}
+
+            <ContinueLink color={theme.secondary} onPress={onPress} />
         </View>
     );
 }
 
 function PhotoRow({ item, index, theme, userName, partnerName, userAvatar, partnerAvatar, onPress }) {
+    const rawUserAnswer = answerValue(item.userAnswer);
+    const rawPartnerAnswer = answerValue(item.partnerAnswer);
+    const hasUserAnswer = isRemoteUri(rawUserAnswer);
+    const hasPartnerAnswer = isRemoteUri(rawPartnerAnswer);
+    const bothAnswered = hasUserAnswer && hasPartnerAnswer;
+    const partnerFirstName = partnerName ? String(partnerName).trim().split(/\s+/)[0] : translateUiText('Partner');
+
     return (
-        <View style={styles.itemBlock}>
-            <PromptCard index={index} prompt={item.prompt} theme={theme} />
-            <PhotoAnswer answer={item.partnerAnswer} name={partnerName} avatar={partnerAvatar} isUser={false} />
-            <PhotoAnswer answer={item.userAnswer} name={userName} avatar={userAvatar} isUser />
+        <View style={styles.unifiedCard}>
+            <QuestionCardHeader
+                index={index}
+                prompt={item.prompt}
+                theme={theme}
+                statusPill={
+                    <View style={bothAnswered ? styles.statusPillBoth : styles.statusPillWaiting}>
+                        <Text style={bothAnswered ? styles.statusPillBothText : styles.statusPillWaitingText}>
+                            {bothAnswered
+                                ? `📸  ${translateUiText('Both shared')}`
+                                : hasUserAnswer
+                                    ? `⏳  ${translateUiText('Waiting for')} ${partnerFirstName}`
+                                    : `✍️  ${translateUiText('Tap to take photo')}`}
+                        </Text>
+                    </View>
+                }
+            />
+
+            <View style={styles.quotesContainer}>
+                {/* Partner Photo */}
+                <View style={styles.quoteCard}>
+                    <View style={styles.quoteHeader}>
+                        <Avatar uri={partnerAvatar} name={partnerName} size={30} />
+                        <Text style={styles.quoteAuthorName} numberOfLines={1}>{partnerName || translateUiText('Partner')}</Text>
+                    </View>
+                    {hasPartnerAnswer ? (
+                        <View style={styles.photoFrame}>
+                            <Image source={{ uri: rawPartnerAnswer }} style={styles.photoImage} resizeMode="cover" />
+                        </View>
+                    ) : (
+                        <Pending isUser={false} />
+                    )}
+                </View>
+
+                {/* User Photo */}
+                <View style={[styles.quoteCard, styles.quoteCardUser]}>
+                    <View style={styles.quoteHeader}>
+                        <Avatar uri={userAvatar} name={userName} size={30} ringColor="#FFE3EC" />
+                        <Text style={styles.quoteAuthorName} numberOfLines={1}>{userName || translateUiText('You')}</Text>
+                        <Text style={styles.quoteYouTag}>({translateUiText('You')})</Text>
+                    </View>
+                    {hasUserAnswer ? (
+                        <View style={styles.photoFrame}>
+                            <Image source={{ uri: rawUserAnswer }} style={styles.photoImage} resizeMode="cover" />
+                        </View>
+                    ) : (
+                        <TouchableOpacity onPress={onPress} activeOpacity={0.75}>
+                            <Pending isUser={true} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
             <ContinueLink label="Open this memory" color={theme.accent} onPress={onPress} />
-            <Divider color={theme.accent} />
         </View>
     );
 }
@@ -284,11 +393,23 @@ function SliderRow({ item, index, theme, userName, partnerName, userAvatar, part
     const partnerLabel = String(partnerName || translateUiText('Partner')).trim().split(/\s+/)[0];
     const ticks = Array.from({ length: Math.min(10, Math.max(2, max - min + 1)) }, (_, i) => min + i);
     return (
-        <TouchableOpacity style={styles.sliderCard} onPress={onPress} activeOpacity={onPress ? 0.84 : 1}>
-            <View style={styles.sliderQuestionRow}>
-                <View style={styles.sliderIndex}><Text style={styles.sliderIndexText}>{index + 1}</Text></View>
-                <Text style={styles.sliderPrompt}>{item.prompt}</Text>
-            </View>
+        <TouchableOpacity style={styles.unifiedCard} onPress={onPress} activeOpacity={onPress ? 0.88 : 1}>
+            <QuestionCardHeader
+                index={index}
+                prompt={item.prompt}
+                theme={theme}
+                statusPill={
+                    <View style={both ? styles.statusPillBoth : styles.statusPillWaiting}>
+                        <Text style={both ? styles.statusPillBothText : styles.statusPillWaitingText}>
+                            {both
+                                ? `💖  ${translateUiText('Both rated')}`
+                                : hasUserAnswer
+                                    ? `⏳  ${translateUiText('Waiting for')} ${partnerLabel}`
+                                    : `✍️  ${translateUiText('Tap to rate')}`}
+                        </Text>
+                    </View>
+                }
+            />
             <View style={styles.sliderPlot}>
                 <View style={styles.sliderTrack} />
                 <View style={styles.tickDots}>
@@ -343,10 +464,11 @@ function SliderRow({ item, index, theme, userName, partnerName, userAvatar, part
             {both && (
                 <View style={styles.syncPill}>
                     <Text style={styles.syncPillText}>
-                        {distance === 0 ? '💜  Same spot' : distance === 1 ? '💔  Very close · 1 apart' : `↔  ${distance} apart`}
+                        {distance === 0 ? `💜  ${translateUiText('Exact Match · Same spot')}` : distance === 1 ? `✨  ${translateUiText('Almost Synced · 1 apart')}` : `↔  ${distance} ${translateUiText('apart')}`}
                     </Text>
                 </View>
             )}
+            <ContinueLink color={theme.accent} onPress={onPress} />
         </TouchableOpacity>
     );
 }
@@ -364,15 +486,24 @@ function ChoiceRow({ item, index, theme, userName, partnerName, userAvatar, part
     const partnerChoice = answerValue(item.partnerAnswer);
     const same = isPresent(userChoice) && isPresent(partnerChoice) && String(userChoice) === String(partnerChoice);
     const selected = (choice, answer) => isPresent(answer) && String(choice.value) === String(answer);
+    const bothAnswered = isPresent(userChoice) && isPresent(partnerChoice);
 
     return (
-        <TouchableOpacity style={styles.choiceCard} onPress={onPress} activeOpacity={onPress ? 0.84 : 1}>
-            <View style={[styles.choiceHeading, { borderColor: `${theme.accent}55` }]}>
-                <View style={styles.choiceIndex}>
-                    <Text style={styles.choiceIndexText}>{index + 1}</Text>
-                </View>
-                <Text style={styles.choicePrompt}>{item.prompt}</Text>
-            </View>
+        <TouchableOpacity style={styles.unifiedCard} onPress={onPress} activeOpacity={onPress ? 0.88 : 1}>
+            <QuestionCardHeader
+                index={index}
+                prompt={item.prompt}
+                theme={theme}
+                statusPill={
+                    <View style={bothAnswered ? styles.statusPillBoth : styles.statusPillWaiting}>
+                        <Text style={bothAnswered ? styles.statusPillBothText : styles.statusPillWaitingText}>
+                            {bothAnswered
+                                ? (same ? `✨  ${translateUiText('In Sync')}` : `💫  ${translateUiText('Different')}`)
+                                : `⏳  ${translateUiText('Waiting')}`}
+                        </Text>
+                    </View>
+                }
+            />
             <View style={styles.choiceColumns}>
                 {options.map((choice, choiceIndex) => (
                     <View key={String(choice.value)} style={[
@@ -387,19 +518,19 @@ function ChoiceRow({ item, index, theme, userName, partnerName, userAvatar, part
                         <View style={styles.choiceAvatars}>
                             {selected(choice, partnerChoice) && (
                                 <View style={styles.choicePerson}>
-                                    <Avatar uri={partnerAvatar} name={partnerName} size={42} />
+                                    <Avatar uri={partnerAvatar} name={partnerName} size={36} />
                                 </View>
                             )}
                             {selected(choice, userChoice) && (
                                 <View style={styles.choicePerson}>
-                                    <Avatar uri={userAvatar} name={userName} size={42} />
+                                    <Avatar uri={userAvatar} name={userName} size={36} ringColor="#FFE3EC" />
                                 </View>
                             )}
                         </View>
                     </View>
                 ))}
             </View>
-            {isPresent(userChoice) && isPresent(partnerChoice) && (
+            {bothAnswered && (
                 <View style={[
                     styles.choiceResult,
                     same
@@ -410,11 +541,11 @@ function ChoiceRow({ item, index, theme, userName, partnerName, userAvatar, part
                         styles.choiceResultText,
                         same ? { color: theme.accent } : (theme.choiceResultDifferentText || styles.choiceResultTextDifferent),
                     ]}>
-                        {same ? `✓  ${translateUiText('Same pick')}` : `↝  ${translateUiText('Different picks')}`}
+                        {same ? `✨  ${translateUiText('Same pick')}` : `💫  ${translateUiText('Different picks')}`}
                     </Text>
                 </View>
             )}
-            {!same && <ContinueLink color={theme.accent} onPress={onPress} />}
+            <ContinueLink color={theme.accent} onPress={onPress} />
         </TouchableOpacity>
     );
 }
@@ -791,75 +922,227 @@ const styles = StyleSheet.create({
     avatarImage: { width: '100%', height: '100%' },
     avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     avatarInitial: { color: '#452452', fontFamily: fontFamily.extraBold },
-    itemBlock: { marginBottom: 2 },
-    promptCard: {
-        backgroundColor: '#8F204D', borderRadius: 22, borderWidth: 1, minHeight: 112,
-        alignItems: 'flex-start', justifyContent: 'flex-start', paddingHorizontal: 17, paddingTop: 27, paddingBottom: 18,
+
+    /* Unified Memory Card (Apple Journal Style - Harmonious Blush Pink) */
+    unifiedCard: {
+        backgroundColor: 'rgba(255, 241, 247, 0.94)',
+        borderRadius: 24,
+        padding: 18,
+        marginBottom: 16,
+        shadowColor: '#3A1530',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.07,
+        shadowRadius: 16,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(246, 212, 227, 0.8)',
     },
-    numberBadge: {
-        position: 'absolute', left: -8, top: -12, width: 34, height: 34, borderRadius: 17,
-        borderWidth: 2, borderColor: '#8F204D', backgroundColor: '#FFFFFF',
-        alignItems: 'center', justifyContent: 'center',
+    cardHeader: {
+        marginBottom: 14,
     },
-    numberText: { color: '#8F204D', fontFamily: fontFamily.extraBold, fontSize: 15 },
-    promptText: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 19, lineHeight: 25, textAlign: 'left' },
-    conversation: { marginTop: 22, gap: 16 },
-    chatLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-    chatLineUser: { justifyContent: 'flex-end' },
-    chatContent: { maxWidth: '78%' },
-    chatContentUser: { alignItems: 'flex-end' },
-    voiceContent: { maxWidth: '80%', minWidth: '66%' },
-    voiceContentUser: { alignItems: 'flex-end' },
-    personLabel: { color: '#5E3E70', fontFamily: fontFamily.bold, fontSize: 14, marginBottom: 5 },
-    personLabelUser: { textAlign: 'right' },
-    textBubble: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, minHeight: 48, justifyContent: 'center' },
-    partnerTextBubble: { backgroundColor: '#F1EDF4', borderTopLeftRadius: 5, borderWidth: 1, borderColor: '#E3DCE8' },
-    userTextBubble: { backgroundColor: '#FFE7EF', borderTopRightRadius: 5, borderWidth: 1, borderColor: '#FFC5D6' },
-    answerText: { color: '#25122F', fontFamily: fontFamily.regular, fontSize: 16, lineHeight: 22 },
-    pendingBubble: { minWidth: 128, borderRadius: 14, borderWidth: 1, borderStyle: 'dashed', borderColor: '#E7B7C7', padding: 12, backgroundColor: '#FFF9FB' },
-    pendingText: { color: '#AD6A82', fontFamily: fontFamily.medium, fontSize: 13, textAlign: 'center' },
-    continueLink: { alignSelf: 'center', paddingVertical: 16, paddingHorizontal: 10 },
-    continueText: { fontFamily: fontFamily.bold, fontSize: 15 },
-    dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 34 },
-    dividerLine: { flex: 1, height: 1 },
-    dividerHeart: { fontSize: 20, paddingHorizontal: 12 },
-    voiceBubble: { width: '100%', borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
-    partnerVoiceBubble: { backgroundColor: '#EEE7FD', borderColor: '#D9CBFA' },
-    userVoiceBubble: { backgroundColor: '#FFE8EF', borderColor: '#FFC4D5' },
-    photoAnswerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, marginTop: 18 },
-    photoAnswerRowUser: { justifyContent: 'flex-end' },
-    photoContent: { width: '73%' },
-    photoContentUser: { alignItems: 'flex-end' },
-    photoFrame: { width: '100%', height: 170, borderRadius: 18, overflow: 'hidden', backgroundColor: '#F2E8EC', borderWidth: 3, borderColor: '#FFFFFF' },
-    photoImage: { width: '100%', height: '100%' },
+    cardMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    qIndexBadge: {
+        borderRadius: 10,
+        paddingVertical: 3,
+        paddingHorizontal: 8,
+        borderWidth: 1,
+    },
+    qIndexText: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 12,
+        letterSpacing: 0.2,
+    },
+    statusPillBoth: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+        borderColor: '#F0D4E4',
+    },
+    statusPillBothText: {
+        color: '#652D6C',
+        fontFamily: fontFamily.bold,
+        fontSize: 11,
+    },
+    statusPillWaiting: {
+        backgroundColor: 'rgba(255, 255, 255, 0.75)',
+        borderRadius: 12,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+        borderColor: '#EFE1EC',
+    },
+    statusPillWaitingText: {
+        color: '#8A7B94',
+        fontFamily: fontFamily.medium,
+        fontSize: 11,
+    },
+    cardPromptText: {
+        color: '#24102C',
+        fontFamily: fontFamily.extraBold,
+        fontSize: 17,
+        lineHeight: 23,
+        letterSpacing: -0.2,
+    },
+
+    /* Editorial Quote Cards (Deep Talk, Voice, Photos) */
+    quotesContainer: {
+        gap: 10,
+        marginTop: 2,
+    },
+    quoteCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#F0E2EC',
+    },
+    quoteCardUser: {
+        backgroundColor: '#FFF7FA',
+        borderColor: '#F8D5E3',
+    },
+    quoteHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    quoteAuthorName: {
+        color: '#34163E',
+        fontFamily: fontFamily.bold,
+        fontSize: 13,
+        flexShrink: 1,
+    },
+    quoteYouTag: {
+        color: '#AD6381',
+        fontFamily: fontFamily.medium,
+        fontSize: 12,
+    },
+    quoteBodyText: {
+        color: '#281330',
+        fontFamily: fontFamily.regular,
+        fontSize: 15,
+        lineHeight: 21,
+        fontStyle: 'italic',
+        paddingHorizontal: 4,
+    },
+    voiceWrapper: {
+        marginTop: 2,
+    },
+
+    /* Pending / Missing Answer States */
+    pendingBubble: {
+        borderRadius: 14,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: '#D4C9DA',
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pendingBubbleUser: {
+        borderColor: '#F0B7CA',
+        backgroundColor: '#FFF9FB',
+    },
+    pendingText: {
+        color: '#8A7794',
+        fontFamily: fontFamily.medium,
+        fontSize: 13,
+        textAlign: 'center',
+    },
+    pendingTextUser: {
+        color: '#C04373',
+        fontFamily: fontFamily.bold,
+    },
+
+    /* Action Links */
+    continueLinkBtn: {
+        alignSelf: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        marginTop: 12,
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: 'rgba(240, 205, 220, 0.75)',
+        shadowColor: '#3A1530',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    continueLinkContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    continueLinkText: {
+        fontFamily: fontFamily.bold,
+        fontSize: 13,
+        letterSpacing: -0.1,
+    },
+
+    /* Photo Sets */
+    photoFrame: {
+        width: '100%',
+        height: 170,
+        borderRadius: 14,
+        overflow: 'hidden',
+        backgroundColor: '#F2E8EC',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    photoImage: {
+        width: '100%',
+        height: '100%',
+    },
+
+    /* Slider Rating Styles */
     sliderHero: {
-        flexDirection: 'row', alignItems: 'center', gap: 18, backgroundColor: 'rgba(255,255,255,0.86)', borderRadius: 22,
-        padding: 22, marginBottom: 16, shadowColor: '#444477', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 18,
+        backgroundColor: 'rgba(255,255,255,0.86)',
+        borderRadius: 22,
+        padding: 22,
+        marginBottom: 16,
+        shadowColor: '#444477',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 2,
     },
-    brokenHeart: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#F9E4EF', alignItems: 'center', justifyContent: 'center' },
+    brokenHeart: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#F9E4EF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     brokenHeartText: { fontSize: 34 },
     similarityText: { color: '#2B103D', fontFamily: fontFamily.extraBold, fontSize: 27 },
     similaritySub: { color: '#6E5D79', fontFamily: fontFamily.medium, fontSize: 15, marginTop: 4 },
-    sliderCard: {
-        backgroundColor: 'rgba(255,255,255,0.90)', borderRadius: 24, padding: 18, marginBottom: 16, minHeight: 285,
-        shadowColor: '#495073', shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 2,
-    },
-    sliderQuestionRow: {
-        backgroundColor: '#8F204D', borderRadius: 18, paddingHorizontal: 14, paddingTop: 27, paddingBottom: 14,
-        alignItems: 'flex-start',
-    },
-    sliderIndex: {
-        position: 'absolute', left: -8, top: -12, width: 34, height: 34, borderRadius: 17,
-        backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#8F204D', alignItems: 'center', justifyContent: 'center',
-    },
-    sliderIndexText: { color: '#8F204D', fontFamily: fontFamily.extraBold, fontSize: 15 },
-    sliderPrompt: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, lineHeight: 23 },
     sliderPlot: { height: 112, marginHorizontal: 24, marginTop: 12 },
     sliderTrack: { position: 'absolute', left: 0, right: 0, top: 54, height: 3, borderRadius: 2, backgroundColor: '#D5D4DF' },
     tickDots: { position: 'absolute', left: -5, right: -5, top: 46, flexDirection: 'row', justifyContent: 'space-between' },
     tickDot: {
-        width: 18, height: 18, borderRadius: 9, backgroundColor: '#F8F6FA', borderWidth: 1,
-        borderColor: '#BEB7C8', alignItems: 'center', justifyContent: 'center',
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#F8F6FA',
+        borderWidth: 1,
+        borderColor: '#BEB7C8',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     userTickDot: { backgroundColor: '#2866C8', borderColor: '#2866C8' },
     partnerTickDot: { backgroundColor: '#E94778', borderColor: '#E94778' },
@@ -871,47 +1154,54 @@ const styles = StyleSheet.create({
     markerPin: { alignItems: 'center' },
     markerRing: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
     markerPointerDown: {
-        width: 0, height: 0, marginTop: -1,
-        borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8,
-        borderLeftColor: 'transparent', borderRightColor: 'transparent',
+        width: 0,
+        height: 0,
+        marginTop: -1,
+        borderLeftWidth: 6,
+        borderRightWidth: 6,
+        borderTopWidth: 8,
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
     },
     markerPointerUp: {
-        width: 0, height: 0, marginBottom: -1,
-        borderLeftWidth: 6, borderRightWidth: 6, borderBottomWidth: 8,
-        borderLeftColor: 'transparent', borderRightColor: 'transparent',
+        width: 0,
+        height: 0,
+        marginBottom: -1,
+        borderLeftWidth: 6,
+        borderRightWidth: 6,
+        borderBottomWidth: 8,
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
     },
-    sliderEnds: { flexDirection: 'row', justifyContent: 'space-between' },
+    sliderEnds: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
     sliderEndText: { color: '#201729', fontFamily: fontFamily.medium, fontSize: 12, maxWidth: '40%' },
-    syncPill: { alignSelf: 'center', backgroundColor: '#F3E9F7', borderRadius: 18, paddingVertical: 7, paddingHorizontal: 18, marginTop: 10 },
+    syncPill: {
+        alignSelf: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 18,
+        paddingVertical: 7,
+        paddingHorizontal: 18,
+        marginTop: 12,
+        borderWidth: 1,
+        borderColor: '#EEDCE8',
+    },
     syncPillText: { color: '#4A245E', fontFamily: fontFamily.bold, fontSize: 13 },
-    choiceCard: {
-        backgroundColor: 'rgba(255,255,255,0.91)', borderRadius: 24, padding: 14, marginBottom: 16,
-        shadowColor: '#684A62', shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 2,
-    },
-    choiceHeading: {
-        minHeight: 104, alignItems: 'flex-start', justifyContent: 'flex-start',
-        paddingHorizontal: 14, paddingTop: 27, paddingBottom: 14,
-        backgroundColor: '#8F204D', borderRadius: 18, borderWidth: 1,
-    },
-    choiceIndex: {
-        position: 'absolute', left: -8, top: -12, width: 34, height: 34, borderRadius: 17,
-        backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#8F204D', alignItems: 'center', justifyContent: 'center',
-    },
-    choiceIndexText: { color: '#8F204D', fontFamily: fontFamily.extraBold, fontSize: 15 },
-    choicePrompt: { color: '#FFFFFF', fontFamily: fontFamily.extraBold, fontSize: 18, lineHeight: 23, textAlign: 'left' },
-    choiceColumns: { flexDirection: 'row', gap: 8, marginTop: 18 },
-    choiceOption: { flex: 1, borderRadius: 18, minHeight: 130, alignItems: 'center', padding: 12, borderWidth: 1 },
+
+    /* Comparison / Choice Options (WYR, This or That) */
+    choiceColumns: { flexDirection: 'row', gap: 8, marginTop: 10 },
+    choiceOption: { flex: 1, borderRadius: 18, minHeight: 120, alignItems: 'center', padding: 12, borderWidth: 1 },
     choiceOptionLeft: { backgroundColor: '#EAF9F7', borderColor: '#CBECE8' },
     choiceOptionRight: { backgroundColor: '#FFF0F6', borderColor: '#F8CDDD' },
-    choiceLabel: { fontFamily: fontFamily.extraBold, fontSize: 16, textAlign: 'center' },
+    choiceLabel: { fontFamily: fontFamily.extraBold, fontSize: 15, textAlign: 'center' },
     choiceAvatars: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 },
     choicePerson: { alignItems: 'center' },
-    choicePersonName: { color: '#321B3B', fontFamily: fontFamily.bold, fontSize: 11, marginTop: 2, maxWidth: 60 },
     choiceResult: { alignSelf: 'center', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 7, marginTop: 12 },
     choiceResultSame: { backgroundColor: '#E5FAF5' },
     choiceResultDifferent: { backgroundColor: '#FFF0E8' },
     choiceResultText: { fontFamily: fontFamily.bold, fontSize: 13 },
     choiceResultTextDifferent: { color: '#9A4D34' },
+
+    /* Empty State & Errors */
     emptyCard: { backgroundColor: 'rgba(255,255,255,0.82)', padding: 34, borderRadius: 24, alignItems: 'center' },
     emptyEmoji: { color: '#D9678D', fontSize: 34 },
     emptyText: { color: '#725C7D', fontFamily: fontFamily.bold, fontSize: 16, marginTop: 8 },

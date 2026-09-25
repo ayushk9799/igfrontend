@@ -124,9 +124,9 @@ export const QuestionsV2Api = {
 };
 
 export const QuestionChatsV2Api = {
-    getChats: async (userId) => {
+    getChats: async (userId, options = {}) => {
         try {
-            const query = buildQuery({ userId });
+            const query = buildQuery({ userId, ...options });
             const response = await apiFetch(`${QUESTION_CHATS_V2_BASE}${query}`);
             return parseJson(response);
         } catch (error) {

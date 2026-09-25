@@ -16,6 +16,8 @@ import { Video } from 'lucide-react-native';
 import { colors, spacing, borderRadius } from '../theme';
 import GradientBackground from '../components/GradientBackground';
 import { API_BASE } from '../constants/Api';
+import { QuestionChatsV2Api } from '../api/questionsV2Api';
+import { useSocket } from '../hooks/useSocket';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { storage } from '../utils/authStorage';
@@ -29,6 +31,11 @@ const FALLBACK_CONFIG = {
     likelyto: { title: "Most Likely To", emoji: '🎯', gradient: ['#E8EAF6', '#C5CAE9'], textColor: '#283593' },
     neverhaveiever: { title: "Never Have I Ever", emoji: '🤫', gradient: ['#FCE4EC', '#F8BBD0'], textColor: '#AD1457' },
     deep: { title: "Deep Talk", emoji: '💭', gradient: ['#EDE7F6', '#D1C4E9'], textColor: '#4527A0' },
+    wouldyourather: { title: "Would You Rather", emoji: '⚖️', gradient: ['#FFF0F6', '#FCE4EC'], textColor: '#C92C68' },
+    thisorthat: { title: "This or That", emoji: '✨', gradient: ['#E6FFFA', '#CCFBF1'], textColor: '#0D9488' },
+    slider: { title: "Slider", emoji: '📏', gradient: ['#F3E8FF', '#E8D5FF'], textColor: '#7E22CE' },
+    voicerecord: { title: "Voice Notes", emoji: '🎙️', gradient: ['#F5E8FF', '#E9D5FF'], textColor: '#6D3CA1' },
+    takephoto: { title: "Photo Set", emoji: '📸', gradient: ['#FFE4EC', '#FFD1DC'], textColor: '#C9255A' },
 };
 
 const DEFAULT_GRADIENT = ['#F3E8FF', '#E8D5FF'];
@@ -38,6 +45,41 @@ const chatListCache = new Map();
 const CHAT_LIST_CACHE_PREFIX = 'chat_list_cache_';
 
 const getCacheKey = (userId) => `${CHAT_LIST_CACHE_PREFIX}${userId}`;
+
+const normalizeV2Chat = (chat) => {
+    const rawPreview = chat.lastMessage;
+    let fallbackPreview = translateUiText('New question thread');
+    if (chat.format === 'voicerecord') fallbackPreview = `🎙️ ${translateUiText('Voice note')}`;
+    else if (chat.format === 'takephoto') fallbackPreview = `📸 ${translateUiText('Photo shared')}`;
+    else if (chat.format === 'slider') fallbackPreview = `📏 ${translateUiText('Rating shared')}`;
+
+    const source = (chat.topicId && TOPIC_CONFIG[chat.topicId])
+        ? chat.topicId
+        : (chat.format && (TOPIC_CONFIG[chat.format] || FALLBACK_CONFIG[chat.format]))
+            ? chat.format
+            : chat.topicId || chat.format || 'deep';
+
+    return {
+        ...chat,
+        _id: String(chat._id),
+        chatMode: 'questionV2',
+        isQuestionV2: true,
+        hasUserMessages: Boolean(chat.hasUserMessages),
+        userMessageCount: Number(chat.userMessageCount || 0),
+        questionSource: source,
+        questionText: chat.prompt || chat.questionText,
+        lastMessagePreview: rawPreview || fallbackPreview,
+        lastMessageAt: chat.lastMessageAt || chat.updatedAt || chat.createdAt,
+        unreadCount: typeof chat.unreadCount === 'number' ? chat.unreadCount : 0,
+    };
+};
+
+const isDisplayableChat = (chat) => {
+    // Legacy chats are always displayed
+    if (!chat.isQuestionV2 && chat.chatMode !== 'questionV2') return true;
+    // V2 question chats are only displayed if a user has sent a message
+    return Boolean(chat.hasUserMessages) || (chat.userMessageCount > 0);
+};
 
 const readStoredChatCache = (userId) => {
     if (!userId) return null;
@@ -75,7 +117,7 @@ const mergeChats = (currentChats, changedChats) => {
         });
     });
 
-    return sortChats(Array.from(byId.values()));
+    return sortChats(Array.from(byId.values()).filter(isDisplayableChat));
 };
 
 /**
@@ -90,6 +132,7 @@ export default function ChatListScreen({
     onSelectChat,
 }) {
     const insets = useSafeAreaInsets();
+    const socket = useSocket();
     const [chats, setChats] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -105,7 +148,8 @@ export default function ChatListScreen({
             setError(null);
 
             if (cached && !forceFull) {
-                setChats(cached.chats);
+                const filteredCached = (cached.chats || []).filter(isDisplayableChat);
+                setChats(filteredCached);
                 setLoading(false);
                 if (cacheKey && !memoryCache) {
                     chatListCache.set(cacheKey, cached);
@@ -116,29 +160,52 @@ export default function ChatListScreen({
                 ? `${API_BASE}/api/chat/user/${userId}/changes?since=${encodeURIComponent(cached.syncTime)}`
                 : `${API_BASE}/api/chat/user/${userId}`;
 
-            const response = await fetch(url);
-            const json = await response.json();
+            const [legacyResult, v2Result] = await Promise.allSettled([
+                fetch(url).then(res => res.json()),
+                QuestionChatsV2Api.getChats(userId, { hasUserMessages: true }),
+            ]);
 
-            if (json.success) {
-                const serverChats = json.data.chats || [];
+            let legacyChats = [];
+            let legacySyncTime = new Date().toISOString();
+            let hasLegacyData = false;
+
+            if (legacyResult.status === 'fulfilled' && legacyResult.value?.success) {
+                legacyChats = legacyResult.value.data?.chats || [];
+                legacySyncTime = legacyResult.value.data?.syncTime || legacySyncTime;
+                hasLegacyData = true;
+            }
+
+            let v2Chats = [];
+            let hasV2Data = false;
+            if (v2Result.status === 'fulfilled' && v2Result.value?.success) {
+                v2Chats = (v2Result.value.data?.chats || [])
+                    .map(normalizeV2Chat)
+                    .filter(isDisplayableChat);
+                hasV2Data = true;
+            }
+
+            if (hasLegacyData || hasV2Data) {
+                const serverChats = [...legacyChats, ...v2Chats];
                 const nextChats = cached && !forceFull
                     ? mergeChats(cached.chats, serverChats)
-                    : sortChats(serverChats);
-                const syncTime = json.data.syncTime || new Date().toISOString();
+                    : sortChats(serverChats.filter(isDisplayableChat));
 
                 setChats(nextChats);
 
                 if (cacheKey) {
                     const cacheValue = {
                         chats: nextChats,
-                        syncTime,
+                        syncTime: legacySyncTime,
                     };
 
                     chatListCache.set(cacheKey, cacheValue);
                     writeStoredChatCache(cacheKey, cacheValue);
                 }
-            } else {
-                setError(json.message || 'Failed to load chats');
+            } else if (!cached) {
+                const errMsg = (legacyResult.status === 'fulfilled' && legacyResult.value?.message)
+                    || (v2Result.status === 'fulfilled' && v2Result.value?.error)
+                    || 'Failed to load chats';
+                setError(errMsg);
             }
         } catch (err) {
             console.error('Error fetching chats:', err);
@@ -154,6 +221,25 @@ export default function ChatListScreen({
     useEffect(() => {
         fetchChats();
     }, [fetchChats]);
+
+    // Listen for real-time chat updates to keep the list fresh
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleChatUpdate = () => {
+            fetchChats({ forceFull: true });
+        };
+
+        socket.on('chat:newMessage', handleChatUpdate);
+        socket.on('questionChatV2:message', handleChatUpdate);
+        socket.on('questionChatV2:notification', handleChatUpdate);
+
+        return () => {
+            socket.off('chat:newMessage', handleChatUpdate);
+            socket.off('questionChatV2:message', handleChatUpdate);
+            socket.off('questionChatV2:notification', handleChatUpdate);
+        };
+    }, [socket, fetchChats]);
 
     const handleRefresh = () => {
         setRefreshing(true);

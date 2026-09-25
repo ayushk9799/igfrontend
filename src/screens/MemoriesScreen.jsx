@@ -21,15 +21,30 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Heart, ImagePlus, Minus, Plus, X } from 'lucide-react-native';
+import {
+    ArrowUpDown,
+    CalendarDays,
+    ChevronDown,
+    ChevronLeft,
+    Heart,
+    ImagePlus,
+    MoreVertical,
+    Pencil,
+    Plus,
+    Trash2,
+    X,
+} from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { colors } from '../theme';
 import { storage } from '../utils/authStorage';
+import { useSocket } from '../hooks/useSocket';
 import {
     createMemory,
+    deleteMemory,
     fetchMemories,
     requestMemoryImageUpload,
+    updateMemory,
     uploadMemoryImage,
 } from '../api/memoriesApi';
 import {
@@ -151,46 +166,6 @@ const formatDateParts = (value) => {
     };
 };
 
-const isSameDate = (a, b) => (
-    a.getFullYear() === b.getFullYear()
-    && a.getMonth() === b.getMonth()
-    && a.getDate() === b.getDate()
-);
-
-const getCalendarDays = (visibleMonth) => {
-    const year = visibleMonth.getFullYear();
-    const month = visibleMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const startOffset = firstDay.getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const cells = [];
-
-    for (let index = 0; index < startOffset; index += 1) {
-        cells.push(null);
-    }
-
-    for (let day = 1; day <= daysInMonth; day += 1) {
-        cells.push(new Date(year, month, day));
-    }
-
-    while (cells.length % 7 !== 0) {
-        cells.push(null);
-    }
-
-    return cells;
-};
-
-const shiftTime = (date, unit, amount) => {
-    const next = new Date(date || new Date());
-    if (unit === 'hour') {
-        next.setHours(next.getHours() + amount);
-    } else {
-        next.setMinutes(next.getMinutes() + amount);
-    }
-    next.setSeconds(0, 0);
-    return next;
-};
-
 const cacheKeyForUser = (userId) => `memories:${userId}`;
 
 const readCachedMemories = (userId) => {
@@ -241,12 +216,17 @@ const createImageUploadJob = (asset) => {
     };
 };
 
-const MemoryImage = ({ uri, aspectRatio }) => {
+const MemoryImage = ({ uri, aspectRatio, onPress }) => {
     const [loaded, setLoaded] = useState(false);
     const [failed, setFailed] = useState(false);
 
     return (
-        <View style={[styles.photoWrap, { aspectRatio }]}>
+        <TouchableOpacity
+            activeOpacity={0.92}
+            onPress={onPress}
+            style={[styles.photoWrap, { aspectRatio }]}
+            disabled={!onPress}
+        >
             {!loaded && !failed && (
                 <View style={styles.photoLoading}>
                     <ActivityIndicator color="#C96F81" />
@@ -265,11 +245,11 @@ const MemoryImage = ({ uri, aspectRatio }) => {
                     onError={() => setFailed(true)}
                 />
             )}
-        </View>
+        </TouchableOpacity>
     );
 };
 
-const MemoryCard = ({ item }) => {
+const MemoryCard = ({ item, onOptionsPress, onImagePress }) => {
     const parts = formatDateParts(item.capturedAt);
     const aspectRatio = getDisplayAspectRatio(item.width, item.height);
     const entryType = normalizeEntryType(item.entryType);
@@ -288,7 +268,25 @@ const MemoryCard = ({ item }) => {
             </View>
             <View style={styles.memoryContent}>
                 {hasImage ? (
-                    <MemoryImage uri={item.imageUrl} aspectRatio={aspectRatio} />
+                    <View style={styles.photoContainer}>
+                        <MemoryImage
+                            uri={item.imageUrl}
+                            aspectRatio={aspectRatio}
+                            onPress={() => onImagePress?.({
+                                uri: item.imageUrl,
+                                title: item.title,
+                                dateLine: parts.line,
+                            })}
+                        />
+                        <TouchableOpacity
+                            style={styles.cardOptionsBadge}
+                            onPress={() => onOptionsPress?.(item)}
+                            activeOpacity={0.8}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <MoreVertical color="#FFFFFF" size={17} strokeWidth={2.2} />
+                        </TouchableOpacity>
+                    </View>
                 ) : (
                     isSpecialDate ? (
                         <View style={styles.specialDateCardWrapper}>
@@ -304,6 +302,14 @@ const MemoryCard = ({ item }) => {
                                     {!!item.title && <Text style={styles.specialDateCardTitle}>{item.title}</Text>}
                                     {!!item.caption && <Text style={styles.specialDateCardCaption}>{item.caption}</Text>}
                                 </View>
+                                <TouchableOpacity
+                                    style={styles.cardOptionsButtonTextCard}
+                                    onPress={() => onOptionsPress?.(item)}
+                                    activeOpacity={0.8}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <MoreVertical color="#FFFFFF" size={18} strokeWidth={2.2} />
+                                </TouchableOpacity>
                             </View>
                         </View>
                     ) : (
@@ -315,6 +321,14 @@ const MemoryCard = ({ item }) => {
                                 {!!item.title && <Text style={styles.momentTitle}>{item.title}</Text>}
                                 {!!item.caption && <Text style={styles.momentCaption}>{item.caption}</Text>}
                             </View>
+                            <TouchableOpacity
+                                style={styles.cardOptionsButtonTextCard}
+                                onPress={() => onOptionsPress?.(item)}
+                                activeOpacity={0.8}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <MoreVertical color="#8E7982" size={18} strokeWidth={2.2} />
+                            </TouchableOpacity>
                         </View>
                     )
                 )}
@@ -333,6 +347,121 @@ const MemoryCard = ({ item }) => {
                 )}
             </View>
         </View>
+    );
+};
+
+const PhotoLightboxModal = ({ visible, data, onClose }) => {
+    const insets = useSafeAreaInsets();
+    if (!visible || !data?.uri) return null;
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
+            statusBarTranslucent
+            onRequestClose={onClose}
+        >
+            <View style={styles.lightboxRoot}>
+                <Pressable style={styles.lightboxBackdrop} onPress={onClose} />
+                <View style={[styles.lightboxHeader, { paddingTop: insets.top + 10 }]}>
+                    <View style={styles.lightboxHeaderCopy}>
+                        {!!data.title && (
+                            <Text style={styles.lightboxTitle} numberOfLines={1}>
+                                {data.title}
+                            </Text>
+                        )}
+                        {!!data.dateLine && (
+                            <Text style={styles.lightboxDate}>
+                                {data.dateLine}
+                            </Text>
+                        )}
+                    </View>
+                    <TouchableOpacity
+                        style={styles.lightboxCloseBtn}
+                        onPress={onClose}
+                        activeOpacity={0.8}
+                    >
+                        <X color="#FFFFFF" size={22} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.lightboxImageWrap} pointerEvents="box-none">
+                    <Image
+                        source={{ uri: data.uri }}
+                        style={styles.lightboxImage}
+                        resizeMode="contain"
+                    />
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+const MemoryOptionsModal = ({ visible, memory, onClose, onEdit, onDelete }) => {
+    const insets = useSafeAreaInsets();
+    if (!visible || !memory) return null;
+
+    const parts = formatDateParts(memory.capturedAt);
+    const isSpecialDate = normalizeEntryType(memory.entryType) === 'special_date';
+
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
+        >
+            <View style={styles.optionsModalRoot}>
+                <Pressable style={styles.optionsModalBackdrop} onPress={onClose} />
+                <View style={[styles.optionsSheet, { paddingBottom: insets.bottom + 16 }]}>
+                    <View style={styles.optionsSheetHandle} />
+                    <View style={styles.optionsSheetHeader}>
+                        <Text style={styles.optionsSheetTitle} numberOfLines={1}>
+                            {memory.title || (isSpecialDate ? translateUiText("Special Date") : translateUiText("Memory"))}
+                        </Text>
+                        <Text style={styles.optionsSheetSubtitle}>{parts.line}</Text>
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.optionsActionRow}
+                        onPress={() => {
+                            onClose();
+                            onEdit(memory);
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.optionsActionIconWrap}>
+                            <Pencil color="#302832" size={18} strokeWidth={2.2} />
+                        </View>
+                        <Text style={styles.optionsActionText}>{translateUiText("Edit")}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.optionsActionRow, styles.optionsDeleteRow]}
+                        onPress={() => {
+                            onClose();
+                            onDelete(memory);
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <View style={[styles.optionsActionIconWrap, styles.optionsDeleteIconWrap]}>
+                            <Trash2 color="#E55875" size={18} strokeWidth={2.2} />
+                        </View>
+                        <Text style={[styles.optionsActionText, styles.optionsDeleteText]}>
+                            {translateUiText("Delete")}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.optionsCancelButton}
+                        onPress={onClose}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.optionsCancelText}>{translateUiText("Cancel")}</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
     );
 };
 
@@ -569,6 +698,7 @@ const TimelineDatePicker = ({ value, onChange, onClose }) => {
 
 const AddMemoryModal = ({
     visible,
+    isEditing = false,
     entryType,
     draft,
     iconKey,
@@ -594,6 +724,14 @@ const AddMemoryModal = ({
     const typeConfig = TIMELINE_TYPES[normalizedType] || TIMELINE_TYPES.memory;
     const isSpecialDate = normalizedType === 'special_date';
 
+    const modalTitle = isEditing
+        ? (isSpecialDate ? translateUiText("Edit special date") : translateUiText("Edit memory"))
+        : typeConfig.modalTitle;
+
+    const saveLabel = isEditing
+        ? translateUiText("Save changes")
+        : typeConfig.saveLabel;
+
     const openDatePicker = () => {
         Keyboard.dismiss();
         setShowPicker(true);
@@ -610,14 +748,14 @@ const AddMemoryModal = ({
             >
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    style={{ flex: 1 }}
+                    style={styles.keyboardAvoiding}
                 >
                     <View style={[styles.pageHeader, { paddingTop: insets.top + 10 }]}>
                         <TouchableOpacity style={styles.pageHeaderBack} onPress={onClose} disabled={isSaving}>
                             <ChevronLeft color="#302832" size={24} strokeWidth={2} />
                         </TouchableOpacity>
-                        <Text style={styles.pageHeaderTitle}>{typeConfig.modalTitle}</Text>
-                        <View style={{ width: 44 }} />
+                        <Text style={styles.pageHeaderTitle}>{modalTitle}</Text>
+                        <View style={styles.pageHeaderSpacer} />
                     </View>
 
                     <ScrollView
@@ -641,57 +779,43 @@ const AddMemoryModal = ({
                         </View>
                     )}
 
-                    {isSpecialDate && !draft?.uri ? (
-                        <View style={styles.momentPreviewCard}>
+                    <View style={styles.titlePhotoRow}>
+                        <TouchableOpacity
+                            style={styles.inlineEmojiButton}
+                            onPress={() => {
+                                Keyboard.dismiss();
+                                setShowIconPicker((current) => !current);
+                            }}
+                            activeOpacity={0.86}
+                            disabled={isSaving}
+                        >
+                            <Text style={styles.inlineEmojiGlyph}>{getSpecialDateIcon(iconKey).glyph}</Text>
+                            <View style={styles.inlineEmojiChevronBadge}>
+                                <ChevronDown color="#B56F7E" size={12} strokeWidth={2.5} />
+                            </View>
+                        </TouchableOpacity>
+
+                        <TextInput
+                            style={[styles.titleInput, styles.titleInputInRow]}
+                            value={title}
+                            onChangeText={(value) => setTitle(value.slice(0, TITLE_LIMIT))}
+                            placeholder={typeConfig.placeholderTitle}
+                            placeholderTextColor="#B09AA4"
+                            maxLength={TITLE_LIMIT}
+                            editable={!isSaving}
+                        />
+
+                        {!draft?.uri && (
                             <TouchableOpacity
-                                style={styles.momentPreviewIconButton}
-                                onPress={() => {
-                                    Keyboard.dismiss();
-                                    setShowIconPicker((current) => !current);
-                                }}
-                                activeOpacity={0.86}
+                                style={styles.photoIconButton}
+                                onPress={onPickPhoto}
+                                activeOpacity={0.88}
                                 disabled={isSaving}
                             >
-                                <View style={styles.momentPreviewIcon}>
-                                    <Text style={styles.momentPreviewGlyph}>{getSpecialDateIcon(iconKey).glyph}</Text>
-                                </View>
-                                <View style={styles.iconChevronBadge}>
-                                    <ChevronDown color="#B56F7E" size={14} strokeWidth={2.5} />
-                                </View>
+                                <ImagePlus color="#C96F81" size={22} strokeWidth={1.9} />
                             </TouchableOpacity>
-                            <View style={styles.momentPreviewCopy}>
-                                <Text style={styles.momentPreviewKicker}>{typeConfig.modalTitle}</Text>
-                                <TextInput
-                                    style={styles.momentPreviewInput}
-                                    value={title}
-                                    onChangeText={(value) => setTitle(value.slice(0, TITLE_LIMIT))}
-                                    placeholder={typeConfig.placeholderTitle}
-                                    placeholderTextColor="#B09AA4"
-                                    maxLength={TITLE_LIMIT}
-                                    editable={!isSaving}
-                                />
-                            </View>
-                        </View>
-                    ) : (
-                        <>
-                            <View style={styles.titlePhotoRow}>
-                                {!draft?.uri && (
-                                    <TouchableOpacity style={styles.photoIconButton} onPress={onPickPhoto} activeOpacity={0.88} disabled={isSaving}>
-                                        <ImagePlus color="#C96F81" size={22} strokeWidth={1.9} />
-                                    </TouchableOpacity>
-                                )}
-                                <TextInput
-                                    style={[styles.titleInput, styles.titleInputInRow]}
-                                    value={title}
-                                    onChangeText={(value) => setTitle(value.slice(0, TITLE_LIMIT))}
-                                    placeholder={typeConfig.placeholderTitle}
-                                    placeholderTextColor="#B09AA4"
-                                    maxLength={TITLE_LIMIT}
-                                    editable={!isSaving}
-                                />
-                            </View>
-                        </>
-                    )}
+                        )}
+                    </View>
 
                     <TouchableOpacity
                         style={styles.dateChip}
@@ -722,7 +846,7 @@ const AddMemoryModal = ({
                         {isSaving ? (
                             <ActivityIndicator color="#FFFFFF" size="small" />
                         ) : (
-                            <Text style={styles.saveButtonText}>{typeConfig.saveLabel}</Text>
+                            <Text style={styles.saveButtonText}>{saveLabel}</Text>
                         )}
                     </TouchableOpacity>
                 </ScrollView>
@@ -787,6 +911,7 @@ const AddMemoryModal = ({
 
 const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const insets = useSafeAreaInsets();
+    const socket = useSocket();
     const fabProgress = useRef(new Animated.Value(0)).current;
     const loadedUserRef = useRef(null);
     const imageUploadJobRef = useRef(null);
@@ -807,6 +932,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const [capturedAt, setCapturedAtState] = useState(new Date());
     const [capturedAtSource, setCapturedAtSource] = useState('upload_time');
     const [isSaving, setIsSaving] = useState(false);
+    const [editingMemory, setEditingMemory] = useState(null);
+    const [optionsMemory, setOptionsMemory] = useState(null);
+    const [lightboxImage, setLightboxImage] = useState(null);
+    const [sortOrder, setSortOrder] = useState('asc'); // 'asc' = oldest first (scrapbook), 'desc' = newest first
 
     useEffect(() => {
         Animated.spring(fabProgress, {
@@ -860,6 +989,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         }
     }, [cursor, hasMore, hasPartner, isLoading, userId]);
 
+    // Initial load and partner change effect
     useEffect(() => {
         if (!hasPartner) {
             loadedUserRef.current = null;
@@ -880,7 +1010,51 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         loadMemories({ refresh: true });
     }, [hasPartner, loadMemories, userId]);
 
+    // Real-time Socket.io synchronization with partner
+    useEffect(() => {
+        if (!socket || !hasPartner || !userId) return;
+
+        const onMemoryCreated = (newMemory) => {
+            if (!newMemory?._id) return;
+            setMemories((prev) => {
+                if (prev.some((m) => m._id === newMemory._id)) return prev;
+                const next = mergeMemories([newMemory], prev);
+                writeCachedMemories(userId, next);
+                return next;
+            });
+        };
+
+        const onMemoryUpdated = (updated) => {
+            if (!updated?._id) return;
+            setMemories((prev) => {
+                const next = prev.map((m) => (m._id === updated._id ? { ...m, ...updated } : m));
+                writeCachedMemories(userId, next);
+                return next;
+            });
+        };
+
+        const onMemoryDeleted = ({ memoryId }) => {
+            if (!memoryId) return;
+            setMemories((prev) => {
+                const next = prev.filter((m) => m._id !== memoryId);
+                writeCachedMemories(userId, next);
+                return next;
+            });
+        };
+
+        socket.on('memory:created', onMemoryCreated);
+        socket.on('memory:updated', onMemoryUpdated);
+        socket.on('memory:deleted', onMemoryDeleted);
+
+        return () => {
+            socket.off('memory:created', onMemoryCreated);
+            socket.off('memory:updated', onMemoryUpdated);
+            socket.off('memory:deleted', onMemoryDeleted);
+        };
+    }, [hasPartner, socket, userId]);
+
     const resetDraft = useCallback(() => {
+        setEditingMemory(null);
         setDraft(null);
         setIconKey('ring');
         setTitle('');
@@ -902,6 +1076,58 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         setIsActionMenuOpen(false);
         setModalVisible(true);
     }, [hasPartner, onLinkPartner, resetDraft]);
+
+    const handleStartEdit = useCallback((memory) => {
+        setEditingMemory(memory);
+        setEntryType(memory.entryType || 'memory');
+        setIconKey(memory.iconKey || 'ring');
+        setTitle(memory.title || '');
+        setCaption(memory.caption || '');
+        setCapturedAtState(new Date(memory.capturedAt));
+        setCapturedAtSource(memory.capturedAtSource || 'manual');
+        if (memory.imageUrl) {
+            setDraft({
+                uri: memory.imageUrl,
+                width: memory.width,
+                height: memory.height,
+                isExisting: true,
+            });
+        } else {
+            setDraft(null);
+        }
+        setModalVisible(true);
+    }, []);
+
+    const handleDeleteMemory = useCallback((memory) => {
+        if (!memory?._id || !userId) return;
+
+        Alert.alert(
+            translateUiText("Delete Timeline Entry"),
+            translateUiText("Are you sure you want to remove this entry?"),
+            [
+                { text: translateUiText("Cancel"), style: "cancel" },
+                {
+                    text: translateUiText("Delete"),
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await deleteMemory({ userId, memoryId: memory._id });
+                            setMemories((prev) => {
+                                const next = prev.filter((m) => m._id !== memory._id);
+                                writeCachedMemories(userId, next);
+                                return next;
+                            });
+                        } catch (error) {
+                            Alert.alert(
+                                translateUiText("Could not delete"),
+                                translateUiText(error.message || "Please try again."),
+                            );
+                        }
+                    },
+                },
+            ],
+        );
+    }, [userId]);
 
     const toggleActionMenu = useCallback(() => {
         if (!hasPartner) {
@@ -996,27 +1222,52 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                     });
                 }
                 uploaded = await uploadMemoryImage(preparedImage, uploadTarget);
+            } else if (draft?.uri && draft?.isExisting) {
+                uploaded = { imageUrl: draft.uri, fileKey: editingMemory?.fileKey };
             }
 
-            const saved = await createMemory({
-                userId,
-                entryType: normalizedType,
-                iconKey,
-                title: safeTitle,
-                imageUrl: uploaded.imageUrl,
-                fileKey: uploaded.fileKey,
-                width: preparedImage?.width,
-                height: preparedImage?.height,
-                capturedAt: capturedAt.toISOString(),
-                capturedAtSource,
-                caption: safeCaption,
-            });
+            if (editingMemory) {
+                const updated = await updateMemory({
+                    memoryId: editingMemory._id,
+                    userId,
+                    entryType: normalizedType,
+                    iconKey,
+                    title: safeTitle,
+                    imageUrl: draft?.uri ? (uploaded.imageUrl || editingMemory.imageUrl) : null,
+                    fileKey: draft?.uri ? (uploaded.fileKey || editingMemory.fileKey) : null,
+                    width: draft?.uri ? (preparedImage?.width || editingMemory.width) : null,
+                    height: draft?.uri ? (preparedImage?.height || editingMemory.height) : null,
+                    capturedAt: capturedAt.toISOString(),
+                    caption: safeCaption,
+                });
 
-            setMemories((prev) => {
-                const next = mergeMemories([saved], prev);
-                writeCachedMemories(userId, next);
-                return next;
-            });
+                setMemories((prev) => {
+                    const next = prev.map((m) => (m._id === updated._id ? { ...m, ...updated } : m));
+                    writeCachedMemories(userId, next);
+                    return next;
+                });
+            } else {
+                const saved = await createMemory({
+                    userId,
+                    entryType: normalizedType,
+                    iconKey,
+                    title: safeTitle,
+                    imageUrl: uploaded.imageUrl,
+                    fileKey: uploaded.fileKey,
+                    width: preparedImage?.width,
+                    height: preparedImage?.height,
+                    capturedAt: capturedAt.toISOString(),
+                    capturedAtSource,
+                    caption: safeCaption,
+                });
+
+                setMemories((prev) => {
+                    const next = mergeMemories([saved], prev);
+                    writeCachedMemories(userId, next);
+                    return next;
+                });
+            }
+
             setModalVisible(false);
             resetDraft();
         } catch (error) {
@@ -1028,7 +1279,12 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             saveInFlightRef.current = false;
             setIsSaving(false);
         }
-    }, [caption, capturedAt, capturedAtSource, draft, entryType, iconKey, resetDraft, title, userId]);
+    }, [caption, capturedAt, capturedAtSource, draft, editingMemory, entryType, iconKey, resetDraft, title, userId]);
+
+    const displayedMemories = useMemo(() => {
+        if (sortOrder === 'asc') return memories;
+        return [...memories].reverse();
+    }, [memories, sortOrder]);
 
     const androidStatusBarHeight = StatusBar.currentHeight || 0;
     const topPadding = Platform.OS === 'android'
@@ -1059,14 +1315,34 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             />
 
             <Animated.FlatList
-                data={memories}
+                data={displayedMemories}
                 keyExtractor={(item) => item._id}
-                renderItem={({ item }) => <MemoryCard item={item} />}
+                renderItem={({ item }) => (
+                    <MemoryCard
+                        item={item}
+                        onOptionsPress={(target) => setOptionsMemory(target)}
+                        onImagePress={(photoData) => setLightboxImage(photoData)}
+                    />
+                )}
                 contentContainerStyle={[styles.listContent, contentPadding, memories.length === 0 && styles.emptyListContent]}
                 showsVerticalScrollIndicator={false}
                 ListHeaderComponent={(
                     <View style={styles.header}>
-                        <Text style={styles.title}>{translateUiText("Our Timeline")}</Text>
+                        <View style={styles.headerRow}>
+                            <Text style={styles.title}>{translateUiText("Our Timeline")}</Text>
+                            {memories.length > 1 && (
+                                <TouchableOpacity
+                                    style={styles.sortToggle}
+                                    onPress={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                                    activeOpacity={0.75}
+                                >
+                                    <ArrowUpDown color="#C96F81" size={13} strokeWidth={2.4} />
+                                    <Text style={styles.sortToggleText}>
+                                        {sortOrder === 'asc' ? translateUiText("Oldest First") : translateUiText("Newest First")}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
                 )}
                 onEndReachedThreshold={0.45}
@@ -1100,6 +1376,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
 
             <AddMemoryModal
                 visible={modalVisible}
+                isEditing={Boolean(editingMemory)}
                 entryType={entryType}
                 draft={draft}
                 iconKey={iconKey}
@@ -1124,6 +1401,20 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                     imageUploadJobRef.current = null;
                     setDraft(null);
                 }}
+            />
+
+            <MemoryOptionsModal
+                visible={Boolean(optionsMemory)}
+                memory={optionsMemory}
+                onClose={() => setOptionsMemory(null)}
+                onEdit={handleStartEdit}
+                onDelete={handleDeleteMemory}
+            />
+
+            <PhotoLightboxModal
+                visible={Boolean(lightboxImage)}
+                data={lightboxImage}
+                onClose={() => setLightboxImage(null)}
             />
 
             <TimelineFab
@@ -1166,6 +1457,12 @@ const styles = StyleSheet.create({
         paddingRight: 4,
         paddingBottom: 10,
     },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingRight: 6,
+    },
     title: {
         fontFamily: fontFamily.extraBold,
         fontSize: 32,
@@ -1173,6 +1470,24 @@ const styles = StyleSheet.create({
         color: '#202B5E',
         letterSpacing: -0.5,
         marginBottom: 6,
+    },
+    sortToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#F1DED8',
+        ...cardShadow,
+    },
+    sortToggleText: {
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        fontSize: 12,
+        color: '#C96F81',
     },
     listContent: {
         paddingLeft: 6,
@@ -1236,6 +1551,29 @@ const styles = StyleSheet.create({
     },
     memoryContent: {
         flex: 1,
+    },
+    photoContainer: {
+        position: 'relative',
+        width: '100%',
+    },
+    cardOptionsBadge: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(42, 31, 38, 0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
+    },
+    cardOptionsButtonTextCard: {
+        padding: 4,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'flex-start',
     },
     photoWrap: {
         width: '100%',
@@ -1485,6 +1823,12 @@ const styles = StyleSheet.create({
     pageRoot: {
         flex: 1,
     },
+    keyboardAvoiding: {
+        flex: 1,
+    },
+    pageHeaderSpacer: {
+        width: 44,
+    },
     pageHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1518,90 +1862,6 @@ const styles = StyleSheet.create({
     pageScrollContent: {
         paddingHorizontal: 18,
         paddingTop: 16,
-    },
-    sheet: {
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-        backgroundColor: '#FFF9F5',
-        paddingHorizontal: 18,
-        paddingTop: 10,
-    },
-    sheetHandle: {
-        alignSelf: 'center',
-        width: 42,
-        height: 5,
-        borderRadius: 3,
-        backgroundColor: '#E7D2CC',
-        marginBottom: 14,
-    },
-    sheetHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-    },
-    sheetTitle: {
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
-        color: '#302832',
-        fontSize: 24,
-    },
-    sheetClose: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-    },
-    iconPicker: {
-        borderRadius: 20,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
-        padding: 12,
-        marginBottom: 12,
-    },
-    iconPickerHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    iconPickerTitle: {
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
-        color: '#332B35',
-        fontSize: 14,
-    },
-    iconPickerHint: {
-        fontFamily: fontFamily.bold,
-        fontWeight: fontWeight('700'),
-        color: '#A58B95',
-        fontSize: 11,
-    },
-    iconGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    iconOption: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFF8F4',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
-    },
-    iconOptionActive: {
-        backgroundColor: '#EAF5EE',
-        borderColor: '#8DB5A5',
-    },
-    iconOptionGlyph: {
-        fontSize: 21,
-        lineHeight: 25,
     },
     previewButton: {
         height: 270,
@@ -1709,75 +1969,57 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
-    previewEmpty: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-    },
-    previewEmptyText: {
-        fontFamily: fontFamily.bold,
-        fontWeight: fontWeight('700'),
-        color: '#A37C89',
-        fontSize: 15,
-    },
-    optionalPhotoButton: {
-        height: 48,
-        borderRadius: 24,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
-        marginBottom: 12,
-    },
-    optionalPhotoText: {
-        fontFamily: fontFamily.bold,
-        fontWeight: fontWeight('700'),
-        color: '#C96F81',
-        fontSize: 14,
-    },
     titlePhotoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        marginBottom: 12,
+        gap: 10,
+        marginTop: 12,
+    },
+    inlineEmojiButton: {
+        width: 54,
+        height: 54,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#F1DED8',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+    },
+    inlineEmojiGlyph: {
+        fontSize: 26,
+        lineHeight: 30,
+    },
+    inlineEmojiChevronBadge: {
+        position: 'absolute',
+        right: -2,
+        bottom: -2,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#F1DED8',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#C96F81',
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 0,
     },
     photoIconButton: {
-        width: 58,
-        height: 58,
-        borderRadius: 29,
+        width: 54,
+        height: 54,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#F1DED8',
-    },
-    changePhotoButton: {
-        alignSelf: 'flex-start',
-        minHeight: 38,
-        borderRadius: 19,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 7,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
-        paddingHorizontal: 14,
-        marginTop: 10,
-        marginBottom: 12,
-    },
-    changePhotoText: {
-        fontFamily: fontFamily.bold,
-        fontWeight: fontWeight('700'),
-        color: '#C96F81',
-        fontSize: 13,
     },
     titleInput: {
-        height: 52,
+        height: 54,
         borderRadius: 18,
         backgroundColor: '#FFFFFF',
         paddingHorizontal: 15,
@@ -1786,108 +2028,21 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
         color: '#302832',
-        fontSize: 17,
-        marginTop: 12,
+        fontSize: 16,
     },
     titleInputInRow: {
         flex: 1,
-        height: 58,
+        height: 54,
         marginTop: 0,
-    },
-    momentPreviewCard: {
-        borderRadius: 20,
-        padding: 18,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 18,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
-    },
-    momentPreviewIconButton: {
-        width: 78,
-        height: 78,
-    },
-    momentPreviewIcon: {
-        width: 74,
-        height: 74,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    momentPreviewGlyph: {
-        fontSize: 48,
-        lineHeight: 54,
-    },
-    iconChevronBadge: {
-        position: 'absolute',
-        right: -1,
-        bottom: 1,
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
-        shadowColor: '#C96F81',
-        shadowOpacity: 0.12,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 0,
-    },
-    momentPreviewCopy: {
-        flex: 1,
-    },
-    momentPreviewKicker: {
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
-        color: '#C96F81',
-        fontSize: 10,
-        marginBottom: 2,
-        textTransform: 'uppercase',
-    },
-    momentPreviewTitle: {
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
-        color: '#332B35',
-        fontSize: 18,
-    },
-    momentPreviewInput: {
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
-        color: '#332B35',
-        fontSize: 18,
-        padding: 0,
-        margin: 0,
-        height: 32,
-    },
-    compactIconPicker: {
-        marginTop: 10,
-        borderRadius: 18,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
-        padding: 10,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
     },
     dateChip: {
         marginTop: 12,
         borderRadius: 18,
         backgroundColor: '#FFFFFF',
         paddingHorizontal: 14,
-        paddingVertical: 11,
+        paddingVertical: 12,
         borderWidth: 1,
         borderColor: '#F1DED8',
-    },
-    dateChipSource: {
-        fontFamily: fontFamily.bold,
-        fontWeight: fontWeight('700'),
-        color: '#8DB5A5',
-        fontSize: 12,
-        marginBottom: 2,
     },
     dateChipText: {
         fontFamily: fontFamily.extraBold,
@@ -1957,136 +2112,150 @@ const styles = StyleSheet.create({
         backgroundColor: '#E5D0C9',
         marginBottom: 16,
     },
-    calendarHeader: {
+    // Lightbox Modal Styles
+    lightboxRoot: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 12, 18, 0.96)',
+    },
+    lightboxBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    lightboxHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 18,
+        paddingHorizontal: 20,
+        paddingBottom: 14,
+        zIndex: 10,
     },
-    calendarNavButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
-    },
-    calendarTitleWrap: {
-        alignItems: 'center',
-    },
-    calendarTitle: {
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
-        color: '#302832',
-        fontSize: 24,
-    },
-    calendarTodayText: {
-        marginTop: 2,
-        fontFamily: fontFamily.bold,
-        fontWeight: fontWeight('700'),
-        color: '#C96F81',
-        fontSize: 12,
-    },
-    weekRow: {
-        flexDirection: 'row',
-        marginBottom: 8,
-    },
-    weekdayText: {
+    lightboxHeaderCopy: {
         flex: 1,
-        textAlign: 'center',
+        marginRight: 16,
+    },
+    lightboxTitle: {
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
-        color: '#A38E96',
-        fontSize: 12,
+        fontSize: 18,
+        color: '#FFFFFF',
     },
-    calendarGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    calendarDayCell: {
-        width: `${100 / 7}%`,
-        aspectRatio: 1.05,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    calendarDayCircle: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    calendarDayCircleSelected: {
-        backgroundColor: '#FFE0E8',
-        borderWidth: 1,
-        borderColor: '#FFB3C1',
-    },
-    calendarDayText: {
+    lightboxDate: {
         fontFamily: fontFamily.medium,
         fontWeight: fontWeight('500'),
-        color: '#332B35',
-        fontSize: 20,
+        fontSize: 13,
+        color: '#D4B8C1',
+        marginTop: 2,
     },
-    calendarTodayDayText: {
-        color: '#C96F81',
+    lightboxCloseBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    lightboxImageWrap: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 8,
+        paddingBottom: 30,
+    },
+    lightboxImage: {
+        width: '100%',
+        height: '100%',
+    },
+
+    // Options Modal Styles
+    optionsModalRoot: {
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+    optionsModalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(42, 31, 38, 0.45)',
+    },
+    optionsSheet: {
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        backgroundColor: '#FFF9F5',
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        borderWidth: 1,
+        borderColor: '#F1DED8',
+    },
+    optionsSheetHandle: {
+        alignSelf: 'center',
+        width: 40,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: '#E7D2CC',
+        marginBottom: 16,
+    },
+    optionsSheetHeader: {
+        marginBottom: 12,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F2DED8',
+    },
+    optionsSheetTitle: {
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
+        fontSize: 18,
+        color: '#302832',
     },
-    calendarDayTextSelected: {
-        color: '#C96F81',
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
+    optionsSheetSubtitle: {
+        fontFamily: fontFamily.medium,
+        fontWeight: fontWeight('500'),
+        fontSize: 13,
+        color: '#9C858D',
+        marginTop: 3,
     },
-    timePanel: {
+    optionsActionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        paddingVertical: 14,
+        borderRadius: 16,
+        paddingHorizontal: 12,
+    },
+    optionsActionIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F3E7E2',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    optionsActionText: {
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        fontSize: 16,
+        color: '#302832',
+    },
+    optionsDeleteRow: {
+        marginTop: 4,
+    },
+    optionsDeleteIconWrap: {
+        backgroundColor: '#FFE8ED',
+    },
+    optionsDeleteText: {
+        color: '#E55875',
+    },
+    optionsCancelButton: {
         marginTop: 14,
-        borderRadius: 22,
-        padding: 14,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#F1DED8',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-    },
-    timePanelLabel: {
-        fontFamily: fontFamily.bold,
-        fontWeight: fontWeight('700'),
-        color: '#A38E96',
-        fontSize: 12,
-    },
-    timePanelValue: {
-        marginTop: 2,
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
-        color: '#302832',
-        fontSize: 22,
-    },
-    timeControls: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    timeControlGroup: {
-        alignItems: 'center',
-        gap: 4,
-    },
-    timeStepButton: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFF8F4',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
     },
-    timeStepLabel: {
+    optionsCancelText: {
         fontFamily: fontFamily.bold,
         fontWeight: fontWeight('700'),
-        color: '#8E7982',
-        fontSize: 10,
+        fontSize: 15,
+        color: '#6F5C65',
     },
     calendarDoneButton: {
         height: 50,

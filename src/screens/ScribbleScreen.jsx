@@ -2055,7 +2055,7 @@ export const ScribbleScreen = ({
                                 colors={
                                     hasPendingScribbleChanges
                                         ? ['#FF5F78', '#FF3F5C']
-                                        : ['#E5D9E0', '#D5C8D0']
+                                        : ['rgba(255, 95, 120, 0.4)', 'rgba(255, 63, 92, 0.4)']
                                 }
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
@@ -2070,7 +2070,7 @@ export const ScribbleScreen = ({
                         </TouchableOpacity>
                     ) : (
                         <Button
-                            title={translateUiText("Link Partner to Send 🔗")}
+                            title={translateUiText("Link Partner to Send")}
                             onPress={onLinkPartner}
                             variant="primary"
                             size="xl"
@@ -3090,7 +3090,7 @@ const styles = StyleSheet.create({
         elevation: 0,
     },
     scribbleSendButtonDisabled: {
-        backgroundColor: '#D5C8D0',
+        backgroundColor: 'transparent',
         shadowOpacity: 0,
         elevation: 0,
     },
@@ -3120,7 +3120,7 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
     },
     scribbleSendTextIdle: {
-        color: colors.textSecondary,
+        color: 'rgba(255, 255, 255, 0.85)',
     },
     connectionErrorText: {
         fontSize: 13,

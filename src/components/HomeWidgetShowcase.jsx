@@ -241,6 +241,7 @@ const HomeWidgetShowcase = ({
     onOpenPhotoCapture,
     isLocationSetup = false,
     onDistancePress,
+    onViewAllPress,
 }) => (
     <View style={styles.widgetShowcaseSection}>
         <ScrollView
@@ -270,6 +271,38 @@ const HomeWidgetShowcase = ({
             <TouchableOpacity activeOpacity={0.92} onPress={onPress} style={styles.widgetShowcasePressable}>
                 <View style={[styles.widgetShowcaseCardShell, styles.timeShowcaseShadow]}>
                     <TimeTogetherShowcaseCard relationshipStartDate={relationshipStartDate} daysTogether={daysTogether} />
+                </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+                activeOpacity={0.92}
+                onPress={onViewAllPress || onPress}
+                style={styles.widgetShowcasePressable}
+                accessibilityRole="button"
+                accessibilityLabel={translateUiText("View all widgets")}
+            >
+                <View style={[styles.widgetShowcaseCardShell, styles.viewAllShowcaseShadow]}>
+                    <LinearGradient
+                        colors={['#FFF5FA', '#F6EFFF', '#ECE7FF']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.widgetShowcaseCard, styles.viewAllShowcaseCard]}
+                    >
+                        <View style={styles.viewAllIconCircle}>
+                            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M4 6a2 2 0 012-2h3a2 2 0 012 2v3a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h3a2 2 0 012 2v3a2 2 0 01-2 2h-3a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h3a2 2 0 012 2v3a2 2 0 01-2 2H6a2 2 0 01-2-2v-3zM14 16a2 2 0 012-2h3a2 2 0 012 2v3a2 2 0 01-2 2h-3a2 2 0 01-2-2v-3z"
+                                    stroke="#7867F6"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
+                        </View>
+                        <View style={styles.viewAllCardBody}>
+                            <ShowcaseText style={styles.viewAllCardTitle}>{translateUiText("View all")}</ShowcaseText>
+                            <ShowcaseText style={styles.viewAllCardSubtitle}>{translateUiText("Widgets")}</ShowcaseText>
+                        </View>
+                    </LinearGradient>
                 </View>
             </TouchableOpacity>
         </ScrollView>
@@ -334,6 +367,49 @@ const styles = StyleSheet.create({
     },
     timeShowcaseShadow: {
         shadowColor: '#FF9FBE',
+    },
+    viewAllShowcaseShadow: {
+        ...cardShadow,
+        shadowColor: '#C4A8FF',
+    },
+    viewAllShowcaseCard: {
+        backgroundColor: '#F6EFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 14,
+    },
+    viewAllIconCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+        shadowColor: '#7867F6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    viewAllCardBody: {
+        alignItems: 'center',
+    },
+    viewAllCardTitle: {
+        color: '#171B44',
+        fontSize: 14,
+        fontWeight: fontWeight('800'),
+        fontFamily: fontFamily.bold,
+        textAlign: 'center',
+    },
+    viewAllCardSubtitle: {
+        color: '#8A7A9E',
+        fontSize: 11,
+        fontWeight: fontWeight('600'),
+        fontFamily: fontFamily.medium,
+        marginTop: 2,
+        textAlign: 'center',
     },
     widgetShowcaseTitle: {
         color: '#FF758F',

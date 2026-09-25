@@ -1,7 +1,7 @@
 jest.mock('../../constants/Api', () => ({ API_BASE: 'https://example.test' }));
 jest.mock('../../utils/apiFetch', () => ({ apiFetch: jest.fn() }));
 
-import { QuestionsV2Api } from '../questionsV2Api';
+import { QuestionChatsV2Api, QuestionsV2Api } from '../questionsV2Api';
 import { apiFetch } from '../../utils/apiFetch';
 
 const successfulResponse = (data = {}) => ({
@@ -43,5 +43,29 @@ describe('QuestionsV2Api.submitAnswer', () => {
 
         const [, options] = apiFetch.mock.calls[0];
         expect(JSON.parse(options.body)).not.toHaveProperty('answerSessionId');
+    });
+});
+
+describe('QuestionChatsV2Api.getChats', () => {
+    beforeEach(() => {
+        apiFetch.mockReset();
+        apiFetch.mockResolvedValue(successfulResponse({ chats: [] }));
+    });
+
+    test('builds query with only userId when no options passed (backward compatible)', async () => {
+        await QuestionChatsV2Api.getChats('user-1');
+
+        expect(apiFetch).toHaveBeenCalledTimes(1);
+        const [url] = apiFetch.mock.calls[0];
+        expect(url).toBe('https://example.test/api/v2/question-chats?userId=user-1');
+    });
+
+    test('includes hasUserMessages query param when requested', async () => {
+        await QuestionChatsV2Api.getChats('user-1', { hasUserMessages: true });
+
+        expect(apiFetch).toHaveBeenCalledTimes(1);
+        const [url] = apiFetch.mock.calls[0];
+        expect(url).toContain('userId=user-1');
+        expect(url).toContain('hasUserMessages=true');
     });
 });

@@ -1157,6 +1157,7 @@ export const MainTabNavigator = ({
                     duelBadgeCount={duelBadgeCount}
                     onNotificationPress={() => setIsNotificationVisible(true)}
                     onWidgetsPress={() => openWidgetSheet('time')}
+                    onAllWidgetsPress={() => setCurrentTab('widgetsLibrary')}
                     onVideoCallPress={handleCallPress}
                     partnerOnline={partnerOnline}
                     partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
