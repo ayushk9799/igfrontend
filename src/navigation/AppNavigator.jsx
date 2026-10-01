@@ -16,6 +16,7 @@ import HomeScreen from '../screens/HomeScreen';
 import MoodScreen from '../screens/MoodScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import QuestionsScreen from '../screens/QuestionsScreen';
+import AnswerSummaryScreen from '../screens/AnswerSummaryScreen';
 import LikelyToQuestionScreen from '../screens/LikelyToQuestionScreen';
 import NeverHaveIEverScreen from '../screens/NeverHaveIEverScreen';
 import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
@@ -197,6 +198,7 @@ export const AppNavigator = () => {
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
     const [selectedCategory, setSelectedCategory] = useState(null); // Track selected question category
     const [selectedChat, setSelectedChat] = useState(null); // Track selected chat for ChatScreen
+    const [selectedDailySummaryDate, setSelectedDailySummaryDate] = useState(null); // Track date for AnswerSummaryScreen
     const [selectedQuestionV2Chat, setSelectedQuestionV2Chat] = useState(null);
     const [pendingQuestionSetRoute, setPendingQuestionSetRoute] = useState(null);
     const [homeInitialTab, setHomeInitialTab] = useState(null); // Track which tab to open in MainTabNavigator
@@ -1837,6 +1839,11 @@ export const AppNavigator = () => {
             return;
         }
 
+        if (screen === 'dailyChallenge') {
+            setHomeInitialTab('dailyChallenge');
+            screen = 'home';
+        }
+
         if (currentScreen === 'liveChat' && screen !== 'liveChat') {
             clearLiveChatActive();
         }
@@ -2692,6 +2699,13 @@ export const AppNavigator = () => {
                             if (category) {
                                 // Handle chat navigation from ChatListScreen
                                 if (category.type === 'chat' && category.chat) {
+                                    if (category.chat.questionSource === 'dailychallenge') {
+                                        const rawDate = category.chat.date
+                                            || (category.chat.createdAt ? new Date(category.chat.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+                                        setSelectedDailySummaryDate(rawDate);
+                                        navigate('dailyRitualSummary');
+                                        return;
+                                    }
                                     setSelectedChat(category.chat);
                                     navigate('chat');
                                     return;
@@ -2967,6 +2981,29 @@ export const AppNavigator = () => {
                                 gameData: selectedWordSearch,
                                 partnerId: userData.partnerId,
                                 partnerName: userData.partnerUsername || 'Partner',
+                            }
+                        }}
+                    />
+                );
+
+            case 'dailyRitualSummary':
+                return (
+                    <AnswerSummaryScreen
+                        date={selectedDailySummaryDate || new Date().toISOString().split('T')[0]}
+                        userId={userData?.id || userData?._id}
+                        partnerName={userData?.partnerUsername || 'Partner'}
+                        onStartDailyChallenge={() => {
+                            setHomeInitialTab('dailyChallenge');
+                            navigate('home');
+                        }}
+                        onBack={() => {
+                            setHomeInitialTab('chats');
+                            navigate('home');
+                        }}
+                        onOpenFullChat={(chat) => {
+                            if (chat) {
+                                setSelectedChat(chat);
+                                navigate('chat');
                             }
                         }}
                     />

@@ -3,6 +3,8 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
+    BackHandler,
+    FlatList,
     Image,
     Keyboard,
     KeyboardAvoidingView,
@@ -19,8 +21,14 @@ import {
     View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
+import {
+    BottomSheetBackdrop,
+    BottomSheetModal,
+    BottomSheetView,
+} from '@gorhom/bottom-sheet';
 import {
     ArrowUpDown,
     CalendarDays,
@@ -35,6 +43,7 @@ import {
     X,
 } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePicker as WheelDatePicker } from 'react-native-wheel-pick';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { colors } from '../theme';
 import { storage } from '../utils/authStorage';
@@ -65,7 +74,7 @@ const TIMELINE_TYPES = {
         label: "Special Date",
         modalTitle: 'Special date',
         saveLabel: 'Save date',
-        placeholderTitle: 'First met',
+        placeholderTitle: 'Name this special date',
         placeholderCaption: 'What made this date special?',
     },
     memory: {
@@ -166,26 +175,35 @@ const formatDateParts = (value) => {
     };
 };
 
-const cacheKeyForUser = (userId) => `memories:${userId}`;
+const cacheKeyForUser = (userId, order = 'asc') => `memories:${userId}:${order}`;
 
-const readCachedMemories = (userId) => {
+const readCachedMemories = (userId, order = 'asc') => {
     try {
-        const raw = storage.getString(cacheKeyForUser(userId));
-        return raw ? JSON.parse(raw) : [];
+        const specific = storage.getString(cacheKeyForUser(userId, order));
+        if (specific) return JSON.parse(specific);
+        const legacy = storage.getString(`memories:${userId}`);
+        if (legacy) {
+            const parsed = JSON.parse(legacy);
+            return order === 'desc' ? [...parsed].reverse() : parsed;
+        }
+        return [];
     } catch {
         return [];
     }
 };
 
-const writeCachedMemories = (userId, memories) => {
+const writeCachedMemories = (userId, memories, order = 'asc') => {
     try {
-        storage.set(cacheKeyForUser(userId), JSON.stringify(memories.slice(0, CACHE_LIMIT)));
+        storage.set(cacheKeyForUser(userId, order), JSON.stringify(memories.slice(0, CACHE_LIMIT)));
+        if (order === 'asc') {
+            storage.set(`memories:${userId}`, JSON.stringify(memories.slice(0, CACHE_LIMIT)));
+        }
     } catch {
         // Cache is best-effort only.
     }
 };
 
-const mergeMemories = (current, incoming) => {
+const mergeMemories = (current, incoming, order = 'asc') => {
     const byId = new Map();
     [...current, ...incoming].forEach((memory) => {
         if (memory?._id) byId.set(memory._id, memory);
@@ -194,8 +212,11 @@ const mergeMemories = (current, incoming) => {
     return Array.from(byId.values()).sort((a, b) => {
         const aTime = new Date(a.capturedAt).getTime();
         const bTime = new Date(b.capturedAt).getTime();
-        if (aTime !== bTime) return aTime - bTime;
-        return String(a._id).localeCompare(String(b._id));
+        if (aTime !== bTime) {
+            return order === 'asc' ? aTime - bTime : bTime - aTime;
+        }
+        const idComp = String(a._id).localeCompare(String(b._id));
+        return order === 'asc' ? idComp : -idComp;
     });
 };
 
@@ -249,13 +270,17 @@ const MemoryImage = ({ uri, aspectRatio, onPress }) => {
     );
 };
 
-const MemoryCard = ({ item, onOptionsPress, onImagePress }) => {
+const MemoryCard = ({ item, isLast = false, onOptionsPress, onImagePress }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
     const parts = formatDateParts(item.capturedAt);
     const aspectRatio = getDisplayAspectRatio(item.width, item.height);
     const entryType = normalizeEntryType(item.entryType);
     const hasImage = Boolean(item.imageUrl);
     const isSpecialDate = entryType === 'special_date';
     const specialIcon = getSpecialDateIcon(item.iconKey);
+
+    const captionText = item.caption || '';
+    const hasLongCaption = captionText.length > 95 || (captionText.match(/\n/g) || []).length >= 2;
 
     return (
         <View style={styles.memoryRow}>
@@ -264,28 +289,62 @@ const MemoryCard = ({ item, onOptionsPress, onImagePress }) => {
                 <Text style={styles.dayText}>{parts.day}</Text>
                 <Text style={styles.yearText}>{parts.year}</Text>
                 <View style={styles.railDot} />
-                <View style={styles.railLine} />
+                {!isLast && <View style={styles.railLine} />}
             </View>
             <View style={styles.memoryContent}>
                 {hasImage ? (
-                    <View style={styles.photoContainer}>
-                        <MemoryImage
-                            uri={item.imageUrl}
-                            aspectRatio={aspectRatio}
-                            onPress={() => onImagePress?.({
-                                uri: item.imageUrl,
-                                title: item.title,
-                                dateLine: parts.line,
-                            })}
-                        />
-                        <TouchableOpacity
-                            style={styles.cardOptionsBadge}
-                            onPress={() => onOptionsPress?.(item)}
-                            activeOpacity={0.8}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <MoreVertical color="#FFFFFF" size={17} strokeWidth={2.2} />
-                        </TouchableOpacity>
+                    <View style={styles.photoCardWrapper}>
+                        <View style={styles.photoContainer}>
+                            <MemoryImage
+                                uri={item.imageUrl}
+                                aspectRatio={aspectRatio}
+                                onPress={() => onImagePress?.({
+                                    uri: item.imageUrl,
+                                    title: item.title,
+                                    dateLine: parts.line,
+                                })}
+                            />
+                            <TouchableOpacity
+                                style={styles.cardOptionsBadge}
+                                onPress={() => onOptionsPress?.(item)}
+                                activeOpacity={0.8}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <MoreVertical color="#FFFFFF" size={17} strokeWidth={2.2} />
+                            </TouchableOpacity>
+                        </View>
+                        {(item.title || item.caption) ? (
+                            <View style={styles.photoCardContent}>
+                                <View style={styles.captionTitleLayout}>
+                                    {isSpecialDate && (
+                                        <Text style={styles.specialDatePhotoEmoji}>{specialIcon.glyph}</Text>
+                                    )}
+                                    {!!item.title && <Text style={styles.photoTitleText}>{item.title}</Text>}
+                                </View>
+                                {!!item.caption && (
+                                    <View>
+                                        <Text
+                                            style={styles.captionText}
+                                            numberOfLines={isExpanded ? undefined : 3}
+                                        >
+                                            {item.caption}
+                                        </Text>
+                                        {hasLongCaption && (
+                                            <TouchableOpacity
+                                                style={styles.moreButton}
+                                                onPress={() => setIsExpanded((prev) => !prev)}
+                                                activeOpacity={0.7}
+                                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                            >
+                                                <Text style={styles.moreButtonText}>
+                                                    {isExpanded ? translateUiText('less') : translateUiText('...more')}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
+                            </View>
+                        ) : null}
                     </View>
                 ) : (
                     isSpecialDate ? (
@@ -300,7 +359,28 @@ const MemoryCard = ({ item, onOptionsPress, onImagePress }) => {
                                 <Text style={styles.specialDateCardEmoji}>{specialIcon.glyph}</Text>
                                 <View style={styles.specialDateCardCopy}>
                                     {!!item.title && <Text style={styles.specialDateCardTitle}>{item.title}</Text>}
-                                    {!!item.caption && <Text style={styles.specialDateCardCaption}>{item.caption}</Text>}
+                                    {!!item.caption && (
+                                        <View>
+                                            <Text
+                                                style={styles.specialDateCardCaption}
+                                                numberOfLines={isExpanded ? undefined : 3}
+                                            >
+                                                {item.caption}
+                                            </Text>
+                                            {hasLongCaption && (
+                                                <TouchableOpacity
+                                                    style={styles.moreButton}
+                                                    onPress={() => setIsExpanded((prev) => !prev)}
+                                                    activeOpacity={0.7}
+                                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                                >
+                                                    <Text style={styles.moreButtonTextInverted}>
+                                                        {isExpanded ? translateUiText('less') : translateUiText('...more')}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                    )}
                                 </View>
                                 <TouchableOpacity
                                     style={styles.cardOptionsButtonTextCard}
@@ -319,7 +399,28 @@ const MemoryCard = ({ item, onOptionsPress, onImagePress }) => {
                             </View>
                             <View style={styles.momentCopy}>
                                 {!!item.title && <Text style={styles.momentTitle}>{item.title}</Text>}
-                                {!!item.caption && <Text style={styles.momentCaption}>{item.caption}</Text>}
+                                {!!item.caption && (
+                                    <View>
+                                        <Text
+                                            style={styles.momentCaption}
+                                            numberOfLines={isExpanded ? undefined : 3}
+                                        >
+                                            {item.caption}
+                                        </Text>
+                                        {hasLongCaption && (
+                                            <TouchableOpacity
+                                                style={styles.moreButton}
+                                                onPress={() => setIsExpanded((prev) => !prev)}
+                                                activeOpacity={0.7}
+                                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                            >
+                                                <Text style={styles.moreButtonText}>
+                                                    {isExpanded ? translateUiText('less') : translateUiText('...more')}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
                             </View>
                             <TouchableOpacity
                                 style={styles.cardOptionsButtonTextCard}
@@ -331,19 +432,6 @@ const MemoryCard = ({ item, onOptionsPress, onImagePress }) => {
                             </TouchableOpacity>
                         </View>
                     )
-                )}
-                {(hasImage && (item.title || item.caption)) && (
-                    <View style={styles.captionRow}>
-                        <View style={styles.captionCopy}>
-                            <View style={styles.captionTitleLayout}>
-                                {isSpecialDate && (
-                                    <Text style={styles.specialDatePhotoEmoji}>{specialIcon.glyph}</Text>
-                                )}
-                                {!!item.title && <Text style={styles.photoTitleText}>{item.title}</Text>}
-                            </View>
-                            {!!item.caption && <Text style={styles.captionText}>{item.caption}</Text>}
-                        </View>
-                    </View>
                 )}
             </View>
         </View>
@@ -399,69 +487,128 @@ const PhotoLightboxModal = ({ visible, data, onClose }) => {
 
 const MemoryOptionsModal = ({ visible, memory, onClose, onEdit, onDelete }) => {
     const insets = useSafeAreaInsets();
-    if (!visible || !memory) return null;
+    const bottomSheetRef = useRef(null);
+    const hasPresentedRef = useRef(false);
+    const [activeMemory, setActiveMemory] = useState(memory);
 
-    const parts = formatDateParts(memory.capturedAt);
-    const isSpecialDate = normalizeEntryType(memory.entryType) === 'special_date';
+    useEffect(() => {
+        if (memory) {
+            setActiveMemory(memory);
+        }
+    }, [memory]);
+
+    const dismissSheet = useCallback(() => {
+        if (hasPresentedRef.current) {
+            bottomSheetRef.current?.dismiss();
+        }
+    }, []);
+
+    useEffect(() => {
+        if (visible && memory) {
+            const frame = requestAnimationFrame(() => {
+                hasPresentedRef.current = true;
+                bottomSheetRef.current?.present();
+            });
+            return () => cancelAnimationFrame(frame);
+        } else if (hasPresentedRef.current) {
+            dismissSheet();
+        }
+        return undefined;
+    }, [dismissSheet, memory, visible]);
+
+    const renderBackdrop = useCallback(backdropProps => (
+        <BottomSheetBackdrop
+            {...backdropProps}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+            opacity={0.45}
+            pressBehavior="close"
+        />
+    ), []);
+
+    const parts = formatDateParts(activeMemory?.capturedAt);
+    const isSpecialDate = normalizeEntryType(activeMemory?.entryType) === 'special_date';
+
+    const handleEdit = useCallback(() => {
+        const targetMemory = activeMemory || memory;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        dismissSheet();
+        if (targetMemory) {
+            onEdit?.(targetMemory);
+        }
+    }, [activeMemory, dismissSheet, memory, onEdit]);
+
+    const handleDelete = useCallback(() => {
+        const targetMemory = activeMemory || memory;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        dismissSheet();
+        if (targetMemory) {
+            onDelete?.(targetMemory);
+        }
+    }, [activeMemory, dismissSheet, memory, onDelete]);
 
     return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="slide"
-            onRequestClose={onClose}
+        <BottomSheetModal
+            ref={bottomSheetRef}
+            enableDynamicSizing
+            enablePanDownToClose
+            backdropComponent={renderBackdrop}
+            backgroundStyle={styles.optionsSheetBackground}
+            handleComponent={null}
+            onDismiss={() => {
+                hasPresentedRef.current = false;
+                if (visible) {
+                    onClose?.();
+                }
+            }}
         >
-            <View style={styles.optionsModalRoot}>
-                <Pressable style={styles.optionsModalBackdrop} onPress={onClose} />
-                <View style={[styles.optionsSheet, { paddingBottom: insets.bottom + 16 }]}>
-                    <View style={styles.optionsSheetHandle} />
-                    <View style={styles.optionsSheetHeader}>
-                        <Text style={styles.optionsSheetTitle} numberOfLines={1}>
-                            {memory.title || (isSpecialDate ? translateUiText("Special Date") : translateUiText("Memory"))}
-                        </Text>
-                        <Text style={styles.optionsSheetSubtitle}>{parts.line}</Text>
-                    </View>
-
-                    <TouchableOpacity
-                        style={styles.optionsActionRow}
-                        onPress={() => {
-                            onClose();
-                            onEdit(memory);
-                        }}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.optionsActionIconWrap}>
-                            <Pencil color="#302832" size={18} strokeWidth={2.2} />
-                        </View>
-                        <Text style={styles.optionsActionText}>{translateUiText("Edit")}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.optionsActionRow, styles.optionsDeleteRow]}
-                        onPress={() => {
-                            onClose();
-                            onDelete(memory);
-                        }}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.optionsActionIconWrap, styles.optionsDeleteIconWrap]}>
-                            <Trash2 color="#E55875" size={18} strokeWidth={2.2} />
-                        </View>
-                        <Text style={[styles.optionsActionText, styles.optionsDeleteText]}>
-                            {translateUiText("Delete")}
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.optionsCancelButton}
-                        onPress={onClose}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={styles.optionsCancelText}>{translateUiText("Cancel")}</Text>
-                    </TouchableOpacity>
+            <BottomSheetView
+                style={[
+                    styles.optionsSheet,
+                    { paddingBottom: Math.max(insets.bottom, 16) + 12 },
+                ]}
+            >
+                <View style={styles.optionsSheetHandle} />
+                <View style={styles.optionsSheetHeader}>
+                    <Text style={styles.optionsSheetTitle} numberOfLines={1}>
+                        {activeMemory?.title || (isSpecialDate ? translateUiText("Special Date") : translateUiText("Memory"))}
+                    </Text>
+                    <Text style={styles.optionsSheetSubtitle}>{parts.line}</Text>
                 </View>
-            </View>
-        </Modal>
+
+                <TouchableOpacity
+                    style={styles.optionsActionRow}
+                    onPress={handleEdit}
+                    activeOpacity={0.7}
+                >
+                    <View style={styles.optionsActionIconWrap}>
+                        <Pencil color="#302832" size={18} strokeWidth={2.2} />
+                    </View>
+                    <Text style={styles.optionsActionText}>{translateUiText("Edit")}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.optionsActionRow, styles.optionsDeleteRow]}
+                    onPress={handleDelete}
+                    activeOpacity={0.7}
+                >
+                    <View style={[styles.optionsActionIconWrap, styles.optionsDeleteIconWrap]}>
+                        <Trash2 color="#E55875" size={18} strokeWidth={2.2} />
+                    </View>
+                    <Text style={[styles.optionsActionText, styles.optionsDeleteText]}>
+                        {translateUiText("Delete")}
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.optionsCancelButton}
+                    onPress={dismissSheet}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.optionsCancelText}>{translateUiText("Cancel")}</Text>
+                </TouchableOpacity>
+            </BottomSheetView>
+        </BottomSheetModal>
     );
 };
 
@@ -535,12 +682,26 @@ const EmptyState = ({ hasPartner, onAddPartner }) => {
     );
 };
 
-const AddActionButton = ({ icon, label, style, onPress }) => (
-    <Animated.View style={[styles.addActionWrap, style]}>
-        <TouchableOpacity style={styles.addActionButton} onPress={onPress} activeOpacity={0.9}>
-            {icon}
+const FAB_SIZE = 42;
+const FAB_RIGHT = 22;
+const ACTION_WRAP_WIDTH = 108;
+const ACTION_ANCHOR_RIGHT = FAB_RIGHT - (ACTION_WRAP_WIDTH - FAB_SIZE) / 2;
+
+const AddActionButton = ({ icon, label, style, onPress, pointerEvents }) => (
+    <Animated.View style={[styles.addActionWrap, style]} pointerEvents={pointerEvents}>
+        <TouchableOpacity
+            style={styles.addActionTouchable}
+            onPress={onPress}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+            <View style={styles.addActionButton}>
+                {icon}
+            </View>
+            <Text style={styles.addActionLabel} numberOfLines={1}>{label}</Text>
         </TouchableOpacity>
-        <Text style={styles.addActionLabel} numberOfLines={1}>{label}</Text>
     </Animated.View>
 );
 
@@ -617,6 +778,8 @@ const TimelineFab = ({ isOpen, progress, onToggle, onSelect, bottomInset, pulse 
         ],
     });
 
+    const actionBottom = bottomInset + 70;
+
     return (
         <>
             {isOpen && (
@@ -624,21 +787,50 @@ const TimelineFab = ({ isOpen, progress, onToggle, onSelect, bottomInset, pulse 
                     <Animated.View style={[styles.fabBackdrop, { opacity: backdropOpacity }]} />
                 </Pressable>
             )}
-            <View pointerEvents="box-none" style={[styles.fabLayer, { bottom: bottomInset + 94 }]}>
+            <View pointerEvents="box-none" style={styles.fabLayer}>
                 <AddActionButton
                     label={translateUiText("Memory")}
                     icon={<Heart color="#FFFFFF" size={17} strokeWidth={2.2} />}
-                    style={actionStyle(-112, -4, 0)}
+                    style={[
+                        {
+                            bottom: actionBottom,
+                            right: ACTION_ANCHOR_RIGHT,
+                        },
+                        actionStyle(-112, -4, 0),
+                    ]}
+                    pointerEvents={isOpen ? 'auto' : 'none'}
                     onPress={() => onSelect('memory')}
                 />
                 <AddActionButton
                     label={translateUiText("Special Date")}
                     icon={<CalendarDays color="#FFFFFF" size={17} strokeWidth={2.2} />}
-                    style={actionStyle(-36, -116, 1)}
+                    style={[
+                        {
+                            bottom: actionBottom,
+                            right: ACTION_ANCHOR_RIGHT,
+                        },
+                        actionStyle(-36, -116, 1),
+                    ]}
+                    pointerEvents={isOpen ? 'auto' : 'none'}
                     onPress={() => onSelect('special_date')}
                 />
-                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                    <TouchableOpacity style={styles.mainFab} onPress={onToggle} activeOpacity={0.9}>
+                <Animated.View
+                    style={[
+                        styles.mainFabWrap,
+                        {
+                            bottom: bottomInset + 94,
+                            right: FAB_RIGHT,
+                            transform: [{ scale: pulseAnim }],
+                        },
+                    ]}
+                >
+                    <TouchableOpacity
+                        style={styles.mainFab}
+                        onPress={onToggle}
+                        activeOpacity={0.9}
+                        accessibilityRole="button"
+                        accessibilityLabel={isOpen ? translateUiText("Close add menu") : translateUiText("Add memory or special date")}
+                    >
                         <Animated.View style={{ transform: [{ rotate: plusRotation }] }}>
                             <Plus color="#FFFFFF" size={20} strokeWidth={2.8} />
                         </Animated.View>
@@ -650,45 +842,62 @@ const TimelineFab = ({ isOpen, progress, onToggle, onSelect, bottomInset, pulse 
 };
 
 const TimelineDatePicker = ({ value, onChange, onClose }) => {
+    const insets = useSafeAreaInsets();
     const selectedDate = value || new Date();
 
-    const onDateChange = (event, date) => {
-        if (Platform.OS === 'android') {
-            onClose();
-            if (event.type === 'set' && date) {
-                onChange(date);
-            }
-        } else {
-            if (date) {
-                onChange(date);
-            }
+    const handleIosDateChange = (event, date) => {
+        if (date) {
+            onChange(date);
         }
     };
 
-    if (Platform.OS === 'android') {
-        return (
-            <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display="default"
-                onChange={onDateChange}
-            />
-        );
-    }
+    const handleAndroidDateChange = (newDate) => {
+        if (!newDate) return;
+        const parsed = newDate instanceof Date ? newDate : new Date(newDate);
+        if (!Number.isNaN(parsed.getTime())) {
+            onChange(parsed);
+        }
+    };
+
+    const handleDone = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        onClose();
+    };
 
     return (
         <View style={styles.calendarOverlay}>
             <Pressable style={styles.calendarBackdrop} onPress={onClose} />
-            <View style={styles.calendarPanel}>
+            <View style={[styles.calendarPanel, { paddingBottom: Math.max(insets.bottom, 14) + 12 }]}>
                 <View style={styles.calendarHandle} />
-                <DateTimePicker
-                    value={selectedDate}
-                    mode="date"
-                    display="spinner"
-                    onChange={onDateChange}
-                    textColor="#302832"
-                />
-                <TouchableOpacity style={styles.calendarDoneButton} onPress={onClose} activeOpacity={0.9}>
+                {Platform.OS === 'ios' ? (
+                    <DateTimePicker
+                        value={selectedDate}
+                        mode="date"
+                        display="spinner"
+                        onChange={handleIosDateChange}
+                        textColor="#302832"
+                    />
+                ) : (
+                    <View style={styles.androidWheelPickerWrap}>
+                        <WheelDatePicker
+                            date={selectedDate}
+                            mode="date"
+                            onDateChange={handleAndroidDateChange}
+                            textColor="#A8949E"
+                            selectTextColor="#302832"
+                            textSize={20}
+                            isCyclic={true}
+                            order="D-M-Y"
+                            minimumDate={new Date(1950, 0, 1)}
+                            maximumDate={new Date(2050, 11, 31)}
+                            isShowSelectBackground={false}
+                            isShowSelectLine={false}
+                            style={styles.wheelPicker}
+                        />
+                        <View style={styles.wheelPickerHighlighter} pointerEvents="none" />
+                    </View>
+                )}
+                <TouchableOpacity style={styles.calendarDoneButton} onPress={handleDone} activeOpacity={0.9}>
                     <Text style={styles.calendarDoneText}>{translateUiText("Done")}</Text>
                 </TouchableOpacity>
             </View>
@@ -699,6 +908,7 @@ const TimelineDatePicker = ({ value, onChange, onClose }) => {
 const AddMemoryModal = ({
     visible,
     isEditing = false,
+    editingMemory = null,
     entryType,
     draft,
     iconKey,
@@ -719,10 +929,61 @@ const AddMemoryModal = ({
     const insets = useSafeAreaInsets();
     const [showPicker, setShowPicker] = useState(false);
     const [showIconPicker, setShowIconPicker] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const scrollViewRef = useRef(null);
     const dateParts = formatDateParts(capturedAt);
     const normalizedType = normalizeEntryType(entryType);
     const typeConfig = TIMELINE_TYPES[normalizedType] || TIMELINE_TYPES.memory;
     const isSpecialDate = normalizedType === 'special_date';
+
+    const scrollToSaveButton = useCallback((delay) => {
+        const defaultDelay = Platform.OS === 'android' ? 180 : 120;
+        setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, typeof delay === 'number' ? delay : defaultDelay);
+    }, []);
+
+    useEffect(() => {
+        if (!visible) {
+            setKeyboardHeight(0);
+            return;
+        }
+
+        const onKeyboardShow = (event) => {
+            const height = event?.endCoordinates?.height || 0;
+            const duration = event?.duration || 250;
+            setKeyboardHeight(height);
+            if (Platform.OS === 'ios') {
+                scrollToSaveButton(50);
+                scrollToSaveButton(duration + 40);
+            } else {
+                scrollToSaveButton(180);
+            }
+        };
+
+        const onKeyboardHide = () => {
+            setKeyboardHeight(0);
+        };
+
+        const showSubscription = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            onKeyboardShow
+        );
+        const hideSubscription = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            onKeyboardHide
+        );
+
+        return () => {
+            showSubscription.remove();
+            hideSubscription.remove();
+        };
+    }, [scrollToSaveButton, visible]);
+
+    const isKeyboardVisible = keyboardHeight > 0;
+    const scrollBottomPadding = Platform.OS === 'android'
+        ? Math.max(insets.bottom, 16) + 24 + keyboardHeight
+        : (isKeyboardVisible ? 12 : Math.max(insets.bottom, 16) + 24);
 
     const modalTitle = isEditing
         ? (isSpecialDate ? translateUiText("Edit special date") : translateUiText("Edit memory"))
@@ -733,25 +994,84 @@ const AddMemoryModal = ({
         : typeConfig.saveLabel;
 
     const openDatePicker = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         Keyboard.dismiss();
         setShowPicker(true);
     };
 
+    const hasUnsavedChanges = useMemo(() => {
+        if (isEditing && editingMemory) {
+            const titleChanged = title.trim() !== (editingMemory.title || '').trim();
+            const captionChanged = caption.trim() !== (editingMemory.caption || '').trim();
+            const iconChanged = iconKey !== (editingMemory.iconKey || 'ring');
+            const photoRemoved = !draft?.uri && Boolean(editingMemory.imageUrl);
+            const photoAdded = Boolean(draft?.asset);
+            const initialDate = editingMemory.capturedAt ? new Date(editingMemory.capturedAt).toDateString() : '';
+            const currentDate = capturedAt ? new Date(capturedAt).toDateString() : '';
+            const dateChanged = initialDate !== currentDate;
+            return titleChanged || captionChanged || iconChanged || photoRemoved || photoAdded || dateChanged;
+        }
+        return Boolean(title.trim() || caption.trim() || draft?.uri);
+    }, [caption, capturedAt, draft, editingMemory, iconKey, isEditing, title]);
+
+    const handleRequestClose = useCallback(() => {
+        if (isSaving) return;
+
+        if (showIconPicker) {
+            setShowIconPicker(false);
+            return;
+        }
+
+        if (showPicker) {
+            setShowPicker(false);
+            return;
+        }
+
+        if (!hasUnsavedChanges) {
+            onClose();
+            return;
+        }
+
+        Alert.alert(
+            translateUiText("Discard changes?"),
+            translateUiText("Your unsaved changes will be lost."),
+            [
+                { text: translateUiText("Keep editing"), style: "cancel" },
+                {
+                    text: translateUiText("Discard"),
+                    style: "destructive",
+                    onPress: onClose,
+                },
+            ],
+        );
+    }, [hasUnsavedChanges, isSaving, onClose, showIconPicker, showPicker]);
+
+    useEffect(() => {
+        if (!visible) return;
+        const backSubscription = BackHandler.addEventListener('hardwareBackPress', () => {
+            handleRequestClose();
+            return true;
+        });
+        return () => backSubscription.remove();
+    }, [visible, handleRequestClose]);
+
     return (
-        <Modal visible={visible} transparent={false} animationType="slide" statusBarTranslucent onRequestClose={onClose}>
-            <LinearGradient
-                colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
-                locations={[0, 0.34, 0.72, 1]}
-                start={{ x: 0.25, y: 0 }}
-                end={{ x: 0.75, y: 1 }}
-                style={styles.pageRoot}
-            >
+        <Modal visible={visible} transparent={false} animationType="slide" statusBarTranslucent onRequestClose={handleRequestClose}>
+            <View style={styles.pageRoot}>
+                <LinearGradient
+                    colors={['#F8D9EC', '#FFF7FA', '#FFF4F7', '#F7D8F2']}
+                    locations={[0, 0.34, 0.72, 1]}
+                    start={{ x: 0.25, y: 0 }}
+                    end={{ x: 0.75, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                />
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    enabled={Platform.OS === 'ios'}
                     style={styles.keyboardAvoiding}
                 >
                     <View style={[styles.pageHeader, { paddingTop: insets.top + 10 }]}>
-                        <TouchableOpacity style={styles.pageHeaderBack} onPress={onClose} disabled={isSaving}>
+                        <TouchableOpacity style={styles.pageHeaderBack} onPress={handleRequestClose} disabled={isSaving}>
                             <ChevronLeft color="#302832" size={24} strokeWidth={2} />
                         </TouchableOpacity>
                         <Text style={styles.pageHeaderTitle}>{modalTitle}</Text>
@@ -759,12 +1079,17 @@ const AddMemoryModal = ({
                     </View>
 
                     <ScrollView
+                        ref={scrollViewRef}
                         style={styles.pageScroll}
-                        contentContainerStyle={[styles.pageScrollContent, { paddingBottom: insets.bottom + 24 }]}
+                        contentContainerStyle={[styles.pageScrollContent, { paddingBottom: scrollBottomPadding }]}
                         keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                        onScrollBeginDrag={() => Keyboard.dismiss()}
+                        nestedScrollEnabled={true}
+                        overScrollMode="always"
                         showsVerticalScrollIndicator={false}
                     >
-                    {draft?.uri && (
+                    {draft?.uri ? (
                         <View style={styles.previewButton}>
                             <Image source={{ uri: draft.uri }} style={styles.previewImage} resizeMode="cover" />
                             {!isSaving && (
@@ -777,45 +1102,59 @@ const AddMemoryModal = ({
                                 </TouchableOpacity>
                             )}
                         </View>
-                    )}
-
-                    <View style={styles.titlePhotoRow}>
+                    ) : (
                         <TouchableOpacity
-                            style={styles.inlineEmojiButton}
-                            onPress={() => {
-                                Keyboard.dismiss();
-                                setShowIconPicker((current) => !current);
-                            }}
-                            activeOpacity={0.86}
+                            style={styles.photoDropzone}
+                            onPress={onPickPhoto}
+                            activeOpacity={0.85}
                             disabled={isSaving}
                         >
-                            <Text style={styles.inlineEmojiGlyph}>{getSpecialDateIcon(iconKey).glyph}</Text>
-                            <View style={styles.inlineEmojiChevronBadge}>
-                                <ChevronDown color="#B56F7E" size={12} strokeWidth={2.5} />
+                            <View style={styles.photoDropzoneIconWrap}>
+                                <ImagePlus color="#C96F81" size={22} strokeWidth={2} />
                             </View>
+                            <Text style={styles.photoDropzoneText}>
+                                {translateUiText("Add photo")}
+                            </Text>
+                            <Text style={styles.photoDropzoneSubtext}>
+                                {translateUiText("Optional • tap to select from gallery")}
+                            </Text>
                         </TouchableOpacity>
+                    )}
+
+                    <View style={styles.titleRow}>
+                        {isSpecialDate && (
+                            <TouchableOpacity
+                                style={styles.inlineEmojiButton}
+                                onPress={() => {
+                                    Keyboard.dismiss();
+                                    setShowIconPicker((current) => !current);
+                                }}
+                                activeOpacity={0.86}
+                                disabled={isSaving}
+                            >
+                                <Text style={styles.inlineEmojiGlyph}>{getSpecialDateIcon(iconKey).glyph}</Text>
+                                <View style={styles.inlineEmojiChevronBadge}>
+                                    <ChevronDown color="#B56F7E" size={12} strokeWidth={2.5} />
+                                </View>
+                            </TouchableOpacity>
+                        )}
 
                         <TextInput
-                            style={[styles.titleInput, styles.titleInputInRow]}
+                            style={[styles.titleInput, styles.titleInputFlex]}
                             value={title}
                             onChangeText={(value) => setTitle(value.slice(0, TITLE_LIMIT))}
-                            placeholder={typeConfig.placeholderTitle}
+                            placeholder={translateUiText(typeConfig.placeholderTitle)}
                             placeholderTextColor="#B09AA4"
                             maxLength={TITLE_LIMIT}
                             editable={!isSaving}
+                            onFocus={scrollToSaveButton}
                         />
-
-                        {!draft?.uri && (
-                            <TouchableOpacity
-                                style={styles.photoIconButton}
-                                onPress={onPickPhoto}
-                                activeOpacity={0.88}
-                                disabled={isSaving}
-                            >
-                                <ImagePlus color="#C96F81" size={22} strokeWidth={1.9} />
-                            </TouchableOpacity>
-                        )}
                     </View>
+                    {title.length > 0 && (
+                        <Text style={[styles.charCountText, title.length >= TITLE_LIMIT && styles.charCountLimitText]}>
+                            {title.length}/{TITLE_LIMIT}
+                        </Text>
+                    )}
 
                     <TouchableOpacity
                         style={styles.dateChip}
@@ -830,12 +1169,19 @@ const AddMemoryModal = ({
                         style={styles.captionInput}
                         value={caption}
                         onChangeText={(value) => setCaption(value.slice(0, CAPTION_LIMIT))}
-                        placeholder={typeConfig.placeholderCaption}
+                        placeholder={translateUiText(typeConfig.placeholderCaption)}
                         placeholderTextColor="#B09AA4"
                         multiline
+                        scrollEnabled={false}
                         maxLength={CAPTION_LIMIT}
                         editable={!isSaving}
+                        onFocus={scrollToSaveButton}
                     />
+                    {caption.length > 0 && (
+                        <Text style={[styles.charCountText, caption.length >= CAPTION_LIMIT && styles.charCountLimitText]}>
+                            {caption.length}/{CAPTION_LIMIT}
+                        </Text>
+                    )}
 
                     <TouchableOpacity
                         style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
@@ -851,7 +1197,7 @@ const AddMemoryModal = ({
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>
-            </LinearGradient>
+            </View>
             {showPicker && (
                 <TimelineDatePicker
                     value={capturedAt}
@@ -860,13 +1206,8 @@ const AddMemoryModal = ({
                 />
             )}
 
-            <Modal
-                visible={showIconPicker}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowIconPicker(false)}
-            >
-                <View style={styles.emojiModalRoot}>
+            {showIconPicker && (
+                <View style={styles.emojiOverlay}>
                     <Pressable style={styles.emojiModalBackdrop} onPress={() => setShowIconPicker(false)} />
                     <View style={[styles.emojiSheet, { paddingBottom: insets.bottom + 14 }]}>
                         <View style={styles.emojiSheetHandle} />
@@ -904,12 +1245,12 @@ const AddMemoryModal = ({
                         </ScrollView>
                     </View>
                 </View>
-            </Modal>
+            )}
         </Modal>
     );
 };
 
-const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
+const MemoriesScreen = ({ userId, hasPartner, onLinkPartner, onOptionsOpenChange }) => {
     const insets = useSafeAreaInsets();
     const socket = useSocket();
     const fabProgress = useRef(new Animated.Value(0)).current;
@@ -917,7 +1258,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const imageUploadJobRef = useRef(null);
     const saveInFlightRef = useRef(false);
 
-    const [memories, setMemories] = useState(() => userId && hasPartner ? readCachedMemories(userId) : []);
+    const [memories, setMemories] = useState(() => userId && hasPartner ? readCachedMemories(userId, 'asc') : []);
     const [cursor, setCursor] = useState(null);
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
@@ -937,6 +1278,17 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     const [lightboxImage, setLightboxImage] = useState(null);
     const [sortOrder, setSortOrder] = useState('asc'); // 'asc' = oldest first (scrapbook), 'desc' = newest first
 
+    const handleSetOptionsMemory = useCallback((memory) => {
+        setOptionsMemory(memory);
+        onOptionsOpenChange?.(Boolean(memory));
+    }, [onOptionsOpenChange]);
+
+    useEffect(() => {
+        return () => {
+            onOptionsOpenChange?.(false);
+        };
+    }, [onOptionsOpenChange]);
+
     useEffect(() => {
         Animated.spring(fabProgress, {
             toValue: isActionMenuOpen ? 1 : 0,
@@ -951,25 +1303,31 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         setCapturedAtSource('manual');
     }, []);
 
-    const loadMemories = useCallback(async ({ refresh = false } = {}) => {
-        if (!userId || !hasPartner || isLoading) return;
+    const loadMemories = useCallback(async ({ reset = false, isPullRefresh = false, targetSort = sortOrder } = {}) => {
+        if (!userId || !hasPartner || isLoading || isRefreshing) return;
 
-        if (!refresh && !hasMore) return;
+        if (!reset && !hasMore) return;
 
-        if (refresh) setIsRefreshing(true);
-        else setIsLoading(true);
+        if (isPullRefresh) {
+            setIsRefreshing(true);
+        } else if (reset) {
+            if (memories.length === 0) setIsLoading(true);
+        } else {
+            setIsLoading(true);
+        }
 
         try {
             const result = await fetchMemories({
                 userId,
-                cursor: refresh ? null : cursor,
+                cursor: reset ? null : cursor,
                 limit: PAGE_LIMIT,
+                sort: targetSort,
             });
             const incoming = result.memories || [];
 
             setMemories((prev) => {
-                const next = refresh ? incoming : mergeMemories(prev, incoming);
-                writeCachedMemories(userId, next);
+                const next = reset ? incoming : mergeMemories(prev, incoming, targetSort);
+                writeCachedMemories(userId, next, targetSort);
                 return next;
             });
             setCursor(result.nextCursor || null);
@@ -987,7 +1345,17 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             setIsLoading(false);
             setIsRefreshing(false);
         }
-    }, [cursor, hasMore, hasPartner, isLoading, userId]);
+    }, [cursor, hasMore, hasPartner, isLoading, isRefreshing, memories.length, sortOrder, userId]);
+
+    const handleToggleSortOrder = useCallback(() => {
+        const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+        setSortOrder(nextOrder);
+        setCursor(null);
+        setHasMore(true);
+        const cached = readCachedMemories(userId, nextOrder);
+        setMemories(cached);
+        loadMemories({ reset: true, isPullRefresh: false, targetSort: nextOrder });
+    }, [loadMemories, sortOrder, userId]);
 
     // Initial load and partner change effect
     useEffect(() => {
@@ -1004,11 +1372,11 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         if (!userId || loadedUserRef.current === userId) return;
 
         loadedUserRef.current = userId;
-        setMemories(readCachedMemories(userId));
+        setMemories(readCachedMemories(userId, sortOrder));
         setCursor(null);
         setHasMore(true);
-        loadMemories({ refresh: true });
-    }, [hasPartner, loadMemories, userId]);
+        loadMemories({ reset: true, isPullRefresh: false, targetSort: sortOrder });
+    }, [hasPartner, loadMemories, sortOrder, userId]);
 
     // Real-time Socket.io synchronization with partner
     useEffect(() => {
@@ -1018,8 +1386,8 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             if (!newMemory?._id) return;
             setMemories((prev) => {
                 if (prev.some((m) => m._id === newMemory._id)) return prev;
-                const next = mergeMemories([newMemory], prev);
-                writeCachedMemories(userId, next);
+                const next = mergeMemories([newMemory], prev, sortOrder);
+                writeCachedMemories(userId, next, sortOrder);
                 return next;
             });
         };
@@ -1028,8 +1396,9 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             if (!updated?._id) return;
             setMemories((prev) => {
                 const next = prev.map((m) => (m._id === updated._id ? { ...m, ...updated } : m));
-                writeCachedMemories(userId, next);
-                return next;
+                const sorted = mergeMemories(next, [], sortOrder);
+                writeCachedMemories(userId, sorted, sortOrder);
+                return sorted;
             });
         };
 
@@ -1037,7 +1406,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             if (!memoryId) return;
             setMemories((prev) => {
                 const next = prev.filter((m) => m._id !== memoryId);
-                writeCachedMemories(userId, next);
+                writeCachedMemories(userId, next, sortOrder);
                 return next;
             });
         };
@@ -1051,7 +1420,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             socket.off('memory:updated', onMemoryUpdated);
             socket.off('memory:deleted', onMemoryDeleted);
         };
-    }, [hasPartner, socket, userId]);
+    }, [hasPartner, socket, sortOrder, userId]);
 
     const resetDraft = useCallback(() => {
         setEditingMemory(null);
@@ -1078,6 +1447,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
     }, [hasPartner, onLinkPartner, resetDraft]);
 
     const handleStartEdit = useCallback((memory) => {
+        handleSetOptionsMemory(null);
         setEditingMemory(memory);
         setEntryType(memory.entryType || 'memory');
         setIconKey(memory.iconKey || 'ring');
@@ -1096,7 +1466,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             setDraft(null);
         }
         setModalVisible(true);
-    }, []);
+    }, [handleSetOptionsMemory]);
 
     const handleDeleteMemory = useCallback((memory) => {
         if (!memory?._id || !userId) return;
@@ -1114,7 +1484,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                             await deleteMemory({ userId, memoryId: memory._id });
                             setMemories((prev) => {
                                 const next = prev.filter((m) => m._id !== memory._id);
-                                writeCachedMemories(userId, next);
+                                writeCachedMemories(userId, next, sortOrder);
                                 return next;
                             });
                         } catch (error) {
@@ -1182,18 +1552,22 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
         const safeCaption = caption.trim();
         const normalizedType = normalizeEntryType(entryType);
 
-        if (!safeTitle) {
-            Alert.alert(translateUiText("Add a title"), normalizedType === 'special_date'
-                ? translateUiText("Name this special date first.")
-                : translateUiText("Give this memory a title first."));
-            return;
-        }
-
-        if (!safeCaption) {
-            Alert.alert(translateUiText("Add a note"), normalizedType === 'special_date'
-                ? translateUiText("Add what made this date special.")
-                : translateUiText("Add what was memorable about that day."));
-            return;
+        if (normalizedType === 'special_date') {
+            if (!safeTitle) {
+                Alert.alert(
+                    translateUiText("Add a title"),
+                    translateUiText("Name this special date first.")
+                );
+                return;
+            }
+        } else {
+            if (!safeTitle && !safeCaption) {
+                Alert.alert(
+                    translateUiText("Add a title or note"),
+                    translateUiText("Give this memory a title or note first.")
+                );
+                return;
+            }
         }
 
         saveInFlightRef.current = true;
@@ -1243,8 +1617,9 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
 
                 setMemories((prev) => {
                     const next = prev.map((m) => (m._id === updated._id ? { ...m, ...updated } : m));
-                    writeCachedMemories(userId, next);
-                    return next;
+                    const sorted = mergeMemories(next, [], sortOrder);
+                    writeCachedMemories(userId, sorted, sortOrder);
+                    return sorted;
                 });
             } else {
                 const saved = await createMemory({
@@ -1262,8 +1637,8 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 });
 
                 setMemories((prev) => {
-                    const next = mergeMemories([saved], prev);
-                    writeCachedMemories(userId, next);
+                    const next = mergeMemories([saved], prev, sortOrder);
+                    writeCachedMemories(userId, next, sortOrder);
                     return next;
                 });
             }
@@ -1279,24 +1654,18 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             saveInFlightRef.current = false;
             setIsSaving(false);
         }
-    }, [caption, capturedAt, capturedAtSource, draft, editingMemory, entryType, iconKey, resetDraft, title, userId]);
+    }, [caption, capturedAt, capturedAtSource, draft, editingMemory, entryType, iconKey, resetDraft, sortOrder, title, userId]);
 
-    const displayedMemories = useMemo(() => {
-        if (sortOrder === 'asc') return memories;
-        return [...memories].reverse();
-    }, [memories, sortOrder]);
+    const displayedMemories = memories;
 
     const androidStatusBarHeight = StatusBar.currentHeight || 0;
     const topPadding = Platform.OS === 'android'
-        ? Math.max(insets.top, androidStatusBarHeight) + 14
+        ? Math.max(insets.top, androidStatusBarHeight) + 12
         : Math.max(insets.top + 4, 16);
-    const fadeOverlayHeight = Platform.OS === 'android'
-        ? Math.max(insets.top, androidStatusBarHeight) + 40
-        : Math.max(insets.top + 28, 64);
     const contentPadding = useMemo(() => ({
-        paddingTop: topPadding,
+        paddingTop: 8,
         paddingBottom: insets.bottom + 94,
-    }), [insets.bottom, topPadding]);
+    }), [insets.bottom]);
 
     return (
         <LinearGradient
@@ -1307,50 +1676,48 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             style={styles.screen}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <LinearGradient
-                colors={['#F8D9EC', 'rgba(248, 217, 236, 0.88)', 'rgba(248, 217, 236, 0.45)', 'rgba(248, 217, 236, 0)']}
-                locations={[0, 0.4, 0.72, 1]}
-                style={[styles.topFadeGradient, { height: fadeOverlayHeight }]}
-                pointerEvents="none"
-            />
 
-            <Animated.FlatList
+            <View style={[styles.header, { paddingTop: topPadding }]}>
+                <View style={styles.headerRow}>
+                    <Text style={styles.title}>{translateUiText("Our Timeline")}</Text>
+                    {memories.length > 1 && (
+                        <TouchableOpacity
+                            style={styles.sortToggle}
+                            onPress={handleToggleSortOrder}
+                            activeOpacity={0.75}
+                        >
+                            <ArrowUpDown color="#C96F81" size={13} strokeWidth={2.4} />
+                            <Text style={styles.sortToggleText}>
+                                {sortOrder === 'asc' ? translateUiText("Oldest First") : translateUiText("Newest First")}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
+            <FlatList
                 data={displayedMemories}
                 keyExtractor={(item) => item._id}
-                renderItem={({ item }) => (
+                renderItem={({ item, index }) => (
                     <MemoryCard
                         item={item}
-                        onOptionsPress={(target) => setOptionsMemory(target)}
+                        isLast={index === displayedMemories.length - 1}
+                        onOptionsPress={(target) => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                            handleSetOptionsMemory(target);
+                        }}
                         onImagePress={(photoData) => setLightboxImage(photoData)}
                     />
                 )}
                 contentContainerStyle={[styles.listContent, contentPadding, memories.length === 0 && styles.emptyListContent]}
                 showsVerticalScrollIndicator={false}
-                ListHeaderComponent={(
-                    <View style={styles.header}>
-                        <View style={styles.headerRow}>
-                            <Text style={styles.title}>{translateUiText("Our Timeline")}</Text>
-                            {memories.length > 1 && (
-                                <TouchableOpacity
-                                    style={styles.sortToggle}
-                                    onPress={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                                    activeOpacity={0.75}
-                                >
-                                    <ArrowUpDown color="#C96F81" size={13} strokeWidth={2.4} />
-                                    <Text style={styles.sortToggleText}>
-                                        {sortOrder === 'asc' ? translateUiText("Oldest First") : translateUiText("Newest First")}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
-                )}
+                contentInsetAdjustmentBehavior="never"
                 onEndReachedThreshold={0.45}
                 onEndReached={() => loadMemories()}
                 refreshControl={
                     <RefreshControl
                         refreshing={isRefreshing}
-                        onRefresh={() => loadMemories({ refresh: true })}
+                        onRefresh={() => loadMemories({ reset: true, isPullRefresh: true })}
                         tintColor="#FF758F"
                     />
                 }
@@ -1377,6 +1744,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             <AddMemoryModal
                 visible={modalVisible}
                 isEditing={Boolean(editingMemory)}
+                editingMemory={editingMemory}
                 entryType={entryType}
                 draft={draft}
                 iconKey={iconKey}
@@ -1406,7 +1774,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
             <MemoryOptionsModal
                 visible={Boolean(optionsMemory)}
                 memory={optionsMemory}
-                onClose={() => setOptionsMemory(null)}
+                onClose={() => handleSetOptionsMemory(null)}
                 onEdit={handleStartEdit}
                 onDelete={handleDeleteMemory}
             />
@@ -1417,14 +1785,16 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner }) => {
                 onClose={() => setLightboxImage(null)}
             />
 
-            <TimelineFab
-                isOpen={isActionMenuOpen}
-                progress={fabProgress}
-                onToggle={toggleActionMenu}
-                onSelect={openAdd}
-                bottomInset={insets.bottom}
-                pulse={memories.length === 0}
-            />
+            {!optionsMemory && (
+                <TimelineFab
+                    isOpen={isActionMenuOpen}
+                    progress={fabProgress}
+                    onToggle={toggleActionMenu}
+                    onSelect={openAdd}
+                    bottomInset={insets.bottom}
+                    pulse={memories.length === 0}
+                />
+            )}
         </LinearGradient>
     );
 };
@@ -1453,15 +1823,13 @@ const styles = StyleSheet.create({
         zIndex: 4,
     },
     header: {
-        paddingLeft: 12,
-        paddingRight: 4,
-        paddingBottom: 10,
+        paddingHorizontal: 16,
+        paddingBottom: 6,
     },
     headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingRight: 6,
     },
     title: {
         fontFamily: fontFamily.extraBold,
@@ -1575,14 +1943,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignSelf: 'flex-start',
     },
-    photoWrap: {
+    photoCardWrapper: {
         width: '100%',
         borderRadius: 24,
         overflow: 'hidden',
-        backgroundColor: '#F3E7E2',
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.88)',
+        borderColor: '#F2DED8',
         ...cardShadow,
+    },
+    photoWrap: {
+        width: '100%',
+        overflow: 'hidden',
+        backgroundColor: '#F3E7E2',
     },
     photo: {
         width: '100%',
@@ -1597,7 +1970,7 @@ const styles = StyleSheet.create({
     },
     photoFailed: {
         flex: 1,
-        minHeight: 230,
+        minHeight: 180,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#F3E7E2',
@@ -1608,14 +1981,13 @@ const styles = StyleSheet.create({
         color: '#9C7D86',
         fontSize: 13,
     },
-    captionRow: {
-        marginTop: 12,
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 8,
-    },
-    captionCopy: {
-        flex: 1,
+    photoCardContent: {
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 14,
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F7EBE7',
     },
     photoTitleText: {
         fontFamily: fontFamily.extraBold,
@@ -1630,6 +2002,27 @@ const styles = StyleSheet.create({
         color: '#372D36',
         fontSize: 16,
         lineHeight: 22,
+    },
+    moreButton: {
+        alignSelf: 'flex-start',
+        marginTop: 4,
+        paddingVertical: 2,
+    },
+    moreButtonText: {
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        color: '#E05A75',
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    moreButtonTextInverted: {
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        color: '#FFFFFF',
+        fontSize: 13,
+        lineHeight: 18,
+        opacity: 0.95,
+        textDecorationLine: 'underline',
     },
     momentCard: {
         minHeight: 110,
@@ -1822,9 +2215,12 @@ const styles = StyleSheet.create({
     },
     pageRoot: {
         flex: 1,
+        width: '100%',
+        height: '100%',
     },
     keyboardAvoiding: {
         flex: 1,
+        width: '100%',
     },
     pageHeaderSpacer: {
         width: 44,
@@ -1858,8 +2254,10 @@ const styles = StyleSheet.create({
     },
     pageScroll: {
         flex: 1,
+        width: '100%',
     },
     pageScrollContent: {
+        flexGrow: 1,
         paddingHorizontal: 18,
         paddingTop: 16,
     },
@@ -1884,9 +2282,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         zIndex: 10,
     },
-    emojiModalRoot: {
-        flex: 1,
+    emojiOverlay: {
+        ...StyleSheet.absoluteFillObject,
         justifyContent: 'flex-end',
+        zIndex: 70,
     },
     emojiModalBackdrop: {
         ...StyleSheet.absoluteFillObject,
@@ -1969,7 +2368,40 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
-    titlePhotoRow: {
+    photoDropzone: {
+        height: 110,
+        borderRadius: 22,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#E8D4CE',
+        borderStyle: 'dashed',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 20,
+    },
+    photoDropzoneIconWrap: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: '#FFF0F4',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 6,
+    },
+    photoDropzoneText: {
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        color: '#7D636D',
+        fontSize: 14,
+    },
+    photoDropzoneSubtext: {
+        fontFamily: fontFamily.medium,
+        fontWeight: fontWeight('500'),
+        color: '#AF98A2',
+        fontSize: 12,
+        marginTop: 2,
+    },
+    titleRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
@@ -2008,16 +2440,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         elevation: 0,
     },
-    photoIconButton: {
-        width: 54,
-        height: 54,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#F1DED8',
-    },
     titleInput: {
         height: 54,
         borderRadius: 18,
@@ -2030,7 +2452,7 @@ const styles = StyleSheet.create({
         color: '#302832',
         fontSize: 16,
     },
-    titleInputInRow: {
+    titleInputFlex: {
         flex: 1,
         height: 54,
         marginTop: 0,
@@ -2066,6 +2488,19 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 22,
     },
+    charCountText: {
+        alignSelf: 'flex-end',
+        fontFamily: fontFamily.medium,
+        fontWeight: fontWeight('500'),
+        fontSize: 12,
+        color: '#AF98A2',
+        marginTop: 4,
+        marginRight: 6,
+    },
+    charCountLimitText: {
+        color: '#E55875',
+        fontWeight: fontWeight('700'),
+    },
     saveButton: {
         marginTop: 14,
         height: 52,
@@ -2093,15 +2528,15 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(42,31,38,0.24)',
     },
     calendarPanel: {
-        marginHorizontal: 12,
-        marginBottom: 12,
-        borderRadius: 30,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
         backgroundColor: '#FFF9F5',
-        borderWidth: 1,
+        borderTopWidth: 1,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
         borderColor: '#F1DED8',
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingTop: 12,
-        paddingBottom: 14,
         ...cardShadow,
     },
     calendarHandle: {
@@ -2111,6 +2546,27 @@ const styles = StyleSheet.create({
         borderRadius: 3,
         backgroundColor: '#E5D0C9',
         marginBottom: 16,
+    },
+    androidWheelPickerWrap: {
+        height: 190,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'transparent',
+    },
+    wheelPicker: {
+        width: '100%',
+        height: 190,
+        backgroundColor: 'transparent',
+    },
+    wheelPickerHighlighter: {
+        position: 'absolute',
+        left: 6,
+        right: 6,
+        height: 42,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: 'rgba(201, 111, 129, 0.28)',
+        backgroundColor: 'rgba(201, 111, 129, 0.08)',
     },
     // Lightbox Modal Styles
     lightboxRoot: {
@@ -2166,22 +2622,16 @@ const styles = StyleSheet.create({
     },
 
     // Options Modal Styles
-    optionsModalRoot: {
-        flex: 1,
-        justifyContent: 'flex-end',
-    },
-    optionsModalBackdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(42, 31, 38, 0.45)',
-    },
-    optionsSheet: {
+    optionsSheetBackground: {
+        backgroundColor: '#FFF9F5',
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
-        backgroundColor: '#FFF9F5',
-        paddingHorizontal: 20,
-        paddingTop: 10,
         borderWidth: 1,
         borderColor: '#F1DED8',
+    },
+    optionsSheet: {
+        paddingHorizontal: 20,
+        paddingTop: 10,
     },
     optionsSheetHandle: {
         alignSelf: 'center',
@@ -2280,12 +2730,16 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(43,34,40,0.22)',
     },
     fabLayer: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 25,
+    },
+    mainFabWrap: {
         position: 'absolute',
-        right: 22,
-        height: 48,
+        width: 42,
+        height: 42,
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 25,
+        zIndex: 26,
     },
     mainFab: {
         width: 42,
@@ -2301,6 +2755,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         width: 108,
+        zIndex: 27,
+    },
+    addActionTouchable: {
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     addActionButton: {
         width: 44,

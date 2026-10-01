@@ -344,13 +344,12 @@ export default function DailyChallengeScreen({
       answeredAt: new Date().toISOString(),
     });
 
-    // Submit to backend (store placeholder for progress tracking, actual answer goes to Chat)
+    // Submit to backend with actual answer content
+    const answerValue = typeof answer === 'string' ? answer : JSON.stringify(answer);
     if (!userId || !challenge?._id) {
       console.warn('⚠️ [ANSWER] Cannot submit to server: missing userId');
     } else {
-      // Store 'answered' placeholder in DailyAnswers for progress tracking only
-      // Actual answer content is stored in Chat model below
-      const savePromise = submitAnswer(userId, challenge._id, taskIndex, 'answered', answerType);
+      const savePromise = submitAnswer(userId, challenge._id, taskIndex, answerValue, answerType);
       answerSavePromisesRef.current.add(savePromise);
       savePromise
         .catch(() => {
@@ -361,7 +360,7 @@ export default function DailyChallengeScreen({
         });
     }
 
-    // Create/update chat thread for this question without blocking the card.
+    // Create/update unified chat thread for this challenge without blocking the card.
     if (task && userId && challenge?._id) {
       fetch(`${API_BASE}/api/chat/answer`, {
         method: 'POST',
@@ -370,10 +369,11 @@ export default function DailyChallengeScreen({
           userId,
           questionSource: 'dailychallenge',
           challengeId: challenge._id,
+          challengeTitle: challenge.title || 'Daily Ritual',
           taskIndex,
           questionText: task.taskstatement,
           questionCategory: task.category,
-          answer: typeof answer === 'string' ? answer : JSON.stringify(answer),
+          answer: answerValue,
           answerType,
         }),
       })
@@ -485,7 +485,12 @@ export default function DailyChallengeScreen({
           <View style={{ flex: 1 }}>
             {/* Header */}
             <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-              <TouchableOpacity onPress={onBack} style={styles.headerBackBtn}>
+              <TouchableOpacity
+                onPress={onBack}
+                style={styles.headerBackBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
                 <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                   <Path d="M15 18l-6-6 6-6" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>

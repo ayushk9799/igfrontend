@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
-    Modal,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -11,23 +9,44 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
-import { Bell, ChevronLeft, Settings2, Timer, X } from 'lucide-react-native';
+import {
+    BottomSheetBackdrop,
+    BottomSheetModal,
+    BottomSheetView,
+} from '@gorhom/bottom-sheet';
+import { Bell, ChevronLeft, MoreVertical, RotateCcw, Swords, Timer, User, X } from 'lucide-react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import LinearGradient from 'react-native-linear-gradient';
+import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 import { API_BASE } from '../constants/Api';
 import { fontFamily } from '../constants/fonts';
 import { useSocketContext } from '../context/SocketContext';
 import usePresence from '../hooks/usePresence';
-import { getUser } from '../utils/authStorage';
+import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import { apiFetch } from '../utils/apiFetch';
+import { getUser, storage } from '../utils/authStorage';
+
+const triggerHaptic = (type = 'selection') => {
+    try {
+        ReactNativeHapticFeedback.trigger(type, {
+            enableVibrateFallback: false,
+            ignoreAndroidSystemSettings: false,
+        });
+    } catch (_) {}
+};
 
 const DIFFICULTY_OPTIONS = [
-    { id: 'easy', title: 'Easy', detail: '8 × 8 · 6 words' },
-    { id: 'medium', title: 'Medium', detail: '10 × 10 · 8 words' },
-    { id: 'hard', title: 'Hard', detail: '12 × 12 · 12 words' },
+    { id: 'easy', title: 'Easy', gridSize: '8 × 8' },
+    { id: 'medium', title: 'Medium', gridSize: '10 × 10' },
+    { id: 'hard', title: 'Hard', gridSize: '12 × 12' },
 ];
 
 const TURN_DURATION_SECONDS = 45;
+const SELECTION_HAPTIC_INTERVAL_MS = 45;
 
 const idOf = value => String(value?._id || value || '');
 
@@ -45,30 +64,73 @@ const lineCoordinates = (start, end) => {
     }));
 };
 
-const snapToWordDirection = (start, current, gridSize) => {
-    if (!start || !current) return start;
-    const rowDistance = current.row - start.row;
-    const colDistance = current.col - start.col;
-    if (rowDistance === 0 && colDistance === 0) return start;
-
-    // Quantize the finger angle to one of the eight legal word directions.
-    const directionAngle = Math.round(Math.atan2(rowDistance, colDistance) / (Math.PI / 4)) * (Math.PI / 4);
+const selectionFromPosition = (start, x, y, cellSize, gridSize) => {
+    'worklet';
+    const startX = 6 + (start.col + 0.5) * cellSize;
+    const startY = 6 + (start.row + 0.5) * cellSize;
+    const pointerX = Math.max(6, Math.min(6 + gridSize * cellSize, x));
+    const pointerY = Math.max(6, Math.min(6 + gridSize * cellSize, y));
+    const directionAngle = Math.round(Math.atan2(pointerY - startY, pointerX - startX) / (Math.PI / 4)) * (Math.PI / 4);
     const rowStep = Math.round(Math.sin(directionAngle));
     const colStep = Math.round(Math.cos(directionAngle));
-    let distance = Math.max(Math.abs(rowDistance), Math.abs(colDistance));
-
     const rowLimit = rowStep > 0
         ? gridSize - 1 - start.row
         : rowStep < 0 ? start.row : Number.POSITIVE_INFINITY;
     const colLimit = colStep > 0
         ? gridSize - 1 - start.col
         : colStep < 0 ? start.col : Number.POSITIVE_INFINITY;
-    distance = Math.min(distance, rowLimit, colLimit);
+    const stepLength = Math.hypot(rowStep, colStep);
+    const maxSteps = Math.min(rowLimit, colLimit);
+    const projectedDistance = ((pointerX - startX) * colStep + (pointerY - startY) * rowStep) / stepLength;
+    const distance = Math.max(0, Math.min(maxSteps * cellSize * stepLength, projectedDistance));
+    const steps = Math.min(maxSteps, Math.round(distance / (cellSize * stepLength)));
 
     return {
-        row: start.row + (rowStep * distance),
-        col: start.col + (colStep * distance),
+        endRow: start.row + rowStep * steps,
+        endCol: start.col + colStep * steps,
+        rowStep,
+        colStep,
+        distance,
     };
+};
+
+const cellFromPosition = (x, y, cellSize, gridSize) => {
+    'worklet';
+    return {
+        row: Math.max(0, Math.min(gridSize - 1, Math.floor((y - 6) / cellSize))),
+        col: Math.max(0, Math.min(gridSize - 1, Math.floor((x - 6) / cellSize))),
+    };
+};
+
+const matchesUnfoundWord = (start, end, grid, availableWords) => {
+    'worklet';
+    const rowStep = Math.sign(end.row - start.row);
+    const colStep = Math.sign(end.col - start.col);
+    const length = Math.max(Math.abs(end.row - start.row), Math.abs(end.col - start.col)) + 1;
+    if (length < 3) return false;
+
+    let letters = '';
+    let reversed = '';
+    for (let index = 0; index < length; index += 1) {
+        const letter = grid[start.row + rowStep * index][start.col + colStep * index];
+        letters += letter;
+        reversed = letter + reversed;
+    }
+    return availableWords.includes(letters) || availableWords.includes(reversed);
+};
+
+const EMPTY_DRAG = {
+    active: false,
+    released: false,
+    startRow: 0,
+    startCol: 0,
+    endRow: 0,
+    endCol: 0,
+    rowStep: 0,
+    colStep: 1,
+    distance: 0,
+    matched: false,
+    lastHapticAt: 0,
 };
 
 const getWordLineStyle = (start, end, cellSize) => {
@@ -112,6 +174,209 @@ const isPlayableGamePayload = (value) => (
     && Array.isArray(value?.words)
 );
 
+// Letters stay static while the selection preview moves on the UI thread.
+const WordSearchCell = React.memo(({ letter, cellSize }) => (
+    <View style={[styles.cell, { width: cellSize, height: cellSize }]}>
+        <Text style={[
+            styles.letter,
+            { fontSize: Math.max(12, cellSize * 0.48) },
+        ]}>{letter}</Text>
+    </View>
+));
+
+const WordSearchBoard = React.memo(({
+    game,
+    cellSize,
+    userId,
+    canInteractWithBoard,
+    submitting,
+    myTurn,
+    message,
+    turnCountdown,
+    onSubmitSelection,
+    onMessage,
+}) => {
+    const grid = game.grid;
+    const gridSize = game.gridSize;
+    const drag = useSharedValue(EMPTY_DRAG);
+    const availableWords = useMemo(() => game.words
+        .filter(word => !word.foundBy)
+        .map(word => word.word), [game.words]);
+
+    const clearDrag = useCallback(() => {
+        drag.value = EMPTY_DRAG;
+    }, [drag]);
+
+    const finishWordDrag = useCallback((startRow, startCol, endRow, endCol) => {
+        const start = { row: startRow, col: startCol };
+        const end = { row: endRow, col: endCol };
+        if (lineCoordinates(start, end).length < 3) {
+            clearDrag();
+            onMessage('Touch a letter, drag across the whole word, then release.');
+            return;
+        }
+        Promise.resolve(onSubmitSelection(start, end)).finally(clearDrag);
+    }, [clearDrag, onMessage, onSubmitSelection]);
+
+    const gesture = useMemo(() => Gesture.Pan()
+        .enabled(canInteractWithBoard && !submitting)
+        .minDistance(0)
+        .maxPointers(1)
+        .onBegin((event) => {
+            const start = cellFromPosition(event.x, event.y, cellSize, gridSize);
+            drag.value = {
+                active: true,
+                released: false,
+                startRow: start.row,
+                startCol: start.col,
+                endRow: start.row,
+                endCol: start.col,
+                rowStep: 0,
+                colStep: 1,
+                distance: 0,
+                matched: false,
+                lastHapticAt: Date.now(),
+            };
+            scheduleOnRN(triggerHaptic, 'selection');
+        })
+        .onUpdate((event) => {
+            const currentDrag = drag.value;
+            if (!currentDrag.active || currentDrag.released) return;
+            const start = { row: currentDrag.startRow, col: currentDrag.startCol };
+            const selection = selectionFromPosition(start, event.x, event.y, cellSize, gridSize);
+            const end = { row: selection.endRow, col: selection.endCol };
+            const changed = end.row !== currentDrag.endRow || end.col !== currentDrag.endCol;
+            const now = Date.now();
+            const shouldTick = changed && now - currentDrag.lastHapticAt >= SELECTION_HAPTIC_INTERVAL_MS;
+            drag.value = {
+                ...currentDrag,
+                endRow: end.row,
+                endCol: end.col,
+                rowStep: selection.rowStep,
+                colStep: selection.colStep,
+                distance: selection.distance,
+                matched: changed
+                    ? matchesUnfoundWord(start, end, grid, availableWords)
+                    : currentDrag.matched,
+                lastHapticAt: shouldTick ? now : currentDrag.lastHapticAt,
+            };
+            if (shouldTick) scheduleOnRN(triggerHaptic, 'selection');
+        })
+        .onEnd((event) => {
+            const currentDrag = drag.value;
+            if (!currentDrag.active) return;
+            const start = { row: currentDrag.startRow, col: currentDrag.startCol };
+            const selection = selectionFromPosition(start, event.x, event.y, cellSize, gridSize);
+            const end = { row: selection.endRow, col: selection.endCol };
+            drag.value = {
+                ...currentDrag,
+                endRow: end.row,
+                endCol: end.col,
+                rowStep: selection.rowStep,
+                colStep: selection.colStep,
+                distance: Math.hypot(end.row - start.row, end.col - start.col) * cellSize,
+                matched: matchesUnfoundWord(start, end, grid, availableWords),
+                released: true,
+            };
+            scheduleOnRN(finishWordDrag, start.row, start.col, end.row, end.col);
+        })
+        .onFinalize((_event, success) => {
+            if (!success) drag.value = EMPTY_DRAG;
+        }), [availableWords, canInteractWithBoard, cellSize, drag, finishWordDrag, grid, gridSize, submitting]);
+
+    useEffect(() => {
+        if (!canInteractWithBoard && !submitting) clearDrag();
+    }, [canInteractWithBoard, clearDrag, submitting]);
+
+    const animatedDragLineStyle = useAnimatedStyle(() => {
+        const currentDrag = drag.value;
+        const thickness = cellSize * 0.76;
+        const startX = 6 + (currentDrag.startCol + 0.5) * cellSize;
+        const startY = 6 + (currentDrag.startRow + 0.5) * cellSize;
+        const rowStep = currentDrag.rowStep;
+        const colStep = currentDrag.colStep;
+        const stepLength = Math.hypot(rowStep, colStep);
+        const distance = currentDrag.distance;
+        const endX = startX + colStep * distance / stepLength;
+        const endY = startY + rowStep * distance / stepLength;
+        const length = distance + thickness;
+
+        return {
+            opacity: currentDrag.active ? 1 : 0,
+            width: length,
+            left: (startX + endX - length) / 2,
+            top: (startY + endY - thickness) / 2,
+            backgroundColor: currentDrag.matched ? 'rgba(92, 211, 190, 0.40)' : 'rgba(247, 196, 69, 0.46)',
+            borderColor: currentDrag.matched ? '#42BBA5' : '#E7A91D',
+            shadowColor: currentDrag.matched ? '#319E8B' : '#D89A0A',
+            transform: [{ rotate: `${Math.atan2(rowStep, colStep) * 180 / Math.PI}deg` }],
+        };
+    }, [cellSize]);
+    const foundWordLines = useMemo(() => game.words
+        .filter(word => word.foundBy && word.start && word.end)
+        .map(word => ({
+            key: word.word,
+            isMine: idOf(word.foundBy) === userId,
+            style: getWordLineStyle(word.start, word.end, cellSize),
+        }))
+        .filter(line => line.style), [cellSize, game.words, userId]);
+
+    return (
+        <>
+            <GestureDetector gesture={gesture}>
+                <View
+                    style={[
+                        styles.board,
+                        { width: cellSize * gridSize + 12 },
+                        !canInteractWithBoard && styles.boardLocked,
+                    ]}
+                    accessible
+                    accessibilityRole="adjustable"
+                    accessibilityLabel="Word search letter grid"
+                    accessibilityHint="Touch the first letter, drag to the last letter, and release"
+                >
+                    {foundWordLines.map(line => (
+                        <View
+                            key={line.key}
+                            pointerEvents="none"
+                            style={[
+                                styles.wordLine,
+                                line.style,
+                                line.isMine ? styles.myWordLine : styles.partnerWordLine,
+                            ]}
+                        />
+                    ))}
+                    <Animated.View
+                        pointerEvents="none"
+                        style={[
+                            styles.wordLine,
+                            styles.dragWordLine,
+                            { height: cellSize * 0.76, borderRadius: cellSize * 0.38 },
+                            animatedDragLineStyle,
+                        ]}
+                    />
+                    {grid.map((rowLetters, row) => (
+                        <View key={`row-${row}`} style={styles.boardRow} pointerEvents="none">
+                            {rowLetters.split('').map((letter, col) => (
+                                <WordSearchCell
+                                    key={`${row}-${col}`}
+                                    letter={letter}
+                                    cellSize={cellSize}
+                                />
+                            ))}
+                        </View>
+                    ))}
+                </View>
+            </GestureDetector>
+            <Text style={styles.instruction}>
+                {message || (game.mode === 'duel' && !myTurn
+                    ? `Watch the board — your turn is next in ${turnCountdown}`
+                    : 'Touch, drag across a word, then release')}
+            </Text>
+        </>
+    );
+});
+
 const WordSearchScreen = ({ navigation, route }) => {
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
@@ -125,13 +390,41 @@ const WordSearchScreen = ({ navigation, route }) => {
     const initialGame = isPlayableGamePayload(initialGameCandidate) ? initialGameCandidate : null;
 
     const [game, setGame] = useState(initialGame);
-    const [difficulty, setDifficulty] = useState('medium');
-    const [difficultyMenuVisible, setDifficultyMenuVisible] = useState(false);
+    const [difficulty, setDifficulty] = useState(() => {
+        return storage.getString('wordsearch_difficulty') || 'medium';
+    });
+    const [userSelectedMode, setUserSelectedMode] = useState(() => {
+        return storage.getString('wordsearch_mode') || null;
+    });
+    const settingsBottomSheetRef = useRef(null);
+    const endChallengeSheetRef = useRef(null);
+    const openEndChallengeAfterSettingsRef = useRef(false);
+
+    const openSettings = useCallback(() => {
+        settingsBottomSheetRef.current?.present();
+    }, []);
+
+    const closeSettings = useCallback(() => {
+        settingsBottomSheetRef.current?.dismiss();
+    }, []);
+
+    const handleSettingsDismiss = useCallback(() => {
+        if (!openEndChallengeAfterSettingsRef.current) return;
+        openEndChallengeAfterSettingsRef.current = false;
+        endChallengeSheetRef.current?.present();
+    }, []);
+
+    const renderBackdrop = useCallback(backdropProps => (
+        <BottomSheetBackdrop
+            {...backdropProps}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+            opacity={0.35}
+            pressBehavior="close"
+        />
+    ), []);
     const [nudgeSent, setNudgeSent] = useState(false);
     const [presenceKnown, setPresenceKnown] = useState(!partnerId);
-    const [dragSelection, setDragSelection] = useState(null);
-    const dragStartRef = useRef(null);
-    const dragEndRef = useRef(null);
     const autoStartRef = useRef(false);
     const confettiRef = useRef(null);
     const celebratedGameIdsRef = useRef(new Set());
@@ -141,7 +434,9 @@ const WordSearchScreen = ({ navigation, route }) => {
     const [secondsRemaining, setSecondsRemaining] = useState(TURN_DURATION_SECONDS);
     const [roundStarted, setRoundStarted] = useState(true);
     const [rematchCountdownLabel, setRematchCountdownLabel] = useState(null);
+    const [pendingNewPuzzle, setPendingNewPuzzle] = useState(null);
     const expiryRefreshRef = useRef('');
+    const startingNewPuzzleRef = useRef(false);
 
     const gameId = idOf(game?._id);
     const creatorId = idOf(game?.creatorId);
@@ -155,7 +450,9 @@ const WordSearchScreen = ({ navigation, route }) => {
         && roundStarted
         && (game.mode === 'single' || (myTurn && !turnIsOver));
     const canPlayTogether = Boolean(partnerId && partnerOnline);
-    const gameMode = canPlayTogether ? 'duel' : 'single';
+    const gameMode = userSelectedMode || (canPlayTogether ? 'duel' : 'single');
+    const nextPuzzleMode = (!partnerId || !partnerOnline || gameMode === 'single') ? 'single' : 'duel';
+    const showOfflineNote = gameMode === 'duel' && !partnerOnline;
 
     const applyGamePayload = useCallback((payload) => {
         if (!isPlayableGamePayload(payload)) {
@@ -313,9 +610,6 @@ const WordSearchScreen = ({ navigation, route }) => {
             const invitedPartnerId = idOf(payload.game.partnerId);
             if (![invitedCreatorId, invitedPartnerId].includes(userId)) return;
 
-            dragStartRef.current = null;
-            dragEndRef.current = null;
-            setDragSelection(null);
             expiryRefreshRef.current = '';
             applyGamePayload(payload.game);
             setMessage(invitedCreatorId === userId
@@ -328,9 +622,6 @@ const WordSearchScreen = ({ navigation, route }) => {
             const rematchPartnerId = idOf(payload.game.partnerId);
             if (![rematchCreatorId, rematchPartnerId].includes(userId)) return;
 
-            dragStartRef.current = null;
-            dragEndRef.current = null;
-            setDragSelection(null);
             expiryRefreshRef.current = '';
             applyGamePayload(payload.game);
             setMessage('Rematch starting…');
@@ -353,6 +644,31 @@ const WordSearchScreen = ({ navigation, route }) => {
         };
     }, [applyGamePayload, socket, gameId, partnerName, userId]);
 
+    const requestPuzzle = useCallback(async ({ mode, targetDifficulty, forceNew = false }) => {
+        const modesToTry = mode === 'duel' ? ['duel', 'single'] : ['single'];
+        for (const requestedMode of modesToTry) {
+            const response = await apiFetch(`${API_BASE}/api/word-search/create`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    creatorId: userId,
+                    partnerId,
+                    mode: requestedMode,
+                    difficulty: targetDifficulty,
+                    forceNew,
+                }),
+            });
+            const json = await response.json();
+            if (response.ok && json.success) return json;
+            if (requestedMode === 'duel' && json.code === 'PARTNER_OFFLINE') {
+                setPresenceKnown(true);
+                refreshPresence();
+                continue;
+            }
+            throw new Error(json.message || translateUiText('Could not start game'));
+        }
+        throw new Error(translateUiText('Could not start game'));
+    }, [partnerId, refreshPresence, userId]);
+
     const createGame = useCallback(async () => {
         if (partnerId && !presenceKnown) {
             setMessage('Checking whether your partner is online…');
@@ -361,30 +677,15 @@ const WordSearchScreen = ({ navigation, route }) => {
         setSubmitting(true);
         setMessage('Building your puzzle…');
         try {
-            const response = await fetch(`${API_BASE}/api/word-search/create`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ creatorId: userId, partnerId, mode: gameMode, difficulty }),
-            });
-            const json = await response.json();
-            if (!response.ok || !json.success) {
-                if (['PARTNER_ONLINE', 'PARTNER_OFFLINE'].includes(json.code)) {
-                    setPresenceKnown(false);
-                    refreshPresence();
-                }
-                throw new Error(json.message || 'Could not start game');
-            }
+            const json = await requestPuzzle({ mode: nextPuzzleMode, targetDifficulty: difficulty });
             if (!applyGamePayload(json.data)) throw new Error('The server returned an incomplete game.');
-            dragStartRef.current = null;
-            dragEndRef.current = null;
-            setDragSelection(null);
-            setMessage(json.isExisting ? 'Resuming your active game.' : (gameMode === 'duel' ? `Game started with ${partnerName}!` : 'Solo puzzle ready!'));
+            setMessage(json.isExisting ? 'Resuming your active game.' : (json.data.mode === 'duel' ? `Game started with ${partnerName}!` : 'Solo puzzle ready!'));
         } catch (error) {
             setMessage(error.message || 'Could not start game.');
         } finally {
             setSubmitting(false);
         }
-    }, [applyGamePayload, difficulty, gameMode, partnerId, partnerName, presenceKnown, refreshPresence, userId]);
+    }, [applyGamePayload, difficulty, nextPuzzleMode, partnerId, partnerName, presenceKnown, requestPuzzle]);
 
     const handleNudgePartner = useCallback(() => {
         if (!isConnected) {
@@ -413,9 +714,6 @@ const WordSearchScreen = ({ navigation, route }) => {
         const path = lineCoordinates(start, end);
         if (path.length < 3) {
             setMessage('Choose a straight or diagonal line of at least 3 letters.');
-            dragStartRef.current = null;
-            dragEndRef.current = null;
-            setDragSelection(null);
             return;
         }
 
@@ -435,6 +733,7 @@ const WordSearchScreen = ({ navigation, route }) => {
                 throw selectionError;
             }
             if (!applyGamePayload(json.data)) throw new Error('The server returned an incomplete game.');
+            triggerHaptic('notificationSuccess');
             if (json.rematch && applyGamePayload(json.rematch)) {
                 setMessage('Rematch starting…');
             } else {
@@ -444,165 +743,90 @@ const WordSearchScreen = ({ navigation, route }) => {
             setMessage(error.message || 'That is not a hidden word.');
             if (error.code === 'NOT_YOUR_TURN' || error.message?.includes('changed')) fetchGame(gameId).catch(() => {});
         } finally {
-            dragStartRef.current = null;
-            dragEndRef.current = null;
-            setDragSelection(null);
             setSubmitting(false);
         }
     }, [applyGamePayload, fetchGame, gameId, userId]);
 
-    const leaveBoard = useCallback(() => {
-        Alert.alert(
-            'Start a new puzzle?',
-            game?.mode === 'duel' ? 'This ends the current game for both players.' : 'Your current progress will be cleared.',
-            [
-                { text: 'Keep playing', style: 'cancel' },
-                {
-                    text: 'End game',
-                    style: 'destructive',
-                    onPress: async () => {
-                        if (submitting) return;
-                        let abandoned = false;
-                        autoStartRef.current = true;
-                        setSubmitting(true);
-                        setMessage('Building a new puzzle…');
-                        try {
-                            const abandonResponse = await fetch(`${API_BASE}/api/word-search/${gameId}/abandon`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ userId }),
-                            });
-                            const abandonJson = await abandonResponse.json();
-                            if (!abandonResponse.ok || !abandonJson.success) {
-                                throw new Error(abandonJson.message || 'Could not end the current game');
-                            }
-                            abandoned = true;
+    const executeNewPuzzle = useCallback(async (targetDifficulty, targetMode) => {
+        if (startingNewPuzzleRef.current) return;
+        startingNewPuzzleRef.current = true;
+        const mode = (!partnerId || !partnerOnline || targetMode === 'single') ? 'single' : 'duel';
+        autoStartRef.current = true;
+        setSubmitting(true);
+        setMessage(translateUiText('Building a new puzzle…'));
+        let abandonedCurrentGame = false;
 
-                            const createResponse = await fetch(`${API_BASE}/api/word-search/create`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    creatorId: userId,
-                                    partnerId,
-                                    mode: game?.mode || gameMode,
-                                    difficulty,
-                                }),
-                            });
-                            const createJson = await createResponse.json();
-                            if (!createResponse.ok || !createJson.success) {
-                                throw new Error(createJson.message || 'Could not create a new puzzle');
-                            }
-                            if (!applyGamePayload(createJson.data)) {
-                                throw new Error('The server returned an incomplete game.');
-                            }
-                            dragStartRef.current = null;
-                            dragEndRef.current = null;
-                            setDragSelection(null);
-                            expiryRefreshRef.current = '';
-                            setMessage(game?.mode === 'duel'
-                                ? `New challenge started with ${partnerName}!`
-                                : 'New puzzle ready!');
-                        } catch (error) {
-                            setMessage(error.message || 'Could not start a new puzzle.');
-                            if (abandoned) setGame(null);
-                        } finally {
-                            setSubmitting(false);
-                        }
-                    },
-                },
-            ],
-        );
-    }, [applyGamePayload, difficulty, game, gameId, gameMode, partnerId, partnerName, submitting, userId]);
+        try {
+            if (gameId && game?.status === 'active') {
+                const abandonResponse = await apiFetch(`${API_BASE}/api/word-search/${gameId}/abandon`, {
+                    method: 'POST',
+                    body: JSON.stringify({ userId }),
+                });
+                const abandonJson = await abandonResponse.json();
+                if (!abandonResponse.ok || !abandonJson.success || !['abandoned', 'completed'].includes(abandonJson.data?.status)) {
+                    throw new Error(abandonJson.message || translateUiText('Could not end the current game'));
+                }
+                abandonedCurrentGame = true;
+            }
+
+            const createJson = await requestPuzzle({
+                mode,
+                targetDifficulty,
+                forceNew: true,
+            });
+            if (!applyGamePayload(createJson.data)) {
+                throw new Error(translateUiText('The server returned an incomplete game.'));
+            }
+            expiryRefreshRef.current = '';
+            setMessage(createJson.data.mode === 'duel'
+                ? translateUiTemplate('New challenge started with {{0}}!', [partnerName])
+                : translateUiText('New puzzle ready!'));
+            triggerHaptic('notificationSuccess');
+        } catch (error) {
+            if (abandonedCurrentGame) setGame(null);
+            setMessage(error.message || translateUiText('Could not start a new puzzle.'));
+        } finally {
+            startingNewPuzzleRef.current = false;
+            setSubmitting(false);
+        }
+    }, [applyGamePayload, game?.status, gameId, partnerId, partnerName, partnerOnline, requestPuzzle, userId]);
+
+    const startNewPuzzle = useCallback((targetDifficulty = difficulty, targetMode = nextPuzzleMode) => {
+        if (submitting || startingNewPuzzleRef.current) {
+            closeSettings();
+            return;
+        }
+        if (partnerId && !presenceKnown) {
+            closeSettings();
+            setMessage(translateUiText('Checking whether your partner is online…'));
+            return;
+        }
+        if (game?.status === 'active' && game?.mode === 'duel') {
+            setPendingNewPuzzle({ targetDifficulty, targetMode });
+            openEndChallengeAfterSettingsRef.current = true;
+            closeSettings();
+        } else {
+            closeSettings();
+            executeNewPuzzle(targetDifficulty, targetMode);
+        }
+    }, [closeSettings, difficulty, executeNewPuzzle, game?.mode, game?.status, nextPuzzleMode, partnerId, presenceKnown, submitting]);
+
+    const cancelNewPuzzle = useCallback(() => {
+        openEndChallengeAfterSettingsRef.current = false;
+        setPendingNewPuzzle(null);
+        endChallengeSheetRef.current?.dismiss();
+    }, []);
+    const confirmNewPuzzle = useCallback(() => {
+        if (!pendingNewPuzzle || submitting || startingNewPuzzleRef.current) return;
+        const { targetDifficulty, targetMode } = pendingNewPuzzle;
+        setPendingNewPuzzle(null);
+        endChallengeSheetRef.current?.dismiss();
+        executeNewPuzzle(targetDifficulty, targetMode);
+    }, [executeNewPuzzle, pendingNewPuzzle, submitting]);
+
 
     const boardSize = Math.min(width - 24, 430);
     const cellSize = game ? Math.floor((boardSize - 12) / game.gridSize) : 0;
-    const coordinateFromTouch = useCallback((event) => {
-        if (!game || !cellSize) return null;
-        const localX = event.nativeEvent.locationX - 6;
-        const localY = event.nativeEvent.locationY - 6;
-        const col = Math.max(0, Math.min(game.gridSize - 1, Math.floor(localX / cellSize)));
-        const row = Math.max(0, Math.min(game.gridSize - 1, Math.floor(localY / cellSize)));
-        return { row, col };
-    }, [cellSize, game]);
-
-    const beginWordDrag = useCallback((event) => {
-        if (submitting || game?.status !== 'active') return;
-        if (turnIsOver) {
-            setMessage('Time’s up — switching turns…');
-            return;
-        }
-        if (!myTurn) {
-            setMessage(`It’s ${partnerName}’s turn.`);
-            return;
-        }
-        const start = coordinateFromTouch(event);
-        if (!start) return;
-        dragStartRef.current = start;
-        dragEndRef.current = start;
-        setDragSelection({ start, end: start });
-        setMessage('Keep dragging to the last letter…');
-    }, [coordinateFromTouch, game?.status, myTurn, partnerName, submitting, turnIsOver]);
-
-    const updateWordDrag = useCallback((event) => {
-        const start = dragStartRef.current;
-        if (!start || !game) return;
-        const current = coordinateFromTouch(event);
-        if (!current) return;
-        const end = snapToWordDirection(start, current, game.gridSize);
-        const previousEnd = dragEndRef.current;
-        if (previousEnd?.row === end.row && previousEnd?.col === end.col) return;
-        dragEndRef.current = end;
-        setDragSelection({ start, end });
-    }, [coordinateFromTouch, game]);
-
-    const finishWordDrag = useCallback(() => {
-        const start = dragStartRef.current;
-        const end = dragEndRef.current;
-        dragStartRef.current = null;
-        dragEndRef.current = null;
-        if (!start || !end) return;
-        if (lineCoordinates(start, end).length < 3) {
-            setDragSelection(null);
-            setMessage('Touch a letter, drag across the whole word, then release.');
-            return;
-        }
-        submitSelection(start, end);
-    }, [submitSelection]);
-
-    const cancelWordDrag = useCallback(() => {
-        dragStartRef.current = null;
-        dragEndRef.current = null;
-        setDragSelection(null);
-    }, []);
-
-    const dragPath = useMemo(() => (
-        lineCoordinates(dragSelection?.start, dragSelection?.end)
-    ), [dragSelection]);
-    const dragCellKeys = useMemo(() => new Set(
-        dragPath.map(({ row, col }) => `${row}:${col}`),
-    ), [dragPath]);
-    const dragMatchedWord = useMemo(() => {
-        if (!game || dragPath.length < 3) return null;
-        const selectedLetters = dragPath
-            .map(({ row, col }) => game.grid[row]?.[col] || '')
-            .join('');
-        const reversedLetters = selectedLetters.split('').reverse().join('');
-        return game.words.find(item => (
-            !item.foundBy
-            && (item.word === selectedLetters || item.word === reversedLetters)
-        ))?.word || null;
-    }, [dragPath, game]);
-    const dragLineStyle = useMemo(() => (
-        getWordLineStyle(dragSelection?.start, dragSelection?.end, cellSize)
-    ), [cellSize, dragSelection]);
-    const foundWordLines = useMemo(() => (game?.words || [])
-        .filter(word => word.foundBy && word.start && word.end)
-        .map(word => ({
-            key: word.word,
-            isMine: idOf(word.foundBy) === userId,
-            style: getWordLineStyle(word.start, word.end, cellSize),
-        }))
-        .filter(line => line.style), [cellSize, game?.words, userId]);
     const completedTitle = game?.isDraw
         ? 'It’s a draw!'
         : idOf(game?.winner) === userId
@@ -627,27 +851,52 @@ const WordSearchScreen = ({ navigation, route }) => {
         <LinearGradient colors={['#F2E7FF', '#FFF8FC', '#E8F7F4']} style={styles.screen}>
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <View style={[styles.header, { paddingTop: insets.top + 3 }]}>
-                <TouchableOpacity style={styles.backButton} onPress={navigation?.goBack} accessibilityLabel="Back" hitSlop={6}>
-                    <ChevronLeft size={22} color="#33234A" />
-                </TouchableOpacity>
-                <View style={styles.headerCopy}>
-                    <Text style={styles.headerTitle}>Word Search</Text>
-                    <Text style={styles.headerSubtitle}>Find the hidden love words</Text>
-                </View>
-                <View style={styles.headerActions}>
+                <View style={styles.headerLeft}>
                     <TouchableOpacity
-                        style={styles.headerSettingsButton}
-                        onPress={() => setDifficultyMenuVisible(true)}
-                        accessibilityLabel="Game difficulty"
+                        style={styles.backButton}
+                        onPress={navigation?.goBack}
+                        accessibilityLabel={translateUiText('Back')}
                         hitSlop={6}
                     >
-                        <Settings2 size={18} color="#684C88" />
+                        <ChevronLeft size={24} color="#33234A" />
                     </TouchableOpacity>
-                    {game?.status === 'active' && (
-                        <TouchableOpacity style={styles.newButton} onPress={leaveBoard} hitSlop={6}>
-                            <Text style={styles.newButtonText}>New</Text>
+                    <Text style={styles.headerTitle}>{translateUiText('Word Search')}</Text>
+                </View>
+                <View style={styles.headerRight}>
+                    {partnerId ? (
+                        <TouchableOpacity
+                            style={[
+                                styles.headerPresenceChip,
+                                partnerOnline ? styles.headerPresenceChipOnline : styles.headerPresenceChipOffline,
+                            ]}
+                            onPress={!partnerOnline ? handleNudgePartner : undefined}
+                            disabled={partnerOnline || nudgeSent}
+                            activeOpacity={partnerOnline ? 1 : 0.7}
+                            hitSlop={4}
+                            accessibilityLabel={partnerOnline
+                                ? translateUiTemplate('{{0}} is online', [partnerName])
+                                : translateUiTemplate(nudgeSent ? '{{0}} is offline, nudge sent' : '{{0}} is offline, tap to nudge', [partnerName])}
+                        >
+                            <View style={[
+                                styles.headerPresenceDot,
+                                partnerOnline ? styles.partnerStatusOnline : styles.partnerStatusOffline,
+                            ]} />
+                            <Text style={[
+                                styles.headerPresenceText,
+                                partnerOnline ? styles.headerPresenceTextOnline : styles.headerPresenceTextOffline,
+                            ]}>
+                                {partnerOnline ? translateUiText('Online') : (nudgeSent ? translateUiText('Nudged') : translateUiText('Offline'))}
+                            </Text>
                         </TouchableOpacity>
-                    )}
+                    ) : null}
+                    <TouchableOpacity
+                        style={styles.headerMenuButton}
+                        onPress={openSettings}
+                        accessibilityLabel={translateUiText('Game options')}
+                        hitSlop={8}
+                    >
+                        <MoreVertical size={22} color="#33234A" />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -777,81 +1026,19 @@ const WordSearchScreen = ({ navigation, route }) => {
                         </View>
                     )}
 
-                    <View
-                        style={[
-                            styles.board,
-                            { width: cellSize * game.gridSize + 12 },
-                            !canInteractWithBoard && styles.boardLocked,
-                        ]}
-                        onStartShouldSetResponderCapture={() => canInteractWithBoard && !submitting}
-                        onMoveShouldSetResponderCapture={() => canInteractWithBoard && !submitting}
-                        onStartShouldSetResponder={() => canInteractWithBoard && !submitting}
-                        onMoveShouldSetResponder={() => canInteractWithBoard && !submitting}
-                        onResponderGrant={beginWordDrag}
-                        onResponderMove={updateWordDrag}
-                        onResponderRelease={finishWordDrag}
-                        onResponderTerminate={cancelWordDrag}
-                        onResponderTerminationRequest={() => false}
-                        accessible
-                        accessibilityRole="adjustable"
-                        accessibilityLabel="Word search letter grid"
-                        accessibilityHint="Touch the first letter, drag to the last letter, and release"
-                    >
-                        {foundWordLines.map(line => (
-                            <View
-                                key={line.key}
-                                pointerEvents="none"
-                                style={[
-                                    styles.wordLine,
-                                    line.style,
-                                    line.isMine ? styles.myWordLine : styles.partnerWordLine,
-                                ]}
-                            />
-                        ))}
-                        {dragLineStyle && (
-                            <View
-                                pointerEvents="none"
-                                style={[
-                                    styles.wordLine,
-                                    dragLineStyle,
-                                    dragMatchedWord ? styles.detectedWordLine : styles.dragWordLine,
-                                ]}
-                            />
-                        )}
-                        {game.grid.map((rowLetters, row) => (
-                            <View key={`row-${row}`} style={styles.boardRow} pointerEvents="none">
-                                {rowLetters.split('').map((letter, col) => {
-                                    const cellKey = `${row}:${col}`;
-                                    const selected = dragCellKeys.has(cellKey);
-                                    return (
-                                        <View
-                                            key={`${row}-${col}`}
-                                            style={[
-                                                styles.cell,
-                                                { width: cellSize, height: cellSize },
-                                            ]}
-                                        >
-                                            <Text style={[
-                                                styles.letter,
-                                                { fontSize: Math.max(12, cellSize * 0.48) },
-                                                selected && styles.selectedLetter,
-                                            ]}>{letter}</Text>
-                                        </View>
-                                    );
-                                })}
-                            </View>
-                        ))}
-                    </View>
-
-                    <Text style={styles.instruction}>
-                        {dragMatchedWord
-                            ? `${dragMatchedWord} found — release!`
-                            : message || (dragSelection
-                                ? 'Keep dragging to the final letter'
-                                : game.mode === 'duel' && !myTurn
-                                    ? `Watch the board — your turn is next in ${formattedTimer}`
-                                    : 'Touch, drag across a word, then release')}
-                    </Text>
+                    <WordSearchBoard
+                        key={gameId}
+                        game={game}
+                        cellSize={cellSize}
+                        userId={userId}
+                        canInteractWithBoard={canInteractWithBoard}
+                        submitting={submitting}
+                        myTurn={myTurn}
+                        message={message}
+                        turnCountdown={myTurn ? null : formattedTimer}
+                        onSubmitSelection={submitSelection}
+                        onMessage={setMessage}
+                    />
 
                     <View style={styles.wordPanel}>
                         <View style={styles.wordPanelHeader}>
@@ -919,77 +1106,342 @@ const WordSearchScreen = ({ navigation, route }) => {
                 />
             </View>
 
-            <Modal
-                visible={difficultyMenuVisible}
-                transparent
-                animationType="fade"
-                statusBarTranslucent
-                onRequestClose={() => setDifficultyMenuVisible(false)}
+            <BottomSheetModal
+                ref={settingsBottomSheetRef}
+                enableDynamicSizing
+                enablePanDownToClose
+                backdropComponent={renderBackdrop}
+                backgroundStyle={styles.settingsSheetBackground}
+                handleIndicatorStyle={styles.settingsHandleIndicator}
+                onDismiss={handleSettingsDismiss}
             >
-                <TouchableOpacity
-                    style={styles.settingsBackdrop}
-                    activeOpacity={1}
-                    onPress={() => setDifficultyMenuVisible(false)}
-                >
-                    <View
-                        style={[styles.settingsSheet, { paddingBottom: insets.bottom + 18 }]}
-                        onStartShouldSetResponder={() => true}
-                    >
-                        <View style={styles.settingsHeader}>
-                            <View>
-                                <Text style={styles.settingsEyebrow}>GAME SETTINGS</Text>
-                                <Text style={styles.settingsTitle}>
-                                    {game ? 'Next board difficulty' : 'Choose difficulty'}
+                <BottomSheetView style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
+                    <View style={styles.settingsHeader}>
+                        <Text style={styles.settingsTitle}>{translateUiText('Game Options')}</Text>
+                        <TouchableOpacity
+                            style={styles.settingsClose}
+                            onPress={closeSettings}
+                            hitSlop={8}
+                            accessibilityLabel={translateUiText('Close')}
+                        >
+                            <X size={18} color="#4A385B" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {partnerId && (
+                        <View style={styles.settingsSection}>
+                            <Text style={styles.settingsSectionTitle}>{translateUiText('GAME MODE')}</Text>
+                            <View style={styles.modeCardsRow}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeCard,
+                                        gameMode === 'single' && styles.modeCardSelected,
+                                    ]}
+                                    onPress={() => {
+                                        setUserSelectedMode('single');
+                                        storage.set('wordsearch_mode', 'single');
+                                        triggerHaptic('selection');
+                                    }}
+                                    activeOpacity={0.8}
+                                    accessibilityRole="button"
+                                    accessibilityState={{ selected: gameMode === 'single' }}
+                                >
+                                    <View style={[styles.modeCardIcon, gameMode === 'single' && styles.modeCardIconSelected]}>
+                                        <User size={15} color={gameMode === 'single' ? '#7048C6' : '#7D6F86'} />
+                                    </View>
+                                    <Text style={[styles.modeCardTitle, gameMode === 'single' && styles.modeCardTitleSelected]}>
+                                        {translateUiText('Solo')}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeCard,
+                                        gameMode === 'duel' && styles.modeCardSelected,
+                                    ]}
+                                    onPress={() => {
+                                        setUserSelectedMode('duel');
+                                        storage.set('wordsearch_mode', 'duel');
+                                        triggerHaptic('selection');
+                                    }}
+                                    activeOpacity={0.8}
+                                    accessibilityRole="button"
+                                    accessibilityState={{ selected: gameMode === 'duel' }}
+                                >
+                                    <View style={[styles.modeCardIcon, gameMode === 'duel' && styles.modeCardIconSelected]}>
+                                        <Swords size={15} color={gameMode === 'duel' ? '#7048C6' : '#7D6F86'} />
+                                    </View>
+                                    <Text style={[styles.modeCardTitle, gameMode === 'duel' && styles.modeCardTitleSelected]}>
+                                        {translateUiText('Duel')}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View
+                                accessibilityElementsHidden={!showOfflineNote}
+                                importantForAccessibility={showOfflineNote ? 'auto' : 'no-hide-descendants'}
+                            >
+                                <Text style={[styles.offlineNote, !showOfflineNote && styles.offlineNoteHidden]}>
+                                    {translateUiText('Partner is offline, so the next puzzle will be solo.')}
                                 </Text>
                             </View>
+                        </View>
+                    )}
+
+                    <View style={styles.settingsSection}>
+                        <Text style={styles.settingsSectionTitle}>{translateUiText('GRID SIZE & DIFFICULTY')}</Text>
+                        <View style={styles.difficultyCardsRow}>
+                            {DIFFICULTY_OPTIONS.map(option => {
+                                const selected = difficulty === option.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={option.id}
+                                        style={[
+                                            styles.difficultyCard,
+                                            selected && styles.difficultyCardSelected,
+                                        ]}
+                                        onPress={() => {
+                                            setDifficulty(option.id);
+                                            storage.set('wordsearch_difficulty', option.id);
+                                            triggerHaptic('selection');
+                                        }}
+                                        activeOpacity={0.8}
+                                        accessibilityRole="button"
+                                        accessibilityState={{ selected }}
+                                    >
+                                        <Text style={[styles.difficultyCardTitle, selected && styles.difficultyCardTitleSelected]}>
+                                            {translateUiText(option.title)}
+                                        </Text>
+                                        <Text style={[styles.difficultyGridSize, selected && styles.difficultyGridSizeSelected]}>
+                                            {option.gridSize}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+
+                    <View style={styles.actionContainer}>
+                        <TouchableOpacity
+                            style={styles.startNewButton}
+                            onPress={() => startNewPuzzle(difficulty, nextPuzzleMode)}
+                            activeOpacity={0.82}
+                        >
+                            <RotateCcw size={16} color="#FFFFFF" strokeWidth={2.4} />
+                            <Text style={styles.startNewButtonText}>
+                                {game?.status === 'active' ? translateUiText('Start Fresh Puzzle') : translateUiText('Create Puzzle')}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </BottomSheetView>
+            </BottomSheetModal>
+
+            <BottomSheetModal
+                ref={endChallengeSheetRef}
+                enableDynamicSizing
+                enablePanDownToClose
+                backdropComponent={renderBackdrop}
+                backgroundStyle={styles.endChallengeSheetBackground}
+                handleIndicatorStyle={styles.settingsHandleIndicator}
+                onDismiss={() => setPendingNewPuzzle(null)}
+            >
+                <BottomSheetView
+                    style={[styles.endChallengeSheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}
+                    testID="end-challenge-sheet"
+                >
+                    <LinearGradient
+                        colors={['#F1E8FF', '#FFF0F7', '#FFF9FD']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.endChallengeHeader}
+                    >
+                        <View style={styles.endChallengeTopRow}>
+                            <View style={styles.endChallengeIcon}>
+                                <Swords size={25} color="#7547C3" strokeWidth={2.2} />
+                            </View>
                             <TouchableOpacity
-                                style={styles.settingsClose}
-                                onPress={() => setDifficultyMenuVisible(false)}
+                                style={styles.endChallengeClose}
+                                onPress={cancelNewPuzzle}
+                                accessibilityRole="button"
+                                accessibilityLabel={translateUiText('Keep playing')}
+                                hitSlop={8}
                             >
-                                <X size={20} color="#4A385B" />
+                                <X size={18} color="#735B7D" />
                             </TouchableOpacity>
                         </View>
-                        {DIFFICULTY_OPTIONS.map(option => {
-                            const selected = difficulty === option.id;
-                            return (
-                                <TouchableOpacity
-                                    key={option.id}
-                                    style={[styles.settingsOption, selected && styles.settingsOptionSelected]}
-                                    onPress={() => {
-                                        setDifficulty(option.id);
-                                        setDifficultyMenuVisible(false);
-                                    }}
-                                >
-                                    <View>
-                                        <Text style={[styles.settingsOptionTitle, selected && styles.settingsOptionTitleSelected]}>
-                                            {option.title}
-                                        </Text>
-                                        <Text style={styles.settingsOptionDetail}>{option.detail}</Text>
-                                    </View>
-                                    <View style={[styles.settingsRadio, selected && styles.settingsRadioSelected]} />
-                                </TouchableOpacity>
-                            );
-                        })}
+                        <Text style={styles.endChallengeEyebrow}>{translateUiText('Duel Challenge')}</Text>
+                        <Text style={styles.endChallengeTitle} accessibilityRole="header">
+                            {translateUiText('End current challenge?')}
+                        </Text>
+                    </LinearGradient>
+
+                    <View style={styles.endChallengeContent}>
+                        <View style={styles.endChallengeNotice}>
+                            <View style={styles.endChallengeNoticeMark} />
+                            <Text style={styles.endChallengeMessage}>
+                                {translateUiTemplate(
+                                    'This will forfeit the current duel with {{0}} and start a fresh board.',
+                                    [partnerName],
+                                )}
+                            </Text>
+                        </View>
+                        <TouchableOpacity
+                            style={styles.endChallengeKeepButton}
+                            onPress={cancelNewPuzzle}
+                            activeOpacity={0.82}
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.endChallengeKeepText}>{translateUiText('Keep playing')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.endChallengeStartButton}
+                            onPress={confirmNewPuzzle}
+                            activeOpacity={0.82}
+                            accessibilityRole="button"
+                            disabled={submitting}
+                        >
+                            <LinearGradient
+                                colors={['#E87798', '#D8587E']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.endChallengeStartGradient}
+                            >
+                                <RotateCcw size={16} color="#FFFFFF" strokeWidth={2.4} />
+                                <Text style={styles.endChallengeStartText}>{translateUiText('Start new')}</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
                     </View>
-                </TouchableOpacity>
-            </Modal>
+                </BottomSheetView>
+            </BottomSheetModal>
         </LinearGradient>
     );
 };
 
 const styles = StyleSheet.create({
     screen: { flex: 1 },
+    endChallengeSheetBackground: {
+        backgroundColor: '#FFF9FD',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+    },
+    endChallengeSheet: {
+        paddingTop: 4,
+        overflow: 'hidden',
+    },
+    endChallengeHeader: {
+        paddingHorizontal: 23,
+        paddingTop: 22,
+        paddingBottom: 23,
+    },
+    endChallengeTopRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    endChallengeIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 19,
+        backgroundColor: '#E5D7FC',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#D6C1F5',
+    },
+    endChallengeClose: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.75)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    endChallengeEyebrow: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 10,
+        letterSpacing: 1.1,
+        textTransform: 'uppercase',
+        color: '#946FB4',
+    },
+    endChallengeTitle: {
+        marginTop: 6,
+        fontFamily: fontFamily.extraBold,
+        fontSize: 24,
+        lineHeight: 29,
+        color: '#352448',
+    },
+    endChallengeContent: {
+        paddingHorizontal: 22,
+        paddingTop: 20,
+        paddingBottom: 22,
+    },
+    endChallengeNotice: {
+        flexDirection: 'row',
+        gap: 11,
+        paddingHorizontal: 14,
+        paddingVertical: 14,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#F3DEE5',
+        backgroundColor: '#FFF3F6',
+        marginBottom: 18,
+    },
+    endChallengeNoticeMark: {
+        width: 4,
+        borderRadius: 2,
+        backgroundColor: '#DF7895',
+    },
+    endChallengeMessage: {
+        flex: 1,
+        fontFamily: fontFamily.medium,
+        fontSize: 13,
+        lineHeight: 19,
+        color: '#705C70',
+    },
+    endChallengeKeepButton: {
+        minHeight: 49,
+        borderRadius: 16,
+        backgroundColor: '#F0E8FB',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    endChallengeKeepText: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 14,
+        color: '#6D49B7',
+    },
+    endChallengeStartButton: {
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    endChallengeStartGradient: {
+        minHeight: 51,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    endChallengeStartText: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 14,
+        color: '#FFFFFF',
+    },
     flexCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
     loadingText: { fontFamily: fontFamily.medium, color: '#6E6178' },
-    header: { paddingHorizontal: 12, paddingBottom: 5, flexDirection: 'row', alignItems: 'center' },
-    backButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.82)', alignItems: 'center', justifyContent: 'center' },
-    headerCopy: { flex: 1, alignItems: 'center' },
-    headerTitle: { fontFamily: fontFamily.extraBold, fontSize: 19, lineHeight: 21, color: '#302244' },
-    headerSubtitle: { fontFamily: fontFamily.medium, fontSize: 9.5, lineHeight: 12, color: '#887C91' },
-    newButton: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-    newButtonText: { fontFamily: fontFamily.bold, color: '#7653C9', fontSize: 12 },
-    headerActions: { minWidth: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
-    headerSettingsButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.82)', alignItems: 'center', justifyContent: 'center' },
+    header: { paddingHorizontal: 12, paddingBottom: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    backButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { fontFamily: fontFamily.extraBold, fontSize: 19, color: '#302244' },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    headerPresenceChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 4.5, borderRadius: 12 },
+    headerPresenceChipOnline: { backgroundColor: 'rgba(69, 190, 130, 0.14)' },
+    headerPresenceChipOffline: { backgroundColor: 'rgba(156, 142, 166, 0.14)' },
+    headerPresenceDot: { width: 7, height: 7, borderRadius: 3.5 },
+    headerPresenceText: { fontFamily: fontFamily.bold, fontSize: 11, letterSpacing: 0.2 },
+    headerPresenceTextOnline: { color: '#1E8E5A' },
+    headerPresenceTextOffline: { color: '#76677C' },
+    headerMenuButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
     preparingGame: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 74, paddingHorizontal: 20 },
     compactStatusChip: { minHeight: 31, paddingHorizontal: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.84)', flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 30 },
     compactStatusText: { fontFamily: fontFamily.bold, fontSize: 11, color: '#75687D' },
@@ -1018,19 +1470,156 @@ const styles = StyleSheet.create({
     nudgeButtonText: { fontFamily: fontFamily.extraBold, fontSize: 13.5, color: '#704EBA' },
     nudgeButtonTextSent: { color: '#4D9B8B' },
     quickStartMessage: { minHeight: 22, marginTop: 14, fontFamily: fontFamily.medium, fontSize: 12, color: '#7653C9', textAlign: 'center' },
-    settingsBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(43,29,53,0.28)' },
-    settingsSheet: { paddingHorizontal: 18, paddingTop: 18, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: '#FFF9FE' },
-    settingsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-    settingsEyebrow: { fontFamily: fontFamily.extraBold, fontSize: 9.5, letterSpacing: 1, color: '#96859F' },
-    settingsTitle: { fontFamily: fontFamily.extraBold, fontSize: 21, color: '#38284B', marginTop: 2 },
-    settingsClose: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F1E8F5', alignItems: 'center', justifyContent: 'center' },
-    settingsOption: { minHeight: 66, marginBottom: 9, paddingHorizontal: 15, borderRadius: 17, borderWidth: 1.5, borderColor: '#EEE5F1', backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    settingsOptionSelected: { borderColor: '#64BEAD', backgroundColor: '#F1FCF9' },
-    settingsOptionTitle: { fontFamily: fontFamily.extraBold, fontSize: 15, color: '#4A3A53' },
-    settingsOptionTitleSelected: { color: '#288D7B' },
-    settingsOptionDetail: { fontFamily: fontFamily.medium, fontSize: 10.5, color: '#94899A', marginTop: 3 },
-    settingsRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#D0C4D5' },
-    settingsRadioSelected: { borderWidth: 6, borderColor: '#55B4A3' },
+    settingsSheetBackground: {
+        backgroundColor: '#FFF9FE',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+    },
+    settingsHandleIndicator: {
+        backgroundColor: '#D7C8E2',
+        width: 38,
+        height: 4,
+        borderRadius: 2,
+    },
+    settingsSheet: {
+        paddingHorizontal: 20,
+        paddingTop: 4,
+    },
+    settingsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 18,
+    },
+    settingsTitle: {
+        flex: 1,
+        fontFamily: fontFamily.extraBold,
+        fontSize: 21,
+        color: '#342347',
+    },
+    settingsClose: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#F3EAF7',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    settingsSection: {
+        marginBottom: 16,
+    },
+    settingsSectionTitle: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 9.5,
+        letterSpacing: 0.9,
+        color: '#8F7B9D',
+        marginBottom: 8,
+    },
+    modeCardsRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    modeCard: {
+        flex: 1,
+        minHeight: 52,
+        paddingHorizontal: 9,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+        borderRadius: 14,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#EEE5F2',
+    },
+    modeCardSelected: {
+        borderColor: '#7F54DB',
+        backgroundColor: '#F8F2FE',
+    },
+    modeCardIcon: {
+        width: 27,
+        height: 27,
+        borderRadius: 8,
+        backgroundColor: '#F3ECF8',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modeCardIconSelected: {
+        backgroundColor: '#EBE0FA',
+    },
+    modeCardTitle: {
+        flex: 1,
+        fontFamily: fontFamily.extraBold,
+        fontSize: 13,
+        color: '#463554',
+    },
+    modeCardTitleSelected: {
+        color: '#6438BA',
+    },
+    offlineNote: {
+        fontFamily: fontFamily.medium,
+        fontSize: 11,
+        color: '#806993',
+        marginTop: 7,
+    },
+    offlineNoteHidden: {
+        opacity: 0,
+    },
+    difficultyCardsRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    difficultyCard: {
+        flex: 1,
+        minHeight: 61,
+        paddingVertical: 10,
+        paddingHorizontal: 6,
+        borderRadius: 14,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#EEE5F2',
+        alignItems: 'center',
+    },
+    difficultyCardSelected: {
+        borderColor: '#7F54DB',
+        backgroundColor: '#F8F2FE',
+    },
+    difficultyCardTitle: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 12.5,
+        color: '#463554',
+    },
+    difficultyCardTitleSelected: {
+        color: '#6438BA',
+    },
+    difficultyGridSize: {
+        fontFamily: fontFamily.bold,
+        fontSize: 11,
+        color: '#766286',
+        marginTop: 2,
+    },
+    difficultyGridSizeSelected: {
+        color: '#7A4ED4',
+    },
+    actionContainer: {
+        marginTop: 2,
+        width: '100%',
+        alignItems: 'center',
+    },
+    startNewButton: {
+        width: '100%',
+        minHeight: 50,
+        borderRadius: 18,
+        backgroundColor: '#8058D4',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    startNewButtonText: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 15,
+        color: '#FFFFFF',
+    },
     gameContent: { alignItems: 'center', paddingTop: 1 },
     scoreCard: { width: '92%', maxWidth: 430, height: 60, borderRadius: 17, paddingHorizontal: 14, backgroundColor: 'rgba(255,255,255,0.86)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     scoreSide: { width: '32%', alignItems: 'center' },
@@ -1093,7 +1682,6 @@ const styles = StyleSheet.create({
     myWordLine: { backgroundColor: 'rgba(92, 211, 190, 0.40)', borderColor: '#42BBA5' },
     partnerWordLine: { backgroundColor: 'rgba(176, 137, 235, 0.36)', borderColor: '#9368D2' },
     letter: { fontFamily: fontFamily.extraBold, color: '#3B2D48' },
-    selectedLetter: { color: '#2F2540' },
     instruction: { minHeight: 34, marginTop: 11, fontFamily: fontFamily.bold, fontSize: 11.5, color: '#756A7C', textAlign: 'center', paddingHorizontal: 22 },
     wordPanel: { width: '92%', maxWidth: 430, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.78)', padding: 14, marginTop: 2 },
     wordPanelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -1118,4 +1706,5 @@ const styles = StyleSheet.create({
     confettiLayer: { ...StyleSheet.absoluteFillObject, zIndex: 60 },
 });
 
+export { WordSearchBoard };
 export default WordSearchScreen;

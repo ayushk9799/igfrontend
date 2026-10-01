@@ -116,8 +116,8 @@ export const prepareMemoryImage = async (asset, { fileName = createMemoryImageFi
 };
 
 export const getDisplayAspectRatio = (width, height) => {
-    if (!width || !height) return 4 / 5;
+    if (!width || !height) return 16 / 10;
 
     const ratio = width / height;
-    return Math.max(0.72, Math.min(1.35, ratio));
+    return Math.max(1.3, Math.min(1.65, ratio));
 };

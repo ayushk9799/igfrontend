@@ -759,10 +759,24 @@ export default function DailyChallengeDoneScreen({
                             {isActionPending
                                 ? 'Sending reminder…'
                                 : isFullHeart
-                                    ? `Chat with ${partnerName}`
+                                    ? `View Answers & Chat`
                                     : `Remind ${partnerName}`}
                         </Text>
                     </TouchableOpacity>
+
+                    {/* VIEW ANSWERS WHEN PENDING */}
+                    {!isFullHeart && (
+                        <TouchableOpacity
+                            style={[styles.backButton, { marginBottom: 4 }]}
+                            onPress={onCompareWithPartner}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.backText, { color: '#E11D48', fontWeight: '600' }]}>
+                                View Today's Answers
+                            </Text>
+                        </TouchableOpacity>
+                    )}
 
                     {/* SECONDARY ACTION BUTTON */}
                     <TouchableOpacity

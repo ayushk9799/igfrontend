@@ -76,6 +76,8 @@ const ChatInput = ({
     maxLength = 2000,
     disabled = false,
     partnerName = 'Partner',
+    style,
+    wrapperStyle,
 }) => {
     const [message, setMessage] = useState('');
     const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -144,6 +146,9 @@ const ChatInput = ({
             onSend(trimmedMessage);
             inputRef.current?.clear();
             setMessage('');
+            requestAnimationFrame(() => {
+                inputRef.current?.focus();
+            });
 
             if (onTyping) {
                 onTyping(false);
@@ -155,8 +160,8 @@ const ChatInput = ({
     };
 
     return (
-        <View style={[styles.wrapper, keyboardVisible && Platform.OS === 'ios' && styles.wrapperKeyboardActive]}>
-            <View style={styles.container}>
+        <View style={[styles.wrapper, keyboardVisible && Platform.OS === 'ios' && styles.wrapperKeyboardActive, wrapperStyle]}>
+            <View style={[styles.container, style]}>
                 {/* Input field */}
                 <View style={styles.inputContainer}>
                     <TextInput
@@ -164,7 +169,7 @@ const ChatInput = ({
                         style={styles.input}
                         value={message}
                         onChangeText={handleChangeText}
-                        placeholder={translateUiTemplate("Message {{0}}...", [partnerName])}
+                        placeholder={placeholder || translateUiTemplate("Message {{0}}...", [partnerName])}
                         placeholderTextColor={colors.textMuted}
                         multiline
                         maxLength={maxLength}

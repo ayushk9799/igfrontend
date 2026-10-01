@@ -1,0 +1,99 @@
+diff --git a/node_modules/react-native-wheel-pick/android/src/main/java/com/tron/ReactWheelCurvedPicker.java b/node_modules/react-native-wheel-pick/android/src/main/java/com/tron/ReactWheelCurvedPicker.java
+index 9cff061..189fd94 100644
+--- a/node_modules/react-native-wheel-pick/android/src/main/java/com/tron/ReactWheelCurvedPicker.java
++++ b/node_modules/react-native-wheel-pick/android/src/main/java/com/tron/ReactWheelCurvedPicker.java
+@@ -5,8 +5,13 @@ import android.graphics.Color;
+ import android.graphics.LinearGradient;
+ import android.graphics.Paint;
+ import android.graphics.Shader;
++import android.content.Context;
++import android.os.Build;
+ import android.os.SystemClock;
++import android.os.VibrationEffect;
++import android.os.Vibrator;
+ import android.util.AttributeSet;
++import android.view.HapticFeedbackConstants;
+ 
+ // import android.util.Log;
+ 
+@@ -38,6 +43,49 @@ public class ReactWheelCurvedPicker extends WheelPicker {
+ 
+     //private int mState;
+ 
++    private Vibrator mVibrator;
++    private long mLastHapticTime = 0;
++
++    private void performGentleHaptic() {
++        try {
++            long now = SystemClock.uptimeMillis();
++            if (now - mLastHapticTime < 38) {
++                return;
++            }
++            mLastHapticTime = now;
++
++            if (Build.VERSION.SDK_INT >= 34) {
++                if (performHapticFeedback(27, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING)) {
++                    return;
++                }
++            }
++
++            if (mVibrator == null) {
++                mVibrator = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
++            }
++            if (mVibrator != null && mVibrator.hasVibrator()) {
++                if (Build.VERSION.SDK_INT >= 29) {
++                    mVibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK));
++                    return;
++                } else if (Build.VERSION.SDK_INT >= 26) {
++                    if (mVibrator.hasAmplitudeControl()) {
++                        mVibrator.vibrate(VibrationEffect.createOneShot(5, 30));
++                        return;
++                    }
++                }
++            }
++
++            if (Build.VERSION.SDK_INT >= 27) {
++                if (performHapticFeedback(9, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING)) {
++                    return;
++                }
++            }
++
++            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
++        } catch (Throwable ignored) {
++        }
++    }
++
+     public ReactWheelCurvedPicker(ReactContext reactContext) {
+         super(reactContext);
+ 
+@@ -47,14 +95,29 @@ public class ReactWheelCurvedPicker extends WheelPicker {
+             mEventDispatcher = reactContext.getNativeModule(UIManagerModule.class).getEventDispatcher();
+         }
+         
++        setHapticFeedbackEnabled(true);
+         setOnWheelChangeListener(new OnWheelChangeListener() {
++            private int mLastItemIndex = Integer.MIN_VALUE;
++
+             @Override
+             public void onWheelScrolled(int offset) {
++                int visibleCount = getVisibleItemCount();
++                if (visibleCount <= 0) visibleCount = 7;
++                int height = getHeight() - getPaddingTop() - getPaddingBottom();
++                if (height <= 0) return;
++                int itemHeight = height / visibleCount;
++                if (itemHeight <= 0) return;
++
++                int itemIndex = Math.round((float) -offset / itemHeight);
++                if (itemIndex != mLastItemIndex) {
++                    mLastItemIndex = itemIndex;
++                    performGentleHaptic();
++                }
+             }
+ 
+             @Override
+             public void onWheelSelected(int position) {
+-                // Log.d("onWheelSelected", "Wheel Selected");
++                mLastItemIndex = Integer.MIN_VALUE;
+                 if (mValueData != null && position < mValueData.size()) {
+                     mEventDispatcher.dispatchEvent(
+                         new ItemSelectedEvent(getId(), mValueData.get(position)));

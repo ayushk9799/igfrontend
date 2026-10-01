@@ -27,7 +27,7 @@ const TOPIC_CONFIG = TOPIC_CATEGORIES;
 
 // Fallback config for categories without images
 const FALLBACK_CONFIG = {
-    dailychallenge: { title: "Daily Challenge", emoji: '⭐', gradient: ['#FFE0B2', '#FFF3E0'], textColor: '#E65100' },
+    dailychallenge: { title: "Daily Ritual", emoji: '🔥', gradient: ['#FFDECE', '#FFF3EB'], textColor: '#EA580C' },
     likelyto: { title: "Most Likely To", emoji: '🎯', gradient: ['#E8EAF6', '#C5CAE9'], textColor: '#283593' },
     neverhaveiever: { title: "Never Have I Ever", emoji: '🤫', gradient: ['#FCE4EC', '#F8BBD0'], textColor: '#AD1457' },
     deep: { title: "Deep Talk", emoji: '💭', gradient: ['#EDE7F6', '#D1C4E9'], textColor: '#4527A0' },
@@ -81,6 +81,44 @@ const isDisplayableChat = (chat) => {
     return Boolean(chat.hasUserMessages) || (chat.userMessageCount > 0);
 };
 
+const groupDailyChallengeChats = (chats) => {
+    const dailyMap = new Map();
+    const result = [];
+
+    for (const chat of chats) {
+        if (chat.questionSource === 'dailychallenge') {
+            const key = chat.challengeId?._id || chat.challengeId || chat.date || (chat.createdAt ? new Date(chat.createdAt).toISOString().split('T')[0] : chat._id);
+            const existing = dailyMap.get(key);
+            if (!existing) {
+                const normalizedDaily = {
+                    ...chat,
+                    questionText: chat.questionText || 'Daily Ritual',
+                    lastMessagePreview: chat.lastMessagePreview || translateUiText('Tap to view answers'),
+                };
+                dailyMap.set(key, normalizedDaily);
+                result.push(normalizedDaily);
+            } else {
+                if (getChatTime(chat) > getChatTime(existing)) {
+                    const idx = result.indexOf(existing);
+                    if (idx !== -1) {
+                        const updatedDaily = {
+                            ...chat,
+                            questionText: chat.questionText || existing.questionText || 'Daily Ritual',
+                            lastMessagePreview: chat.lastMessagePreview || existing.lastMessagePreview,
+                        };
+                        result[idx] = updatedDaily;
+                        dailyMap.set(key, updatedDaily);
+                    }
+                }
+            }
+        } else {
+            result.push(chat);
+        }
+    }
+
+    return result;
+};
+
 const readStoredChatCache = (userId) => {
     if (!userId) return null;
 
@@ -117,7 +155,8 @@ const mergeChats = (currentChats, changedChats) => {
         });
     });
 
-    return sortChats(Array.from(byId.values()).filter(isDisplayableChat));
+    const deduped = groupDailyChallengeChats(Array.from(byId.values()));
+    return sortChats(deduped.filter(isDisplayableChat));
 };
 
 /**
@@ -148,7 +187,7 @@ export default function ChatListScreen({
             setError(null);
 
             if (cached && !forceFull) {
-                const filteredCached = (cached.chats || []).filter(isDisplayableChat);
+                const filteredCached = groupDailyChallengeChats((cached.chats || []).filter(isDisplayableChat));
                 setChats(filteredCached);
                 setLoading(false);
                 if (cacheKey && !memoryCache) {
@@ -185,7 +224,7 @@ export default function ChatListScreen({
             }
 
             if (hasLegacyData || hasV2Data) {
-                const serverChats = [...legacyChats, ...v2Chats];
+                const serverChats = groupDailyChallengeChats([...legacyChats, ...v2Chats]);
                 const nextChats = cached && !forceFull
                     ? mergeChats(cached.chats, serverChats)
                     : sortChats(serverChats.filter(isDisplayableChat));

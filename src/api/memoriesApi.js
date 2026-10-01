@@ -74,10 +74,11 @@ export const createMemory = async (payload) => {
     return data.data;
 };
 
-export const fetchMemories = async ({ userId, cursor = null, limit = 20 }) => {
+export const fetchMemories = async ({ userId, cursor = null, limit = 20, sort = 'asc' }) => {
     const params = new URLSearchParams({
         userId,
         limit: String(limit),
+        sort,
     });
 
     if (cursor) {

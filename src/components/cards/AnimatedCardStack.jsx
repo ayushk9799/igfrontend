@@ -74,11 +74,13 @@ const CardLayer = React.memo(({
 }) => {
     const animatedStyle = useAnimatedStyle(() => {
         const relativeIndex = taskIndex - visualIndex.value;
-        const isOutgoing =
-            isTransitioning.value
-            && taskIndex === transitionFromIndex.value;
+        // Follow the finger and the release spring only on the source card.
+        // The promoted card must not inherit the outgoing card's transforms.
+        const isMovingCard =
+            taskIndex === transitionFromIndex.value
+            && (relativeIndex === 0 || isTransitioning.value);
 
-        if (isOutgoing) {
+        if (isMovingCard) {
             return {
                 transform: [
                     { translateX: x.value },
@@ -158,7 +160,7 @@ const CardLayer = React.memo(({
                 { translateY: interpolate(revealProgress, [0, 1], [14, 0]) },
             ],
             zIndex: 1,
-            opacity: 1,
+            opacity: interpolate(revealProgress, [0, 1], [0.7, 1]),
         };
     }, [reduceMotion, taskIndex]);
 

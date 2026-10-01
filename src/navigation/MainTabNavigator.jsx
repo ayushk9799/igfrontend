@@ -100,6 +100,7 @@ export const MainTabNavigator = ({
     onYearlyOfferRequestHandled,
 }) => {
     const [currentTab, setCurrentTab] = useState(initialTab || 'home');
+    const [previousTab, setPreviousTab] = useState(null);
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsV2Screen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
     const [todayChallenge, setTodayChallenge] = useState(null);
@@ -115,6 +116,7 @@ export const MainTabNavigator = ({
     const [moodPreview, setMoodPreview] = useState(null);
     const [isScribbleLiveFullscreen, setIsScribbleLiveFullscreen] = useState(false);
     const [tabBarRenderKey] = useState(0);
+    const [isMemoriesOptionsOpen, setIsMemoriesOptionsOpen] = useState(false);
     const [openScribbleLiveMode, setOpenScribbleLiveMode] = useState(false);
     const [openDistanceSetup, setOpenDistanceSetup] = useState(false);
     const [widgetSheet, setWidgetSheet] = useState(null);
@@ -256,7 +258,8 @@ export const MainTabNavigator = ({
     ).current;
 
     useEffect(() => {
-        if (initialTab) {
+        if (initialTab && initialTab !== currentTabRef.current) {
+            setPreviousTab(currentTabRef.current);
             setCurrentTab(initialTab);
         }
     }, [initialTab]);
@@ -280,6 +283,7 @@ export const MainTabNavigator = ({
         if (tab === 'canvas') {
             setOpenScribbleLiveMode(false);
         }
+        setPreviousTab(currentTabRef.current);
         setCurrentTab(tab);
     }, []);
 
@@ -936,6 +940,7 @@ export const MainTabNavigator = ({
                         hasPartner={hasPartner}
                         onLinkPartner={onFindPartner}
                         onBack={() => setCurrentTab('home')}
+                        onOptionsOpenChange={setIsMemoriesOptionsOpen}
                     />
                 );
             case 'widgetsLibrary':
@@ -989,8 +994,26 @@ export const MainTabNavigator = ({
                         hasPartner={hasPartner}
                         initialTodayChallenge={todayChallenge}
                         onLinkPartner={onFindPartner}
-                        onBack={() => setCurrentTab('home')}
-                        onCompareWithPartner={() => setCurrentTab('chats')}
+                        onBack={() => {
+                            if (previousTab && previousTab !== 'dailyChallenge') {
+                                setCurrentTab(previousTab);
+                            } else {
+                                setCurrentTab('home');
+                            }
+                        }}
+                        onCompareWithPartner={() => {
+                            if (onQuestionPress) {
+                                onQuestionPress({
+                                    type: 'chat',
+                                    chat: {
+                                        questionSource: 'dailychallenge',
+                                        date: todayChallenge?.challenge?.date || new Date().toISOString().split('T')[0],
+                                    },
+                                });
+                            } else {
+                                setCurrentTab('chats');
+                            }
+                        }}
                     />
                 );
             case 'games':
@@ -1202,6 +1225,7 @@ export const MainTabNavigator = ({
                     && !widgetSheet
                     && !isScribbleLiveFullscreen
                     && !isYearlyOfferSheetVisible
+                    && !isMemoriesOptionsOpen
                     && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab)
                 }
             />
