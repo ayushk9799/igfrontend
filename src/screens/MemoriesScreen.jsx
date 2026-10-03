@@ -7,7 +7,6 @@ import {
     FlatList,
     Image,
     Keyboard,
-    KeyboardAvoidingView,
     Modal,
     Platform,
     Pressable,
@@ -23,6 +22,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import LinearGradient from 'react-native-linear-gradient';
 import {
     BottomSheetBackdrop,
@@ -929,69 +929,26 @@ const AddMemoryModal = ({
     const insets = useSafeAreaInsets();
     const [showPicker, setShowPicker] = useState(false);
     const [showIconPicker, setShowIconPicker] = useState(false);
-    const [keyboardHeight, setKeyboardHeight] = useState(0);
-    const scrollViewRef = useRef(null);
+    const [saveFooterHeight, setSaveFooterHeight] = useState(0);
     const dateParts = formatDateParts(capturedAt);
     const normalizedType = normalizeEntryType(entryType);
     const typeConfig = TIMELINE_TYPES[normalizedType] || TIMELINE_TYPES.memory;
     const isSpecialDate = normalizedType === 'special_date';
 
-    const scrollToSaveButton = useCallback((delay) => {
-        const defaultDelay = Platform.OS === 'android' ? 180 : 120;
-        setTimeout(() => {
-            scrollViewRef.current?.scrollToEnd({ animated: true });
-        }, typeof delay === 'number' ? delay : defaultDelay);
-    }, []);
-
     useEffect(() => {
         if (!visible) {
-            setKeyboardHeight(0);
-            return;
+            setShowPicker(false);
+            setShowIconPicker(false);
         }
-
-        const onKeyboardShow = (event) => {
-            const height = event?.endCoordinates?.height || 0;
-            const duration = event?.duration || 250;
-            setKeyboardHeight(height);
-            if (Platform.OS === 'ios') {
-                scrollToSaveButton(50);
-                scrollToSaveButton(duration + 40);
-            } else {
-                scrollToSaveButton(180);
-            }
-        };
-
-        const onKeyboardHide = () => {
-            setKeyboardHeight(0);
-        };
-
-        const showSubscription = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-            onKeyboardShow
-        );
-        const hideSubscription = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-            onKeyboardHide
-        );
-
-        return () => {
-            showSubscription.remove();
-            hideSubscription.remove();
-        };
-    }, [scrollToSaveButton, visible]);
-
-    const isKeyboardVisible = keyboardHeight > 0;
-    const scrollBottomPadding = Platform.OS === 'android'
-        ? Math.max(insets.bottom, 16) + 24 + keyboardHeight
-        : (isKeyboardVisible ? 12 : Math.max(insets.bottom, 16) + 24);
+    }, [visible]);
 
     const modalTitle = isEditing
         ? (isSpecialDate ? translateUiText("Edit special date") : translateUiText("Edit memory"))
-        : typeConfig.modalTitle;
+        : translateUiText(typeConfig.modalTitle);
 
     const saveLabel = isEditing
         ? translateUiText("Save changes")
-        : typeConfig.saveLabel;
+        : translateUiText(typeConfig.saveLabel);
 
     const openDatePicker = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -1065,129 +1022,197 @@ const AddMemoryModal = ({
                     end={{ x: 0.75, y: 1 }}
                     style={StyleSheet.absoluteFill}
                 />
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    enabled={Platform.OS === 'ios'}
-                    style={styles.keyboardAvoiding}
-                >
-                    <View style={[styles.pageHeader, { paddingTop: insets.top + 10 }]}>
-                        <TouchableOpacity style={styles.pageHeaderBack} onPress={handleRequestClose} disabled={isSaving}>
-                            <ChevronLeft color="#302832" size={24} strokeWidth={2} />
-                        </TouchableOpacity>
-                        <Text style={styles.pageHeaderTitle}>{modalTitle}</Text>
-                        <View style={styles.pageHeaderSpacer} />
-                    </View>
-
-                    <ScrollView
-                        ref={scrollViewRef}
-                        style={styles.pageScroll}
-                        contentContainerStyle={[styles.pageScrollContent, { paddingBottom: scrollBottomPadding }]}
-                        keyboardShouldPersistTaps="handled"
-                        keyboardDismissMode="on-drag"
-                        onScrollBeginDrag={() => Keyboard.dismiss()}
-                        nestedScrollEnabled={true}
-                        overScrollMode="always"
-                        showsVerticalScrollIndicator={false}
+                <View style={[styles.pageHeader, { paddingTop: insets.top + 10 }]}>
+                    <TouchableOpacity
+                        style={styles.pageHeaderBack}
+                        onPress={handleRequestClose}
+                        disabled={isSaving}
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText("Back")}
                     >
-                    {draft?.uri ? (
-                        <View style={styles.previewButton}>
-                            <Image source={{ uri: draft.uri }} style={styles.previewImage} resizeMode="cover" />
-                            {!isSaving && (
-                                <TouchableOpacity
-                                    style={styles.removePhotoBadge}
-                                    onPress={onRemovePhoto}
-                                    activeOpacity={0.8}
-                                >
-                                    <X color="#FFFFFF" size={16} strokeWidth={2.5} />
-                                </TouchableOpacity>
+                        <ChevronLeft color="#302832" size={24} strokeWidth={2} />
+                    </TouchableOpacity>
+                    <Text style={styles.pageHeaderTitle}>{modalTitle}</Text>
+                    <View style={styles.pageHeaderSpacer} />
+                </View>
+
+                <KeyboardAwareScrollView
+                    style={styles.pageScroll}
+                    contentContainerStyle={[styles.pageScrollContent, { paddingBottom: saveFooterHeight + 24 }]}
+                    bottomOffset={saveFooterHeight + 12}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View style={styles.formIntro}>
+                        <View style={styles.formIntroIcon}>
+                            {isSpecialDate ? (
+                                <CalendarDays color="#C96F81" size={26} strokeWidth={1.8} />
+                            ) : (
+                                <Heart color="#C96F81" size={26} strokeWidth={1.8} />
                             )}
                         </View>
-                    ) : (
-                        <TouchableOpacity
-                            style={styles.photoDropzone}
-                            onPress={onPickPhoto}
-                            activeOpacity={0.85}
-                            disabled={isSaving}
-                        >
-                            <View style={styles.photoDropzoneIconWrap}>
-                                <ImagePlus color="#C96F81" size={22} strokeWidth={2} />
-                            </View>
-                            <Text style={styles.photoDropzoneText}>
-                                {translateUiText("Add photo")}
-                            </Text>
-                            <Text style={styles.photoDropzoneSubtext}>
-                                {translateUiText("Optional • tap to select from gallery")}
-                            </Text>
-                        </TouchableOpacity>
-                    )}
+                        <Text style={styles.formIntroTitle}>
+                            {translateUiText(isSpecialDate ? "A day to remember" : "Keep this moment")}
+                        </Text>
+                        <Text style={styles.formIntroSubtitle}>
+                            {translateUiText(isSpecialDate
+                                ? "Celebrate the little milestones in your story."
+                                : "The little things are part of your story, too.")}
+                        </Text>
+                    </View>
 
-                    <View style={styles.titleRow}>
-                        {isSpecialDate && (
-                            <TouchableOpacity
-                                style={styles.inlineEmojiButton}
-                                onPress={() => {
-                                    Keyboard.dismiss();
-                                    setShowIconPicker((current) => !current);
-                                }}
-                                activeOpacity={0.86}
-                                disabled={isSaving}
-                            >
-                                <Text style={styles.inlineEmojiGlyph}>{getSpecialDateIcon(iconKey).glyph}</Text>
-                                <View style={styles.inlineEmojiChevronBadge}>
-                                    <ChevronDown color="#B56F7E" size={12} strokeWidth={2.5} />
-                                </View>
-                            </TouchableOpacity>
+                    <View style={styles.formCard}>
+                        <View style={styles.fieldHeader}>
+                            <Text style={styles.fieldLabel}>{translateUiText("Title")}</Text>
+                            <Text style={styles.fieldHint}>
+                                {translateUiText(isSpecialDate ? "Required" : "Optional")}
+                            </Text>
+                        </View>
+                        <View style={styles.titleRow}>
+                            {isSpecialDate && (
+                                <TouchableOpacity
+                                    style={styles.inlineEmojiButton}
+                                    onPress={() => {
+                                        Keyboard.dismiss();
+                                        setShowIconPicker(true);
+                                    }}
+                                    activeOpacity={0.86}
+                                    disabled={isSaving}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={translateUiText("Choose an icon")}
+                                >
+                                    <Text style={styles.inlineEmojiGlyph}>{getSpecialDateIcon(iconKey).glyph}</Text>
+                                    <View style={styles.inlineEmojiChevronBadge}>
+                                        <ChevronDown color="#B56F7E" size={12} strokeWidth={2.5} />
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                            <TextInput
+                                style={[styles.titleInput, styles.titleInputFlex]}
+                                value={title}
+                                onChangeText={(value) => setTitle(value.slice(0, TITLE_LIMIT))}
+                                placeholder={translateUiText(typeConfig.placeholderTitle)}
+                                placeholderTextColor="#B09AA4"
+                                accessibilityLabel={translateUiText("Title")}
+                                maxLength={TITLE_LIMIT}
+                                editable={!isSaving}
+                            />
+                        </View>
+                        {title.length > 0 && (
+                            <Text style={[styles.charCountText, title.length >= TITLE_LIMIT && styles.charCountLimitText]}>
+                                {title.length}/{TITLE_LIMIT}
+                            </Text>
                         )}
 
+                        <View style={styles.fieldDivider} />
+                        <Text style={styles.fieldLabel}>{translateUiText("Date")}</Text>
+                        <TouchableOpacity
+                            style={styles.dateChip}
+                            onPress={openDatePicker}
+                            disabled={isSaving}
+                            activeOpacity={0.86}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${translateUiText("Date")}: ${dateParts.line}`}
+                            accessibilityHint={translateUiText("Choose a date")}
+                        >
+                            <View style={styles.dateChipIcon}>
+                                <CalendarDays color="#C96F81" size={20} strokeWidth={1.8} />
+                            </View>
+                            <Text style={styles.dateChipText}>{dateParts.line}</Text>
+                            <ChevronDown color="#B56F7E" size={18} strokeWidth={2} />
+                        </TouchableOpacity>
+                        {draft?.uri && capturedAtSource === 'exif' && (
+                            <Text style={styles.dateSourceText}>{translateUiText("Date from your photo • tap to change")}</Text>
+                        )}
+
+                        <View style={styles.fieldDivider} />
+                        <View style={styles.fieldHeader}>
+                            <Text style={styles.fieldLabel}>{translateUiText("Note")}</Text>
+                            <Text style={[styles.charCountText, caption.length >= CAPTION_LIMIT && styles.charCountLimitText]}>
+                                {caption.length}/{CAPTION_LIMIT}
+                            </Text>
+                        </View>
                         <TextInput
-                            style={[styles.titleInput, styles.titleInputFlex]}
-                            value={title}
-                            onChangeText={(value) => setTitle(value.slice(0, TITLE_LIMIT))}
-                            placeholder={translateUiText(typeConfig.placeholderTitle)}
+                            style={styles.captionInput}
+                            value={caption}
+                            onChangeText={(value) => setCaption(value.slice(0, CAPTION_LIMIT))}
+                            placeholder={translateUiText(typeConfig.placeholderCaption)}
                             placeholderTextColor="#B09AA4"
-                            maxLength={TITLE_LIMIT}
+                            accessibilityLabel={translateUiText("Note")}
+                            multiline
+                            scrollEnabled={false}
+                            maxLength={CAPTION_LIMIT}
                             editable={!isSaving}
-                            onFocus={scrollToSaveButton}
                         />
                     </View>
-                    {title.length > 0 && (
-                        <Text style={[styles.charCountText, title.length >= TITLE_LIMIT && styles.charCountLimitText]}>
-                            {title.length}/{TITLE_LIMIT}
-                        </Text>
-                    )}
 
-                    <TouchableOpacity
-                        style={styles.dateChip}
-                        onPress={openDatePicker}
-                        disabled={isSaving}
-                        activeOpacity={0.86}
-                    >
-                        <Text style={styles.dateChipText}>{dateParts.line}</Text>
-                    </TouchableOpacity>
+                    <View style={styles.photoSection}>
+                        <View style={styles.fieldHeader}>
+                            <Text style={styles.fieldLabel}>{translateUiText("Photo")}</Text>
+                            <Text style={styles.fieldHint}>{translateUiText("Optional")}</Text>
+                        </View>
+                        {draft?.uri ? (
+                            <View style={styles.previewButton}>
+                                <Image source={{ uri: draft.uri }} style={styles.previewImage} resizeMode="cover" />
+                                <TouchableOpacity
+                                    style={styles.changePhotoBadge}
+                                    onPress={onPickPhoto}
+                                    disabled={isSaving}
+                                    activeOpacity={0.8}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={translateUiText("Change photo")}
+                                >
+                                    <ImagePlus color="#FFFFFF" size={16} strokeWidth={2} />
+                                    <Text style={styles.changePhotoText}>{translateUiText("Change photo")}</Text>
+                                </TouchableOpacity>
+                                {!isSaving && (
+                                    <TouchableOpacity
+                                        style={styles.removePhotoBadge}
+                                        onPress={onRemovePhoto}
+                                        activeOpacity={0.8}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={translateUiText("Remove photo")}
+                                    >
+                                        <X color="#FFFFFF" size={16} strokeWidth={2.5} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={styles.photoDropzone}
+                                onPress={onPickPhoto}
+                                activeOpacity={0.85}
+                                disabled={isSaving}
+                                accessibilityRole="button"
+                                accessibilityLabel={translateUiText("Add photo")}
+                            >
+                                <View style={styles.photoDropzoneIconWrap}>
+                                    <ImagePlus color="#C96F81" size={24} strokeWidth={1.8} />
+                                </View>
+                                <View style={styles.photoDropzoneCopy}>
+                                    <Text style={styles.photoDropzoneText}>{translateUiText("Add a photo to this day")}</Text>
+                                    <Text style={styles.photoDropzoneSubtext}>{translateUiText("Choose from your gallery")}</Text>
+                                </View>
+                                <Plus color="#C96F81" size={20} strokeWidth={2} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </KeyboardAwareScrollView>
 
-                    <TextInput
-                        style={styles.captionInput}
-                        value={caption}
-                        onChangeText={(value) => setCaption(value.slice(0, CAPTION_LIMIT))}
-                        placeholder={translateUiText(typeConfig.placeholderCaption)}
-                        placeholderTextColor="#B09AA4"
-                        multiline
-                        scrollEnabled={false}
-                        maxLength={CAPTION_LIMIT}
-                        editable={!isSaving}
-                        onFocus={scrollToSaveButton}
-                    />
-                    {caption.length > 0 && (
-                        <Text style={[styles.charCountText, caption.length >= CAPTION_LIMIT && styles.charCountLimitText]}>
-                            {caption.length}/{CAPTION_LIMIT}
-                        </Text>
-                    )}
-
+                <KeyboardStickyView
+                    style={[styles.saveFooter, { paddingBottom: Math.max(insets.bottom, 16) }]}
+                    offset={{ opened: insets.bottom }}
+                    onLayout={(event) => setSaveFooterHeight(event.nativeEvent.layout.height)}
+                >
                     <TouchableOpacity
                         style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
                         onPress={onSave}
                         disabled={isSaving}
                         activeOpacity={0.9}
+                        accessibilityRole="button"
+                        accessibilityLabel={saveLabel}
+                        accessibilityState={{ disabled: isSaving, busy: isSaving }}
                     >
                         {isSaving ? (
                             <ActivityIndicator color="#FFFFFF" size="small" />
@@ -1195,8 +1220,7 @@ const AddMemoryModal = ({
                             <Text style={styles.saveButtonText}>{saveLabel}</Text>
                         )}
                     </TouchableOpacity>
-                </ScrollView>
-            </KeyboardAvoidingView>
+                </KeyboardStickyView>
             </View>
             {showPicker && (
                 <TimelineDatePicker
@@ -1529,8 +1553,10 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner, onOptionsOpenChange
 
             const captured = getCapturedDateFromAsset(asset);
             imageUploadJobRef.current = createImageUploadJob(asset);
-            setCapturedAtState(captured.capturedAt);
-            setCapturedAtSource(captured.capturedAtSource);
+            if (!editingMemory && capturedAtSource !== 'manual') {
+                setCapturedAtState(captured.capturedAt);
+                setCapturedAtSource(captured.capturedAtSource);
+            }
             setDraft({
                 asset,
                 uri: asset.uri,
@@ -1543,7 +1569,7 @@ const MemoriesScreen = ({ userId, hasPartner, onLinkPartner, onOptionsOpenChange
                 translateUiText(error.message || "Please try again."),
             );
         }
-    }, []);
+    }, [capturedAtSource, editingMemory]);
 
     const saveMemory = useCallback(async () => {
         if (!userId || saveInFlightRef.current) return;
@@ -2218,10 +2244,6 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
-    keyboardAvoiding: {
-        flex: 1,
-        width: '100%',
-    },
     pageHeaderSpacer: {
         width: 44,
     },
@@ -2249,8 +2271,10 @@ const styles = StyleSheet.create({
         fontFamily: fontFamily.extraBold,
         fontWeight: fontWeight('800'),
         color: '#302832',
-        fontSize: 20,
+        fontSize: 18,
         textAlign: 'center',
+        flex: 1,
+        marginHorizontal: 12,
     },
     pageScroll: {
         flex: 1,
@@ -2259,16 +2283,97 @@ const styles = StyleSheet.create({
     pageScrollContent: {
         flexGrow: 1,
         paddingHorizontal: 18,
-        paddingTop: 16,
+        paddingTop: 24,
+    },
+    formIntro: {
+        alignItems: 'center',
+        marginBottom: 24,
+        paddingHorizontal: 16,
+    },
+    formIntroIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 20,
+        backgroundColor: '#FBE7ED',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+    formIntroTitle: {
+        fontFamily: fontFamily.extraBold,
+        fontWeight: fontWeight('800'),
+        color: '#302832',
+        fontSize: 26,
+        lineHeight: 32,
+        textAlign: 'center',
+    },
+    formIntroSubtitle: {
+        fontFamily: fontFamily.regular,
+        color: '#8D7781',
+        fontSize: 14,
+        lineHeight: 20,
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    formCard: {
+        borderRadius: 26,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#F1DED8',
+        padding: 18,
+    },
+    fieldHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    fieldLabel: {
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        color: '#6F5C65',
+        fontSize: 13,
+    },
+    fieldHint: {
+        fontFamily: fontFamily.regular,
+        color: '#AF98A2',
+        fontSize: 12,
+    },
+    fieldDivider: {
+        height: 1,
+        backgroundColor: '#F6EAE7',
+        marginVertical: 20,
+    },
+    photoSection: {
+        marginTop: 22,
+        gap: 10,
     },
     previewButton: {
-        height: 270,
+        height: 210,
         borderRadius: 24,
         overflow: 'hidden',
         backgroundColor: '#F0E3DD',
         borderWidth: 1,
         borderColor: '#FFFFFF',
         position: 'relative',
+    },
+    changePhotoBadge: {
+        position: 'absolute',
+        bottom: 12,
+        left: 12,
+        borderRadius: 18,
+        backgroundColor: 'rgba(42, 31, 38, 0.65)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+    },
+    changePhotoText: {
+        fontFamily: fontFamily.bold,
+        fontWeight: fontWeight('700'),
+        color: '#FFFFFF',
+        fontSize: 12,
     },
     removePhotoBadge: {
         position: 'absolute',
@@ -2369,24 +2474,27 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     photoDropzone: {
-        height: 110,
+        minHeight: 100,
         borderRadius: 22,
         backgroundColor: '#FFFFFF',
         borderWidth: 1.5,
         borderColor: '#E8D4CE',
         borderStyle: 'dashed',
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 20,
+        gap: 12,
+        padding: 18,
     },
     photoDropzoneIconWrap: {
-        width: 42,
-        height: 42,
-        borderRadius: 21,
+        width: 46,
+        height: 46,
+        borderRadius: 16,
         backgroundColor: '#FFF0F4',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 6,
+    },
+    photoDropzoneCopy: {
+        flex: 1,
     },
     photoDropzoneText: {
         fontFamily: fontFamily.bold,
@@ -2443,12 +2551,12 @@ const styles = StyleSheet.create({
     titleInput: {
         height: 54,
         borderRadius: 18,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FFF9FA',
         paddingHorizontal: 15,
         borderWidth: 1,
         borderColor: '#F1DED8',
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
+        fontFamily: fontFamily.medium,
+        fontWeight: fontWeight('500'),
         color: '#302832',
         fontSize: 16,
     },
@@ -2460,23 +2568,41 @@ const styles = StyleSheet.create({
     dateChip: {
         marginTop: 12,
         borderRadius: 18,
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 14,
+        backgroundColor: '#FFF9FA',
+        paddingHorizontal: 12,
         paddingVertical: 12,
         borderWidth: 1,
         borderColor: '#F1DED8',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    dateChipIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 12,
+        backgroundColor: '#FBE7ED',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     dateChipText: {
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
+        flex: 1,
+        fontFamily: fontFamily.medium,
+        fontWeight: fontWeight('500'),
         color: '#332B35',
         fontSize: 15,
     },
+    dateSourceText: {
+        fontFamily: fontFamily.regular,
+        color: '#AF98A2',
+        fontSize: 12,
+        marginTop: 8,
+    },
     captionInput: {
         marginTop: 12,
-        minHeight: 96,
+        minHeight: 120,
         borderRadius: 20,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FFF9FA',
         paddingHorizontal: 15,
         paddingVertical: 13,
         borderWidth: 1,
@@ -2501,10 +2627,22 @@ const styles = StyleSheet.create({
         color: '#E55875',
         fontWeight: fontWeight('700'),
     },
+    saveFooter: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingTop: 12,
+        paddingHorizontal: 20,
+        backgroundColor: '#FFF7FA',
+        borderTopWidth: 1,
+        borderTopColor: '#F1DED8',
+    },
     saveButton: {
-        marginTop: 14,
-        height: 52,
-        borderRadius: 26,
+        minHeight: 52,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: colors.primary,

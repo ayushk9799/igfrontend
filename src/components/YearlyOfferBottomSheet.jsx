@@ -27,9 +27,20 @@ import { colors } from '../theme';
 import { updateUser as updateUserStorage } from '../utils/authStorage';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 import { trackEvent } from '../utils/analytics';
+import { resolveOfferingPackages } from '../utils/premiumOffering';
 
 const YEARLY_OFFERING_ID = 'yearly_offer';
-const REGULAR_OFFERING_ID = 'onbording';
+const REGULAR_OFFERING_ID = 'basic-plan';
+
+const OfferOverlayContainer = ({ children }) => (
+    <View
+        collapsable={false}
+        pointerEvents="box-none"
+        style={styles.overlayContainer}
+    >
+        {children}
+    </View>
+);
 
 const CloseIcon = () => (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
@@ -137,9 +148,12 @@ export default function YearlyOfferBottomSheet({
             try {
                 const offerings = await Purchases.getOfferings();
                 const offer = offerings?.all?.[YEARLY_OFFERING_ID] || null;
-                const regularOffering = offerings?.all?.[REGULAR_OFFERING_ID] || null;
+                const regularOffering = offerings?.all?.[REGULAR_OFFERING_ID]
+                    || offerings?.current
+                    || offerings?.all?.onbording
+                    || null;
                 const pkg = getYearlyPackage(offer);
-                const regularPkg = getYearlyPackage(regularOffering);
+                const regularPkg = resolveOfferingPackages(regularOffering)?.annual || getYearlyPackage(regularOffering);
 
                 if (!cancelled) {
                     if (offer && pkg) {
@@ -336,6 +350,7 @@ export default function YearlyOfferBottomSheet({
     return (
         <BottomSheetModal
             ref={bottomSheetRef}
+            containerComponent={OfferOverlayContainer}
             enableDynamicSizing
             enablePanDownToClose
             maxDynamicContentSize={sheetMaxHeight}
@@ -484,6 +499,11 @@ export default function YearlyOfferBottomSheet({
 }
 
 const styles = StyleSheet.create({
+    overlayContainer: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 10000,
+        elevation: 10000,
+    },
     sheetGradient: {
         ...StyleSheet.absoluteFillObject,
         overflow: 'hidden',

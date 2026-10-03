@@ -223,6 +223,7 @@ const AnimatedCardStack = ({
 
     const pendingAnsweredTaskIndexRef = useRef(null);
     const isAnswerSubmissionPendingRef = useRef(false);
+    const cardSwipeGestureRef = useRef(null);
 
     const canGoNext = currentIndex < tasks.length - 1;
     const canGoPrev = currentIndex > 0;
@@ -433,6 +434,10 @@ const AnimatedCardStack = ({
     }, [triggerTransition]);
 
     const panGesture = Gesture.Pan()
+        .withRef(cardSwipeGestureRef)
+        // Let taps focus inputs and vertical drags scroll their content.
+        .activeOffsetX([-12, 12])
+        .failOffsetY([-20, 20])
         .onUpdate((event) => {
             if (isTransitioning.value) return;
 
@@ -515,6 +520,7 @@ const AnimatedCardStack = ({
         return {
             displayIndex: displayIndexOffset + answerIndex + 1,
             totalCards: totalCardsOverride ?? tasks.length,
+            cardSwipeGestureRef,
             partnerName,
             userName,
             userAvatar,

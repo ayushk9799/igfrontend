@@ -12,6 +12,7 @@ let mockPartnerOnline = true;
 
 jest.mock('react-native-haptic-feedback', () => ({ trigger: jest.fn() }));
 jest.mock('react-native-confetti-cannon', () => () => null);
+jest.mock('../../utils/safeAudioPlayer', () => ({ createSafeAudioPlayer: () => null }));
 jest.mock('react-native-linear-gradient', () => ({ children }) => children);
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) }));
 jest.mock('../../context/SocketContext', () => ({ useSocketContext: () => ({ socket: mockSocket }) }));
@@ -37,7 +38,7 @@ jest.mock('../../utils/authStorage', () => ({
 }));
 
 const game = {
-    _id: 'game-1',
+    _id: 'game-1', protocolVersion: 2,
     creatorId: 'user-1',
     partnerId: 'partner-1',
     mode: 'duel',
@@ -97,9 +98,9 @@ test('confirmation sheet cancels safely and preserves selected settings on confi
     expect(presentConfirmation).toHaveBeenCalledTimes(2);
     await ReactTestRenderer.act(() => pressText(renderer, 'Start new'));
     expect(dismissConfirmation).toHaveBeenCalledTimes(2);
-    expect(apiFetch).toHaveBeenCalledTimes(2);
-    expect(apiFetch.mock.calls[0][0]).toContain('/game-1/abandon');
-    expect(JSON.parse(apiFetch.mock.calls[1][1].body)).toMatchObject({ difficulty: 'hard', mode: 'duel', forceNew: true });
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(apiFetch.mock.calls[0][0]).toContain('/create');
+    expect(JSON.parse(apiFetch.mock.calls[0][1].body)).toMatchObject({ difficulty: 'hard', mode: 'duel', forceNew: true, replaceGameId: 'game-1' });
 
     await ReactTestRenderer.act(() => renderer.unmount());
 });
@@ -129,4 +130,32 @@ test('changing mode keeps the offline note space in the options sheet', async ()
 
     await ReactTestRenderer.act(() => renderer.unmount());
     mockPartnerOnline = true;
+});
+
+
+test('a blocked fresh puzzle shows Premium without abandoning the current game', async () => {
+    const onRequestPremium = jest.fn();
+    apiFetch.mockReset();
+    mockPartnerOnline = true;
+    apiFetch.mockResolvedValue({ ok: false, json: async () => ({
+        success: false, code: 'WORD_SEARCH_FREE_LIMIT_REACHED', message: 'Premium required',
+    }) });
+    let renderer;
+    await ReactTestRenderer.act(() => {
+        renderer = ReactTestRenderer.create(<WordSearchScreen
+            navigation={{ goBack: jest.fn() }}
+            route={{ params: { partnerId: 'partner-1', partnerName: 'Partner', gameData: game } }}
+            onRequestPremium={onRequestPremium}
+        />);
+    });
+    const settingsSheet = renderer.root.findAllByType(BottomSheetModal)[0].instance;
+    jest.spyOn(settingsSheet, 'dismiss').mockImplementation(() => settingsSheet.props.onDismiss?.());
+    await ReactTestRenderer.act(() => pressText(renderer, 'Start Fresh Puzzle'));
+    await ReactTestRenderer.act(() => pressText(renderer, 'Start new'));
+    expect(onRequestPremium).toHaveBeenCalledTimes(1);
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(apiFetch.mock.calls[0][0]).toContain('/create');
+    expect(renderer.root.findAllByProps({ testID: 'word-search-score-card' }).length).toBeGreaterThan(0);
+    expect(renderer.root.findAllByProps({ testID: 'word-search-error-notice' })).toHaveLength(0);
+    await ReactTestRenderer.act(() => renderer.unmount());
 });

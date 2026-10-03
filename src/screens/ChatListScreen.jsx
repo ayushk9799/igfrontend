@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
+    Animated,
     View,
     Text,
     StyleSheet,
@@ -21,6 +22,7 @@ import { useSocket } from '../hooks/useSocket';
 import { TOPIC_CATEGORIES } from '../constants/Categories';
 import { fontFamily, fontWeight } from '../constants/fonts';
 import { storage } from '../utils/authStorage';
+import { formatDisplayDate } from '../utils/dateUtils';
 import { formatRelativeTime, getUiLocale, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 
 const TOPIC_CONFIG = TOPIC_CATEGORIES;
@@ -43,6 +45,7 @@ const DEFAULT_TEXT_COLOR = '#6B21A8';
 
 const chatListCache = new Map();
 const CHAT_LIST_CACHE_PREFIX = 'chat_list_cache_';
+const VIDEO_CHAT_GUIDE_PREFIX = 'chat_list_video_chat_guide:';
 
 const getCacheKey = (userId) => `${CHAT_LIST_CACHE_PREFIX}${userId}`;
 
@@ -145,6 +148,18 @@ const getChatTime = (chat) => new Date(chat.lastMessageAt || chat.updatedAt || c
 
 const sortChats = (items) => [...items].sort((a, b) => getChatTime(b) - getChatTime(a));
 
+const formatRitualDate = (chat) => {
+    const rawDate = chat.date || chat.createdAt;
+    if (!rawDate) return '';
+
+    const date = new Date(rawDate);
+    if (Number.isNaN(date.getTime())) return '';
+
+    // Keep the ritual's calendar day consistent with the summary navigation.
+    const day = date.toISOString().split('T')[0];
+    return formatDisplayDate(`${day}T00:00:00`);
+};
+
 const mergeChats = (currentChats, changedChats) => {
     const byId = new Map(currentChats.map(chat => [chat._id, chat]));
 
@@ -176,6 +191,61 @@ export default function ChatListScreen({
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
+    const [dismissedVideoChatGuideKey, setDismissedVideoChatGuideKey] = useState(null);
+    const [videoChatGuideReady, setVideoChatGuideReady] = useState(false);
+    const videoChatGuideAnim = useRef(new Animated.Value(0)).current;
+    const videoChatGuideKey = userId ? `${VIDEO_CHAT_GUIDE_PREFIX}${userId}` : null;
+    const canShowVideoChatGuide = !loading
+        && !liveChatDisabled
+        && Boolean(onLiveChatPress)
+        && Boolean(videoChatGuideKey)
+        && dismissedVideoChatGuideKey !== videoChatGuideKey
+        && storage.getBoolean(videoChatGuideKey) !== true;
+    const showVideoChatGuide = canShowVideoChatGuide && videoChatGuideReady;
+
+    useEffect(() => {
+        setVideoChatGuideReady(false);
+        if (!canShowVideoChatGuide) return undefined;
+
+        const timer = setTimeout(() => setVideoChatGuideReady(true), 3000);
+        return () => clearTimeout(timer);
+    }, [canShowVideoChatGuide, videoChatGuideKey]);
+
+    useEffect(() => {
+        if (!showVideoChatGuide) return undefined;
+
+        videoChatGuideAnim.setValue(0);
+        Animated.spring(videoChatGuideAnim, {
+            toValue: 1,
+            friction: 7,
+            tension: 40,
+            useNativeDriver: true,
+        }).start();
+
+        return () => videoChatGuideAnim.stopAnimation();
+    }, [showVideoChatGuide, videoChatGuideAnim]);
+
+    const dismissVideoChatGuide = useCallback(() => {
+        if (!videoChatGuideKey) return;
+        storage.set(videoChatGuideKey, true);
+        if (!showVideoChatGuide) {
+            setDismissedVideoChatGuideKey(videoChatGuideKey);
+            return;
+        }
+
+        Animated.timing(videoChatGuideAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start(({ finished }) => {
+            if (finished) setDismissedVideoChatGuideKey(videoChatGuideKey);
+        });
+    }, [videoChatGuideKey, showVideoChatGuide, videoChatGuideAnim]);
+
+    const handleVideoChatPress = useCallback(() => {
+        dismissVideoChatGuide();
+        onLiveChatPress?.();
+    }, [dismissVideoChatGuide, onLiveChatPress]);
 
     const fetchChats = useCallback(async ({ forceFull = false } = {}) => {
         const cacheKey = userId?.toString();
@@ -322,6 +392,7 @@ export default function ChatListScreen({
     const renderChatItem = ({ item }) => {
         const config = getTopicConfig(item.questionSource);
         const hasUnread = item.unreadCount > 0;
+        const ritualDate = item.questionSource === 'dailychallenge' ? formatRitualDate(item) : '';
 
         return (
             <TouchableOpacity
@@ -347,8 +418,16 @@ export default function ChatListScreen({
                 <View style={styles.chatContent}>
                     {/* Header with source and time */}
                     <View style={styles.chatHeader}>
-                        <Text style={[styles.chatSource, { color: config.textColor }]}>
+                        <Text
+                            style={[styles.chatSource, { color: config.textColor }]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.8}
+                        >
                             {translateUiText(config.title)}
+                            {ritualDate ? (
+                                <Text style={styles.ritualDate}>{` (${ritualDate})`}</Text>
+                            ) : null}
                         </Text>
                         <Text style={styles.chatTime}>
                             {formatTime(item.lastMessageAt || item.createdAt)}
@@ -406,44 +485,71 @@ export default function ChatListScreen({
             <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>{translateUiText("Chats")}</Text>
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.liveChatCard, liveChatDisabled && styles.liveChatCardDisabled]}
-                    onPress={onLiveChatPress}
-                    disabled={liveChatDisabled || !onLiveChatPress}
-                    activeOpacity={0.84}
-                    accessibilityRole="button"
-                    accessibilityLabel={translateUiText("Open Video Chat")}
-                >
-                    <LinearGradient
-                        colors={liveChatDisabled ? ['#D9D3D8', '#C8C1C8'] : ['#F94E82', '#D83C73']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.liveChatIcon}
+                    <Text style={styles.headerTitle} numberOfLines={1}>{translateUiText("Chats")}</Text>
+                    <TouchableOpacity
+                        style={[styles.liveChatButton, liveChatDisabled && styles.liveChatButtonDisabled]}
+                        onPress={handleVideoChatPress}
+                        disabled={liveChatDisabled || !onLiveChatPress}
+                        activeOpacity={0.84}
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText("Open Video Chat")}
+                        accessibilityState={{ disabled: liveChatDisabled || !onLiveChatPress }}
+                        accessibilityHint={liveChatDisabled
+                            ? translateUiText("Available after your video call ends")
+                            : partnerOnline
+                                ? translateUiTemplate("{{0}} is online", [partnerName])
+                                : translateUiTemplate("{{0}} can join when online", [partnerName])}
                     >
-                        <Video color="#FFFFFF" size={27} strokeWidth={2.5} />
-                    </LinearGradient>
-                    <View style={styles.liveChatCopy}>
-                        <View style={styles.liveChatTitleRow}>
-                            <Text style={styles.liveChatTitle}>{translateUiText("Video Chat")}</Text>
-                            <View style={styles.liveBadge}>
-                                <Text style={styles.liveBadgeText}>{translateUiText("LIVE")}</Text>
-                            </View>
-                        </View>
-                        {liveChatDisabled && (
-                            <Text style={styles.liveChatSubtitle} numberOfLines={1}>{translateUiText("Available after your video call ends")}</Text>
-                        )}
-                        <View style={styles.livePresenceRow}>
-                            <View style={[styles.livePresenceDot, partnerOnline && styles.livePresenceDotOnline]} />
-                            <Text style={styles.livePresenceText}>
-                                {partnerOnline ? translateUiTemplate("{{0}} is online", [partnerName]) : translateUiTemplate("{{0}} can join when online", [partnerName])}
+                        <LinearGradient
+                            colors={liveChatDisabled ? ['#D9D3D8', '#C8C1C8'] : ['#F94E82', '#D83C73']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.liveChatIcon}
+                        >
+                            <Video color="#FFFFFF" size={24} strokeWidth={2.5} />
+                        </LinearGradient>
+                        <View style={[styles.livePresenceDot, partnerOnline && styles.livePresenceDotOnline]} />
+                    </TouchableOpacity>
+                    {showVideoChatGuide && (
+                        <Animated.View
+                            style={[
+                                styles.videoChatGuide,
+                                {
+                                    opacity: videoChatGuideAnim,
+                                    transform: [
+                                        {
+                                            scale: videoChatGuideAnim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [0.88, 1],
+                                            }),
+                                        },
+                                        {
+                                            translateY: videoChatGuideAnim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [-10, 0],
+                                            }),
+                                        },
+                                    ],
+                                },
+                            ]}
+                            accessibilityRole="alert"
+                        >
+                            <View style={styles.videoChatGuideArrow} />
+                            <Text style={styles.videoChatGuideText}>
+                                {translateUiText("Video chat with your partner.")}
                             </Text>
-                        </View>
-                    </View>
-                    <Text style={styles.liveChatChevron}>›</Text>
-                </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.videoChatGuideDismiss}
+                                onPress={dismissVideoChatGuide}
+                                activeOpacity={0.8}
+                                accessibilityRole="button"
+                                accessibilityLabel={translateUiText("Dismiss video call guidance")}
+                            >
+                                <Text style={styles.videoChatGuideDismissText}>{translateUiText("Got it")}</Text>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    )}
+                </View>
 
                 {/* Error state */}
                 {error && (
@@ -503,15 +609,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     header: {
+        zIndex: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'flex-start',
+        justifyContent: 'space-between',
         paddingHorizontal: 18,
         paddingTop: 6,
         paddingBottom: 4,
         backgroundColor: 'transparent',
     },
     headerTitle: {
+        flex: 1,
+        marginRight: 12,
         fontFamily: fontFamily.extraBold,
         fontSize: 32,
         fontWeight: fontWeight('800'),
@@ -519,87 +628,76 @@ const styles = StyleSheet.create({
         letterSpacing: -0.5,
         marginBottom: 6,
     },
-    liveChatCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginHorizontal: spacing.md,
-        marginTop: spacing.md,
-        padding: 14,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.95)',
-        borderWidth: 1.5,
-        borderColor: '#F7C6D8',
-        ...cardShadow,
+    liveChatButton: {
+        width: 44,
+        height: 44,
     },
-    liveChatCardDisabled: {
+    liveChatButtonDisabled: {
         opacity: 0.65,
     },
     liveChatIcon: {
-        width: 50,
-        height: 50,
-        borderRadius: 17,
+        width: 44,
+        height: 44,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
-    },
-    liveChatCopy: {
-        flex: 1,
-    },
-    liveChatTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    liveChatTitle: {
-        color: colors.text,
-        fontSize: 16,
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('800'),
-    },
-    liveBadge: {
-        backgroundColor: '#FFE5EE',
-        borderRadius: 7,
-        paddingHorizontal: 7,
-        paddingVertical: 3,
-    },
-    liveBadgeText: {
-        color: '#D83C73',
-        fontSize: 9,
-        fontFamily: fontFamily.extraBold,
-        fontWeight: fontWeight('900'),
-        letterSpacing: 0.7,
-    },
-    liveChatSubtitle: {
-        color: colors.textSecondary,
-        fontSize: 12,
-        fontFamily: fontFamily.medium,
-        marginTop: 3,
-    },
-    livePresenceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 5,
     },
     livePresenceDot: {
-        width: 7,
-        height: 7,
-        borderRadius: 4,
+        position: 'absolute',
+        right: 2,
+        bottom: 2,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
         backgroundColor: '#B7AFB7',
-        marginRight: 5,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
     },
     livePresenceDotOnline: {
         backgroundColor: '#35C985',
     },
-    livePresenceText: {
-        color: colors.textSecondary,
-        fontSize: 11,
-        fontFamily: fontFamily.medium,
+    videoChatGuide: {
+        position: 'absolute',
+        top: '100%',
+        right: 18,
+        marginTop: 8,
+        width: 240,
+        maxWidth: '85%',
+        padding: 16,
+        borderRadius: 8,
+        backgroundColor: '#4B2947',
+        shadowColor: '#321B33',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+        elevation: 8,
     },
-    liveChatChevron: {
-        color: '#D83C73',
-        fontSize: 30,
-        marginLeft: 8,
-        marginTop: -2,
+    videoChatGuideArrow: {
+        position: 'absolute',
+        top: -6,
+        right: 16,
+        width: 12,
+        height: 12,
+        backgroundColor: '#4B2947',
+        transform: [{ rotate: '45deg' }],
+    },
+    videoChatGuideText: {
+        color: '#FFFFFF',
+        fontFamily: fontFamily.medium,
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    videoChatGuideDismiss: {
+        alignSelf: 'flex-end',
+        minHeight: 44,
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+        marginTop: 8,
+    },
+    videoChatGuideDismissText: {
+        color: '#F7D8E8',
+        fontFamily: fontFamily.bold,
+        fontSize: 14,
     },
     loadingText: {
         marginTop: spacing.md,
@@ -679,11 +777,18 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     chatSource: {
+        flexShrink: 1,
+        marginRight: 8,
         fontSize: 14,
         fontWeight: fontWeight('800'),
         fontFamily: fontFamily.extraBold,
     },
     chatTime: {
+        fontSize: 12,
+        color: colors.textSecondary,
+        fontFamily: fontFamily.medium,
+    },
+    ritualDate: {
         fontSize: 12,
         color: colors.textSecondary,
         fontFamily: fontFamily.medium,

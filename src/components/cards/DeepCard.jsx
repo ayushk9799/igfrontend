@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TouchableOpacity, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { ScrollView, TextInput } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -9,11 +11,12 @@ import { spacing } from '../../theme';
 import { fontFamily } from '../../constants/fonts';
 import { translateUiText } from '../../i18n/uiTranslation';
 
+const GestureScrollView = Animated.createAnimatedComponent(ScrollView);
 
 /**
  * DeepCard - High-impact text-based card for deep questions and sharing
  */
-const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
+const DeepCard = React.memo(({ task, index, displayIndex, totalCards, cardSwipeGestureRef, hasPartner = false, onLinkPartner, onAnswerSubmit, onSubmit, isAnswered = false, previousAnswer = null, autoAdvanceOnSubmit = true, isLocked = false, onNavigateToPremium = () => { } }) => {
     const [answer, setAnswer] = useState(previousAnswer || '');
     const [isFocused, setIsFocused] = useState(false);
     const config = categoryConfig[task.category] || defaultConfig;
@@ -27,6 +30,9 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
             contentContainerStyle: styles.keyboardContent,
             keyboardShouldPersistTaps: 'handled',
             showsVerticalScrollIndicator: false,
+            ScrollViewComponent: GestureScrollView,
+            simultaneousHandlers: cardSwipeGestureRef,
+            disallowInterruption: false,
         }
         : {
             behavior: 'padding',
@@ -107,6 +113,7 @@ const DeepCard = React.memo(({ task, index, displayIndex, totalCards, hasPartner
                         isFocused && styles.inputContainerFocused
                     ]}>
                         <TextInput
+                            simultaneousHandlers={cardSwipeGestureRef}
                             style={styles.textInput}
                             placeholder={translateUiText("Type your response...")}
                             placeholderTextColor="rgba(255, 255, 255, 0.5)"

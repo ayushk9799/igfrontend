@@ -153,6 +153,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
             const finalUri = out.startsWith('file://') ? out : `file://${out}`;
 
             setPreviewUri({ uri: finalUri, isFrontCamera: false });
+            setShowCamera(false);
         } catch (e) {
             // ignore
         }
@@ -251,7 +252,7 @@ const TakePhotoCard = React.memo(({ task, index, displayIndex, totalCards, partn
                                 {isSubmitting ? (
                                     <ActivityIndicator color="#fff" size="small" />
                                 ) : (
-                                    <Text style={{ color: '#fff', fontWeight: '700', fontFamily: fontFamily.bold }}>{translateUiText("Use Photo ✨")}</Text>
+                                    <Text style={{ color: '#fff', fontWeight: '700', fontFamily: fontFamily.bold }}>{translateUiText("Use Photo")}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>

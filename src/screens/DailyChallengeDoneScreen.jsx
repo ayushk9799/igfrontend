@@ -856,6 +856,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         position: 'relative',
         marginVertical: 0,
+        marginTop: spacing.lg,
     },
     flameWrapper: {
         width: 200,

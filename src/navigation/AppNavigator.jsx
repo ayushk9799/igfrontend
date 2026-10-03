@@ -44,6 +44,7 @@ import OnboardingPremiumScreen from '../screens/OnboardingPremiumScreen';
 import PartnerPremiumPurchaseModal from '../components/PartnerPremiumPurchaseModal';
 import PartnerConnectedModal from '../components/PartnerConnectedModal';
 import PremiumLimitBottomSheet from '../components/PremiumLimitBottomSheet';
+import YearlyOfferBottomSheet from '../components/YearlyOfferBottomSheet';
 import MainTabNavigator from './MainTabNavigator';
 import { colors } from '../theme';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
@@ -55,6 +56,7 @@ import { cancelPartnerInviteReminders, clearPendingLocalNotificationRoute, getIn
 import { API_BASE } from '../constants/Api';
 import { QuestionChatsV2Api } from '../api/questionsV2Api';
 import { apiFetch, setAuthErrorHandler } from '../utils/apiFetch';
+import { WORD_SEARCH_API, wordSearchFetch } from '../utils/wordSearchApi';
 import { getDeviceInfo } from '../utils/deviceInfo';
 import { disableDistanceLocationSharing, getDistanceLocationPermissionStatus, refreshDistanceWidgetSnapshot, saveLockedDistanceWidgetData, syncDistanceWidgetLocation } from '../utils/distanceWidgetSync';
 import { configureNativeWidgetTracking, syncNativeWidgetStatus } from '../api/widgetStatusApi';
@@ -63,6 +65,9 @@ import { requestReviewForMoment, REVIEW_MOMENTS } from '../utils/inAppReview';
 import { updateOnboardingProfile, updateOnboardingStep } from '../api/onboardingApi';
 import { getRequiredOnboardingScreen, needsRelationshipStartDate } from '../utils/onboardingFlow';
 import useReducedMotion from '../hooks/useReducedMotion';
+import useYearlyOffer from '../hooks/useYearlyOffer';
+import { useCall } from '../calling/CallContext';
+import { CALL_STATE } from '../calling/callConstants';
 import { trackScreen, trackEvent, setAnalyticsUser, clearAnalyticsUser } from '../utils/analytics';
 // Redux actions
 import { setUser, updateUser, setPartner, setOnboarded, setCustomerInfo, setPremiumStatus, logout } from '../store/slices/userSlice';
@@ -184,6 +189,9 @@ export const AppNavigator = () => {
 
     // Redux state
     const userData = useSelector(state => state.user);
+    const yearlyOffer = useYearlyOffer(userData?._id || userData?.id, hasActiveCouplePremium(userData));
+    const { activate: activateYearlyOffer, request: requestYearlyOffer, close: closeYearlyOffer } = yearlyOffer;
+    const { callState } = useCall();
     const games = useSelector(state => state.games);
     const { pendingPuzzle, selectedPuzzle, pendingTicTacToe, activeTicTacToe, selectedTicTacToe, pendingWordle, activeWordle, selectedWordle, selectedWordSearch } = games;
     const togetherWidgetStartDate = getTogetherWidgetStartDate(userData);
@@ -192,7 +200,9 @@ export const AppNavigator = () => {
     const [currentScreen, setCurrentScreen] = useState(null); // null = loading
     const [hasPlayedSplashAnimation, setHasPlayedSplashAnimation] = useState(false);
     const [isGamePremiumVisible, setIsGamePremiumVisible] = useState(false);
+    const [gamePremiumSource, setGamePremiumSource] = useState('game_premium');
     const gamePremiumDismissRef = useRef(null);
+    const premiumClosedByUserRef = useRef(false);
     const [premiumLimitFeature, setPremiumLimitFeature] = useState(null);
     const [yourMood, setYourMood] = useState(null);
     const [pendingInvite, setPendingInvite] = useState(null); // Track pending invite
@@ -207,7 +217,6 @@ export const AppNavigator = () => {
     const [partnerPremiumAlertVisible, setPartnerPremiumAlertVisible] = useState(false);
     const [partnerConnectedAlert, setPartnerConnectedAlert] = useState(null);
     const [shouldRestoreAccount, setShouldRestoreAccount] = useState(false);
-    const [yearlyOfferRequestId, setYearlyOfferRequestId] = useState(0);
     const [partnerCodeOverlayVisible, setPartnerCodeOverlayVisible] = useState(false);
     const [partnerCodeOverlayStep, setPartnerCodeOverlayStep] = useState('partnerCode');
     const accountReturnPendingRef = useRef(false);
@@ -243,13 +252,32 @@ export const AppNavigator = () => {
     };
 
 
+    const openPremium = useCallback((source = 'game_premium') => {
+        premiumClosedByUserRef.current = false;
+        closeYearlyOffer();
+        activateYearlyOffer();
+        setGamePremiumSource(typeof source === 'string' ? source : 'game_premium');
+        setIsGamePremiumVisible(true);
+    }, [activateYearlyOffer, closeYearlyOffer]);
+
+    const handlePremiumDismissed = useCallback(() => {
+        if (!premiumClosedByUserRef.current) return;
+        premiumClosedByUserRef.current = false;
+        requestYearlyOffer();
+    }, [requestYearlyOffer]);
+
     const closeGamePremium = useCallback(() => {
+        premiumClosedByUserRef.current = true;
         setIsGamePremiumVisible(false);
         const onDismiss = gamePremiumDismissRef.current;
         gamePremiumDismissRef.current = null;
         onDismiss?.();
-        setYearlyOfferRequestId(previous => previous + 1);
-    }, []);
+        if (Platform.OS !== 'ios') handlePremiumDismissed();
+    }, [handlePremiumDismissed]);
+
+    useEffect(() => {
+        if (callState !== CALL_STATE.IDLE) closeYearlyOffer();
+    }, [callState, closeYearlyOffer]);
 
     const showPremiumLimitSheet = useCallback((feature) => {
         setPremiumLimitFeature(feature);
@@ -262,8 +290,8 @@ export const AppNavigator = () => {
     const handlePremiumLimitUpgrade = useCallback(() => {
         setPremiumLimitFeature(null);
         gamePremiumDismissRef.current = null;
-        setIsGamePremiumVisible(true);
-    }, []);
+        openPremium(premiumLimitFeature ? `limit_${premiumLimitFeature}` : 'game_premium');
+    }, [openPremium, premiumLimitFeature]);
 
     useEffect(() => {
         if (!socket || !userData?.id) return;
@@ -289,10 +317,7 @@ export const AppNavigator = () => {
 
         gamePremiumDismissRef.current = null;
         setPremiumLimitFeature(null);
-        if (isGamePremiumVisible) {
-            setIsGamePremiumVisible(false);
-        }
-    }, [currentScreen, isGamePremiumVisible]);
+    }, [currentScreen]);
 
 
     // In-app update instance (debug flag mirrors __DEV__)
@@ -1197,10 +1222,10 @@ export const AppNavigator = () => {
                 case 'wordsearch': {
                     let game = null;
                     if (data.gameId && currentUserId) {
-                        const json = await fetchJson(`${API_BASE}/api/word-search/${data.gameId}?userId=${currentUserId}`);
+                        const json = await (await wordSearchFetch(`${WORD_SEARCH_API}/${data.gameId}?userId=${currentUserId}`)).json();
                         game = json.success ? json.data : null;
                     } else if (currentUserId) {
-                        const json = await fetchJson(`${API_BASE}/api/word-search/active/${currentUserId}`);
+                        const json = await (await wordSearchFetch(`${WORD_SEARCH_API}/active/${currentUserId}`)).json();
                         game = json.success ? json.data : null;
                     }
                     if (game) {
@@ -1835,7 +1860,7 @@ export const AppNavigator = () => {
     // Use startTransition for non-blocking navigation
     const navigate = (screen) => {
         if (screen === 'premium') {
-            setIsGamePremiumVisible(true);
+            openPremium();
             return;
         }
 
@@ -2001,8 +2026,8 @@ export const AppNavigator = () => {
         const requestId = ++wordSearchFetchRequestRef.current;
         try {
             const [duelResponse, singleResponse] = await Promise.all([
-                fetch(`${API_BASE}/api/word-search/active/${userId}?mode=duel`),
-                fetch(`${API_BASE}/api/word-search/active/${userId}?mode=single`),
+                wordSearchFetch(`${WORD_SEARCH_API}/active/${userId}?mode=duel`),
+                wordSearchFetch(`${WORD_SEARCH_API}/active/${userId}?mode=single`),
             ]);
             const [duelData, singleData] = await Promise.all([
                 duelResponse.json(),
@@ -2747,15 +2772,18 @@ export const AppNavigator = () => {
                             dispatch(setSelectedWordSearch(gameData));
                             navigate('wordSearch');
                         }}
-                        onPremiumPress={() => navigate('premium')}
+                        onPremiumPress={openPremium}
                         onLogout={handleLogout}
                         onDeleteAccount={handleDeleteAccount}
                         onTabChange={setLastHomeTab}
                         canAutoOpenMoodPrompt={hasPlayedSplashAnimation}
                         openAccountOnMount={shouldRestoreAccount}
                         onAccountRestoreHandled={() => setShouldRestoreAccount(false)}
-                        yearlyOfferRequestId={yearlyOfferRequestId}
-                        onYearlyOfferRequestHandled={() => setYearlyOfferRequestId(0)}
+                        isYearlyOfferDue={yearlyOffer.requested}
+                        isYearlyOfferSheetVisible={isYearlyOfferSheetVisible}
+                        yearlyOfferWindowEndsAt={yearlyOffer.endsAt}
+                        onYearlyOfferPress={yearlyOffer.request}
+                        onYearlyOfferExpire={yearlyOffer.expire}
                     />
                 );
 
@@ -2983,6 +3011,7 @@ export const AppNavigator = () => {
                                 partnerName: userData.partnerUsername || 'Partner',
                             }
                         }}
+                        onRequestPremium={() => showPremiumLimitSheet('wordSearch')}
                     />
                 );
 
@@ -2992,6 +3021,9 @@ export const AppNavigator = () => {
                         date={selectedDailySummaryDate || new Date().toISOString().split('T')[0]}
                         userId={userData?.id || userData?._id}
                         partnerName={userData?.partnerUsername || 'Partner'}
+                        userName={userData?.name || 'You'}
+                        userAvatar={userData?.avatar}
+                        partnerAvatar={userData?.partnerAvatar}
                         onStartDailyChallenge={() => {
                             setHomeInitialTab('dailyChallenge');
                             navigate('home');
@@ -3073,6 +3105,17 @@ export const AppNavigator = () => {
                 return null;
         }
     };
+
+    const isYearlyOfferSheetVisible = (
+        yearlyOffer.requested
+        && !isGamePremiumVisible
+        && currentScreen !== 'onboardingPremium'
+        && callState === CALL_STATE.IDLE
+        && !partnerCodeOverlayVisible
+        && !partnerPremiumAlertVisible
+        && !partnerConnectedAlert
+        && !premiumLimitFeature
+    );
 
     return (
         <View style={styles.container}>
@@ -3175,12 +3218,21 @@ export const AppNavigator = () => {
                 transparent={false}
                 statusBarTranslucent={true}
                 onRequestClose={closeGamePremium}
+                onDismiss={handlePremiumDismissed}
             >
                 <OnboardingPremiumScreen
-                    source={premiumLimitFeature ? `limit_${premiumLimitFeature}` : 'game_premium'}
+                    source={gamePremiumSource}
                     onBack={closeGamePremium}
                 />
             </Modal>
+            <YearlyOfferBottomSheet
+                visible={isYearlyOfferSheetVisible}
+                onClose={yearlyOffer.close}
+                onPresented={yearlyOffer.presented}
+                onPurchased={yearlyOffer.complete}
+                offerEndsAt={yearlyOffer.endsAt}
+                onOfferExpire={yearlyOffer.expire}
+            />
             <PremiumLimitBottomSheet
                 visible={Boolean(premiumLimitFeature)}
                 feature={premiumLimitFeature || 'liveChat'}

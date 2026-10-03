@@ -44,8 +44,9 @@ export const apiFetch = async (url, options = {}) => {
             },
         });
 
-        // Check for authentication errors (401 Unauthorized, 403 Forbidden)
-        if (response.status === 401 || response.status === 403) {
+        // Only expired or invalid authentication should sign the user out.
+        // A 403 can be a feature limit or a permission denial; return it to the caller.
+        if (response.status === 401) {
 
             // Try to get more details from the response
             let errorMessage = 'Authentication failed';

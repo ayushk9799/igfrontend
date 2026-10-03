@@ -194,49 +194,72 @@ const SetStatusAvatar = ({
     name,
     complete,
     progress = 0,
+    progressCount = 0,
+    totalQuestions = 0,
     ringColor,
     textColor,
     variant = 'user',
 }) => {
     const avatarSource = getAvatarSource(avatar);
+    const label = translateUiText(variant === 'partner' ? 'Partner' : 'You');
+    const status = complete
+        ? `${translateUiText('Done')} ✓`
+        : progressCount > 0 && totalQuestions > 0
+            ? `${progressCount}/${totalQuestions}`
+            : progress > 0
+                ? `${Math.round(progress)}%`
+                : translateUiText('Pending');
 
     return (
-        <CircularProgressRing
-            progress={progress}
-            color={ringColor}
-            trackColor="rgba(255,255,255,0.8)"
-            size={36}
-            strokeWidth={3}
-            style={variant === 'userOverlap' && styles.userStatusAvatarOverlap}
+        <View
+            style={styles.statusAvatarColumn}
+            accessible
+            accessibilityLabel={`${label}: ${status}`}
         >
-            <View style={[
-                styles.statusAvatar,
-                variant === 'partner' && styles.partnerStatusAvatar,
-                complete && styles.statusAvatarComplete,
-                !complete && styles.statusAvatarPending,
-            ]}>
-                {avatarSource ? (
-                    <Image source={avatarSource} style={styles.statusAvatarImage} resizeMode="cover" />
-                ) : (
-                    <Text
-                        style={[
-                            styles.statusAvatarInitial,
-                            textColor ? { color: textColor } : null,
-                        ]}
-                        allowFontScaling={false}
-                    >
-                        {getAvatarInitial(name)}
-                    </Text>
-                )}
+            <View style={styles.statusAvatarRing}>
+                <CircularProgressRing
+                    progress={complete ? 100 : progress}
+                    color={ringColor}
+                    trackColor="rgba(255,255,255,0.8)"
+                    size={36}
+                    strokeWidth={3}
+                >
+                    <View style={[
+                        styles.statusAvatar,
+                        variant === 'partner' && styles.partnerStatusAvatar,
+                        complete && styles.statusAvatarComplete,
+                        !complete && styles.statusAvatarPending,
+                    ]}>
+                        {avatarSource ? (
+                            <Image source={avatarSource} style={styles.statusAvatarImage} resizeMode="cover" />
+                        ) : (
+                            <Text
+                                style={[
+                                    styles.statusAvatarInitial,
+                                    textColor ? { color: textColor } : null,
+                                ]}
+                                allowFontScaling={false}
+                            >
+                                {getAvatarInitial(name)}
+                            </Text>
+                        )}
+                    </View>
+                </CircularProgressRing>
+                {complete ? (
+                    <View style={styles.statusAvatarCheckBadge}>
+                        <Svg width={8} height={8} viewBox="0 0 12 12" fill="none">
+                            <Path d="M2 6l2.5 2.5L10 3" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                        </Svg>
+                    </View>
+                ) : null}
             </View>
-        </CircularProgressRing>
+        </View>
     );
 };
 
 export default function TopicQuestionsV2Screen({
     topic,
     topicTitle,
-    topicEmoji = '',
     partnerName = 'Your Love',
     userName = 'You',
     userAvatar = null,
@@ -1043,7 +1066,7 @@ export default function TopicQuestionsV2Screen({
             </TouchableOpacity>
             <View style={styles.headerTextBlock}>
                 <Text style={styles.headerTitle} numberOfLines={1}>
-                    {topicEmoji ? `${topicEmoji} ${topicTitle}` : topicTitle}
+                    {topicTitle}
                 </Text>
             </View>
             {selectedSet && answeredQuestionIds.length > 0 ? (
@@ -1148,6 +1171,8 @@ export default function TopicQuestionsV2Screen({
                                                 name={partnerName}
                                                 complete={partnerComplete}
                                                 progress={set.partnerProgress?.percentComplete || 0}
+                                                progressCount={set.partnerProgress?.doneCount ?? set.partnerProgress?.answeredCount ?? 0}
+                                                totalQuestions={set.totalQuestions || set.partnerProgress?.totalQuestions || 0}
                                                 ringColor={partnerRingColor}
                                                 textColor={partnerRingColor}
                                                 variant="partner"
@@ -1158,9 +1183,10 @@ export default function TopicQuestionsV2Screen({
                                             name={userName}
                                             complete={userComplete}
                                             progress={percentComplete}
+                                            progressCount={set.progress?.doneCount ?? set.progress?.answeredCount ?? 0}
+                                            totalQuestions={set.totalQuestions || set.progress?.totalQuestions || 0}
                                             ringColor={theme.accent}
                                             textColor={theme.accent}
-                                            variant={set.partnerProgress ? 'userOverlap' : 'user'}
                                         />
                                     </View>
                                     {set.premium && !isPremium ? (
@@ -1525,8 +1551,29 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-end',
     },
+    statusAvatarColumn: {
+        width: 36,
+        alignItems: 'center',
+    },
+    statusAvatarRing: {
+        width: 36,
+        height: 36,
+    },
+    statusAvatarCheckBadge: {
+        position: 'absolute',
+        right: 0,
+        bottom: 0,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#167447',
+        borderWidth: 1,
+        borderColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     setCardRightColumn: {
-        width: 66,
+        minWidth: 38,
         flexShrink: 0,
         alignItems: 'flex-end',
         justifyContent: 'center',
@@ -1534,9 +1581,9 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     statusAvatar: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         borderWidth: 0,
         borderColor: '#F5A3CB',
         backgroundColor: '#FFE7F2',
@@ -1547,10 +1594,6 @@ const styles = StyleSheet.create({
     partnerStatusAvatar: {
         backgroundColor: '#F4E8FF',
         borderColor: '#D8B4FE',
-    },
-    userStatusAvatarOverlap: {
-        marginLeft: -8,
-        zIndex: 2,
     },
     statusAvatarComplete: {
         opacity: 1,
@@ -1563,7 +1606,7 @@ const styles = StyleSheet.create({
     statusAvatarImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 12,
+        borderRadius: 14,
     },
     statusAvatarInitial: {
         color: '#B31975',

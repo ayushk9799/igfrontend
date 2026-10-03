@@ -76,6 +76,12 @@ const isMoodStale = (mood, now) => {
     return Number.isNaN(updatedAt) || now - updatedAt > MOOD_STALE_MS;
 };
 
+const getJourneyCount = (value) => {
+    if (value === null || value === undefined) return '—';
+    const count = Number(value);
+    return Number.isFinite(count) ? String(Math.max(0, Math.floor(count))) : '—';
+};
+
 const getTimeUntilLabel = (targetDate, now) => {
     if (!targetDate) {
         return null;
@@ -150,6 +156,24 @@ const IconSvg = ({ type, color = '#7867F6', size = 26 }) => {
                     <Path d="M16.5 10L21 7.8V16.2L16.5 14V10Z" stroke={stroke} strokeWidth={1.8} strokeLinejoin="round" />
                 </>
             )}
+            {type === 'flame' && (
+                <Path
+                    d="M12 3C13 7 17 8 17 12C17 13 16.7 14 16 15C19 14 20 12 20 10C22 15 19 21 12 21C7 21 4 18 4 14C4 10 7 8 8 6C8 9 9 10 10 11C12 9 13 7 12 3Z"
+                    stroke={stroke}
+                    strokeWidth={1.7}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                />
+            )}
+            {type === 'trophy' && (
+                <>
+                    <Path d="M8 3H16V9A4 4 0 018 9V3ZM12 13V18M8 21H16M9 18H15V21H9V18Z" stroke={stroke} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+                    <Path d="M8 5H4V7A4 4 0 008 11M16 5H20V7A4 4 0 0116 11" stroke={stroke} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+                </>
+            )}
+            {type === 'chat' && (
+                <Path d="M5 4H19A2 2 0 0121 6V15A2 2 0 0119 17H10L5 21V17A2 2 0 013 15V6A2 2 0 015 4ZM7 9H17M7 13H13" stroke={stroke} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
+            )}
         </Svg>
     );
 };
@@ -191,6 +215,7 @@ const HomeScreen = ({
     todayChallenge = null,
     relationshipStartDate = null,
     daysTogether = 0,
+    questionsAnsweredTogether = null,
     onMoodPress,
     onScribblePress,
     onScribbleLivePress,
@@ -310,6 +335,12 @@ const HomeScreen = ({
     const heartState = ritualStreak?.heartState || 'empty';
     const ritualTimeLeft = getTimeUntilLabel(todayChallenge?.closesAt, now);
     const ritualStreakCount = Number(ritualStreak?.currentStreak) || 0;
+    const journeyStats = [
+        { label: 'Days together', count: daysTogether, icon: 'heart', color: '#C84E82', gradient: ['#FFF4F8', '#FCE4EF'] },
+        { label: 'Current streak', count: ritualStreak?.currentStreak, icon: 'flame', color: '#D66A53', gradient: ['#FFF7F2', '#FDE9DF'] },
+        { label: 'Best streak', count: ritualStreak?.longestStreak, icon: 'trophy', color: '#8060B4', gradient: ['#FAF5FF', '#EFE4FC'] },
+        { label: 'Questions answered together', count: questionsAnsweredTogether, icon: 'chat', color: '#567F95', gradient: ['#F3FAFF', '#E4EFF8'] },
+    ];
 
     let currentTask = null;
     if (todayChallenge?.challenge?.tasks) {
@@ -897,6 +928,67 @@ const HomeScreen = ({
                             );
                         })}
                     </View>
+
+                    {hasPartner && (
+                        <View style={styles.journeySection}>
+                            <HomeText style={styles.sectionTitle}>{translateUiText("Our journey")}</HomeText>
+                            <HomeText style={styles.journeySubtitle}>
+                                {translateUiText("Little moments, growing together")}
+                            </HomeText>
+                            <View style={styles.journeyGrid}>
+                                {[journeyStats.slice(0, 2), journeyStats.slice(2)].map((row, rowIndex) => (
+                                    <View key={rowIndex} style={styles.journeyRow}>
+                                        {row.map((stat) => {
+                                            const value = getJourneyCount(stat.count);
+                                            const unit = stat.icon === 'chat' || value === '—'
+                                                ? ''
+                                                : translateUiText(value === '1' ? "day" : "days");
+
+                                            return (
+                                                <View
+                                                    key={stat.icon}
+                                                    style={styles.journeyTile}
+                                                    accessible
+                                                    accessibilityLabel={`${translateUiText(stat.label)}: ${value} ${unit}`.trim()}
+                                                >
+                                                    <LinearGradient
+                                                        colors={stat.gradient}
+                                                        start={{ x: 0, y: 0 }}
+                                                        end={{ x: 1, y: 1 }}
+                                                        style={styles.journeyTileBackground}
+                                                        pointerEvents="none"
+                                                    />
+                                                    <View style={styles.journeyTileContent}>
+                                                        <View style={styles.journeyIconBadge}>
+                                                            {stat.icon === 'heart' ? (
+                                                                <HeartDoodle color={stat.color} size={25} />
+                                                            ) : (
+                                                                <IconSvg type={stat.icon} color={stat.color} size={23} />
+                                                            )}
+                                                        </View>
+                                                        <View style={styles.journeyStatLabelWrap}>
+                                                            <HomeText style={styles.journeyStatLabel}>
+                                                                {translateUiText(stat.label)}
+                                                            </HomeText>
+                                                        </View>
+                                                        <HomeText
+                                                            style={[styles.journeyStatValue, { color: stat.color }]}
+                                                            numberOfLines={1}
+                                                            adjustsFontSizeToFit
+                                                            minimumFontScale={0.7}
+                                                        >
+                                                            {value}
+                                                        </HomeText>
+                                                        <HomeText style={styles.journeyStatUnit}>{unit || ' '}</HomeText>
+                                                    </View>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    )}
 
                 </ScrollView>
             </View>
@@ -1635,6 +1727,79 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight('900'),
         fontFamily: fontFamily.extraBold,
         textAlign: 'center',
+    },
+    journeySection: {
+        marginTop: 26,
+    },
+    journeySubtitle: {
+        color: '#82718C',
+        fontSize: 12,
+        lineHeight: 18,
+        marginTop: 4,
+        marginBottom: 12,
+    },
+    journeyGrid: {
+        gap: 12,
+    },
+    journeyRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    journeyTile: {
+        flex: 1,
+        minWidth: 0,
+        minHeight: 180,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.9)',
+        ...cardShadow,
+    },
+    journeyTileBackground: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 20,
+    },
+    journeyTileContent: {
+        flexGrow: 1,
+        paddingHorizontal: 12,
+        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    journeyIconBadge: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.65)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    journeyStatLabelWrap: {
+        width: '100%',
+        minHeight: 34,
+        justifyContent: 'center',
+    },
+    journeyStatLabel: {
+        color: '#82718C',
+        fontSize: 12,
+        lineHeight: 17,
+        fontFamily: fontFamily.bold,
+        textAlign: 'center',
+    },
+    journeyStatValue: {
+        maxWidth: '100%',
+        fontSize: 28,
+        lineHeight: 36,
+        fontFamily: fontFamily.extraBold,
+        fontVariant: ['tabular-nums'],
+        textAlign: 'center',
+        marginTop: 5,
+    },
+    journeyStatUnit: {
+        color: '#82718C',
+        fontSize: 11,
+        lineHeight: 15,
+        minHeight: 15,
     },
 });
 

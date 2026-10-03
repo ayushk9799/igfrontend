@@ -152,6 +152,7 @@ export const SocketProvider = ({ children }) => {
         const socketInstance = io(API_BASE, {
             auth: {
                 userId,
+                wordSearchVersion: 2,
             },
             transports: ['websocket'],
             reconnection: true,

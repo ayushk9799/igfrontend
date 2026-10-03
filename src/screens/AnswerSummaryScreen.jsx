@@ -17,22 +17,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {
     ChevronLeft,
-    Send,
     Lock,
     Bell,
-    Heart,
     Sparkles,
     MessageCircle,
     Check,
     X,
-    Maximize2,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 
-import GradientBackground from '../components/GradientBackground';
-import { ChatInput, VoiceBubble } from '../components/chat';
-import { colors, spacing, borderRadius } from '../theme';
+import { ChatInput } from '../components/chat';
+import {
+    ANSWER_FORMAT_THEME, SUMMARY_GRADIENT, Avatar, ConversationRow, SliderRow,
+} from '../components/questions/QuestionAnswerSummary';
+import { colors, spacing } from '../theme';
 import { fontFamily } from '../constants/fonts';
 import { getCoupleAnswers } from '../utils/answerApi';
 import { API_BASE } from '../constants/Api';
@@ -40,19 +39,15 @@ import { apiFetch } from '../utils/apiFetch';
 import { translateUiText, translateUiTemplate, getUiLocale } from '../i18n/uiTranslation';
 import { formatDisplayDate, isToday } from '../utils/dateUtils';
 
-const categoryConfig = {
-    likelyto: { emoji: '⚖️', color: '#E11D48', gradient: ['#FF758F', '#FDA4AF'], label: 'Most Likely To' },
-    neverhaveiever: { emoji: '🤫', color: '#EA580C', gradient: ['#FB923C', '#FDBA74'], label: 'Never Have I Ever' },
-    deep: { emoji: '💭', color: '#7C3AED', gradient: ['#A855F7', '#C084FC'], label: 'Deep Talk' },
-    slider: { emoji: '📏', color: '#2563EB', gradient: ['#3B82F6', '#93C5FD'], label: 'Slider' },
-    voicerecord: { emoji: '🎙️', color: '#059669', gradient: ['#10B981', '#6EE7B7'], label: 'Voice Notes' },
-    takephoto: { emoji: '📸', color: '#DB2777', gradient: ['#F43F5E', '#FB7185'], label: 'Photo Moment' },
-};
+const hasAnswer = value => value !== null && value !== undefined && String(value).trim().length > 0;
 
 export default function AnswerSummaryScreen({
     date,
     userId,
     partnerName = 'Partner',
+    userName = 'You',
+    userAvatar = null,
+    partnerAvatar = null,
     challengeTitle,
     onBack = () => { },
     onOpenFullChat,
@@ -71,7 +66,6 @@ export default function AnswerSummaryScreen({
     const [loading, setLoading] = useState(true);
     const [reminding, setReminding] = useState(false);
     const [reminderSent, setReminderSent] = useState(false);
-    const [commentText, setCommentText] = useState('');
     const [sendingComment, setSendingComment] = useState(false);
     const [chatMessages, setChatMessages] = useState([]);
     const [previewImage, setPreviewImage] = useState(null);
@@ -99,6 +93,30 @@ export default function AnswerSummaryScreen({
     useEffect(() => {
         fetchAnswers();
     }, [fetchAnswers]);
+
+    const summaryChatId = data.chat?._id;
+
+    useEffect(() => {
+        if (loading || !summaryChatId || !userId) return;
+
+        const markChatRead = async () => {
+            try {
+                const response = await apiFetch(`${API_BASE}/api/chat/${summaryChatId}/read`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId }),
+                });
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.message || 'Failed to mark ritual chat as read');
+                }
+            } catch (error) {
+                console.warn('Failed to mark ritual chat as read:', error);
+            }
+        };
+
+        markChatRead();
+    }, [loading, summaryChatId, userId]);
 
     const hasInitialScrolledRef = useRef(false);
 
@@ -175,7 +193,7 @@ export default function AnswerSummaryScreen({
     };
 
     const handleSendComment = async (customText) => {
-        const text = (typeof customText === 'string' ? customText : commentText).trim();
+        const text = (typeof customText === 'string' ? customText : '').trim();
         if (!text || sendingComment) return;
         setSendingComment(true);
 
@@ -236,21 +254,21 @@ export default function AnswerSummaryScreen({
     const userAnswers = data.user?.answers || [];
     const partnerAnswers = data.partner?.answers || [];
 
-    const userComplete = !!(data.user?.isComplete || (userAnswers.length > 0 && userAnswers.filter(a => a?.value).length >= (tasks.length || 5)));
-    const partnerComplete = !!(data.partner?.isComplete || (partnerAnswers.length > 0 && partnerAnswers.filter(a => a?.value).length >= (tasks.length || 5)));
+    const userComplete = !!(data.user?.isComplete || (userAnswers.length > 0 && userAnswers.filter(a => hasAnswer(a?.value)).length >= (tasks.length || 5)));
+    const partnerComplete = !!(data.partner?.isComplete || (partnerAnswers.length > 0 && partnerAnswers.filter(a => hasAnswer(a?.value)).length >= (tasks.length || 5)));
     const bothComplete = !!data.bothComplete || (userComplete && partnerComplete);
 
     const comparisons = tasks.map((task, index) => {
         const uAns = userAnswers[index];
         const pAns = partnerAnswers[index];
 
-        const userVal = uAns?.value || null;
-        const partnerVal = pAns?.value || null;
+        const userVal = uAns?.value ?? null;
+        const partnerVal = pAns?.value ?? null;
 
         let isMatch = false;
         let matchLabel = 'Match!';
 
-        if (userVal && partnerVal && bothComplete) {
+        if (hasAnswer(userVal) && hasAnswer(partnerVal) && bothComplete) {
             if (task.category === 'slider') {
                 const uNum = Number(userVal);
                 const pNum = Number(partnerVal);
@@ -263,7 +281,14 @@ export default function AnswerSummaryScreen({
                         matchLabel = 'Super Close!';
                     }
                 }
-            } else if (task.category === 'likelyto' || task.category === 'neverhaveiever') {
+            } else if (task.category === 'likelyto') {
+                const userChoice = String(userVal).trim().toLowerCase();
+                const partnerChoice = String(partnerVal).trim().toLowerCase();
+                // Choices are relative to the answerer: opposite words pick the same person.
+                isMatch = ['you', 'partner'].includes(userChoice)
+                    && ['you', 'partner'].includes(partnerChoice)
+                    && userChoice !== partnerChoice;
+            } else if (task.category === 'neverhaveiever') {
                 if (String(userVal).trim().toLowerCase() === String(partnerVal).trim().toLowerCase()) {
                     isMatch = true;
                 }
@@ -302,65 +327,17 @@ export default function AnswerSummaryScreen({
         }
     })();
 
-    const renderAnswerBubble = (value, type, category, isUser = true) => {
-        if (!value) {
-            return (
-                <View style={styles.emptyBubble}>
-                    <Text style={styles.emptyBubbleText}>—</Text>
-                </View>
-            );
-        }
-
-        if (category === 'voicerecord' || type === 'voice') {
-            return (
-                <View style={[styles.voiceWrapper, isUser ? styles.voiceWrapperUser : styles.voiceWrapperPartner]}>
-                    <VoiceBubble
-                        audioUri={value}
-                        isSent={isUser}
-                        compact={true}
-                        accentColor={isUser ? '#BE185D' : '#6D28D9'}
-                        style={styles.voiceBubbleInner}
-                    />
-                </View>
-            );
-        }
-
-        if (category === 'takephoto' || type === 'photo') {
-            const authorTitle = isUser
-                ? translateUiText('Your Photo')
-                : translateUiTemplate("{{0}}'s Photo", [partnerName]);
-            return (
-                <TouchableOpacity
-                    activeOpacity={0.88}
-                    onPress={() => setPreviewImage({ uri: value, title: authorTitle })}
-                    style={styles.photoAnswerContainer}
-                >
-                    <Image source={{ uri: value }} style={styles.photoAnswer} resizeMode="cover" />
-                    <View style={styles.photoZoomBadge}>
-                        <Maximize2 size={11} color="#FFFFFF" />
-                    </View>
-                </TouchableOpacity>
-            );
-        }
-
-        // Likely To formatting
-        let displayVal = value;
-        if (category === 'likelyto') {
-            if (value.toLowerCase() === 'you') displayVal = isUser ? 'You' : partnerName;
-            else if (value.toLowerCase() === 'partner') displayVal = isUser ? partnerName : 'You';
-        }
-
-        return (
-            <View style={[styles.textBubble, isUser ? styles.userBubble : styles.partnerBubble]}>
-                <Text style={[styles.bubbleText, isUser ? styles.userBubbleText : styles.partnerBubbleText]}>
-                    {displayVal}
-                </Text>
-            </View>
-        );
-    };
+    const effectiveUserName = data.user?.userId?.name || userName;
+    const effectiveUserAvatar = data.user?.userId?.avatar || userAvatar;
+    const effectivePartnerAvatar = data.partner?.userId?.avatar || partnerAvatar;
+    const openPhoto = (uri, isUser) => setPreviewImage({
+        uri,
+        title: isUser ? translateUiText('Your Photo') : translateUiTemplate("{{0}}'s Photo", [partnerName]),
+    });
+    const inputBottomPadding = keyboardVisible ? 8 : Math.max(bottomInset, 10);
 
     return (
-        <GradientBackground variant="light" showOrbs={false}>
+        <LinearGradient {...SUMMARY_GRADIENT} style={styles.container}>
             {/* Header */}
             <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton} activeOpacity={0.7}>
@@ -382,7 +359,7 @@ export default function AnswerSummaryScreen({
             </View>
 
             <KeyboardAvoidingView
-                style={{ flex: 1 }}
+                style={styles.container}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={0}
             >
@@ -395,7 +372,7 @@ export default function AnswerSummaryScreen({
                 ) : (
                     <ScrollView
                         ref={scrollRef}
-                        style={{ flex: 1 }}
+                        style={styles.container}
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
@@ -428,7 +405,7 @@ export default function AnswerSummaryScreen({
                                             </Text>
                                         </View>
                                         <Text style={styles.statusSubtext}>
-                                            {translateUiText("You and your partner unlocked all answers! Tap cards to compare.")}
+                                            {translateUiText("You and your partner unlocked all answers!")}
                                         </Text>
                                     </>
                                 ) : !userComplete ? (
@@ -437,7 +414,7 @@ export default function AnswerSummaryScreen({
                                             <View style={styles.statusIconWrapAction}>
                                                 <Sparkles size={16} color="#E11D48" />
                                             </View>
-                                            <Text style={[styles.statusTitle, { color: '#E11D48' }]}>
+                                            <Text style={[styles.statusTitle, styles.statusTitleAction]}>
                                                 {partnerComplete
                                                     ? translateUiTemplate("{{0}} has answered today! 💕", [partnerName])
                                                     : translateUiText("Today's Ritual is Ready! 🌟")}
@@ -466,7 +443,7 @@ export default function AnswerSummaryScreen({
                                             <View style={styles.statusIconWrapPending}>
                                                 <Lock size={16} color="#BE185D" />
                                             </View>
-                                            <Text style={[styles.statusTitle, { color: '#BE185D' }]}>
+                                            <Text style={[styles.statusTitle, styles.statusTitlePending]}>
                                                 {translateUiTemplate("Waiting for {{0}} to answer", [partnerName])}
                                             </Text>
                                         </View>
@@ -498,82 +475,45 @@ export default function AnswerSummaryScreen({
                             </View>
                         </View>
 
-                        {/* Questions & Comparison Cards */}
                         {comparisons.map((item, idx) => {
-                            const config = categoryConfig[item.category] || categoryConfig.deep;
-
+                            const Row = item.category === 'slider' ? SliderRow : ConversationRow;
+                            const theme = ANSWER_FORMAT_THEME[item.category] || ANSWER_FORMAT_THEME.deep;
+                            const summaryItem = {
+                                ...item.task,
+                                questionId: item.task?._id || `ritual-${idx}`,
+                                prompt: item.task?.taskstatement || item.task?.prompt,
+                                userAnswer: item.userVal,
+                                partnerAnswer: bothComplete ? item.partnerVal : null,
+                                userType: item.userType,
+                                partnerType: item.partnerType,
+                                chatId: data.chat?._id,
+                                minLabel: item.task?.minLabel || translateUiText('Not at all'),
+                                maxLabel: item.task?.maxLabel || translateUiText('Absolutely'),
+                            };
                             return (
-                                <View key={`comp_${idx}`} style={styles.cardContainer}>
-                                    <LinearGradient
-                                        colors={config.gradient || [config.color, config.color]}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        style={styles.cardAccentStripe}
-                                    />
-                                    <View style={styles.cardInner}>
-                                        {/* Category header */}
-                                        <View style={styles.cardCategoryRow}>
-                                            <View style={[styles.badge, { backgroundColor: config.color + '15' }]}>
-                                                <Text style={styles.badgeEmoji}>{config.emoji}</Text>
-                                                <Text style={[styles.badgeText, { color: config.color }]}>
-                                                    {translateUiText(config.label)}
-                                                </Text>
-                                            </View>
-
-                                            {item.isMatch && (
-                                                <View style={styles.matchBadge}>
-                                                    <Sparkles size={12} color="#FFFFFF" />
-                                                    <Text style={styles.matchText}>{item.matchLabel}</Text>
-                                                </View>
-                                            )}
-                                        </View>
-
-                                        {/* Question statement */}
-                                        <Text style={styles.statementText}>{item.task?.taskstatement}</Text>
-
-                                        {/* Side by side answers on ONE line */}
-                                        <View style={styles.comparisonGrid}>
-                                            {/* User answer column */}
-                                            <View style={styles.answerColumn}>
-                                                <Text style={styles.columnLabel}>{translateUiText('You')}</Text>
-                                                {renderAnswerBubble(item.userVal, item.userType, item.category, true)}
-                                            </View>
-
-                                            <View style={styles.vsSeparator}>
-                                                <Text style={styles.vsText}>VS</Text>
-                                            </View>
-
-                                            {/* Partner answer column */}
-                                            <View style={styles.answerColumn}>
-                                                <Text style={styles.columnLabel}>{translateUiText('Partner')}</Text>
-                                                {bothComplete ? (
-                                                    renderAnswerBubble(item.partnerVal, item.partnerType, item.category, false)
-                                                ) : (
-                                                    <View style={styles.lockedBubble}>
-                                                        <Lock size={15} color="#94A3B8" />
-                                                        <Text style={styles.lockedText}>
-                                                            {!userComplete ? translateUiText('Answer to reveal') : translateUiText('Hidden')}
-                                                        </Text>
-                                                    </View>
-                                                )}
-                                            </View>
-                                        </View>
-                                    </View>
-                                </View>
+                                <Row
+                                    key={`comp_${idx}`}
+                                    item={summaryItem}
+                                    index={idx}
+                                    format={item.category}
+                                    theme={theme}
+                                    userName={effectiveUserName}
+                                    partnerName={partnerName}
+                                    userAvatar={effectiveUserAvatar}
+                                    partnerAvatar={effectivePartnerAvatar}
+                                    partnerLocked={!bothComplete}
+                                    partnerPendingLabel={bothComplete ? undefined : partnerComplete ? 'Answer to reveal' : 'Waiting for partner response...'}
+                                    onAnswer={onStartDailyChallenge}
+                                    onOpenPhoto={openPhoto}
+                                />
                             );
                         })}
 
                         {/* Discussion Section */}
                         <View style={styles.discussionSection}>
-                            <LinearGradient
-                                colors={['#C084FC', '#FF758F']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.cardAccentStripe}
-                            />
-                            <View style={styles.cardInner}>
+                            <View style={styles.discussionInner}>
                                 <View style={styles.discussionHeader}>
-                                    <MessageCircle size={18} color={colors.primary} />
+                                    <MessageCircle size={18} color="#D32764" />
                                     <Text style={styles.discussionTitle}>{translateUiText('Ritual Discussion')}</Text>
                                 </View>
 
@@ -590,6 +530,7 @@ export default function AnswerSummaryScreen({
                                                     key={msg._id || `msg_${i}`}
                                                     style={[styles.commentRow, isMe ? styles.commentRowMe : styles.commentRowPartner]}
                                                 >
+                                                    {!isMe && <Avatar uri={msg.senderId?.avatar || effectivePartnerAvatar} name={partnerName} size={32} />}
                                                     <View style={[styles.commentBubble, isMe ? styles.commentBubbleMe : styles.commentBubblePartner]}>
                                                         <Text style={[styles.commentText, isMe ? styles.commentTextMe : styles.commentTextPartner]}>
                                                             {msg.content}
@@ -602,6 +543,7 @@ export default function AnswerSummaryScreen({
                                                             </View>
                                                         )}
                                                     </View>
+                                                    {isMe && <Avatar uri={effectiveUserAvatar} name={effectiveUserName} size={32} />}
                                                 </View>
                                             );
                                         })}
@@ -617,7 +559,7 @@ export default function AnswerSummaryScreen({
                     <View
                         style={[
                             styles.bottomBarContainer,
-                            { paddingBottom: keyboardVisible ? 8 : Math.max(bottomInset, 10) },
+                            { paddingBottom: inputBottomPadding },
                         ]}
                     >
                         {/* Frosted Glass Background Layer */}
@@ -681,7 +623,7 @@ export default function AnswerSummaryScreen({
                     </TouchableOpacity>
                 </View>
             </Modal>
-        </GradientBackground>
+        </LinearGradient>
     );
 }
 
@@ -710,27 +652,18 @@ const styles = StyleSheet.create({
     backButton: {
         width: 42,
         height: 42,
-        borderRadius: 21,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1.5,
-        borderColor: '#FAE8FF',
-        shadowColor: '#C084FC',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 2,
     },
     headerInfo: {
         flex: 1,
-        marginLeft: spacing.md,
+        marginLeft: 4,
     },
     headerTitle: {
         fontSize: 18,
         fontWeight: '700',
         color: colors.text,
-        fontFamily: fontFamily.semiBold,
+        fontFamily: fontFamily.extraBold,
     },
     headerSubtitle: {
         fontSize: 12,
@@ -753,7 +686,8 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     scrollContent: {
-        padding: spacing.md,
+        paddingHorizontal: 18,
+        paddingTop: spacing.md,
         paddingBottom: spacing.xl * 2,
     },
     statusHero: {
@@ -817,6 +751,8 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         lineHeight: 18,
     },
+    statusTitleAction: { color: '#E11D48' },
+    statusTitlePending: { color: '#BE185D' },
     remindButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -859,193 +795,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#FFFFFF',
     },
-    cardContainer: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 18,
-        marginBottom: spacing.md,
-        borderWidth: 1,
-        borderColor: '#F1E6F3',
-        overflow: 'hidden',
-        shadowColor: '#BE185D',
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 2,
-    },
-    cardCategoryRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: spacing.xs,
-    },
-    badge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 12,
-        gap: 4,
-    },
-    badgeEmoji: {
-        fontSize: 12,
-    },
-    badgeText: {
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    matchBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: '#10B981',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 10,
-    },
-    matchText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
-    statementText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: colors.text,
-        marginVertical: spacing.sm,
-        lineHeight: 21,
-    },
-    comparisonGrid: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginTop: spacing.xs,
-        paddingTop: spacing.xs,
-        borderTopWidth: 1,
-        borderTopColor: '#F8EEF8',
-    },
-    answerColumn: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    columnLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: colors.textSecondary,
-        marginBottom: 6,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    vsSeparator: {
-        paddingHorizontal: 8,
-        paddingTop: 24,
-    },
-    vsText: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: '#CBD5E1',
-    },
-    textBubble: {
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: borderRadius.md,
-        width: '100%',
-        alignItems: 'center',
-    },
-    userBubble: {
-        backgroundColor: '#FFF0F5',
-        borderWidth: 1,
-        borderColor: '#FBCFE8',
-    },
-    partnerBubble: {
-        backgroundColor: '#F3E8FF',
-        borderWidth: 1,
-        borderColor: '#E9D5FF',
-    },
-    bubbleText: {
-        fontSize: 13,
-        fontWeight: '600',
-        textAlign: 'center',
-    },
-    userBubbleText: {
-        color: '#BE185D',
-    },
-    partnerBubbleText: {
-        color: '#6D28D9',
-    },
-    emptyBubble: {
-        padding: 8,
-    },
-    emptyBubbleText: {
-        color: colors.textMuted,
-    },
-    lockedBubble: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        borderRadius: borderRadius.md,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        width: '100%',
-    },
-    lockedText: {
-        fontSize: 12,
-        color: '#94A3B8',
-        fontWeight: '500',
-        fontStyle: 'italic',
-    },
-    voiceWrapper: {
-        width: '100%',
-        borderRadius: borderRadius.md,
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        alignItems: 'stretch',
-        justifyContent: 'center',
-    },
-    voiceWrapperUser: {
-        backgroundColor: '#FFF0F5',
-        borderWidth: 1,
-        borderColor: '#FBCFE8',
-    },
-    voiceWrapperPartner: {
-        backgroundColor: '#F3E8FF',
-        borderWidth: 1,
-        borderColor: '#E9D5FF',
-    },
-    voiceBubbleInner: {
-        width: '100%',
-        minWidth: 0,
-    },
-    photoAnswerContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: borderRadius.md,
-        overflow: 'hidden',
-        position: 'relative',
-        backgroundColor: '#000000',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    photoAnswer: {
-        width: '100%',
-        height: '100%',
-    },
-    photoZoomBadge: {
-        position: 'absolute',
-        bottom: 6,
-        right: 6,
-        backgroundColor: 'rgba(0, 0, 0, 0.55)',
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     fullImageModalContainer: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.96)',
@@ -1084,18 +833,11 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     discussionSection: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 18,
         marginTop: spacing.sm,
-        borderWidth: 1,
-        borderColor: '#F1E6F3',
-        overflow: 'hidden',
-        shadowColor: '#BE185D',
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 2,
+        paddingHorizontal: 2,
+        paddingBottom: 20,
     },
+    discussionInner: { paddingVertical: spacing.md },
     discussionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1103,8 +845,8 @@ const styles = StyleSheet.create({
         marginBottom: spacing.sm,
     },
     discussionTitle: {
-        fontSize: 15,
-        fontWeight: '700',
+        fontSize: 17,
+        fontFamily: fontFamily.extraBold,
         color: colors.text,
     },
     noCommentsText: {
@@ -1119,37 +861,46 @@ const styles = StyleSheet.create({
     },
     commentRow: {
         flexDirection: 'row',
-        marginBottom: 4,
+        alignItems: 'flex-end',
+        gap: 8,
+        marginBottom: 8,
     },
     commentRowMe: {
         justifyContent: 'flex-end',
+        paddingLeft: 40,
     },
     commentRowPartner: {
         justifyContent: 'flex-start',
+        paddingRight: 40,
     },
     commentBubble: {
-        maxWidth: '80%',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 16,
+        maxWidth: '82%',
+        flexShrink: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        borderRadius: 18,
+        borderWidth: 1,
     },
     commentBubbleMe: {
-        backgroundColor: colors.primary,
+        backgroundColor: '#F0B8CE',
+        borderColor: '#DB88A8',
         borderBottomRightRadius: 4,
     },
     commentBubblePartner: {
-        backgroundColor: '#F1F5F9',
+        backgroundColor: '#E8DCF3',
+        borderColor: '#D4BFE5',
         borderBottomLeftRadius: 4,
     },
     commentText: {
-        fontSize: 14,
-        lineHeight: 19,
+        fontFamily: fontFamily.bold,
+        fontSize: 15,
+        lineHeight: 22,
     },
     commentTextMe: {
-        color: '#FFFFFF',
+        color: '#281330',
     },
     commentTextPartner: {
-        color: colors.text,
+        color: '#281330',
     },
     commentMeta: {
         flexDirection: 'row',
@@ -1162,10 +913,10 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     commentTimeMe: {
-        color: 'rgba(255, 255, 255, 0.72)',
+        color: '#776582',
     },
     commentTimePartner: {
-        color: '#94A3B8',
+        color: '#776582',
     },
     bottomBarContainer: {
         width: '100%',

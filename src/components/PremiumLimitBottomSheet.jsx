@@ -18,6 +18,12 @@ import { translateUiText } from '../i18n/uiTranslation';
 import { trackEvent } from '../utils/analytics';
 
 const FEATURE_CONTENT = {
+    wordSearch: {
+        icon: '🔎',
+        eyebrow: 'Word Search free limit',
+        title: '3 free games used',
+        message: 'Upgrade to Premium for unlimited Word Search games.',
+    },
     wordle: {
         icon: '🔤',
         eyebrow: 'Wordle free limit',
