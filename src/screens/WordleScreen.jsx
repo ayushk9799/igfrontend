@@ -1109,318 +1109,321 @@ const WordleScreen = ({
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
                 >
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <View style={styles.headerLeft}>
-                            <TouchableOpacity
-                                style={styles.backButton}
-                                onPress={() => navigation?.goBack?.()}
-                                accessibilityRole="button"
-                                accessibilityLabel={translateUiText("Go back")}
-                            >
-                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                                    <Path
-                                        d="M19 12H5M12 19l-7-7 7-7"
-                                        stroke={colors.text}
-                                        strokeWidth={2.5}
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                </Svg>
-                            </TouchableOpacity>
-                            <Text style={styles.headerTitle}>{translateUiText("Wordle")}</Text>
-                        </View>
-                        <View style={styles.headerRight}>
-                            {partnerOnline ? (
-                                <View style={styles.onlineIndicator}>
-                                    <View style={styles.onlineDot} />
-                                    <Text style={styles.onlineText}>{translateUiText("Online")}</Text>
-                                </View>
-                            ) : (
-                                <View style={styles.offlineIndicator}>
-                                    <View style={styles.offlineDot} />
-                                    <Text style={styles.offlineText}>{translateUiText("Offline")}</Text>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-
-
-
-                    {/* Message slots stay mounted so validation feedback does not shift the grid. */}
-                    <View style={styles.notifyMessageContainer}>
-                        <Text style={styles.notifyMessageText}>{translateUiText(notifyMessage)}</Text>
-                    </View>
-
-
-
-                    {/* Game Grid */}
-                    <ScrollView
-                        style={styles.flex}
-                        contentContainerStyle={styles.gridContainer}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                    >
-                        {mode === 'create' && (
-                            <>
-                                {renderCurrentRow()}
-                                {!showLinkPartner && (
-                                    <Text style={styles.hintText}>{translateUiText("Type a 5-letter word")}</Text>
-                                )}
-                                {showLinkPartner && (
-                                    <View style={styles.linkPartnerCard}>
-                                        <Text style={styles.linkPartnerText}>{translateUiText("Link a partner to send this word")}</Text>
-                                        <TouchableOpacity
-                                            onPress={onLinkPartner}
-                                            activeOpacity={0.8}
-                                            style={styles.playAgainButton}
-                                        >
-                                            <Text style={styles.playAgainText}>{translateUiText("Link Partner 🔗")}</Text>
-                                        </TouchableOpacity>
+                    {/* Keep absolute overlays inside the area above the keyboard padding. */}
+                    <View style={styles.flex}>
+                        {/* Header */}
+                        <View style={styles.header}>
+                            <View style={styles.headerLeft}>
+                                <TouchableOpacity
+                                    style={styles.backButton}
+                                    onPress={() => navigation?.goBack?.()}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={translateUiText("Go back")}
+                                >
+                                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                        <Path
+                                            d="M19 12H5M12 19l-7-7 7-7"
+                                            stroke={colors.text}
+                                            strokeWidth={2.5}
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    </Svg>
+                                </TouchableOpacity>
+                                <Text style={styles.headerTitle}>{translateUiText("Wordle")}</Text>
+                            </View>
+                            <View style={styles.headerRight}>
+                                {partnerOnline ? (
+                                    <View style={styles.onlineIndicator}>
+                                        <View style={styles.onlineDot} />
+                                        <Text style={styles.onlineText}>{translateUiText("Online")}</Text>
+                                    </View>
+                                ) : (
+                                    <View style={styles.offlineIndicator}>
+                                        <View style={styles.offlineDot} />
+                                        <Text style={styles.offlineText}>{translateUiText("Offline")}</Text>
                                     </View>
                                 )}
-                            </>
+                            </View>
+                        </View>
+
+
+
+                        {/* Message slots stay mounted so validation feedback does not shift the grid. */}
+                        <View style={styles.notifyMessageContainer}>
+                            <Text style={styles.notifyMessageText}>{translateUiText(notifyMessage)}</Text>
+                        </View>
+
+
+
+                        {/* Game Grid */}
+                        <ScrollView
+                            style={styles.flex}
+                            contentContainerStyle={styles.gridContainer}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            {mode === 'create' && (
+                                <>
+                                    {renderCurrentRow()}
+                                    {!showLinkPartner && (
+                                        <Text style={styles.hintText}>{translateUiText("Type a 5-letter word")}</Text>
+                                    )}
+                                    {showLinkPartner && (
+                                        <View style={styles.linkPartnerCard}>
+                                            <Text style={styles.linkPartnerText}>{translateUiText("Link a partner to send this word")}</Text>
+                                            <TouchableOpacity
+                                                onPress={onLinkPartner}
+                                                activeOpacity={0.8}
+                                                style={styles.playAgainButton}
+                                            >
+                                                <Text style={styles.playAgainText}>{translateUiText("Link Partner 🔗")}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </>
+                            )}
+
+                            {mode === 'error' && (
+                                <View style={styles.loadErrorCard}>
+                                    <Text style={styles.loadErrorTitle}>{translateUiText("Couldn’t load Wordle")}</Text>
+                                    <Text style={styles.loadErrorText}>{translateUiText(loadError)}</Text>
+                                    <TouchableOpacity
+                                        onPress={retryLoadGame}
+                                        activeOpacity={0.8}
+                                        style={styles.playAgainButton}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={translateUiText("Retry loading Wordle")}
+                                    >
+                                        <Text style={styles.playAgainText}>{translateUiText("Try Again")}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
+                            {mode === 'guess' && (
+                                <>
+                                    {guesses.map((guess, i) => renderGuessRow(guess, i))}
+                                    {!isGameOver && renderCurrentRow()}
+                                    {renderEmptyRows(maxAttempts - attemptsUsed - 1)}
+                                </>
+                            )}
+
+                            {mode === 'complete' && isCreator && (
+                                <>
+                                    {/* Show the secret word */}
+                                    <View style={styles.secretWordContainer}>
+                                        {secretWord.split('').map((letter, i) => (
+                                            <AnimatedWordleTile
+                                                key={i}
+                                                letter={letter}
+                                                status={null}
+                                                index={i}
+                                                isCurrent={false}
+                                                shouldAnimateFlip={false}
+                                                isSecret={true}
+                                            />
+                                        ))}
+                                    </View>
+
+                                    {/* Show partner's guesses if any */}
+                                    {guesses.length > 0 && (
+                                        <View style={styles.creatorGuessesContainer}>
+                                            <Text style={styles.creatorGuessesTitle}>
+                                                {translateUiTemplate("{{0}}'s guesses:", [partnerName])}</Text>
+                                            {guesses.map((guess, i) => renderGuessRow(guess, i))}
+                                        </View>
+                                    )}
+                                </>
+                            )}
+
+                            {mode === 'complete' && !isCreator && (
+                                <>
+                                    {guesses.map((guess, i) => renderGuessRow(guess, i))}
+                                </>
+                            )}
+
+                            {/* Status Text Rendered at the Bottom of the Grid */}
+                            <View style={[styles.statusContainer, styles.statusContainerSpacing]}>
+                                {mode === 'create' && (
+                                    <Text style={styles.statusText}>{translateUiTemplate("Set a word for {{0}} to guess", [partnerName])}</Text>
+                                )}
+                                {mode === 'guess' && (
+                                    <Text style={styles.statusText}>
+                                        {attemptsRemaining === 1
+                                            ? translateUiTemplate("Guess the word! ({{0}} attempt left)", [attemptsRemaining])
+                                            : translateUiTemplate("Guess the word! ({{0}} attempts left)", [attemptsRemaining])}
+                                    </Text>
+                                )}
+                                {/* Creator views - different states */}
+                                {mode === 'complete' && isCreator && successMessage && status === 'pending' && (
+                                    <Text style={[styles.statusText, styles.statusSuccess]}>
+                                        {successMessage}
+                                    </Text>
+                                )}
+                                {mode === 'complete' && isCreator && !successMessage && status === 'pending' && (
+                                    <Text style={styles.statusText}>{translateUiTemplate("Waiting for {{0}} to start guessing...", [partnerName])}</Text>
+                                )}
+                                {mode === 'complete' && isCreator && status === 'in_progress' && (
+                                    <Text style={styles.statusText}>
+                                        {translateUiTemplate("{{0}} is guessing... ({{1}}/{{2}} tries used)", [partnerName, guesses.length, maxAttempts])}</Text>
+                                )}
+                                {mode === 'complete' && isCreator && status === 'won' && (
+                                    <Text style={[styles.statusText, styles.statusWin]}>
+                                        {guesses.length === 1
+                                            ? translateUiTemplate("{{0}} guessed it in {{1}} try!", [partnerName, guesses.length])
+                                            : translateUiTemplate("{{0}} guessed it in {{1}} tries!", [partnerName, guesses.length])}
+                                    </Text>
+                                )}
+                                {mode === 'complete' && isCreator && status === 'lost' && (
+                                    <Text style={[styles.statusText, styles.statusLose]}>
+                                        {translateUiTemplate("{{0}} couldn't guess “{{1}}”", [partnerName, secretWord])}
+                                    </Text>
+                                )}
+                                {/* Guesser views */}
+                                {mode === 'complete' && !isCreator && status === 'won' && (
+                                    <Text style={[styles.statusText, styles.statusWin]}>
+                                        {guesses.length === 1
+                                            ? translateUiTemplate("You won in {{0}} try!", [guesses.length])
+                                            : translateUiTemplate("You won in {{0}} tries!", [guesses.length])}
+                                    </Text>
+                                )}
+                                {mode === 'complete' && !isCreator && status === 'lost' && (
+                                    <Text style={[styles.statusText, styles.statusLose]}>
+                                        {translateUiTemplate("Game over — the word was “{{0}}”", [revealedWord])}
+                                    </Text>
+                                )}
+                            </View>
+
+                            {limitCheckError && mode === 'complete' && (
+                                <TouchableOpacity
+                                    style={styles.limitCheckError}
+                                    onPress={retryFreeLimitCheck}
+                                    activeOpacity={0.8}
+                                    disabled={checkingPremium || !playAgainReady}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={translateUiText("Retry free-game limit check")}
+                                >
+                                    <Text style={styles.limitCheckErrorText}>
+                                        {translateUiTemplate("{{0}} Tap to retry.", [translateUiText(limitCheckError)])}</Text>
+                                </TouchableOpacity>
+                            )}
+                        </ScrollView>
+
+                        {/* Hidden TextInput for native keyboard */}
+                        {(mode === 'create' || mode === 'guess') && (
+                            <TextInput
+                                ref={inputRef}
+                                style={styles.hiddenInput}
+                                value={mode === 'create' ? secretWord : currentGuess}
+                                onChangeText={handleTextChange}
+                                maxLength={5}
+                                autoCapitalize="characters"
+                                autoCorrect={false}
+                                autoComplete="off"
+                                keyboardType="default"
+                                autoFocus={true}
+                            />
                         )}
 
-                        {mode === 'error' && (
-                            <View style={styles.loadErrorCard}>
-                                <Text style={styles.loadErrorTitle}>{translateUiText("Couldn’t load Wordle")}</Text>
-                                <Text style={styles.loadErrorText}>{translateUiText(loadError)}</Text>
+                        {/* Action Buttons */}
+                        {/* 1. Game is finished (won or lost): Show Play Again */}
+                        {mode === 'complete' && (status === 'won' || status === 'lost') && (
+                            <View style={styles.actionButtons}>
                                 <TouchableOpacity
-                                    onPress={retryLoadGame}
+                                    onPress={handlePlayAgain}
                                     activeOpacity={0.8}
                                     style={styles.playAgainButton}
+                                    disabled={checkingPremium || !playAgainReady}
                                     accessibilityRole="button"
-                                    accessibilityLabel={translateUiText("Retry loading Wordle")}
+                                    accessibilityLabel={translateUiText("Play Wordle again")}
+                                    accessibilityState={{ disabled: checkingPremium || !playAgainReady }}
                                 >
-                                    <Text style={styles.playAgainText}>{translateUiText("Try Again")}</Text>
+                                    {checkingPremium ? (
+                                        <ActivityIndicator color="#FFFFFF" />
+                                    ) : (
+                                        <Text style={styles.playAgainText}>{translateUiText("Play Again")}</Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
                         )}
 
-                        {mode === 'guess' && (
-                            <>
-                                {guesses.map((guess, i) => renderGuessRow(guess, i))}
-                                {!isGameOver && renderCurrentRow()}
-                                {renderEmptyRows(maxAttempts - attemptsUsed - 1)}
-                            </>
-                        )}
-
-                        {mode === 'complete' && isCreator && (
-                            <>
-                                {/* Show the secret word */}
-                                <View style={styles.secretWordContainer}>
-                                    {secretWord.split('').map((letter, i) => (
-                                        <AnimatedWordleTile
-                                            key={i}
-                                            letter={letter}
-                                            status={null}
-                                            index={i}
-                                            isCurrent={false}
-                                            shouldAnimateFlip={false}
-                                            isSecret={true}
-                                        />
-                                    ))}
-                                </View>
-
-                                {/* Show partner's guesses if any */}
-                                {guesses.length > 0 && (
-                                    <View style={styles.creatorGuessesContainer}>
-                                        <Text style={styles.creatorGuessesTitle}>
-                                            {translateUiTemplate("{{0}}'s guesses:", [partnerName])}</Text>
-                                        {guesses.map((guess, i) => renderGuessRow(guess, i))}
-                                    </View>
-                                )}
-                            </>
-                        )}
-
-                        {mode === 'complete' && !isCreator && (
-                            <>
-                                {guesses.map((guess, i) => renderGuessRow(guess, i))}
-                            </>
-                        )}
-
-                        {/* Status Text Rendered at the Bottom of the Grid */}
-                        <View style={[styles.statusContainer, styles.statusContainerSpacing]}>
-                            {mode === 'create' && (
-                                <Text style={styles.statusText}>{translateUiTemplate("Set a word for {{0}} to guess", [partnerName])}</Text>
-                            )}
-                            {mode === 'guess' && (
-                                <Text style={styles.statusText}>
-                                    {attemptsRemaining === 1
-                                        ? translateUiTemplate("Guess the word! ({{0}} attempt left)", [attemptsRemaining])
-                                        : translateUiTemplate("Guess the word! ({{0}} attempts left)", [attemptsRemaining])}
-                                </Text>
-                            )}
-                            {/* Creator views - different states */}
-                            {mode === 'complete' && isCreator && successMessage && status === 'pending' && (
-                                <Text style={[styles.statusText, styles.statusSuccess]}>
-                                    {successMessage}
-                                </Text>
-                            )}
-                            {mode === 'complete' && isCreator && !successMessage && status === 'pending' && (
-                                <Text style={styles.statusText}>{translateUiTemplate("Waiting for {{0}} to start guessing...", [partnerName])}</Text>
-                            )}
-                            {mode === 'complete' && isCreator && status === 'in_progress' && (
-                                <Text style={styles.statusText}>
-                                    {translateUiTemplate("{{0}} is guessing... ({{1}}/{{2}} tries used)", [partnerName, guesses.length, maxAttempts])}</Text>
-                            )}
-                            {mode === 'complete' && isCreator && status === 'won' && (
-                                <Text style={[styles.statusText, styles.statusWin]}>
-                                    {guesses.length === 1
-                                        ? translateUiTemplate("{{0}} guessed it in {{1}} try!", [partnerName, guesses.length])
-                                        : translateUiTemplate("{{0}} guessed it in {{1}} tries!", [partnerName, guesses.length])}
-                                </Text>
-                            )}
-                            {mode === 'complete' && isCreator && status === 'lost' && (
-                                <Text style={[styles.statusText, styles.statusLose]}>
-                                    {translateUiTemplate("{{0}} couldn't guess “{{1}}”", [partnerName, secretWord])}
-                                </Text>
-                            )}
-                            {/* Guesser views */}
-                            {mode === 'complete' && !isCreator && status === 'won' && (
-                                <Text style={[styles.statusText, styles.statusWin]}>
-                                    {guesses.length === 1
-                                        ? translateUiTemplate("You won in {{0}} try!", [guesses.length])
-                                        : translateUiTemplate("You won in {{0}} tries!", [guesses.length])}
-                                </Text>
-                            )}
-                            {mode === 'complete' && !isCreator && status === 'lost' && (
-                                <Text style={[styles.statusText, styles.statusLose]}>
-                                    {translateUiTemplate("Game over — the word was “{{0}}”", [revealedWord])}
-                                </Text>
-                            )}
-                        </View>
-
-                        {limitCheckError && mode === 'complete' && (
-                            <TouchableOpacity
-                                style={styles.limitCheckError}
-                                onPress={retryFreeLimitCheck}
-                                activeOpacity={0.8}
-                                disabled={checkingPremium || !playAgainReady}
-                                accessibilityRole="button"
-                                accessibilityLabel={translateUiText("Retry free-game limit check")}
-                            >
-                                <Text style={styles.limitCheckErrorText}>
-                                    {translateUiTemplate("{{0}} Tap to retry.", [translateUiText(limitCheckError)])}</Text>
-                            </TouchableOpacity>
-                        )}
-                    </ScrollView>
-
-                    {/* Hidden TextInput for native keyboard */}
-                    {(mode === 'create' || mode === 'guess') && (
-                        <TextInput
-                            ref={inputRef}
-                            style={styles.hiddenInput}
-                            value={mode === 'create' ? secretWord : currentGuess}
-                            onChangeText={handleTextChange}
-                            maxLength={5}
-                            autoCapitalize="characters"
-                            autoCorrect={false}
-                            autoComplete="off"
-                            keyboardType="default"
-                            autoFocus={true}
-                        />
-                    )}
-
-                    {/* Action Buttons */}
-                    {/* 1. Game is finished (won or lost): Show Play Again */}
-                    {mode === 'complete' && (status === 'won' || status === 'lost') && (
-                        <View style={styles.actionButtons}>
-                            <TouchableOpacity
-                                onPress={handlePlayAgain}
-                                activeOpacity={0.8}
-                                style={styles.playAgainButton}
-                                disabled={checkingPremium || !playAgainReady}
-                                accessibilityRole="button"
-                                accessibilityLabel={translateUiText("Play Wordle again")}
-                                accessibilityState={{ disabled: checkingPremium || !playAgainReady }}
-                            >
-                                {checkingPremium ? (
-                                    <ActivityIndicator color="#FFFFFF" />
-                                ) : (
-                                    <Text style={styles.playAgainText}>{translateUiText("Play Again")}</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    )}
-
-                    {/* 2. Creator is waiting & partner is offline: Show Nudge */}
-                    {mode === 'complete' && isCreator && (status === 'pending' || status === 'in_progress') && partnerOnline !== true && (
-                        <View style={styles.actionButtons}>
-                            <TouchableOpacity
-                                onPress={notifyPartner}
-                                activeOpacity={0.88}
-                                disabled={notifying}
-                                style={[
-                                    styles.nudgeButton,
-                                    notifying && styles.buttonDisabled,
-                                ]}
-                                accessibilityRole="button"
-                                accessibilityLabel={translateUiTemplate("Nudge {{0}}", [partnerName])}
-                                accessibilityState={{ disabled: notifying, busy: notifying }}
-                            >
-                                <LinearGradient
-                                    colors={['#FF5E97', '#FFA1C9']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.nudgeButtonGradient}
+                        {/* 2. Creator is waiting & partner is offline: Show Nudge */}
+                        {mode === 'complete' && isCreator && (status === 'pending' || status === 'in_progress') && partnerOnline !== true && (
+                            <View style={styles.actionButtons}>
+                                <TouchableOpacity
+                                    onPress={notifyPartner}
+                                    activeOpacity={0.88}
+                                    disabled={notifying}
+                                    style={[
+                                        styles.nudgeButton,
+                                        notifying && styles.buttonDisabled,
+                                    ]}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={translateUiTemplate("Nudge {{0}}", [partnerName])}
+                                    accessibilityState={{ disabled: notifying, busy: notifying }}
                                 >
-                                    {notifying ? (
-                                        <ActivityIndicator color="#FFFFFF" />
-                                    ) : (
-                                        <>
-                                            <View style={styles.nudgeButtonIcon}>
-                                                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                                                    <Path
-                                                        d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
-                                                        stroke="#FFFFFF"
-                                                        strokeWidth={2}
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    />
-                                                </Svg>
-                                            </View>
-                                            <Text
-                                                style={styles.nudgeButtonText}
-                                                numberOfLines={1}
-                                                ellipsizeMode="tail"
-                                            >
-                                                {translateUiTemplate("Nudge {{0}}", [compactNudgeName])}
-                                            </Text>
-                                            <View style={styles.nudgeButtonIconSpacer} />
-                                        </>
-                                    )}
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                                    <LinearGradient
+                                        colors={['#FF5E97', '#FFA1C9']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.nudgeButtonGradient}
+                                    >
+                                        {notifying ? (
+                                            <ActivityIndicator color="#FFFFFF" />
+                                        ) : (
+                                            <>
+                                                <View style={styles.nudgeButtonIcon}>
+                                                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                                                        <Path
+                                                            d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
+                                                            stroke="#FFFFFF"
+                                                            strokeWidth={2}
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                        />
+                                                    </Svg>
+                                                </View>
+                                                <Text
+                                                    style={styles.nudgeButtonText}
+                                                    numberOfLines={1}
+                                                    ellipsizeMode="tail"
+                                                >
+                                                    {translateUiTemplate("Nudge {{0}}", [compactNudgeName])}
+                                                </Text>
+                                                <View style={styles.nudgeButtonIconSpacer} />
+                                            </>
+                                        )}
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
+                        )}
 
-                    {showConfetti && (
-                        <ConfettiCannon
-                            count={150}
-                            origin={{ x: Dimensions.get('window').width / 2, y: -20 }}
-                            autoStart={true}
-                            fadeOut={true}
-                            onAnimationEnd={() => setShowConfetti(false)}
-                        />
-                    )}
+                        {showConfetti && (
+                            <ConfettiCannon
+                                count={150}
+                                origin={{ x: Dimensions.get('window').width / 2, y: -20 }}
+                                autoStart={true}
+                                fadeOut={true}
+                                onAnimationEnd={() => setShowConfetti(false)}
+                            />
+                        )}
 
-                    <Animated.View
-                        pointerEvents="none"
-                        style={[
-                            styles.floatingErrorContainer,
-                            {
-                                opacity: errorScaleAnim,
-                                transform: [
-                                    { scale: errorScaleAnim },
-                                    { translateX: errorShakeAnim }
-                                ]
-                            }
-                        ]}
-                    >
-                        <Text style={styles.floatingErrorText}>{translateUiText(errorMessage)}</Text>
-                    </Animated.View>
+                        <Animated.View
+                            pointerEvents="none"
+                            style={[
+                                styles.floatingErrorContainer,
+                                {
+                                    opacity: errorScaleAnim,
+                                    transform: [
+                                        { scale: errorScaleAnim },
+                                        { translateX: errorShakeAnim }
+                                    ]
+                                }
+                            ]}
+                        >
+                            <Text style={styles.floatingErrorText}>{translateUiText(errorMessage)}</Text>
+                        </Animated.View>
+                    </View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
         </GradientBackground>

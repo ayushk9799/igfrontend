@@ -10,6 +10,7 @@
 		0C80B921A6F3F58F76C31292 /* libPods-frontend.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-frontend.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
+		761780EF2CA45674006654EE /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EE2CA45674006654EE /* SceneDelegate.swift */; };
 		7978C00C2EEFEEED007F1DAE /* GoogleSignInModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7978C00A2EEFEEED007F1DAE /* GoogleSignInModule.swift */; };
 		7978C00D2EEFEEED007F1DAE /* GoogleSignInModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 7978C0092EEFEEED007F1DAE /* GoogleSignInModule.m */; };
 		79C826802EF27D6F00616F2D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 79C8267F2EF27D6F00616F2D /* WidgetKit.framework */; };
@@ -72,6 +73,7 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-frontend.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-frontend.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6579EE432FEA87A6E5FD6098 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-frontend/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = frontend/AppDelegate.swift; sourceTree = "<group>"; };
+		761780EE2CA45674006654EE /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = frontend/SceneDelegate.swift; sourceTree = "<group>"; };
 		7978C0072EEE76E7007F1DAE /* frontendDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = frontendDebug.entitlements; path = frontend/frontendDebug.entitlements; sourceTree = "<group>"; };
 		7978C0082EEFEE51007F1DAE /* frontend-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "frontend-Bridging-Header.h"; sourceTree = "<group>"; };
 		7978C0092EEFEEED007F1DAE /* GoogleSignInModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GoogleSignInModule.m; sourceTree = "<group>"; };
@@ -161,6 +163,7 @@
 				7978C0072EEE76E7007F1DAE /* frontendDebug.entitlements */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				761780EE2CA45674006654EE /* SceneDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				F0AA00132F0A000000000003 /* InfoPlist.strings */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -528,6 +531,7 @@
 				7978C00C2EEFEEED007F1DAE /* GoogleSignInModule.swift in Sources */,
 				7978C00D2EEFEEED007F1DAE /* GoogleSignInModule.m in Sources */,
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				761780EF2CA45674006654EE /* SceneDelegate.swift in Sources */,
 				93871D47ECD1D59C195AE07D /* ExpoModulesProvider.swift in Sources */,
 				AA1111112EF9000000000001 /* ScribbleWidgetBridge.swift in Sources */,
 				AA1111112EF9000000000003 /* ScribbleWidgetBridge.m in Sources */,
@@ -587,7 +591,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = frontend/frontendDebug.entitlements;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 5244NF9YV8;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = frontend/Info.plist;
@@ -596,7 +600,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.2;
+				MARKETING_VERSION = 1.1.3;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -618,7 +622,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = frontend/frontendRelease.entitlements;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 5244NF9YV8;
 				INFOPLIST_FILE = frontend/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -626,7 +630,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.2;
+				MARKETING_VERSION = 1.1.3;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

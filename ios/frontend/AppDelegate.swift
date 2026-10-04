@@ -12,6 +12,7 @@ import WidgetKit
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
+  var launchOptions: [UIApplication.LaunchOptionsKey: Any]?
 
   var reactNativeDelegate: ReactNativeDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
@@ -20,6 +21,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    self.launchOptions = launchOptions
+
     // Initialize Firebase
     FirebaseApp.configure()
     
@@ -30,22 +33,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeDelegate = delegate
     reactNativeFactory = factory
 
-    window = UIWindow(frame: UIScreen.main.bounds)
-    window?.backgroundColor = UIColor(
-      red: 248.0 / 255.0,
-      green: 221.0 / 255.0,
-      blue: 244.0 / 255.0,
-      alpha: 1.0
-    )
-
-    factory.startReactNative(
-      withModuleName: "Penguin",
-      in: window,
-      launchOptions: launchOptions
-    )
-
     return true
   }
+
+  // MARK: - UISceneSession Lifecycle
+  func application(
+    _ application: UIApplication,
+    configurationForConnecting connectingSceneSession: UISceneSession,
+    options: UIScene.ConnectionOptions
+  ) -> UISceneConfiguration {
+    let sceneConfig = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+    sceneConfig.delegateClass = SceneDelegate.self
+    return sceneConfig
+  }
+
+  func application(
+    _ application: UIApplication,
+    didDiscardSceneSessions sceneSessions: Set<UISceneSession>
+  ) {}
   
   // Handle Google Sign-In URL redirect
   func application(

@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
+import DeviceInfo from 'react-native-device-info';
 import Svg, { Path } from 'react-native-svg';
 import { requestNotificationPermission, registerFCMToken } from '../utils/pushNotifications';
 import { getApp } from '@react-native-firebase/app';
@@ -674,7 +675,9 @@ export const AccountScreen = ({
                         />
                     </View>
 
-                    <Text style={styles.versionText}>{translateUiText("penguin couple")}</Text>
+                    <Text style={styles.versionText}>
+                        {translateUiText("penguin couple")} · v{DeviceInfo.getVersion()}
+                    </Text>
                     {/* Bottom Clouds */}
                     <View style={styles.cloudsContainer}>
                         <View style={[styles.cloud, styles.cloudOne]} />
