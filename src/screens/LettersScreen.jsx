@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ActivityIndicator,
     AppState,
+    Image,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -10,7 +12,7 @@ import {
 } from 'react-native';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MapPin, PenLine } from 'lucide-react-native';
+import { LocateFixed, Moon, PenLine, Sun } from 'lucide-react-native';
 import BirdArt from '../components/letters/BirdArt';
 import LetterRow from '../components/letters/LetterRow';
 import LettersIntroSheet from '../components/letters/LettersIntroSheet';
@@ -18,9 +20,12 @@ import LettersMap from '../components/letters/LettersMap';
 import LettersMapbox from '../components/letters/LettersMapbox';
 import { fetchLetterMap, fetchLetters } from '../api/lettersApi';
 import useLetterEvents from '../hooks/useLetterEvents';
+import useLettersMapLocation from '../hooks/useLettersMapLocation';
 import { fontFamily } from '../constants/fonts';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 import { trackEvent } from '../utils/analytics';
+import { getTabBarClearance } from '../utils/bottomTabBarLayout';
+import { storage } from '../utils/authStorage';
 import {
     getClockOffsetMs,
     hasSeenLettersIntro,
@@ -31,7 +36,8 @@ import {
 } from '../utils/letters';
 
 const TICK_MS = 30 * 1000;
-const PANEL_COLLAPSED_HEIGHT = 200;
+const PANEL_COLLAPSED_CONTENT_HEIGHT = 132;
+const MAP_DARK_MODE_KEY = 'letters_map_dark_mode';
 
 const LettersScreen = ({
     userId,
@@ -43,6 +49,7 @@ const LettersScreen = ({
 }) => {
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
+    const { locationEnabled, deviceLocation, focusLocation, locating, locateMe } = useLettersMapLocation();
     const [letters, setLetters] = useState([]);
     const [counts, setCounts] = useState({ flying: 0, delivered: 0 });
     const [loading, setLoading] = useState(true);
@@ -50,13 +57,34 @@ const LettersScreen = ({
     const [clockOffsetMs, setClockOffsetMs] = useState(0);
     const [nowMs, setNowMs] = useState(Date.now());
     const [introVisible, setIntroVisible] = useState(false);
+    const [isMapDark, setIsMapDark] = useState(() => {
+        try {
+            return storage.getBoolean(MAP_DARK_MODE_KEY) === true;
+        } catch {
+            return false;
+        }
+    });
     const [mapPoints, setMapPoints] = useState(() => getCachedMapPoints(userId));
     // False until the first map answer, so the drawn map never flashes first.
     const [mapChecked, setMapChecked] = useState(false);
     const requestRef = useRef(0);
 
-    const tabBarSpace = insets.bottom + 84;
-    const snapPoints = useMemo(() => [PANEL_COLLAPSED_HEIGHT, '72%'], []);
+    const tabBarSpace = getTabBarClearance(insets.bottom);
+    // The sheet reaches the screen bottom; only its content clears the dock.
+    const collapsedPanelHeight = PANEL_COLLAPSED_CONTENT_HEIGHT + tabBarSpace;
+    const snapPoints = useMemo(() => [collapsedPanelHeight, '72%'], [collapsedPanelHeight]);
+    const panelContentStyle = useMemo(() => [
+        styles.panelContent,
+        { paddingBottom: tabBarSpace + 16 },
+    ], [tabBarSpace]);
+
+    useEffect(() => {
+        try {
+            storage.set(MAP_DARK_MODE_KEY, isMapDark);
+        } catch {
+            // The toggle still works if the preference cannot be saved.
+        }
+    }, [isMapDark]);
 
     const loadLetters = useCallback(async () => {
         if (!hasPartner) {
@@ -150,10 +178,10 @@ const LettersScreen = ({
     );
     // The real map needs at least one shared city; a hidden partner gets a stand-in pin.
     const mapPins = useMemo(
-        () => resolveMapPins(mapPoints?.you || null, mapPoints?.partner || null),
-        [mapPoints],
+        () => resolveMapPins(mapPoints?.you || deviceLocation || null, hasPartner ? mapPoints?.partner || null : null),
+        [mapPoints, deviceLocation, hasPartner],
     );
-    const showRealMap = hasPartner && !!mapPins;
+    const showRealMap = !!mapPins && (hasPartner || !!deviceLocation);
     const waitingForMap = hasPartner && !mapPins && !mapChecked;
 
     const handleWrite = useCallback((source) => {
@@ -196,25 +224,28 @@ const LettersScreen = ({
         );
     };
 
-    const showEmptyCard = hasPartner && !loading && !error && flyingLetters.length === 0;
-
     return (
         <View style={styles.container}>
+            <StatusBar barStyle={isMapDark && !introVisible ? 'light-content' : 'dark-content'} />
             {showRealMap ? (
                 <LettersMapbox
                     you={mapPins.you}
                     partner={mapPins.partner}
                     youApprox={mapPins.youApprox}
                     partnerApprox={mapPins.partnerApprox}
-                    letters={letters}
+                    letters={hasPartner ? letters : []}
                     nowMs={nowMs}
                     partnerName={partnerName}
                     topInset={insets.top}
-                    bottomInset={tabBarSpace + PANEL_COLLAPSED_HEIGHT}
+                    bottomInset={collapsedPanelHeight}
+                    isDark={isMapDark}
+                    showPartner={hasPartner}
+                    showUserLocation={locationEnabled}
+                    focusLocation={focusLocation}
                     onBirdPress={onOpenLetter}
                 />
             ) : waitingForMap ? (
-                <View style={[StyleSheet.absoluteFill, styles.mapPlaceholder]} />
+                <View style={[StyleSheet.absoluteFill, styles.mapPlaceholder, isMapDark && styles.mapPlaceholderDark]} />
             ) : (
                 <LettersMap
                     width={width}
@@ -222,23 +253,41 @@ const LettersScreen = ({
                     letters={hasPartner ? letters : []}
                     nowMs={nowMs}
                     partnerName={partnerName}
+                    isDark={isMapDark}
                     onBirdPress={onOpenLetter}
                 />
             )}
 
             <View style={[styles.header, { top: insets.top + 10 }]} pointerEvents="box-none">
-                <View style={styles.titleCard}>
-                    <Text style={styles.title} accessibilityRole="header">{translateUiText('Letters')}</Text>
+                <View style={styles.brandContainer}>
+                    <Image
+                        source={require('../../assets/images/penguin-text-logo.png')}
+                        style={[styles.brandLogo, isMapDark && styles.brandLogoDark]}
+                        resizeMode="contain"
+                        accessible
+                        accessibilityRole="header"
+                        accessibilityLabel={`Penguin, ${translateUiText('Letters')}`}
+                    />
                     {distanceKm ? (
-                        <Text style={styles.titleMeta}>
+                        <Text style={[styles.titleMeta, isMapDark && styles.titleMetaDark]}>
                             {translateUiTemplate('{{0}} km between you', [distanceKm.toLocaleString()])}
                         </Text>
                     ) : null}
                 </View>
-                <View style={styles.privacyChip}>
-                    <MapPin size={14} color="#4B3D5C" strokeWidth={2.2} />
-                    <Text style={styles.privacyText}>{translateUiText('City-level only')}</Text>
-                </View>
+                <TouchableOpacity
+                    style={[styles.mapThemeButton, isMapDark && styles.mapThemeButtonDark]}
+                    onPress={() => setIsMapDark((current) => !current)}
+                    activeOpacity={0.85}
+                    accessibilityRole="switch"
+                    accessibilityLabel={translateUiText('Dark map')}
+                    accessibilityState={{ checked: isMapDark }}
+                >
+                    {isMapDark ? (
+                        <Sun size={22} color="#F6D27A" strokeWidth={2} />
+                    ) : (
+                        <Moon size={22} color="#4B3D5C" strokeWidth={2} />
+                    )}
+                </TouchableOpacity>
             </View>
 
             {!hasPartner ? (
@@ -252,23 +301,9 @@ const LettersScreen = ({
                 </View>
             ) : null}
 
-            {showEmptyCard ? (
-                <View style={[styles.centerCard, { top: height * 0.28 }]}>
-                    <BirdArt bird="penguin" size={110} sleeping />
-                    <Text style={styles.centerTitle}>{translateUiText('No birds in the sky')}</Text>
-                    <Text style={styles.centerBody}>
-                        {translateUiTemplate("Write {{0}} a letter and pick a bird. You'll both watch it fly across the map.", [partnerName])}
-                    </Text>
-                    <TouchableOpacity style={styles.centerButton} onPress={() => handleWrite('empty_state')} activeOpacity={0.85} accessibilityRole="button">
-                        <PenLine size={20} color="#FFFFFF" strokeWidth={2.2} />
-                        <Text style={styles.centerButtonText}>{translateUiText('Write a letter')}</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : null}
-
-            {hasPartner && !showEmptyCard ? (
+            {hasPartner ? (
                 <TouchableOpacity
-                    style={[styles.fab, { bottom: tabBarSpace + PANEL_COLLAPSED_HEIGHT + 16 }]}
+                    style={[styles.fab, { bottom: collapsedPanelHeight + 16 }]}
                     onPress={() => handleWrite('fab')}
                     activeOpacity={0.85}
                     accessibilityRole="button"
@@ -278,11 +313,27 @@ const LettersScreen = ({
                 </TouchableOpacity>
             ) : null}
 
+            <TouchableOpacity
+                testID="letters-current-location-button"
+                style={[
+                    styles.locationButton,
+                    isMapDark && styles.mapThemeButtonDark,
+                    { bottom: (hasPartner ? collapsedPanelHeight : tabBarSpace) + (hasPartner ? 88 : 16) },
+                ]}
+                onPress={locateMe}
+                disabled={locating}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={translateUiText('Center on my location')}
+                accessibilityState={{ disabled: locating, busy: locating }}
+            >
+                {locating ? <ActivityIndicator color="#4D94F5" /> : <LocateFixed size={23} color={locationEnabled ? '#4D94F5' : isMapDark ? '#F7F2FC' : '#4B3D5C'} strokeWidth={2} />}
+            </TouchableOpacity>
+
             {hasPartner ? (
                 <BottomSheet
                     index={0}
                     snapPoints={snapPoints}
-                    bottomInset={tabBarSpace}
                     enableDynamicSizing={false}
                     backgroundStyle={styles.panelBackground}
                     handleIndicatorStyle={styles.panelHandle}
@@ -293,7 +344,8 @@ const LettersScreen = ({
                         keyExtractor={(letter) => letter.id}
                         ListHeaderComponent={renderPanelHeader}
                         ListEmptyComponent={renderPanelEmpty}
-                        contentContainerStyle={styles.panelContent}
+                        contentContainerStyle={panelContentStyle}
+                        scrollIndicatorInsets={{ bottom: tabBarSpace }}
                         renderItem={({ item }) => (
                             <LetterRow
                                 letter={item}
@@ -327,6 +379,9 @@ const styles = StyleSheet.create({
     mapPlaceholder: {
         backgroundColor: '#F6EEDF',
     },
+    mapPlaceholderDark: {
+        backgroundColor: '#031729',
+    },
     header: {
         position: 'absolute',
         left: 16,
@@ -336,40 +391,49 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: 10,
     },
-    titleCard: {
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.94)',
-        shadowColor: '#2E1E3C',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 3,
+    brandContainer: {
+        flexShrink: 1,
     },
-    title: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 26,
-        color: '#2E1E3C',
+    brandLogo: {
+        width: 114,
+        height: 36,
+    },
+    brandLogoDark: {
+        tintColor: '#FFFFFF',
     },
     titleMeta: {
         fontFamily: fontFamily.bold,
         fontSize: 13,
         color: '#5A4C6B',
     },
-    privacyChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.94)',
+    titleMetaDark: {
+        color: '#D9D2E8',
     },
-    privacyText: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 12,
-        color: '#4B3D5C',
+    mapThemeButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+    },
+    mapThemeButtonDark: {
+        backgroundColor: '#30283F',
+    },
+    locationButton: {
+        position: 'absolute',
+        right: 16,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#2E1E3C',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 6,
     },
     centerCard: {
         position: 'absolute',
@@ -446,7 +510,10 @@ const styles = StyleSheet.create({
         elevation: 10,
     },
     panelBackground: {
-        borderRadius: 30,
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
         backgroundColor: '#FFFFFF',
     },
     panelHandle: {
@@ -455,7 +522,6 @@ const styles = StyleSheet.create({
     },
     panelContent: {
         paddingHorizontal: 18,
-        paddingBottom: 24,
     },
     panelHeader: {
         flexDirection: 'row',

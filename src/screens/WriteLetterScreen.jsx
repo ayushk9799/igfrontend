@@ -13,6 +13,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Clock, Crown, X } from 'lucide-react-native';
 import BirdArt from '../components/letters/BirdArt';
+import LetterPaper, { LETTER_LINE_HEIGHT } from '../components/letters/LetterPaper';
 import PremiumBirdSheet from '../components/letters/PremiumBirdSheet';
 import { sendLetter } from '../api/lettersApi';
 import { fontFamily } from '../constants/fonts';
@@ -99,7 +100,7 @@ const WriteLetterScreen = ({
                 bottomOffset={24}
             >
                 <Text style={styles.label} nativeID="letterLabel">{translateUiText('Your letter')}</Text>
-                <View style={styles.paper}>
+                <LetterPaper>
                     <TextInput
                         value={body}
                         onChangeText={setBody}
@@ -113,7 +114,7 @@ const WriteLetterScreen = ({
                         accessibilityLabel={translateUiText('Your letter')}
                     />
                     <Text style={styles.counter}>{body.length} / {LETTER_BODY_MAX_LENGTH}</Text>
-                </View>
+                </LetterPaper>
 
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>{translateUiText('Who carries it?')}</Text>
@@ -243,30 +244,22 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#4B3D5C',
     },
-    paper: {
-        borderRadius: 22,
-        borderWidth: 1,
-        borderColor: '#F1E3D3',
-        backgroundColor: '#FFFDF8',
-        paddingHorizontal: 18,
-        paddingTop: 16,
-        paddingBottom: 34,
-    },
     input: {
-        minHeight: 190,
-        fontFamily: fontFamily.regular,
-        fontSize: 16,
-        lineHeight: 28,
-        color: '#2E1E3C',
+        minHeight: LETTER_LINE_HEIGHT * 8,
+        fontFamily: fontFamily.handwriting,
+        fontSize: 23,
+        lineHeight: LETTER_LINE_HEIGHT,
+        color: '#24345E',
         padding: 0,
+        paddingTop: 0,
     },
     counter: {
         position: 'absolute',
-        right: 16,
-        bottom: 12,
+        right: 22,
+        bottom: 16,
         fontFamily: fontFamily.bold,
-        fontSize: 12,
-        color: '#6E6080',
+        fontSize: 11,
+        color: '#A08A66',
     },
     sectionHeader: {
         flexDirection: 'row',

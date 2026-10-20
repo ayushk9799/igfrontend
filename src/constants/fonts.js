@@ -5,6 +5,7 @@ export const fontFamily = {
     medium: Platform.select({ ios: 'Nunito-Medium', android: 'Nunito-Medium', default: 'Nunito-Medium' }),
     bold: Platform.select({ ios: 'Nunito-Bold', android: 'Nunito-Bold', default: 'Nunito-Bold' }),
     extraBold: Platform.select({ ios: 'Nunito-ExtraBold', android: 'Nunito-ExtraBold', default: 'Nunito-ExtraBold' }),
+    handwriting: Platform.select({ ios: 'Caveat-Regular', android: 'Caveat-Regular', default: 'Caveat-Regular' }),
 };
 
 export const fontWeight = (weight) => Platform.select({

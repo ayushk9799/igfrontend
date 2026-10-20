@@ -2,27 +2,33 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import BirdArt from './BirdArt';
-import { LETTERS_MAP_STYLE, MAPBOX_ACCESS_TOKEN } from '../../constants/maps';
+import {
+    LETTERS_DARK_MAP_ATMOSPHERE,
+    LETTERS_MAP_ATMOSPHERE,
+    MAPBOX_ACCESS_TOKEN,
+} from '../../constants/maps';
 import { fontFamily } from '../../constants/fonts';
 import { translateUiTemplate, translateUiText } from '../../i18n/uiTranslation';
 import {
     buildGeoCurve,
     formatTimeLeft,
     getLetterBird,
+    getLetterRouteColor,
     getLiveProgress,
     getTimeLeftMs,
     spreadNearbyPins,
     splitGeoCurve,
+    LETTER_MAP_ROUTE_COLORS,
 } from '../../utils/letters';
 
 Mapbox.setAccessToken(MAPBOX_ACCESS_TOKEN);
 
 const MAX_BIRDS_ON_MAP = 4;
 const ROUTE_BEND = { outgoing: 0.22, incoming: -0.22 };
-const ROUTE_COLORS = { outgoing: '#A9B9D6', incoming: '#BBA9D6' };
-const STYLE_JSON = JSON.stringify(LETTERS_MAP_STYLE);
-// Starts on the whole globe, then flies in to the two cities.
+const MAP_STYLE_URL = 'mapbox://styles/mapbox/standard';
+// Night mode keeps the horizon visible; day mode focuses on the letter route.
 const GLOBE_ZOOM = 0.8;
+const NIGHT_GLOBE_ZOOM = 1.65;
 const FLY_IN_MS = 1800;
 
 const toPosition = ({ latitude, longitude }) => [longitude, latitude];
@@ -52,7 +58,7 @@ const PinMarker = ({ coordinate, label, ringColor, approximate = false }) => (
     </Mapbox.MarkerView>
 );
 
-const BirdMarker = ({ coordinate, bird, timeLeft, onPress }) => (
+const BirdMarker = ({ coordinate, bird, routeColor, timeLeft, onPress }) => (
     <Mapbox.MarkerView coordinate={toPosition(coordinate)} anchor={{ x: 0.5, y: 0.35 }} allowOverlap>
         <Pressable
             style={styles.birdWrap}
@@ -60,7 +66,7 @@ const BirdMarker = ({ coordinate, bird, timeLeft, onPress }) => (
             accessibilityRole="button"
             accessibilityLabel={`${translateUiText(bird.name)}, ${timeLeft}`}
         >
-            <View style={[styles.birdMarker, { borderColor: bird.route }]}>
+            <View style={[styles.birdMarker, { borderColor: routeColor }]}>
                 <BirdArt bird={bird.id} size={44} />
             </View>
             <View style={[styles.timeChip, { backgroundColor: bird.route }]}>
@@ -80,10 +86,18 @@ const LettersMapbox = ({
     partnerName,
     topInset = 0,
     bottomInset = 0,
+    isDark = false,
+    showPartner = true,
+    showUserLocation = false,
+    focusLocation,
     onBirdPress,
 }) => {
     const cameraRef = useRef(null);
     const mapLoadedRef = useRef(false);
+    const initialDarkMode = useRef(isDark).current;
+    const mapStyleConfig = useMemo(() => ({
+        lightPreset: isDark ? 'night' : 'day',
+    }), [isDark]);
     const pins = useMemo(() => spreadNearbyPins(you, partner), [you, partner]);
     const routes = useMemo(() => ({
         outgoing: buildGeoCurve(pins.you, pins.partner, ROUTE_BEND.outgoing),
@@ -100,27 +114,29 @@ const LettersMapbox = ({
                 letter,
                 direction,
                 bird: getLetterBird(letter.bird),
+                routeColor: getLetterRouteColor(letter.bird, isDark),
                 position,
                 flown,
                 timeLeft: formatTimeLeft(getTimeLeftMs(letter, nowMs)),
             };
-        }), [letters, routes, nowMs]);
+        }), [letters, routes, nowMs, isDark]);
 
     const routeShapes = useMemo(() => {
         const directionsInFlight = new Set(flights.map((flight) => flight.direction));
+        const routeColors = LETTER_MAP_ROUTE_COLORS[isDark ? 'dark' : 'light'];
         return {
             type: 'FeatureCollection',
-            features: ['outgoing', 'incoming']
+            features: (showPartner ? ['outgoing', 'incoming'] : [])
                 .filter((direction) => directionsInFlight.has(direction) || (direction === 'outgoing' && flights.length === 0))
-                .map((direction) => lineFeature(`route-${direction}`, routes[direction], ROUTE_COLORS[direction])),
+                .map((direction) => lineFeature(`route-${direction}`, routes[direction], routeColors[direction])),
         };
-    }, [flights, routes]);
+    }, [flights, routes, showPartner, isDark]);
 
     const trailShapes = useMemo(() => ({
         type: 'FeatureCollection',
         features: flights
             .filter(({ flown }) => flown.length > 1)
-            .map(({ letter, bird, flown }) => lineFeature(`trail-${letter.id}`, flown, bird.route)),
+            .map(({ letter, routeColor, flown }) => lineFeature(`trail-${letter.id}`, flown, routeColor)),
     }), [flights]);
 
     const fitBothCities = useCallback((duration) => {
@@ -128,19 +144,64 @@ const LettersMapbox = ({
         cameraRef.current?.fitBounds(ne, sw, [topInset + 90, 70, bottomInset + 70, 70], duration);
     }, [pins, routes, topInset, bottomInset]);
 
+    const frameMap = useCallback((duration) => {
+        // Changing day/night lighting should not move the map.
+        if (!initialDarkMode) {
+            fitBothCities(duration);
+            return;
+        }
+        cameraRef.current?.setCamera({
+            centerCoordinate: toPosition({
+                latitude: (pins.you.latitude + pins.partner.latitude) / 2,
+                longitude: (pins.you.longitude + pins.partner.longitude) / 2,
+            }),
+            zoomLevel: NIGHT_GLOBE_ZOOM,
+            pitch: 0,
+            heading: 0,
+            padding: {
+                paddingTop: topInset + 80,
+                paddingBottom: bottomInset + 24,
+                paddingLeft: 0,
+                paddingRight: 0,
+            },
+            animationMode: 'easeTo',
+            animationDuration: duration,
+        });
+    }, [initialDarkMode, fitBothCities, pins, topInset, bottomInset]);
+
     useEffect(() => {
-        if (mapLoadedRef.current) fitBothCities(600);
-    }, [fitBothCities]);
+        if (mapLoadedRef.current) frameMap(600);
+    }, [frameMap]);
+
+    const focusCurrentLocation = useCallback(() => {
+        if (!focusLocation) return false;
+        cameraRef.current?.setCamera({
+            centerCoordinate: toPosition(focusLocation),
+            zoomLevel: 14,
+            pitch: 0,
+            heading: 0,
+            padding: { paddingTop: topInset + 80, paddingBottom: bottomInset + 24, paddingLeft: 24, paddingRight: 24 },
+            animationMode: 'easeTo',
+            animationDuration: 700,
+        });
+        return true;
+    }, [focusLocation, topInset, bottomInset]);
+
+    useEffect(() => {
+        if (mapLoadedRef.current) focusCurrentLocation();
+    }, [focusCurrentLocation]);
 
     const handleMapLoaded = useCallback(() => {
+        // Style reloads should not reset a camera the user has moved.
+        if (mapLoadedRef.current) return;
         mapLoadedRef.current = true;
-        fitBothCities(FLY_IN_MS);
-    }, [fitBothCities]);
+        if (!focusCurrentLocation()) frameMap(FLY_IN_MS);
+    }, [frameMap, focusCurrentLocation]);
 
     return (
         <Mapbox.MapView
-            style={[StyleSheet.absoluteFill, styles.map]}
-            styleJSON={STYLE_JSON}
+            style={[StyleSheet.absoluteFill, styles.map, isDark && styles.mapDark]}
+            styleURL={MAP_STYLE_URL}
             projection="globe"
             onDidFinishLoadingMap={handleMapLoaded}
             rotateEnabled={false}
@@ -150,6 +211,9 @@ const LettersMapbox = ({
             logoPosition={{ bottom: bottomInset + 8, left: 12 }}
             attributionPosition={{ bottom: bottomInset + 8, right: 12 }}
         >
+            <Mapbox.StyleImport id="basemap" existing config={mapStyleConfig} />
+            <Mapbox.Atmosphere style={isDark ? LETTERS_DARK_MAP_ATMOSPHERE : LETTERS_MAP_ATMOSPHERE} />
+            {showUserLocation ? <Mapbox.LocationPuck visible /> : null}
             <Mapbox.Camera
                 ref={cameraRef}
                 defaultSettings={{
@@ -157,18 +221,20 @@ const LettersMapbox = ({
                         latitude: (pins.you.latitude + pins.partner.latitude) / 2,
                         longitude: (pins.you.longitude + pins.partner.longitude) / 2,
                     }),
-                    zoomLevel: GLOBE_ZOOM,
+                    zoomLevel: initialDarkMode ? NIGHT_GLOBE_ZOOM : GLOBE_ZOOM,
                 }}
             />
             <Mapbox.ShapeSource id="letters-routes" shape={routeShapes}>
                 <Mapbox.LineLayer
                     id="letters-routes-line"
+                    slot="top"
                     style={lineStyles.route}
                 />
             </Mapbox.ShapeSource>
             <Mapbox.ShapeSource id="letters-trails" shape={trailShapes}>
                 <Mapbox.LineLayer
                     id="letters-trails-line"
+                    slot="top"
                     aboveLayerID="letters-routes-line"
                     style={lineStyles.trail}
                 />
@@ -179,17 +245,20 @@ const LettersMapbox = ({
                 ringColor="#D23F66"
                 approximate={youApprox}
             />
-            <PinMarker
-                coordinate={pins.partner}
-                label={partnerApprox ? translateUiTemplate('{{0}} · location off', [partnerName]) : partnerName}
-                ringColor="#2E1E3C"
-                approximate={partnerApprox}
-            />
-            {flights.map(({ letter, bird, position, timeLeft }) => (
+            {showPartner ? (
+                <PinMarker
+                    coordinate={pins.partner}
+                    label={partnerApprox ? translateUiTemplate('{{0}} · location off', [partnerName]) : partnerName}
+                    ringColor="#2E1E3C"
+                    approximate={partnerApprox}
+                />
+            ) : null}
+            {flights.map(({ letter, bird, routeColor, position, timeLeft }) => (
                 <BirdMarker
                     key={`bird-${letter.id}`}
                     coordinate={position}
                     bird={bird}
+                    routeColor={routeColor}
                     timeLeft={timeLeft}
                     onPress={() => onBirdPress?.(letter.id)}
                 />
@@ -200,14 +269,18 @@ const LettersMapbox = ({
 
 // Mapbox layer styles; colours come from each line's feature.
 const lineStyles = {
-    route: { lineColor: ['get', 'color'], lineWidth: 3, lineDasharray: [0.7, 3.3], lineCap: 'round' },
-    trail: { lineColor: ['get', 'color'], lineWidth: 4, lineCap: 'round' },
+    // Standard's night lighting must not dim the letter overlays.
+    route: { lineColor: ['get', 'color'], lineWidth: 3, lineDasharray: [0.7, 3.3], lineCap: 'round', lineEmissiveStrength: 1 },
+    trail: { lineColor: ['get', 'color'], lineWidth: 4, lineCap: 'round', lineEmissiveStrength: 1 },
 };
 
 const styles = StyleSheet.create({
     // Same as the map's land colour, shown while tiles load.
     map: {
         backgroundColor: '#F6EEDF',
+    },
+    mapDark: {
+        backgroundColor: '#031729',
     },
     pin: {
         alignItems: 'center',

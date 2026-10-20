@@ -63,6 +63,7 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>Nunito.ttf</string>
+		<string>Caveat-Regular.ttf</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
