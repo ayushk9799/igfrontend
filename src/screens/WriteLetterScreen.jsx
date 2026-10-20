@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
+    Keyboard,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -9,25 +10,40 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Clock, Crown, X } from 'lucide-react-native';
-import BirdArt from '../components/letters/BirdArt';
-import LetterPaper, { LETTER_LINE_HEIGHT } from '../components/letters/LetterPaper';
-import PremiumBirdSheet from '../components/letters/PremiumBirdSheet';
+import { Send, X } from 'lucide-react-native';
+import BirdPickerSheet from '../components/letters/BirdPickerSheet';
+import LetterPaper, { getLetterPaper, getLetterTextSize } from '../components/letters/LetterPaper';
+import LetterStyleControls from '../components/letters/LetterStyleControls';
 import { sendLetter } from '../api/lettersApi';
 import { fontFamily } from '../constants/fonts';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 import { trackEvent } from '../utils/analytics';
-import {
-    LETTER_BIRDS,
-    LETTER_BODY_MAX_LENGTH,
-    formatArrival,
-    formatTravelTime,
-    getLetterBird,
-} from '../utils/letters';
+import { storage } from '../utils/authStorage';
+import { LETTER_BODY_MAX_LENGTH, getLetterBird } from '../utils/letters';
 
 const ScrollContainer = KeyboardAwareScrollView || ScrollView;
+// Space between the floating controls and the top of the keyboard.
+const FLOATING_GAP = 8;
+const TEXT_SIZE_KEY = 'letters_text_size';
+const PAPER_KEY = 'letters_paper';
+
+const readSetting = (key) => {
+    try {
+        return storage.getString(key);
+    } catch {
+        return undefined;
+    }
+};
+
+const saveSetting = (key, value) => {
+    try {
+        storage.set(key, value);
+    } catch {
+        // Losing the preference only means the default comes back next time.
+    }
+};
 
 const WriteLetterScreen = ({
     partnerName = 'Your partner',
@@ -40,15 +56,29 @@ const WriteLetterScreen = ({
     const [body, setBody] = useState('');
     const [birdId, setBirdId] = useState('pigeon');
     const [sending, setSending] = useState(false);
-    const [premiumSheetVisible, setPremiumSheetVisible] = useState(false);
+    // null while writing, 'birds' to pick a carrier, 'premium' for the upsell.
+    const [sheetMode, setSheetMode] = useState(null);
+    const [sizeId, setSizeId] = useState(() => getLetterTextSize(readSetting(TEXT_SIZE_KEY)).id);
+    const [paperId, setPaperId] = useState(() => getLetterPaper(readSetting(PAPER_KEY)).id);
+    const [controlsHeight, setControlsHeight] = useState(0);
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-    const bird = getLetterBird(birdId);
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+        const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+        const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
+
+    const textSize = getLetterTextSize(sizeId);
+    const paper = getLetterPaper(paperId);
+
     const trimmed = body.trim();
-    const canSend = trimmed.length > 0 && !sending;
-    const arrival = useMemo(
-        () => formatArrival(new Date(Date.now() + bird.travelMs)),
-        [bird.travelMs],
-    );
+    const canContinue = trimmed.length > 0 && !sending;
 
     const submit = useCallback(async (chosenBirdId) => {
         if (!trimmed || sending) return;
@@ -56,10 +86,11 @@ const WriteLetterScreen = ({
         try {
             const data = await sendLetter({ body: trimmed, bird: chosenBirdId });
             trackEvent('letter_sent', { bird: chosenBirdId, length: trimmed.length });
-            onSent?.(data.letter);
+            setSheetMode(null);
+            onSent?.(data?.letter);
         } catch (error) {
             if (error.code === 'premium_required') {
-                setPremiumSheetVisible(true);
+                setSheetMode('premium');
             } else {
                 Alert.alert(translateUiText('Letter not sent'), error.message || translateUiText('Please try again.'));
             }
@@ -68,10 +99,38 @@ const WriteLetterScreen = ({
         }
     }, [trimmed, sending, onSent]);
 
-    const handleSend = () => {
+    const changeSize = (nextSizeId) => {
+        setSizeId(nextSizeId);
+        saveSetting(TEXT_SIZE_KEY, nextSizeId);
+        trackEvent('letter_text_size_change', { size: nextSizeId });
+    };
+
+    const changePaper = (nextPaperId) => {
+        setPaperId(nextPaperId);
+        saveSetting(PAPER_KEY, nextPaperId);
+        trackEvent('letter_paper_change', { paper: nextPaperId });
+    };
+
+    const styleControls = (
+        <LetterStyleControls
+            sizeId={textSize.id}
+            paperId={paper.id}
+            onSizeChange={changeSize}
+            onPaperChange={changePaper}
+        />
+    );
+
+    const openBirdPicker = () => {
+        Keyboard.dismiss();
+        trackEvent('letter_bird_picker_open', { length: trimmed.length });
+        setSheetMode('birds');
+    };
+
+    const handleSend = (chosenBirdId) => {
+        const bird = getLetterBird(chosenBirdId);
         if (bird.premium && !hasPremiumAccess) {
             trackEvent('letter_premium_bird_blocked', { bird: bird.id });
-            setPremiumSheetVisible(true);
+            setSheetMode('premium');
             return;
         }
         submit(bird.id);
@@ -92,15 +151,29 @@ const WriteLetterScreen = ({
                     <Text style={styles.title} accessibilityRole="header">{translateUiText('New letter')}</Text>
                     <Text style={styles.subtitle}>{translateUiTemplate('To {{0}}', [partnerName])}</Text>
                 </View>
+                <TouchableOpacity
+                    style={[styles.send, !canContinue && styles.sendDisabled]}
+                    onPress={openBirdPicker}
+                    disabled={!canContinue}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={translateUiText('Send')}
+                    accessibilityState={{ disabled: !canContinue }}
+                >
+                    <Send size={16} color="#FFFFFF" strokeWidth={2.4} />
+                    <Text style={styles.sendText}>{translateUiText('Send')}</Text>
+                </TouchableOpacity>
             </View>
 
             <ScrollContainer
-                contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}
+                contentContainerStyle={[
+                    styles.content,
+                    { paddingBottom: (keyboardVisible ? controlsHeight : insets.bottom) + 24 },
+                ]}
                 keyboardShouldPersistTaps="handled"
-                bottomOffset={24}
+                bottomOffset={(keyboardVisible ? controlsHeight : 0) + 12}
             >
-                <Text style={styles.label} nativeID="letterLabel">{translateUiText('Your letter')}</Text>
-                <LetterPaper>
+                <LetterPaper paperId={paper.id} lineHeight={textSize.lineHeight}>
                     <TextInput
                         value={body}
                         onChangeText={setBody}
@@ -108,89 +181,58 @@ const WriteLetterScreen = ({
                         maxLength={LETTER_BODY_MAX_LENGTH}
                         placeholder={translateUiTemplate('Dear {{0}},', [partnerName])}
                         placeholderTextColor="#9C8FAD"
-                        style={styles.input}
+                        style={[
+                            styles.input,
+                            {
+                                fontSize: textSize.fontSize,
+                                lineHeight: textSize.lineHeight,
+                                color: paper.ink,
+                            },
+                        ]}
                         textAlignVertical="top"
-                        accessibilityLabelledBy="letterLabel"
                         accessibilityLabel={translateUiText('Your letter')}
                     />
                     <Text style={styles.counter}>{body.length} / {LETTER_BODY_MAX_LENGTH}</Text>
                 </LetterPaper>
 
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>{translateUiText('Who carries it?')}</Text>
-                    <Text style={styles.sectionHint}>{translateUiText('Slower = sweeter')}</Text>
-                </View>
-                <View style={styles.grid}>
-                    {LETTER_BIRDS.map((option) => {
-                        const selected = option.id === birdId;
-                        const locked = option.premium && !hasPremiumAccess;
-                        return (
-                            <TouchableOpacity
-                                key={option.id}
-                                style={[styles.birdCard, selected && styles.birdCardSelected]}
-                                onPress={() => setBirdId(option.id)}
-                                activeOpacity={0.85}
-                                accessibilityRole="radio"
-                                accessibilityState={{ selected }}
-                                accessibilityLabel={`${translateUiText(option.name)}, ${formatTravelTime(option.travelMs)}${locked ? `, ${translateUiText('Premium')}` : ''}`}
-                            >
-                                <View style={styles.birdCardTop}>
-                                    <View style={[styles.birdTile, { backgroundColor: option.tint }]}>
-                                        <BirdArt bird={option.id} size={52} />
-                                    </View>
-                                    {option.premium ? (
-                                        <View style={styles.premiumTag}>
-                                            <Crown size={12} color="#8A5A00" strokeWidth={2.4} />
-                                            <Text style={styles.premiumTagText}>{translateUiText('Premium')}</Text>
-                                        </View>
-                                    ) : (
-                                        <View style={styles.freeTag}>
-                                            <Text style={styles.freeTagText}>{translateUiText('Free')}</Text>
-                                        </View>
-                                    )}
-                                </View>
-                                <Text style={styles.birdName}>{translateUiText(option.name)}</Text>
-                                <Text style={[styles.birdTime, { color: option.ink }]}>{formatTravelTime(option.travelMs)}</Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-
-                <View style={styles.eta}>
-                    <Clock size={20} color="#6E6080" strokeWidth={2} />
-                    <Text style={styles.etaText}>
-                        {translateUiTemplate('{{0}} can open it {{1}}', [partnerName, arrival])}
-                    </Text>
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.send, !canSend && styles.sendDisabled]}
-                    onPress={handleSend}
-                    disabled={!canSend}
-                    activeOpacity={0.85}
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: !canSend, busy: sending }}
-                >
-                    {sending ? (
-                        <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                        <Text style={styles.sendText}>
-                            {translateUiTemplate('Send with {{0}}', [translateUiText(bird.name)])}
-                        </Text>
-                    )}
-                </TouchableOpacity>
+                {keyboardVisible ? null : styleControls}
             </ScrollContainer>
 
-            <PremiumBirdSheet
-                visible={premiumSheetVisible}
-                onClose={() => setPremiumSheetVisible(false)}
+            {/* Below the letter while reading; rides on top of the keyboard while typing. */}
+            {/* Stays mounted so it moves with the keyboard; only shown while the keyboard is up. */}
+            <KeyboardStickyView
+                style={[styles.floatingControls, !keyboardVisible && styles.floatingControlsHidden]}
+                offset={{ opened: -FLOATING_GAP }}
+                pointerEvents={keyboardVisible ? 'box-none' : 'none'}
+                accessibilityElementsHidden={!keyboardVisible}
+                importantForAccessibility={keyboardVisible ? 'auto' : 'no-hide-descendants'}
+                onLayout={(event) => setControlsHeight(event.nativeEvent.layout.height + FLOATING_GAP)}
+            >
+                <LetterStyleControls
+                    sizeId={textSize.id}
+                    paperId={paper.id}
+                    onSizeChange={changeSize}
+                    onPaperChange={changePaper}
+                    floating
+                />
+            </KeyboardStickyView>
+
+            <BirdPickerSheet
+                mode={sheetMode}
+                birdId={birdId}
+                partnerName={partnerName}
+                hasPremiumAccess={hasPremiumAccess}
+                sending={sending}
+                onClose={() => setSheetMode(null)}
+                onSelectBird={setBirdId}
+                onSend={handleSend}
                 onUpgrade={() => {
-                    setPremiumSheetVisible(false);
+                    setSheetMode(null);
                     onPremiumPress?.('letters_bird');
                 }}
                 onUseFreeBird={() => {
-                    setPremiumSheetVisible(false);
                     setBirdId('pigeon');
+                    setSheetMode('birds');
                     submit('pigeon');
                 }}
             />
@@ -239,17 +281,19 @@ const styles = StyleSheet.create({
         paddingTop: 8,
         gap: 14,
     },
-    label: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 14,
-        color: '#4B3D5C',
+    floatingControls: {
+        position: 'absolute',
+        left: 12,
+        right: 12,
+        bottom: 0,
+    },
+    floatingControlsHidden: {
+        opacity: 0,
     },
     input: {
-        minHeight: LETTER_LINE_HEIGHT * 8,
+        // Same blank-sheet height for every text size; smaller text just gets more rules.
+        minHeight: 288,
         fontFamily: fontFamily.handwriting,
-        fontSize: 23,
-        lineHeight: LETTER_LINE_HEIGHT,
-        color: '#24345E',
         padding: 0,
         paddingTop: 0,
     },
@@ -261,122 +305,21 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#A08A66',
     },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-        justifyContent: 'space-between',
-        marginTop: 8,
-    },
-    sectionTitle: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 18,
-        color: '#2E1E3C',
-    },
-    sectionHint: {
-        fontFamily: fontFamily.bold,
-        fontSize: 13,
-        color: '#6E6080',
-    },
-    grid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-    birdCard: {
-        width: '47.5%',
-        flexGrow: 1,
-        gap: 6,
-        padding: 14,
-        borderRadius: 20,
-        borderWidth: 2,
-        borderColor: '#FAE8FF',
-        backgroundColor: '#FFFFFF',
-    },
-    birdCardSelected: {
-        borderColor: '#D23F66',
-        shadowColor: '#D23F66',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.18,
-        shadowRadius: 12,
-        elevation: 3,
-    },
-    birdCardTop: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-    },
-    birdTile: {
-        width: 64,
-        height: 64,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    premiumTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 10,
-        backgroundColor: '#FFF1D6',
-    },
-    premiumTagText: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 11,
-        color: '#8A5A00',
-    },
-    freeTag: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 10,
-        backgroundColor: '#E4F6EA',
-    },
-    freeTagText: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 11,
-        color: '#1F6B3A',
-    },
-    birdName: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 16,
-        color: '#2E1E3C',
-    },
-    birdTime: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 13,
-    },
-    eta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#FAE8FF',
-        backgroundColor: '#FFFFFF',
-    },
-    etaText: {
-        flex: 1,
-        fontFamily: fontFamily.bold,
-        fontSize: 13,
-        color: '#4B3D5C',
-    },
     send: {
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#D23F66',
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 6,
+        gap: 6,
+        height: 44,
+        paddingHorizontal: 18,
+        borderRadius: 22,
+        backgroundColor: '#D23F66',
     },
     sendDisabled: {
-        opacity: 0.5,
+        opacity: 0.4,
     },
     sendText: {
         fontFamily: fontFamily.extraBold,
-        fontSize: 17,
+        fontSize: 15,
         color: '#FFFFFF',
     },
 });
