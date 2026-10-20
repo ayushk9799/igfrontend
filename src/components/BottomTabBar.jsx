@@ -15,7 +15,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { House, Gamepad2, MessageCircle, Notebook, Palette } from 'lucide-react-native';
+import { House, Gamepad2, Mail, MessageCircle, Notebook } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
@@ -80,7 +80,7 @@ const getGlassAvailability = () => {
 const iconMap = {
     home: House,
     timeline: Notebook,
-    canvas: Palette,
+    letters: Mail,
     games: Gamepad2,
     chats: MessageCircle,
 };
@@ -88,7 +88,7 @@ const iconMap = {
 const TABS = [
     { key: 'home', label: "Home", iconKey: 'home' },
     { key: 'memories', label: "Timeline", iconKey: 'timeline' },
-    { key: 'canvas', label: "Canvas", iconKey: 'canvas' },
+    { key: 'letters', label: "Letters", iconKey: 'letters' },
     { key: 'games', label: "Games", iconKey: 'games' },
     { key: 'chats', label: "Chats", iconKey: 'chats' },
 ];
@@ -335,9 +335,10 @@ const TabItem = ({
 /**
  * @param {{
  *   currentTab: string,
- *   onTabChange: (tab: 'home' | 'memories' | 'games' | 'chats') => void,
+ *   onTabChange: (tab: 'home' | 'memories' | 'letters' | 'games' | 'chats') => void,
  *   chatBadge?: number,
  *   gamesNeedAttention?: boolean,
+ *   lettersNeedAttention?: boolean,
  * }} props
  */
 export const BottomTabBar = ({
@@ -345,6 +346,7 @@ export const BottomTabBar = ({
     onTabChange,
     chatBadge = 0,
     gamesNeedAttention = false,
+    lettersNeedAttention = false,
     visible = true,
 }) => {
     const insets = useSafeAreaInsets();
@@ -409,7 +411,10 @@ export const BottomTabBar = ({
                     isActive={currentTab === tab.key}
                     onPress={() => onTabChange(tab.key)}
                     badge={tab.key === 'chats' ? chatBadge : 0}
-                    attentionDot={tab.key === 'games' && gamesNeedAttention}
+                    attentionDot={
+                        (tab.key === 'games' && gamesNeedAttention)
+                        || (tab.key === 'letters' && lettersNeedAttention)
+                    }
                     reduceMotion={reduceMotion}
                     useLiquidGlass={shouldUseLiquidGlass}
                 />

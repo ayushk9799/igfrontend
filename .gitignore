@@ -89,3 +89,6 @@ dist/
 .env.hotupdater
 # hot-updater
 .hot-updater/output
+
+# Mapbox token (public repo)
+src/constants/mapboxToken.js
