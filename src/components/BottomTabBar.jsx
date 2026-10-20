@@ -19,6 +19,12 @@ import { House, Gamepad2, Mail, MessageCircle, Notebook } from 'lucide-react-nat
 import * as Haptics from 'expo-haptics';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
+import {
+    getTabBarBottomOffset,
+    TAB_BAR_BORDER_WIDTH,
+    TAB_BAR_CONTENT_HEIGHT,
+    TAB_BAR_SURFACE_PADDING,
+} from '../utils/bottomTabBarLayout';
 
 const triggerTabHaptic = () => {
     if (Platform.OS === 'android') {
@@ -391,9 +397,7 @@ export const BottomTabBar = ({
         && isLiquidGlassAvailable
         && !reduceTransparency;
     const floatingOffsetStyle = {
-        bottom: Platform.OS === 'android'
-            ? Math.max(insets.bottom, 12)
-            : (insets.bottom > 0 ? Math.max(insets.bottom - 18, 12) : 12),
+        bottom: getTabBarBottomOffset(insets.bottom),
         left: Platform.OS === 'android' ? 14 : 18,
         right: Platform.OS === 'android' ? 14 : 18,
     };
@@ -533,14 +537,14 @@ const styles = StyleSheet.create({
     },
     liquidSheet: {
         borderRadius: 36,
-        paddingVertical: 4,
+        paddingVertical: TAB_BAR_SURFACE_PADDING,
         overflow: 'hidden',
         backgroundColor: Platform.select({
             ios: 'transparent',
             android: 'rgba(255,255,255,0.20)',
             default: 'transparent',
         }),
-        borderWidth: 1,
+        borderWidth: TAB_BAR_BORDER_WIDTH,
         borderColor: 'rgba(255,255,255,0.65)',
         borderTopColor: 'rgba(255,255,255,0.90)',
         borderBottomColor: 'rgba(255,255,255,0.30)',
@@ -551,9 +555,9 @@ const styles = StyleSheet.create({
     },
     glassSurface: {
         borderRadius: 36,
-        paddingVertical: 4,
+        paddingVertical: TAB_BAR_SURFACE_PADDING,
         overflow: 'hidden',
-        borderWidth: 1,
+        borderWidth: TAB_BAR_BORDER_WIDTH,
         borderColor: 'rgba(255,255,255,0.65)',
         borderTopColor: 'rgba(255,255,255,0.90)',
         borderBottomColor: 'rgba(255,255,255,0.30)',
@@ -585,7 +589,7 @@ const styles = StyleSheet.create({
         position: 'relative',
         justifyContent: 'center',
         minWidth: 46,
-        minHeight: 48,
+        minHeight: TAB_BAR_CONTENT_HEIGHT,
     },
 
     activeLiquid: {
@@ -622,7 +626,7 @@ const styles = StyleSheet.create({
     tabInner: {
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: 48,
+        minHeight: TAB_BAR_CONTENT_HEIGHT,
         zIndex: 1,
     },
     tabLabel: {

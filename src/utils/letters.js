@@ -9,15 +9,25 @@ export const LETTER_BODY_MAX_LENGTH = 1000;
 
 // Mirrors the server's bird list. The server decides the real delivery time.
 export const LETTER_BIRDS = [
-    { id: 'penguin', name: 'Penguin Post', travelMs: 48 * HOUR_MS, premium: false, ink: '#3A3348', tint: '#ECE8F2', route: '#4B3D5C' },
-    { id: 'pigeon', name: 'Pigeon', travelMs: 12 * HOUR_MS, premium: false, ink: '#5B3A9E', tint: '#EFE6FB', route: '#7A52C7' },
-    { id: 'swallow', name: 'Swallow', travelMs: 3 * HOUR_MS, premium: true, ink: '#2F5E96', tint: '#E3F0FB', route: '#2F6FA8' },
-    { id: 'falcon', name: 'Falcon', travelMs: 45 * MINUTE_MS, premium: true, ink: '#9A4716', tint: '#FCEBDD', route: '#B5541F' },
+    { id: 'penguin', name: 'Penguin Post', travelMs: 48 * HOUR_MS, premium: false, ink: '#3A3348', tint: '#ECE8F2', route: '#4B3D5C', routeDark: '#D7CBEF' },
+    { id: 'pigeon', name: 'Pigeon', travelMs: 12 * HOUR_MS, premium: false, ink: '#5B3A9E', tint: '#EFE6FB', route: '#7A52C7', routeDark: '#C3A0FF' },
+    { id: 'swallow', name: 'Swallow', travelMs: 3 * HOUR_MS, premium: true, ink: '#2F5E96', tint: '#E3F0FB', route: '#2F6FA8', routeDark: '#80C8FF' },
+    { id: 'falcon', name: 'Falcon', travelMs: 45 * MINUTE_MS, premium: true, ink: '#9A4716', tint: '#FCEBDD', route: '#B5541F', routeDark: '#FFB784' },
 ];
 
 export const getLetterBird = (birdId) => (
     LETTER_BIRDS.find((bird) => bird.id === birdId) || LETTER_BIRDS[1]
 );
+
+export const LETTER_MAP_ROUTE_COLORS = {
+    light: { outgoing: '#A9B9D6', incoming: '#BBA9D6' },
+    dark: { outgoing: '#BFDAFF', incoming: '#E0C9FF' },
+};
+
+export const getLetterRouteColor = (birdId, isDark = false) => {
+    const bird = getLetterBird(birdId);
+    return isDark ? bird.routeDark : bird.route;
+};
 
 export const formatTravelTime = (ms) => {
     const minutes = Math.round(ms / MINUTE_MS);

@@ -9,15 +9,25 @@ import {
     flownCurvePath,
     formatTimeLeft,
     getLetterBird,
+    getLetterRouteColor,
     getLiveProgress,
     getTimeLeftMs,
     pointOnCurve,
+    LETTER_MAP_ROUTE_COLORS,
 } from '../../utils/letters';
 
 const DESIGN_WIDTH = 390;
 const DESIGN_HEIGHT = 844;
 const MARKER_SIZE = 54;
 const MAX_BIRDS_ON_MAP = 4;
+const LIGHT_COLORS = {
+    sea: '#D6E8F5', land: '#F6EEDF', river: '#DCE9F2', park: '#E8F0DA',
+    trees: '#C9D9B5', cloud: '#FFFFFF',
+};
+const DARK_COLORS = {
+    sea: '#091D38', land: '#303D49', river: '#223951', park: '#263D3B',
+    trees: '#496655', cloud: '#5A687C',
+};
 
 // Pin positions are fixed on the illustration; real distance only shows as text.
 export const getMapGeometry = (width, height) => {
@@ -53,8 +63,11 @@ const LettersMap = ({
     letters = [],
     nowMs,
     partnerName,
+    isDark = false,
     onBirdPress,
 }) => {
+    const mapColors = isDark ? DARK_COLORS : LIGHT_COLORS;
+    const routeColors = LETTER_MAP_ROUTE_COLORS[isDark ? 'dark' : 'light'];
     const geometry = useMemo(() => getMapGeometry(width, height), [width, height]);
 
     const flights = useMemo(() => letters
@@ -69,38 +82,39 @@ const LettersMap = ({
             return {
                 letter,
                 bird: getLetterBird(letter.bird),
+                routeColor: getLetterRouteColor(letter.bird, isDark),
                 curve,
                 progress,
                 point: { x: point.x + offset, y: point.y - offset },
                 timeLeft: formatTimeLeft(getTimeLeftMs(letter, nowMs)),
             };
-        }), [letters, geometry, nowMs]);
+        }), [letters, geometry, nowMs, isDark]);
 
     const hasOutgoing = flights.some((flight) => flight.letter.direction === 'outgoing');
     const hasIncoming = flights.some((flight) => flight.letter.direction === 'incoming');
     const { sx, sy, outgoing, incoming } = geometry;
 
     return (
-        <View style={[StyleSheet.absoluteFill, styles.sea]}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: mapColors.sea }]}>
             <Svg width={width} height={height} pointerEvents="none">
                 <G scaleX={sx} scaleY={sy}>
                     <Path
                         d="M30 0 L390 0 L390 560 C360 590 330 640 290 660 C250 680 230 620 200 600 C160 575 120 590 90 550 C60 510 40 470 30 420 C20 370 40 330 24 280 C8 220 30 140 30 0Z"
-                        fill="#F6EEDF"
+                        fill={mapColors.land}
                     />
-                    <Path d="M0 640 C30 630 50 660 60 700 C70 740 40 780 0 790Z" fill="#F6EEDF" />
-                    <Path d="M60 120 C120 160 160 120 210 170 C260 220 300 200 360 250" stroke="#DCE9F2" strokeWidth={6} strokeLinecap="round" fill="none" />
-                    <Circle cx={320} cy={120} r={34} fill="#E8F0DA" />
-                    <Circle cx={70} cy={330} r={26} fill="#E8F0DA" />
-                    <Circle cx={210} cy={530} r={22} fill="#E8F0DA" />
-                    <Circle cx={340} cy={420} r={18} fill="#E8F0DA" />
-                    <Path d="M226 160 q6 -14 12 0 M240 166 q6 -14 12 0" stroke="#C9D9B5" strokeWidth={3} strokeLinecap="round" fill="none" />
-                    <Path d="M178 250 h30 a12 12 0 0 0 0 -24 a16 16 0 0 0 -30 -4 a10 10 0 0 0 0 28z" fill="#FFFFFF" opacity={0.9} />
-                    <Path d="M300 520 h26 a10 10 0 0 0 0 -20 a14 14 0 0 0 -26 -3 a9 9 0 0 0 0 23z" fill="#FFFFFF" opacity={0.9} />
+                    <Path d="M0 640 C30 630 50 660 60 700 C70 740 40 780 0 790Z" fill={mapColors.land} />
+                    <Path d="M60 120 C120 160 160 120 210 170 C260 220 300 200 360 250" stroke={mapColors.river} strokeWidth={6} strokeLinecap="round" fill="none" />
+                    <Circle cx={320} cy={120} r={34} fill={mapColors.park} />
+                    <Circle cx={70} cy={330} r={26} fill={mapColors.park} />
+                    <Circle cx={210} cy={530} r={22} fill={mapColors.park} />
+                    <Circle cx={340} cy={420} r={18} fill={mapColors.park} />
+                    <Path d="M226 160 q6 -14 12 0 M240 166 q6 -14 12 0" stroke={mapColors.trees} strokeWidth={3} strokeLinecap="round" fill="none" />
+                    <Path d="M178 250 h30 a12 12 0 0 0 0 -24 a16 16 0 0 0 -30 -4 a10 10 0 0 0 0 28z" fill={mapColors.cloud} opacity={0.9} />
+                    <Path d="M300 520 h26 a10 10 0 0 0 0 -20 a14 14 0 0 0 -26 -3 a9 9 0 0 0 0 23z" fill={mapColors.cloud} opacity={0.9} />
                 </G>
                 <Path
                     d={curvePath(outgoing.from, outgoing.control, outgoing.to)}
-                    stroke={hasOutgoing ? '#A9B9D6' : '#C3CEE0'}
+                    stroke={hasOutgoing || isDark ? routeColors.outgoing : '#C3CEE0'}
                     strokeWidth={3}
                     strokeDasharray="2 9"
                     strokeLinecap="round"
@@ -109,18 +123,18 @@ const LettersMap = ({
                 {hasIncoming ? (
                     <Path
                         d={curvePath(incoming.from, incoming.control, incoming.to)}
-                        stroke="#BBA9D6"
+                        stroke={routeColors.incoming}
                         strokeWidth={3}
                         strokeDasharray="2 9"
                         strokeLinecap="round"
                         fill="none"
                     />
                 ) : null}
-                {flights.map(({ letter, bird, curve, progress }) => (
+                {flights.map(({ letter, routeColor, curve, progress }) => (
                     <Path
                         key={`trail-${letter.id}`}
                         d={flownCurvePath(curve.from, curve.control, curve.to, progress)}
-                        stroke={bird.route}
+                        stroke={routeColor}
                         strokeWidth={4}
                         strokeLinecap="round"
                         fill="none"
@@ -131,7 +145,7 @@ const LettersMap = ({
             <Pin point={geometry.you} label={translateUiText('You')} ringColor="#D23F66" labelAbove />
             <Pin point={geometry.partner} label={partnerName} ringColor="#2E1E3C" labelAbove={false} />
 
-            {flights.map(({ letter, bird, point, timeLeft }) => (
+            {flights.map(({ letter, bird, routeColor, point, timeLeft }) => (
                 <TouchableOpacity
                     key={`bird-${letter.id}`}
                     activeOpacity={0.85}
@@ -140,7 +154,7 @@ const LettersMap = ({
                     accessibilityLabel={`${translateUiText(bird.name)}, ${timeLeft}`}
                     style={[styles.birdWrap, { left: point.x - MARKER_SIZE / 2, top: point.y - MARKER_SIZE / 2 }]}
                 >
-                    <View style={[styles.birdMarker, { borderColor: bird.route }]}>
+                    <View style={[styles.birdMarker, { borderColor: routeColor }]}>
                         <BirdArt bird={bird.id} size={44} />
                     </View>
                     <View style={[styles.timeChip, { backgroundColor: bird.route }]}>
@@ -153,9 +167,6 @@ const LettersMap = ({
 };
 
 const styles = StyleSheet.create({
-    sea: {
-        backgroundColor: '#D6E8F5',
-    },
     pinWrap: {
         position: 'absolute',
         width: 160,
