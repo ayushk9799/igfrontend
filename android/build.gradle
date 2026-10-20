@@ -19,4 +19,11 @@ buildscript {
     }
 }
 
+// Mapbox SDK for the Letters globe map (no download token needed).
+allprojects {
+    repositories {
+        maven { url 'https://api.mapbox.com/downloads/v2/releases/maven' }
+    }
+}
+
 apply plugin: "com.facebook.react.rootproject"

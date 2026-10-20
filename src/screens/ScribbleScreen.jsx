@@ -1764,10 +1764,27 @@ export const ScribbleScreen = ({
             style={{ flex: 1 }}
         >
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-            <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 84 }]}>
+            <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 16 }]}>
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerTopRow}>
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={onBack}
+                            activeOpacity={0.85}
+                            accessibilityRole="button"
+                            accessibilityLabel={translateUiText("Back")}
+                        >
+                            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                                <Path
+                                    d="M15 18l-6-6 6-6"
+                                    stroke={colors.text}
+                                    strokeWidth={2.2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </Svg>
+                        </TouchableOpacity>
                         <View style={styles.brandContainer}>
                             <Image
                                 source={require('../../assets/images/penguin-text-logo.png')}

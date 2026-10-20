@@ -8,7 +8,6 @@ import AccountScreen from '../screens/AccountScreen';
 import EditAccountScreen from '../screens/EditAccountScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import GamesScreen from '../screens/GamesScreen';
-import LetterScreen from '../screens/LetterScreen';
 import DailyChallengeScreen from '../screens/DailyChallengeScreen';
 import MemoriesScreen from '../screens/MemoriesScreen';
 import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
@@ -17,6 +16,9 @@ import NotificationCenterScreen from '../screens/NotificationCenterScreen';
 import MoodScreen from '../screens/MoodScreen';
 import WidgetsLibraryScreen from '../screens/WidgetsLibraryScreen';
 import CouplePhotoCaptureScreen from '../screens/CouplePhotoCaptureScreen';
+import LettersScreen from '../screens/LettersScreen';
+import WriteLetterScreen from '../screens/WriteLetterScreen';
+import LetterDetailScreen from '../screens/LetterDetailScreen';
 import WidgetSetupBottomSheet from '../components/WidgetSetupBottomSheet';
 import WidgetInstructionsBottomSheet from '../components/WidgetInstructionsBottomSheet';
 import { getEmojiById, getEmojiByLabel, emojis } from '../constants/Moods';
@@ -49,10 +51,16 @@ import {
 import { reportWidgetIntent, sendPartnerLocationReminder, syncNativeWidgetStatus } from '../api/widgetStatusApi';
 import * as ImagePicker from 'expo-image-picker';
 import { QuestionsV2Api } from '../api/questionsV2Api';
+import { fetchLetters } from '../api/lettersApi';
+import useLetterEvents from '../hooks/useLetterEvents';
+import { consumePendingLetter, subscribePendingLetter } from '../utils/letterNavigation';
 
 const MOOD_STALE_MS = 12 * 60 * 60 * 1000;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ACCOUNT_EDGE_SWIPE_WIDTH = SCREEN_WIDTH * 0.2;
+// Full screens opened from a tab; they hide the tab bar.
+const FULL_SCREEN_TABS = ['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture', 'canvas', 'writeLetter', 'letterDetail'];
+const LETTER_SCREENS = ['writeLetter', 'letterDetail'];
 
 const isMoodPastRefreshWindow = (mood, now) => {
     if (!mood?.updatedAt) {
@@ -97,6 +105,8 @@ export const MainTabNavigator = ({
     const [previousTab, setPreviousTab] = useState(null);
     const [selectedTopic, setSelectedTopic] = useState(null); // Track selected topic for TopicQuestionsV2Screen
     const [chatBadge, setChatBadge] = useState(0); // Unread chat count for badge
+    const [selectedLetterId, setSelectedLetterId] = useState(() => consumePendingLetter());
+    const [lettersNeedAttention, setLettersNeedAttention] = useState(false);
     const [todayChallenge, setTodayChallenge] = useState(null);
     const [topicProgressById, setTopicProgressById] = useState({});
     const [coupleQuestionStats, setCoupleQuestionStats] = useState(null);
@@ -802,6 +812,42 @@ export const MainTabNavigator = ({
         }
     }, [currentTab]);
 
+    const openLetter = useCallback((letterId) => {
+        if (!letterId) return;
+        setSelectedLetterId(String(letterId));
+        setPreviousTab(currentTabRef.current);
+        setCurrentTab('letterDetail');
+    }, []);
+
+    // Notification taps hand over a letter id, cold start or not.
+    useEffect(() => subscribePendingLetter((letterId) => {
+        consumePendingLetter();
+        openLetter(letterId);
+    }), [openLetter]);
+
+    const refreshLettersAttention = useCallback(async () => {
+        if (!hasPartner) {
+            setLettersNeedAttention(false);
+            return;
+        }
+        try {
+            const data = await fetchLetters({ status: 'delivered', limit: 10 });
+            setLettersNeedAttention((data.letters || []).some(
+                (letter) => letter.direction === 'incoming' && !letter.readAt
+            ));
+        } catch {
+            // The dot is a hint only; keep the last known value.
+        }
+    }, [hasPartner]);
+
+    useEffect(() => {
+        if (currentTab === 'home' || currentTab === 'letters') refreshLettersAttention();
+    }, [refreshLettersAttention, currentTab]);
+
+    useLetterEvents((eventName) => {
+        if (eventName === 'letter:delivered' || eventName === 'letter:read') refreshLettersAttention();
+    });
+
     // Handle Android back button/gesture - navigate to home tab from sub-tabs
     useEffect(() => {
         const backAction = () => {
@@ -817,6 +863,10 @@ export const MainTabNavigator = ({
             }
             if (currentTab === 'topicQuestions') {
                 closeTopicQuestions();
+                return true;
+            }
+            if (LETTER_SCREENS.includes(currentTab)) {
+                handleBottomTabChange('letters');
                 return true;
             }
             if (currentTab !== 'home') {
@@ -926,8 +976,6 @@ export const MainTabNavigator = ({
                         }}
                     />
                 );
-            case 'letter':
-                return <LetterScreen />;
             case 'games':
                 return (
                     <GamesScreen
@@ -992,6 +1040,40 @@ export const MainTabNavigator = ({
                             }
                         }}
                         onBack={() => setCurrentTab('home')}
+                    />
+                );
+            case 'letters':
+                return (
+                    <LettersScreen
+                        userId={userData?._id || userData?.id}
+                        partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
+                        hasPartner={hasPartner}
+                        onLinkPartner={onFindPartner}
+                        onWriteLetter={() => handleBottomTabChange('writeLetter')}
+                        onOpenLetter={openLetter}
+                    />
+                );
+            case 'writeLetter':
+                return (
+                    <WriteLetterScreen
+                        partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
+                        hasPremiumAccess={hasPremiumAccess}
+                        onClose={() => handleBottomTabChange('letters')}
+                        onSent={() => handleBottomTabChange('letters')}
+                        onPremiumPress={onPremiumPress}
+                    />
+                );
+            case 'letterDetail':
+                if (!selectedLetterId) {
+                    setCurrentTab('letters');
+                    return null;
+                }
+                return (
+                    <LetterDetailScreen
+                        letterId={selectedLetterId}
+                        partnerName={partnerName || userData?.partnerUsername || 'Your partner'}
+                        onBack={() => handleBottomTabChange('letters')}
+                        onReply={() => handleBottomTabChange('writeLetter')}
                     />
                 );
             case 'notificationCenter':
@@ -1125,13 +1207,14 @@ export const MainTabNavigator = ({
                 onTabChange={handleBottomTabChange}
                 chatBadge={chatBadge}
                 gamesNeedAttention={gamesNeedAttention}
+                lettersNeedAttention={lettersNeedAttention && currentTab !== 'letters'}
                 visible={
                     !isMoodVisible
                     && !widgetSheet
                     && !isScribbleLiveFullscreen
                     && !isYearlyOfferSheetVisible
                     && !isMemoriesOptionsOpen
-                    && !['topicQuestions', 'widgetsLibrary', 'dailyChallenge', 'partnerPhotoCapture'].includes(currentTab)
+                    && !FULL_SCREEN_TABS.includes(currentTab)
                 }
             />
 

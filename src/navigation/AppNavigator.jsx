@@ -75,6 +75,7 @@ import { clearGames, setPendingPuzzles, setPendingPuzzle, setPendingTicTacToe, s
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { getContentLanguage, translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
 import { prefetchPuzzleTexture } from '../utils/puzzleTextureCache';
+import { openLetterFromNotification } from '../utils/letterNavigation';
 
 const UPDATE_CHECK_TIMEOUT_MS = 8000;
 const INTRO_ONBOARDING_SCREENS = [
@@ -1248,6 +1249,15 @@ export const AppNavigator = () => {
 
                 case 'memory':
                     openHomeTab('memories');
+                    break;
+
+                case 'letter':
+                    if (data.letterId) {
+                        openLetterFromNotification(data.letterId);
+                        openHomeTab('letterDetail');
+                    } else {
+                        openHomeTab('letters');
+                    }
                     break;
 
                 case 'live_chat':

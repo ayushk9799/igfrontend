@@ -17,6 +17,8 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
+$RNMapboxMapsImpl = 'mapbox'
+
 target 'frontend' do
   config = use_native_modules!
 
@@ -32,13 +34,16 @@ target 'frontend' do
   )
     pod 'GoogleSignIn'
 
-
-
   pod 'FirebaseCoreInternal', :modular_headers => true
   pod 'GoogleUtilities', :modular_headers => true
   pod 'FirebaseCore', :modular_headers => true
   pod 'AppCheckCore', :modular_headers => true
   pod 'RecaptchaInterop', :modular_headers => true
+
+  # Mapbox for the Letters globe map.
+  pre_install do |installer|
+    $RNMapboxMaps.pre_install(installer)
+  end
 
   post_install do |installer|
     react_native_post_install(
@@ -47,6 +52,7 @@ target 'frontend' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    $RNMapboxMaps.post_install(installer)
 
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
