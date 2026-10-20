@@ -15,7 +15,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { fontFamily, fontWeight } from '../constants/fonts';
-import { House, Gamepad2, MessageCircle, Notebook, Palette } from 'lucide-react-native';
+import { House, Gamepad2, MessageCircle, Notebook, Palette, Mail } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
@@ -81,6 +81,7 @@ const iconMap = {
     home: House,
     timeline: Notebook,
     canvas: Palette,
+    letter: Mail,
     games: Gamepad2,
     chats: MessageCircle,
 };
@@ -89,6 +90,7 @@ const TABS = [
     { key: 'home', label: "Home", iconKey: 'home' },
     { key: 'memories', label: "Timeline", iconKey: 'timeline' },
     { key: 'canvas', label: "Canvas", iconKey: 'canvas' },
+    { key: 'letter', label: "Letter", iconKey: 'letter' },
     { key: 'games', label: "Games", iconKey: 'games' },
     { key: 'chats', label: "Chats", iconKey: 'chats' },
 ];

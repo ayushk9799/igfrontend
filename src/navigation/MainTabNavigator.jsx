@@ -8,6 +8,7 @@ import AccountScreen from '../screens/AccountScreen';
 import EditAccountScreen from '../screens/EditAccountScreen';
 import ScribbleScreen from '../screens/ScribbleScreen';
 import GamesScreen from '../screens/GamesScreen';
+import LetterScreen from '../screens/LetterScreen';
 import DailyChallengeScreen from '../screens/DailyChallengeScreen';
 import MemoriesScreen from '../screens/MemoriesScreen';
 import TopicQuestionsV2Screen from '../screens/TopicQuestionsV2Screen';
@@ -925,6 +926,8 @@ export const MainTabNavigator = ({
                         }}
                     />
                 );
+            case 'letter':
+                return <LetterScreen />;
             case 'games':
                 return (
                     <GamesScreen
