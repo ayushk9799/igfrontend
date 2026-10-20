@@ -1,0 +1,242 @@
+== Tue Oct 20 10:04:51 IST 2026 ==
+== npm install ==
+
+> penguin@1.1.3 postinstall
+> patch-package
+
+patch-package 8.0.1
+Applying patches...
+expo@54.0.36 ✔
+react-native-audio-recorder-player@3.6.14 ✔
+react-native-webrtc@124.0.7 ✔
+react-native-wheel-pick@1.2.8 ✔
+
+Warning: patch-package detected a patch file version mismatch
+
+  Don't worry! This is probably fine. The patch was still applied
+  successfully. Here's the deets:
+
+  Patch file created for
+
+    react-native-webrtc@124.0.7
+
+  applied to
+
+    react-native-webrtc@124.0.8
+  
+  At path
+  
+    node_modules/react-native-webrtc
+
+  This warning is just to give you a heads-up. There is a small chance of
+  breakage even though the patch was applied successfully. Make sure the package
+  still behaves like you expect (you wrote tests, right?) and then run
+
+    patch-package react-native-webrtc
+
+  to update the version in the patch file name and make this warning go away.
+
+---
+patch-package finished with 1 warning(s).
+
+changed 106 packages in 1s
+== pod install ==
+RNFBAnalytics: Using FirebaseAnalytics/IdentitySupport with Ad Ids. May require App Tracking Transparency. Not allowed for Kids apps.
+RNFBAnalytics: You may set variable `$RNFirebaseAnalyticsWithoutAdIdSupport=true` in Podfile to use analytics without ad ids.
+-- SK_GRAPHITE: OFF (detected via libs/.graphite marker file)
+[Lottie React Native] Using install_modules_dependencies
+[react-native-mmkv] Thank you for using react-native-mmkv ❤️
+[react-native-mmkv] If you enjoy using react-native-mmkv, please consider sponsoring this project: https://github.com/sponsors/mrousavy
+Found 29 modules for target `frontend`
+link_native_modules! {ios_packages: [{configurations: [], name: "@hot-updater/react-native", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@hot-updater/react-native", path: "../node_modules/@hot-updater/react-native", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@hot-updater/react-native/HotUpdater.podspec", script_phases: []}, {configurations: [], name: "@notifee/react-native", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@notifee/react-native", path: "../node_modules/@notifee/react-native", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@notifee/react-native/RNNotifee.podspec", script_phases: []}, {configurations: [], name: "@react-native-clipboard/clipboard", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-clipboard/clipboard", path: "../node_modules/@react-native-clipboard/clipboard", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-clipboard/clipboard/RNCClipboard.podspec", script_phases: []}, {configurations: [], name: "@react-native-community/datetimepicker", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-community/datetimepicker", path: "../node_modules/@react-native-community/datetimepicker", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-community/datetimepicker/RNDateTimePicker.podspec", script_phases: []}, {configurations: [], name: "@react-native-firebase/analytics", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-firebase/analytics", path: "../node_modules/@react-native-firebase/analytics", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-firebase/analytics/RNFBAnalytics.podspec", script_phases: []}, {configurations: [], name: "@react-native-firebase/app", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-firebase/app", path: "../node_modules/@react-native-firebase/app", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-firebase/app/RNFBApp.podspec", script_phases: [{"name" => "[RNFB] Core Configuration", "path" => "./ios_config.sh", "execution_position" => "after_compile", "input_files" => ["$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)"]}]}, {configurations: [], name: "@react-native-firebase/messaging", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-firebase/messaging", path: "../node_modules/@react-native-firebase/messaging", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@react-native-firebase/messaging/RNFBMessaging.podspec", script_phases: []}, {configurations: [], name: "@rnmapbox/maps", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@rnmapbox/maps", path: "../node_modules/@rnmapbox/maps", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@rnmapbox/maps/rnmapbox-maps.podspec", script_phases: []}, {configurations: [], name: "@shopify/react-native-skia", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@shopify/react-native-skia", path: "../node_modules/@shopify/react-native-skia", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/@shopify/react-native-skia/react-native-skia.podspec", script_phases: []}, {configurations: [], name: "expo", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/expo", path: "../node_modules/expo", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/expo/Expo.podspec", script_phases: []}, {configurations: [], name: "lottie-react-native", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/lottie-react-native", path: "../node_modules/lottie-react-native", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/lottie-react-native/lottie-react-native.podspec", script_phases: []}, {configurations: [], name: "react-native-audio-recorder-player", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-audio-recorder-player", path: "../node_modules/react-native-audio-recorder-player", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-audio-recorder-player/RNAudioRecorderPlayer.podspec", script_phases: []}, {configurations: [], name: "react-native-bootsplash", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-bootsplash", path: "../node_modules/react-native-bootsplash", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-bootsplash/RNBootSplash.podspec", script_phases: []}, {configurations: [], name: "react-native-camera-kit", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-camera-kit", path: "../node_modules/react-native-camera-kit", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-camera-kit/ReactNativeCameraKit.podspec", script_phases: []}, {configurations: [], name: "react-native-credentials-manager", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-credentials-manager", path: "../node_modules/react-native-credentials-manager", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-credentials-manager/react-native-credentials-manager.podspec", script_phases: []}, {configurations: [], name: "react-native-device-info", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-device-info", path: "../node_modules/react-native-device-info", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-device-info/RNDeviceInfo.podspec", script_phases: []}, {configurations: [], name: "react-native-gesture-handler", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-gesture-handler", path: "../node_modules/react-native-gesture-handler", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-gesture-handler/RNGestureHandler.podspec", script_phases: []}, {configurations: [], name: "react-native-haptic-feedback", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-haptic-feedback", path: "../node_modules/react-native-haptic-feedback", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-haptic-feedback/RNReactNativeHapticFeedback.podspec", script_phases: []}, {configurations: [], name: "react-native-incall-manager", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-incall-manager", path: "../node_modules/react-native-incall-manager", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-incall-manager/ReactNativeIncallManager.podspec", script_phases: []}, {configurations: [], name: "react-native-keyboard-controller", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-keyboard-controller", path: "../node_modules/react-native-keyboard-controller", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-keyboard-controller/react-native-keyboard-controller.podspec", script_phases: []}, {configurations: [], name: "react-native-linear-gradient", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-linear-gradient", path: "../node_modules/react-native-linear-gradient", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-linear-gradient/BVLinearGradient.podspec", script_phases: []}, {configurations: [], name: "react-native-mmkv", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-mmkv", path: "../node_modules/react-native-mmkv", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-mmkv/react-native-mmkv.podspec", script_phases: []}, {configurations: [], name: "react-native-purchases", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-purchases", path: "../node_modules/react-native-purchases", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-purchases/RNPurchases.podspec", script_phases: []}, {configurations: [], name: "react-native-reanimated", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-reanimated", path: "../node_modules/react-native-reanimated", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-reanimated/RNReanimated.podspec", script_phases: []}, {configurations: [], name: "react-native-safe-area-context", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-safe-area-context", path: "../node_modules/react-native-safe-area-context", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-safe-area-context/react-native-safe-area-context.podspec", script_phases: []}, {configurations: [], name: "react-native-svg", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-svg", path: "../node_modules/react-native-svg", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-svg/RNSVG.podspec", script_phases: []}, {configurations: [], name: "react-native-view-shot", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-view-shot", path: "../node_modules/react-native-view-shot", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-view-shot/react-native-view-shot.podspec", script_phases: []}, {configurations: [], name: "react-native-webrtc", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-webrtc", path: "../node_modules/react-native-webrtc", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-webrtc/react-native-webrtc.podspec", script_phases: []}, {configurations: [], name: "react-native-worklets", root: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-worklets", path: "../node_modules/react-native-worklets", podspec_path: "/Volumes/SSD500/Ayush/igfrontend/node_modules/react-native-worklets/RNWorklets.podspec", script_phases: []}], ios_project_root_path: "/Volumes/SSD500/Ayush/igfrontend/ios", react_native_path: "../node_modules/react-native"}
+RNFBAnalytics: Using FirebaseAnalytics/IdentitySupport with Ad Ids. May require App Tracking Transparency. Not allowed for Kids apps.
+RNFBAnalytics: You may set variable `$RNFirebaseAnalyticsWithoutAdIdSupport=true` in Podfile to use analytics without ad ids.
+Adding a custom script phase for Pod RNFBApp: [RNFB] Core Configuration
+-- SK_GRAPHITE: OFF (detected via libs/.graphite marker file)
+[Lottie React Native] Using install_modules_dependencies
+[react-native-mmkv] Thank you for using react-native-mmkv ❤️
+[react-native-mmkv] If you enjoy using react-native-mmkv, please consider sponsoring this project: https://github.com/sponsors/mrousavy
+Auto-linking React Native modules for target `frontend`: BVLinearGradient, Expo, HotUpdater, RNAudioRecorderPlayer, RNBootSplash, RNCClipboard, RNDateTimePicker, RNDeviceInfo, RNFBAnalytics, RNFBApp, RNFBMessaging, RNGestureHandler, RNNotifee, RNPurchases, RNReactNativeHapticFeedback, RNReanimated, RNSVG, RNWorklets, ReactNativeCameraKit, ReactNativeIncallManager, lottie-react-native, react-native-credentials-manager, react-native-keyboard-controller, react-native-mmkv, react-native-safe-area-context, react-native-skia, react-native-view-shot, react-native-webrtc, and rnmapbox-maps
+Using Expo modules
+[Expo] Enabling modular headers for pod ExpoModulesCore
+[Expo] Enabling modular headers for pod ReactCommon
+[Expo] Enabling modular headers for pod Mantis
+[Expo] Enabling modular headers for pod EXImageLoader
+[Expo] Enabling modular headers for pod SDWebImageWebPCoder
+Framework build type is static library
+[ReactNativeDependencies] Setting up ReactNativeDependencies...
+[ReactNativeDependencies] Building from source: true
+[ReactNativeDependencies] Source: 
+[ReactNativeCore] Setting up ReactNativeCore...
+[ReactNativeCore] Building from source: true
+[ReactNativeCore] Source: 
+Configuring the target with the New Architecture
+[36m[1m[Codegen][0m Analyzing /Volumes/SSD500/Ayush/igfrontend/package.json[0m
+[36m[1m[Codegen][0m [33mSearching for codegen-enabled libraries in the app.[0m
+[36m[1m[Codegen][0m [33mThe "codegenConfig" field is not defined in package.json. Assuming there is nothing to generate at the app level.[0m
+[36m[1m[Codegen][0m [33mSearching for codegen-enabled libraries in react-native.config.js[0m
+[36m[1m[Codegen][0m Found @hot-updater/react-native[0m
+[36m[1m[Codegen][0m Found @react-native-clipboard/clipboard[0m
+[36m[1m[Codegen][0m Found @react-native-community/datetimepicker[0m
+[36m[1m[Codegen][0m Found @rnmapbox/maps[0m
+[36m[1m[Codegen][0m Found @shopify/react-native-skia[0m
+[36m[1m[Codegen][0m Found lottie-react-native[0m
+[36m[1m[Codegen][0m Found react-native-bootsplash[0m
+[36m[1m[Codegen][0m Found react-native-camera-kit[0m
+[36m[1m[Codegen][0m Found react-native-credentials-manager[0m
+[36m[1m[Codegen][0m Found react-native-gesture-handler[0m
+[36m[1m[Codegen][0m Found react-native-haptic-feedback[0m
+[36m[1m[Codegen][0m Found react-native-keyboard-controller[0m
+[36m[1m[Codegen][0m Found react-native-mmkv[0m
+[36m[1m[Codegen][0m Found react-native-reanimated[0m
+[36m[1m[Codegen][0m Found react-native-safe-area-context[0m
+[36m[1m[Codegen][0m Found react-native-svg[0m
+[36m[1m[Codegen][0m Found react-native-view-shot[0m
+[36m[1m[Codegen][0m Found react-native-worklets[0m
+[36m[1m[Codegen][0m Processing HotUpdaterSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, tvos for HotUpdaterSpec[0m
+[36m[1m[Codegen][0m Processing rnclipboard[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for rnclipboard[0m
+[36m[1m[Codegen][0m Processing RNDateTimePickerCGen[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, visionos for RNDateTimePickerCGen[0m
+[36m[1m[Codegen][0m Processing rnmapbox_maps_specs[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for rnmapbox_maps_specs[0m
+[36m[1m[Codegen][0m Processing rnskia[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos for rnskia[0m
+[36m[1m[Codegen][0m Processing lottiereactnative[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for lottiereactnative[0m
+[36m[1m[Codegen][0m Processing RNBootSplashSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, tvos for RNBootSplashSpec[0m
+[36m[1m[Codegen][0m Processing NativeCameraKitSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for NativeCameraKitSpec[0m
+[36m[1m[Codegen][0m Processing RNCredentialsManagerSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for RNCredentialsManagerSpec[0m
+[36m[1m[Codegen][0m Processing rngesturehandler_codegen[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for rngesturehandler_codegen[0m
+[36m[1m[Codegen][0m Processing RNHapticFeedbackSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for RNHapticFeedbackSpec[0m
+[36m[1m[Codegen][0m Processing reactnativekeyboardcontroller[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for reactnativekeyboardcontroller[0m
+[36m[1m[Codegen][0m Processing RNMmkvSpec[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos for RNMmkvSpec[0m
+[36m[1m[Codegen][0m Processing rnreanimated[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for rnreanimated[0m
+[36m[1m[Codegen][0m Processing safeareacontext[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for safeareacontext[0m
+[36m[1m[Codegen][0m Processing rnsvg[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for rnsvg[0m
+[36m[1m[Codegen][0m Processing rnviewshot[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios for rnviewshot[0m
+[36m[1m[Codegen][0m Processing rnworklets[0m
+[36m[1m[Codegen][0m [33mSearching for podspec in the project dependencies.[0m
+[36m[1m[Codegen][0m Supported Apple platforms: ios, macos, tvos, visionos for rnworklets[0m
+[36m[1m[Codegen][0m Generating Native Code for HotUpdaterSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for rnclipboard - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for RNDateTimePickerCGen - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for rnmapbox_maps_specs - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for rnskia - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for lottiereactnative - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for RNBootSplashSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for NativeCameraKitSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for rngesturehandler_codegen - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for RNHapticFeedbackSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for reactnativekeyboardcontroller - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for RNMmkvSpec - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for rnreanimated - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for safeareacontext - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for rnsvg - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for rnviewshot - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating Native Code for rnworklets - ios[0m
+[36m[1m[Codegen][0m Generated artifacts: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios[0m
+[36m[1m[Codegen][0m Generating RCTThirdPartyComponentsProvider.h[0m
+[36m[1m[Codegen][0m Generated artifact: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios/RCTThirdPartyComponentsProvider.h[0m
+[36m[1m[Codegen][0m Generating RCTThirdPartyComponentsProvider.mm[0m
+[36m[1m[Codegen][0m Generated artifact: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios/RCTThirdPartyComponentsProvider.mm[0m
+[36m[1m[Codegen][0m Generating RCTModulesProvider.h[0m
+[36m[1m[Codegen][0m Generated artifact: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios/RCTModuleProviders.h[0m
+[36m[1m[Codegen][0m Generating RCTModuleProviders.mm[0m
+[36m[1m[Codegen][0m Generated artifact: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios/RCTModuleProviders.mm[0m
+[36m[1m[Codegen][0m Generating RCTAppDependencyProvider[0m
+[36m[1m[Codegen][0m Generated artifact: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios/RCTAppDependencyProvider.h[0m
+[36m[1m[Codegen][0m Generated artifact: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios/RCTAppDependencyProvider.mm[0m
+[36m[1m[Codegen][0m Generated podspec: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios/ReactAppDependencyProvider.podspec[0m
+[36m[1m[Codegen][0m Generated podspec: /Volumes/SSD500/Ayush/igfrontend/ios/build/generated/ios/ReactCodegen.podspec[0m
+[36m[1m[Codegen][0m [33mDone.[0m
+Analyzing dependencies
+RNFBAnalytics: Using FirebaseAnalytics/IdentitySupport with Ad Ids. May require App Tracking Transparency. Not allowed for Kids apps.
+RNFBAnalytics: You may set variable `$RNFirebaseAnalyticsWithoutAdIdSupport=true` in Podfile to use analytics without ad ids.
+[Lottie React Native] Using install_modules_dependencies
+[react-native-mmkv] Thank you for using react-native-mmkv ❤️
+[react-native-mmkv] If you enjoy using react-native-mmkv, please consider sponsoring this project: https://github.com/sponsors/mrousavy
+-- SK_GRAPHITE: OFF (detected via libs/.graphite marker file)
+Downloading dependencies
+Installing MapboxCommon (24.23.1)
+Installing MapboxCoreMaps (11.23.1)
+Installing MapboxMaps (11.23.1)
+Installing Turf (4.0.0)
+Installing rnmapbox-maps (10.3.10)
+* [RNMapbox] Changed MapboxCommon to dynamic framework
+* [RNMapbox] Changed MapboxCoreMaps to dynamic framework
+* [RNMapbox] Changed MapboxMaps to dynamic framework
+* [RNMapbox] Changed Turf to dynamic framework
+Generating Pods project
+Setting USE_HERMES build settings
+Setting REACT_NATIVE_PATH build settings
+Setting SWIFT_ACTIVE_COMPILATION_CONDITIONS build settings
+[Ccache]: Removing Ccache from CC, LD, CXX & LDPLUSPLUS build settings
+[SPM] Cleaning old SPM dependencies from Pods project
+[SPM] Adding SPM dependencies to Pods project
+[Privacy Manifest Aggregation] Appending aggregated reasons to existing PrivacyInfo.xcprivacy file.
+[Privacy Manifest Aggregation] Reading .xcprivacy files to aggregate all used Required Reason APIs.
+Setting CLANG_CXX_LANGUAGE_STANDARD to c++20 on /Volumes/SSD500/Ayush/igfrontend/ios/frontend.xcodeproj
+
+==================== DEPRECATION NOTICE =====================
+Calling `pod install` directly is deprecated in React Native
+because we are moving away from Cocoapods toward alternative
+solutions to build the project.
+* If you are using Expo, please run:
+`npx expo run:ios`
+* If you are using the Community CLI, please run:
+`yarn ios`
+=============================================================
+
+Pod install took 70 [s] to run
+Integrating client project
+Pod installation complete! There are 126 dependencies from the Podfile and 150 total pods installed.
+[Expo] Adding '[Expo Autolinking] Run Codegen with autolinking' build phase to ReactCodegen
+
+[!] Found multiple entitlement files in the build configurations of the target 'frontend' and using the first matched '/Volumes/SSD500/Ayush/igfrontend/ios/frontend/frontendRelease.entitlements' for build
+== EXIT 0 ==
