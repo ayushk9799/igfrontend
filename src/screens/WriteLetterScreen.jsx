@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Keyboard,
@@ -16,6 +16,7 @@ import { Send, X } from 'lucide-react-native';
 import BirdPickerSheet from '../components/letters/BirdPickerSheet';
 import LetterPaper, { getLetterPaper, getLetterTextSize } from '../components/letters/LetterPaper';
 import LetterStyleControls from '../components/letters/LetterStyleControls';
+import LetterSendAnimation from '../components/letters/LetterSendAnimation';
 import { sendLetter } from '../api/lettersApi';
 import { fontFamily } from '../constants/fonts';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
@@ -56,12 +57,22 @@ const WriteLetterScreen = ({
     const [body, setBody] = useState('');
     const [birdId, setBirdId] = useState('pigeon');
     const [sending, setSending] = useState(false);
+    const [preparingLetter, setPreparingLetter] = useState(false);
+    const [pickerHeight, setPickerHeight] = useState(0);
+    const preparingInFlight = useRef(false);
+    const sendInFlight = useRef(false);
+    const mounted = useRef(true);
     // null while writing, 'birds' to pick a carrier, 'premium' for the upsell.
     const [sheetMode, setSheetMode] = useState(null);
     const [sizeId, setSizeId] = useState(() => getLetterTextSize(readSetting(TEXT_SIZE_KEY)).id);
     const [paperId, setPaperId] = useState(() => getLetterPaper(readSetting(PAPER_KEY)).id);
     const [controlsHeight, setControlsHeight] = useState(0);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+    useEffect(() => {
+        mounted.current = true;
+        return () => { mounted.current = false; };
+    }, []);
 
     useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -78,26 +89,33 @@ const WriteLetterScreen = ({
     const paper = getLetterPaper(paperId);
 
     const trimmed = body.trim();
-    const canContinue = trimmed.length > 0 && !sending;
+    const busy = sending || preparingLetter;
+    const canContinue = trimmed.length > 0 && !busy;
 
     const submit = useCallback(async (chosenBirdId) => {
-        if (!trimmed || sending) return;
+        if (!trimmed || sendInFlight.current || preparingInFlight.current) return;
+        sendInFlight.current = true;
+        Keyboard.dismiss();
         setSending(true);
         try {
             const data = await sendLetter({ body: trimmed, bird: chosenBirdId });
             trackEvent('letter_sent', { bird: chosenBirdId, length: trimmed.length });
+            if (!mounted.current) return;
             setSheetMode(null);
+            setPreparingLetter(false);
             onSent?.(data?.letter);
         } catch (error) {
+            if (!mounted.current) return;
             if (error.code === 'premium_required') {
                 setSheetMode('premium');
             } else {
                 Alert.alert(translateUiText('Letter not sent'), error.message || translateUiText('Please try again.'));
             }
         } finally {
-            setSending(false);
+            sendInFlight.current = false;
+            if (mounted.current) setSending(false);
         }
-    }, [trimmed, sending, onSent]);
+    }, [trimmed, onSent]);
 
     const changeSize = (nextSizeId) => {
         setSizeId(nextSizeId);
@@ -120,10 +138,24 @@ const WriteLetterScreen = ({
         />
     );
 
-    const openBirdPicker = () => {
+    const prepareLetter = () => {
+        if (!trimmed || preparingLetter || preparingInFlight.current || sendInFlight.current) return;
+        preparingInFlight.current = true;
         Keyboard.dismiss();
+        setPreparingLetter(true);
+    };
+
+    const openBirdPicker = useCallback(() => {
+        if (!preparingInFlight.current || !mounted.current) return;
+        preparingInFlight.current = false;
         trackEvent('letter_bird_picker_open', { length: trimmed.length });
         setSheetMode('birds');
+    }, [trimmed]);
+
+    const closeBirdPicker = () => {
+        if (sendInFlight.current) return;
+        setSheetMode(null);
+        setPreparingLetter(false);
     };
 
     const handleSend = (chosenBirdId) => {
@@ -138,10 +170,11 @@ const WriteLetterScreen = ({
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
-            <View style={styles.header}>
+            <View style={styles.header} accessibilityElementsHidden={busy} importantForAccessibility={busy ? 'no-hide-descendants' : 'auto'}>
                 <TouchableOpacity
                     style={styles.iconButton}
                     onPress={onClose}
+                    disabled={busy}
                     accessibilityRole="button"
                     accessibilityLabel={translateUiText('Close')}
                 >
@@ -153,7 +186,7 @@ const WriteLetterScreen = ({
                 </View>
                 <TouchableOpacity
                     style={[styles.send, !canContinue && styles.sendDisabled]}
-                    onPress={openBirdPicker}
+                    onPress={prepareLetter}
                     disabled={!canContinue}
                     activeOpacity={0.85}
                     accessibilityRole="button"
@@ -166,6 +199,8 @@ const WriteLetterScreen = ({
             </View>
 
             <ScrollContainer
+                accessibilityElementsHidden={busy}
+                importantForAccessibility={busy ? 'no-hide-descendants' : 'auto'}
                 contentContainerStyle={[
                     styles.content,
                     { paddingBottom: (keyboardVisible ? controlsHeight : insets.bottom) + 24 },
@@ -178,6 +213,8 @@ const WriteLetterScreen = ({
                         value={body}
                         onChangeText={setBody}
                         multiline
+                        editable={!busy}
+                        caretHidden={busy}
                         maxLength={LETTER_BODY_MAX_LENGTH}
                         placeholder={translateUiTemplate('Dear {{0}},', [partnerName])}
                         placeholderTextColor="#9C8FAD"
@@ -203,9 +240,9 @@ const WriteLetterScreen = ({
             <KeyboardStickyView
                 style={[styles.floatingControls, !keyboardVisible && styles.floatingControlsHidden]}
                 offset={{ opened: -FLOATING_GAP }}
-                pointerEvents={keyboardVisible ? 'box-none' : 'none'}
-                accessibilityElementsHidden={!keyboardVisible}
-                importantForAccessibility={keyboardVisible ? 'auto' : 'no-hide-descendants'}
+                pointerEvents={keyboardVisible && !busy ? 'box-none' : 'none'}
+                accessibilityElementsHidden={!keyboardVisible || busy}
+                importantForAccessibility={keyboardVisible && !busy ? 'auto' : 'no-hide-descendants'}
                 onLayout={(event) => setControlsHeight(event.nativeEvent.layout.height + FLOATING_GAP)}
             >
                 <LetterStyleControls
@@ -223,11 +260,13 @@ const WriteLetterScreen = ({
                 partnerName={partnerName}
                 hasPremiumAccess={hasPremiumAccess}
                 sending={sending}
-                onClose={() => setSheetMode(null)}
+                onClose={closeBirdPicker}
+                onHeightChange={setPickerHeight}
                 onSelectBird={setBirdId}
                 onSend={handleSend}
                 onUpgrade={() => {
                     setSheetMode(null);
+                    setPreparingLetter(false);
                     onPremiumPress?.('letters_bird');
                 }}
                 onUseFreeBird={() => {
@@ -236,6 +275,16 @@ const WriteLetterScreen = ({
                     submit('pigeon');
                 }}
             />
+            {preparingLetter ? (
+                <LetterSendAnimation
+                    body={trimmed}
+                    paperId={paper.id}
+                    sizeId={textSize.id}
+                    choosingBird={sheetMode !== null}
+                    pickerHeight={pickerHeight}
+                    onComplete={openBirdPicker}
+                />
+            ) : null}
         </View>
     );
 };

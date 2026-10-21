@@ -20,6 +20,7 @@ const BirdPickerSheet = ({
     hasPremiumAccess,
     sending,
     onClose,
+    onHeightChange,
     onSelectBird,
     onSend,
     onUpgrade,
@@ -46,7 +47,7 @@ const BirdPickerSheet = ({
     }, [showingBirds]);
 
     return (
-        <LettersSheet visible={visible} onClose={sending ? undefined : onClose}>
+        <LettersSheet visible={visible} onClose={sending ? undefined : onClose} onHeightChange={onHeightChange} dimBackdrop={false}>
             {mode === 'premium' ? (
                 <PremiumBirdContent onUpgrade={onUpgrade} onUseFreeBird={onUseFreeBird} />
             ) : (
