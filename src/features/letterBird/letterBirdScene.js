@@ -3,6 +3,9 @@
 // Everything here is renderer-agnostic: build the scene once, then call update(t) every frame.
 import * as THREE from 'three';
 import { BIRD_RIG } from './birdRig';
+import { BIRD_RIG_V2 } from './birdRigV2';
+import { BIRD_RIG_V3 } from './birdRigV3';
+import { attachFaceRig } from './birdFace';
 
 // ------------------------------------------------------------ math helpers
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -70,8 +73,8 @@ function walking(t) {
 }
 
 // wing poses (values for the +x wing; the other mirrors)
-const FOLD = { flap: -1.25, sweep: 0.55, twist: 0, tipFlap: -0.25, tipFold: 0.95 };
-function flapPose(ph) {
+export const FOLD = { flap: -1.25, sweep: 0.55, twist: 0, tipFlap: -0.25, tipFold: 0.95 };
+export function flapPose(ph) {
     const a = TAU * ph, s = Math.sin(a), up = Math.max(0, -s);
     return {
         flap: 0.2 + 0.88 * Math.cos(a),
@@ -81,17 +84,41 @@ function flapPose(ph) {
         tipFold: 0.8 * Math.pow(up, 0.8),
     };
 }
-const GLIDE = { flap: 0.14, sweep: 0.05, twist: -0.06, tipFlap: 0.06, tipFold: 0 };
-const FLARE = { flap: 0.85, sweep: -0.18, twist: 0.45, tipFlap: 0.25, tipFold: 0 };
-const FLICK = { flap: -0.55, sweep: 0.3, twist: 0, tipFlap: -0.1, tipFold: 0.45 };
+export const GLIDE = { flap: 0.14, sweep: 0.05, twist: -0.06, tipFlap: 0.06, tipFold: 0 };
+export const FLARE = { flap: 0.85, sweep: -0.18, twist: 0.45, tipFlap: 0.25, tipFold: 0 };
+export const FLICK = { flap: -0.55, sweep: 0.3, twist: 0, tipFlap: -0.1, tipFold: 0.45 };
 const KEYS = ['flap', 'sweep', 'twist', 'tipFlap', 'tipFold'];
-const mixPose = (a, b, u) => { const o = {}; KEYS.forEach((k) => { o[k] = lerp(a[k], b[k], u); }); return o; };
+export const mixPose = (a, b, u) => { const o = {}; KEYS.forEach((k) => { o[k] = lerp(a[k], b[k], u); }); return o; };
 
 function flapPhase(t) {
     const parts = [[T.launch, T.climb[1], 4.4], [T.climb[1], T.away[1], 3.4], [T.back[0], T.end, 3.8]];
     let ph = 0;
     for (const [a, b, f] of parts) { if (t > a) ph += (Math.min(t, b) - a) * f; }
     return ph;
+}
+
+// ------------------------------------------------------------ face (rig v2: eyelids + jaw)
+const blinkAt = (t, at, len = 0.16) => bump(t, at, at + len);
+function faceAt(t) {
+    const surprised = bump(t, T.notice[0] - 0.05, T.notice[1] + 0.25);
+    const happy = T.happy.reduce((m, [a, c]) => Math.max(m, bump(t, a - 0.05, c + 0.05)), 0);
+    const proudSquint = smooth(seg(t, T.rise[0], T.rise[1])) * (1 - smooth(seg(t, T.happy[0][0] - 0.1, T.happy[0][0])));
+    const glideSquint = bump(t, T.glide[0] - 0.2, T.glide[1] + 0.2);
+    const blink = Math.max(
+        blinkAt(t, 0.95), blinkAt(t, 2.32), blinkAt(t, 2.52),      // a double take after noticing
+        blinkAt(t, 3.42), blinkAt(t, 5.45), blinkAt(t, 7.1),
+        blinkAt(t, 10.3), blinkAt(t, 12.15),
+        0.95 * happy,                                             // happy ^^ eyes on the hops
+        0.3 * proudSquint, 0.4 * glideSquint,
+        0,
+    ) * (1 - 0.9 * surprised);                                   // eyes wide when it spots the letter
+    const jaw = Math.max(
+        0.65 * surprised,                                         // "oh!"
+        0.8 * happy,                                              // chirps while hopping
+        0.6 * (bump(t, 6.5, 6.66) + bump(t, 6.74, 6.9)),          // a call in flight
+        0.5 * bump(t, T.back[1] + 0.05, T.back[1] + 0.3),         // landing chirp
+    );
+    return { blink, jaw };
 }
 
 // ------------------------------------------------------------ textures built in code (no canvas in RN)
@@ -142,8 +169,8 @@ function pixelTexture({ pixels, width, height }, srgb) {
 }
 
 // ------------------------------------------------------------ the rigged bird from bird.bin
-function buildBird(buffer, textures) {
-    const L = BIRD_RIG.layout;
+export function buildBird(buffer, textures, rig = BIRD_RIG) {
+    const L = rig.layout;
     const f32 = (k) => new Float32Array(buffer, L[k][0], L[k][1]);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(f32('position'), 3));
@@ -166,13 +193,13 @@ function buildBird(buffer, textures) {
         side: THREE.DoubleSide,
     });
 
-    const bones = BIRD_RIG.bones.map((b) => {
+    const bones = rig.bones.map((b) => {
         const bone = new THREE.Bone();
         bone.name = b.name;
         bone.position.fromArray(b.t);
         return bone;
     });
-    BIRD_RIG.bones.forEach((b, i) => { if (b.parent >= 0) bones[b.parent].add(bones[i]); });
+    rig.bones.forEach((b, i) => { if (b.parent >= 0) bones[b.parent].add(bones[i]); });
     const inv = f32('inverseBind');
     const inverses = bones.map((_, i) => new THREE.Matrix4().fromArray(inv, i * 16));
 
@@ -236,7 +263,12 @@ export function createLetterBirdScene(assets) {
     // the bird
     const MODEL_SCALE = 1.3;
     const BEAK_TIP = new THREE.Vector3(0, -0.03, 0.22);
-    const built = buildBird(assets.birdBuffer, assets.textures);
+    // Best bird available: v3 (new model), v2 (old model, fixed face), or the original rig.
+    const rigV2 = assets.v3 ? BIRD_RIG_V3 : assets.birdBufferV2 ? BIRD_RIG_V2 : null;
+    const built = assets.v3
+        ? buildBird(assets.v3.birdBuffer, assets.v3.textures, BIRD_RIG_V3)
+        : buildBird(rigV2 ? assets.birdBufferV2 : assets.birdBuffer, assets.textures, rigV2 || undefined);
+    const anatomy = (rigV2 && rigV2.meta) || {};
     built.disposables.forEach(track);
     const holder = group(scene);
     const bankG = group(holder);
@@ -245,9 +277,16 @@ export function createLetterBirdScene(assets) {
     model.scale.setScalar(MODEL_SCALE);
     model.position.x = -0.08 * MODEL_SCALE;
     bankG.add(model);
+    const setFace = attachFaceRig(model, built, rigV2, track);
     const bones = {};
     built.bones.forEach((o) => { bones[o.name] = o; o.rotation.order = 'YZX'; });
-    const beakTip = new THREE.Object3D(); beakTip.position.copy(BEAK_TIP); bones.head.add(beakTip);
+    const beakTip = new THREE.Object3D(); bones.head.add(beakTip);
+    if (anatomy.beakTip) {
+        // beak tip relative to the head bone (bind pose is pure translations)
+        let hb = bones.head; const hp = new THREE.Vector3();
+        while (hb && hb.isBone) { hp.add(hb.position); hb = hb.parent; }
+        beakTip.position.set(anatomy.beakTip[0] - hp.x, anatomy.beakTip[1] - hp.y, anatomy.beakTip[2] - hp.z);
+    } else beakTip.position.copy(BEAK_TIP);
     const rest = {}; for (const n in bones) rest[n] = bones[n].position.clone();
     const bird = { root: holder, bank: bankG, bones, rest, beakTip };
 
@@ -335,8 +374,8 @@ export function createLetterBirdScene(assets) {
     }
 
     // ------------------------------------------------------------ legs: two-bone IK
-    const FOOT_LAT = 0.057 * MODEL_SCALE;
-    const FOOT_Y = 0.035 * MODEL_SCALE;
+    const FOOT_LAT = (anatomy.footLat || 0.057) * MODEL_SCALE;
+    const FOOT_Y = (anatomy.footY || 0.035) * MODEL_SCALE;
     const vT = new THREE.Vector3(), vH = new THREE.Vector3();
     function legIK(B, side, target, toe) {
         const thigh = B['thigh_' + side], shin = B['shin_' + side], foot = B['foot_' + side];
@@ -513,6 +552,7 @@ export function createLetterBirdScene(assets) {
         B.wingtip_L.rotation.set(0, wing.tipFold, wing.tipFlap);
         B.wing_R.rotation.set(wing.twist, -wing.sweep, -wing.flap);
         B.wingtip_R.rotation.set(0, -wing.tipFold, -wing.tipFlap);
+        setFace(faceAt(t));
         b.root.updateMatrixWorld(true);
 
         // feet: walking gait or planted, solved with IK, blended into the flight tuck

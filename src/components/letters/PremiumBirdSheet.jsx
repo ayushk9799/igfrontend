@@ -12,8 +12,9 @@ const PERKS = [
     { key: 'couple', Icon: Heart, color: '#B0274F', background: '#FFE4EA', label: 'One plan covers you both' },
 ];
 
-const PremiumBirdSheet = ({ visible, onClose, onUpgrade, onUseFreeBird }) => (
-    <LettersSheet visible={visible} onClose={onClose}>
+// The upsell body alone, so another sheet can switch to it without stacking modals.
+export const PremiumBirdContent = ({ onUpgrade, onUseFreeBird }) => (
+    <>
         <View style={styles.hero}>
             <BirdArt bird="swallow" size={124} />
             <BirdArt bird="falcon" size={134} />
@@ -40,6 +41,12 @@ const PremiumBirdSheet = ({ visible, onClose, onUpgrade, onUseFreeBird }) => (
                 <Text style={styles.secondaryText}>{translateUiText('Send with Pigeon instead')}</Text>
             </TouchableOpacity>
         </View>
+    </>
+);
+
+const PremiumBirdSheet = ({ visible, onClose, onUpgrade, onUseFreeBird }) => (
+    <LettersSheet visible={visible} onClose={onClose}>
+        <PremiumBirdContent onUpgrade={onUpgrade} onUseFreeBird={onUseFreeBird} />
     </LettersSheet>
 );
 

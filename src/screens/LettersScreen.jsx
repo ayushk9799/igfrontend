@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LocateFixed, Moon, PenLine, Sun } from 'lucide-react-native';
-import BirdArt from '../components/letters/BirdArt';
+import { ChevronRight, LocateFixed, Moon, PenLine, Sun } from 'lucide-react-native';
 import LetterRow from '../components/letters/LetterRow';
 import LettersIntroSheet from '../components/letters/LettersIntroSheet';
 import LettersMap from '../components/letters/LettersMap';
@@ -237,7 +236,7 @@ const LettersScreen = ({
                     nowMs={nowMs}
                     partnerName={partnerName}
                     topInset={insets.top}
-                    bottomInset={collapsedPanelHeight}
+                    bottomInset={hasPartner ? collapsedPanelHeight : tabBarSpace + 88}
                     isDark={isMapDark}
                     showPartner={hasPartner}
                     showUserLocation={locationEnabled}
@@ -290,17 +289,6 @@ const LettersScreen = ({
                 </TouchableOpacity>
             </View>
 
-            {!hasPartner ? (
-                <View style={[styles.centerCard, { top: height * 0.28 }]}>
-                    <BirdArt bird="penguin" size={110} sleeping />
-                    <Text style={styles.centerTitle}>{translateUiText('Letters need two')}</Text>
-                    <Text style={styles.centerBody}>{translateUiText('Connect with your partner to start sending letters by bird.')}</Text>
-                    <TouchableOpacity style={styles.centerButton} onPress={onLinkPartner} activeOpacity={0.85} accessibilityRole="button">
-                        <Text style={styles.centerButtonText}>{translateUiText('Connect partner')}</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : null}
-
             {hasPartner ? (
                 <TouchableOpacity
                     style={[styles.fab, { bottom: collapsedPanelHeight + 16 }]}
@@ -313,22 +301,47 @@ const LettersScreen = ({
                 </TouchableOpacity>
             ) : null}
 
-            <TouchableOpacity
-                testID="letters-current-location-button"
+            <View
+                pointerEvents="box-none"
                 style={[
-                    styles.locationButton,
-                    isMapDark && styles.mapThemeButtonDark,
-                    { bottom: (hasPartner ? collapsedPanelHeight : tabBarSpace) + (hasPartner ? 88 : 16) },
+                    styles.locationDock,
+                    !hasPartner && styles.unpairedLocationDock,
+                    { bottom: hasPartner ? collapsedPanelHeight + 88 : tabBarSpace + 16 },
                 ]}
-                onPress={locateMe}
-                disabled={locating}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={translateUiText('Center on my location')}
-                accessibilityState={{ disabled: locating, busy: locating }}
             >
-                {locating ? <ActivityIndicator color="#4D94F5" /> : <LocateFixed size={23} color={locationEnabled ? '#4D94F5' : isMapDark ? '#F7F2FC' : '#4B3D5C'} strokeWidth={2} />}
-            </TouchableOpacity>
+                {!hasPartner ? (
+                    <TouchableOpacity
+                        style={[styles.connectPartnerCard, isMapDark && styles.mapThemeButtonDark]}
+                        onPress={onLinkPartner}
+                        activeOpacity={0.9}
+                        accessibilityRole="button"
+                        accessibilityLabel={translateUiText('Connect partner')}
+                        accessibilityHint={translateUiText('Connect with your partner to start sending letters by bird.')}
+                    >
+                        <View style={styles.connectPartnerCopy}>
+                            <Text style={[styles.connectPartnerTitle, isMapDark && styles.connectPartnerTitleDark]} numberOfLines={1}>
+                                {translateUiText('Letters need two')}
+                            </Text>
+                            <Text style={[styles.connectPartnerAction, isMapDark && styles.connectPartnerActionDark]}>
+                                {translateUiText('Connect partner')}
+                            </Text>
+                        </View>
+                        <ChevronRight size={20} color={isMapDark ? '#FF91B3' : '#D23F66'} strokeWidth={2} />
+                    </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity
+                    testID="letters-current-location-button"
+                    style={[styles.locationButton, isMapDark && styles.mapThemeButtonDark]}
+                    onPress={locateMe}
+                    disabled={locating}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={translateUiText('Center on my location')}
+                    accessibilityState={{ disabled: locating, busy: locating }}
+                >
+                    {locating ? <ActivityIndicator color="#4D94F5" /> : <LocateFixed size={23} color={locationEnabled ? '#4D94F5' : isMapDark ? '#F7F2FC' : '#4B3D5C'} strokeWidth={2} />}
+                </TouchableOpacity>
+            </View>
 
             {hasPartner ? (
                 <BottomSheet
@@ -420,11 +433,20 @@ const styles = StyleSheet.create({
     mapThemeButtonDark: {
         backgroundColor: '#30283F',
     },
-    locationButton: {
+    locationDock: {
         position: 'absolute',
         right: 16,
+    },
+    unpairedLocationDock: {
+        left: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    locationButton: {
         width: 48,
         height: 48,
+        flexShrink: 0,
         borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
@@ -435,50 +457,42 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 6,
     },
-    centerCard: {
-        position: 'absolute',
-        left: 32,
-        right: 32,
-        alignItems: 'center',
-        gap: 10,
-        paddingTop: 20,
-        paddingBottom: 22,
-        paddingHorizontal: 22,
-        borderRadius: 28,
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#2E1E3C',
-        shadowOffset: { width: 0, height: 14 },
-        shadowOpacity: 0.14,
-        shadowRadius: 24,
-        elevation: 6,
-    },
-    centerTitle: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 21,
-        color: '#2E1E3C',
-        textAlign: 'center',
-    },
-    centerBody: {
-        fontFamily: fontFamily.bold,
-        fontSize: 14,
-        lineHeight: 20,
-        color: '#5A4C6B',
-        textAlign: 'center',
-    },
-    centerButton: {
-        marginTop: 6,
-        height: 52,
-        paddingHorizontal: 24,
-        borderRadius: 26,
-        backgroundColor: '#D23F66',
+    connectPartnerCard: {
+        flex: 1,
+        minHeight: 72,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 22,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#2E1E3C',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.14,
+        shadowRadius: 10,
+        elevation: 6,
     },
-    centerButtonText: {
+    connectPartnerCopy: {
+        flex: 1,
+        minWidth: 0,
+        gap: 3,
+    },
+    connectPartnerTitle: {
         fontFamily: fontFamily.extraBold,
-        fontSize: 16,
-        color: '#FFFFFF',
+        fontSize: 14,
+        color: '#2E1E3C',
+    },
+    connectPartnerTitleDark: {
+        color: '#F7F2FC',
+    },
+    connectPartnerAction: {
+        fontFamily: fontFamily.bold,
+        fontSize: 13,
+        color: '#D23F66',
+    },
+    connectPartnerActionDark: {
+        color: '#FF91B3',
     },
     fab: {
         position: 'absolute',
