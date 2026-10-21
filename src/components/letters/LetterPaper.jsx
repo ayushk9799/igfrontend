@@ -10,6 +10,7 @@ export const LETTER_TEXT_SIZES = [
 ];
 
 // `pattern` is what's printed on the sheet: lined or plain.
+// `texture` scales the grain: extra specks, paper fibres and soft mottling.
 export const LETTER_PAPERS = [
     {
         id: 'cream',
@@ -31,6 +32,9 @@ export const LETTER_PAPERS = [
         edge: '#DDD8CF',
         shadow: '#3A3348',
         speck: '#8C8578',
+        fiber: '#9A938A',
+        mottle: '#E2DACB',
+        texture: { specks: 2.4, fibers: 1, mottle: 1 },
         rule: '#C5D3E2',
         margin: '#EBA5A5',
         ink: '#1F2B4D',
@@ -43,6 +47,9 @@ export const LETTER_PAPERS = [
         edge: '#EBBCC8',
         shadow: '#7A2440',
         speck: '#B0607A',
+        fiber: '#C47A92',
+        mottle: '#F0BFCC',
+        texture: { specks: 2.2, fibers: 1, mottle: 1 },
         rule: '#EFC3CF',
         margin: '#D9829B',
         ink: '#5B2A4E',
@@ -108,9 +115,11 @@ export const buildDeckledPath = (width, height, seed = 7) => {
     return `M${points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}Z`;
 };
 
-const buildSpecks = (width, height, seed = 11) => {
+const DEFAULT_TEXTURE = { specks: 1, fibers: 0, mottle: 0 };
+
+const buildSpecks = (width, height, density = 1, seed = 11) => {
     const rand = seededRandom(seed);
-    const count = Math.round((width * height) / 2600);
+    const count = Math.round(((width * height) / 2600) * density);
     return Array.from({ length: count }, (_, index) => ({
         key: index,
         cx: EDGE_INSET + rand() * (width - EDGE_INSET * 2),
@@ -120,9 +129,46 @@ const buildSpecks = (width, height, seed = 11) => {
     }));
 };
 
+// Short curved hairs, like the pulp fibres you see when you hold paper to the light.
+const buildFibers = (width, height, density = 0, seed = 23) => {
+    const rand = seededRandom(seed);
+    const count = Math.round(((width * height) / 1500) * density);
+    return Array.from({ length: count }, (_, index) => {
+        const x = EDGE_INSET + 4 + rand() * (width - EDGE_INSET * 2 - 8);
+        const y = EDGE_INSET + 4 + rand() * (height - EDGE_INSET * 2 - 8);
+        const angle = rand() * Math.PI;
+        const length = 5 + rand() * 12;
+        const bend = (rand() - 0.5) * 6;
+        const endX = x + Math.cos(angle) * length;
+        const endY = y + Math.sin(angle) * length;
+        const midX = (x + endX) / 2 - Math.sin(angle) * bend;
+        const midY = (y + endY) / 2 + Math.cos(angle) * bend;
+        return {
+            key: index,
+            d: `M${x.toFixed(1)},${y.toFixed(1)}Q${midX.toFixed(1)},${midY.toFixed(1)} ${endX.toFixed(1)},${endY.toFixed(1)}`,
+            strokeWidth: 0.4 + rand() * 0.5,
+            opacity: 0.1 + rand() * 0.14,
+        };
+    });
+};
+
+// Large faint blotches so the sheet isn't one flat tone.
+const buildMottle = (width, height, density = 0, seed = 31) => {
+    const rand = seededRandom(seed);
+    const count = Math.round(((width * height) / 7000) * density);
+    return Array.from({ length: count }, (_, index) => ({
+        key: index,
+        cx: EDGE_INSET + rand() * (width - EDGE_INSET * 2),
+        cy: EDGE_INSET + rand() * (height - EDGE_INSET * 2),
+        r: 14 + rand() * 38,
+        opacity: 0.35 + rand() * 0.45,
+    }));
+};
+
 const LetterPaper = ({ children, style, paperId, lineHeight = getLetterTextSize().lineHeight }) => {
     const [size, setSize] = useState(null);
     const paper = getLetterPaper(paperId);
+    const texture = paper.texture || DEFAULT_TEXTURE;
 
     const art = useMemo(() => {
         if (!size) return null;
@@ -134,10 +180,12 @@ const LetterPaper = ({ children, style, paperId, lineHeight = getLetterTextSize(
         ));
         return {
             outline: buildDeckledPath(width, height),
-            specks: buildSpecks(width, height),
+            specks: buildSpecks(width, height, texture.specks),
+            fibers: buildFibers(width, height, texture.fibers),
+            mottle: buildMottle(width, height, texture.mottle),
             rules,
         };
-    }, [size, lineHeight, paper.pattern]);
+    }, [size, lineHeight, paper.pattern, texture]);
 
     const handleLayout = ({ nativeEvent }) => {
         const { width, height } = nativeEvent.layout;
@@ -158,10 +206,20 @@ const LetterPaper = ({ children, style, paperId, lineHeight = getLetterTextSize(
                             <Stop offset="0.7" stopColor={paper.stops[1]} />
                             <Stop offset="1" stopColor={paper.stops[2]} />
                         </RadialGradient>
+                        <RadialGradient id="letterPaperMottle" cx="0.5" cy="0.5" r="0.5">
+                            <Stop offset="0" stopColor={paper.mottle || paper.stops[2]} stopOpacity={0.55} />
+                            <Stop offset="1" stopColor={paper.mottle || paper.stops[2]} stopOpacity={0} />
+                        </RadialGradient>
                     </Defs>
                     <Path d={art.outline} fill={paper.shadow} opacity={0.08} translateY={4} />
                     <Path d={art.outline} fill={paper.shadow} opacity={0.1} translateY={1.5} />
                     <Path d={art.outline} fill="url(#letterPaperFill)" stroke={paper.edge} strokeWidth={1} strokeOpacity={0.7} />
+                    {art.mottle.map(({ key, ...blot }) => (
+                        <Circle key={key} {...blot} fill="url(#letterPaperMottle)" />
+                    ))}
+                    {art.fibers.map(({ key, ...fiber }) => (
+                        <Path key={key} {...fiber} fill="none" stroke={paper.fiber} strokeLinecap="round" />
+                    ))}
                     {art.specks.map(({ key, ...speck }) => (
                         <Circle key={key} {...speck} fill={paper.speck} />
                     ))}

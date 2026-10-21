@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     },
     input: {
         // Same blank-sheet height for every text size; smaller text just gets more rules.
-        minHeight: 288,
+        minHeight: 420,
         fontFamily: fontFamily.handwriting,
         padding: 0,
         paddingTop: 0,
