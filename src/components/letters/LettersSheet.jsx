@@ -3,19 +3,22 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { translateUiText } from '../../i18n/uiTranslation';
 
-// A plain bottom sheet over a dimmed backdrop, shared by the Letters sheets.
-const LettersSheet = ({ visible, onClose, children }) => {
+// Shared sheet with optional dimming behind its content.
+const LettersSheet = ({ visible, onClose, onHeightChange, dimBackdrop = true, children }) => {
     const insets = useSafeAreaInsets();
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
             <View style={styles.root}>
                 <Pressable
-                    style={styles.backdrop}
+                    style={[styles.backdrop, dimBackdrop && styles.dimBackdrop]}
                     onPress={onClose}
                     accessibilityRole="button"
                     accessibilityLabel={translateUiText('Close')}
                 />
-                <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+                <View
+                    style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+                    onLayout={onHeightChange ? event => onHeightChange(event.nativeEvent.layout.height) : undefined}
+                >
                     <View style={styles.handle} />
                     {children}
                 </View>
@@ -31,6 +34,8 @@ const styles = StyleSheet.create({
     },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
+    },
+    dimBackdrop: {
         backgroundColor: 'rgba(46,30,60,0.45)',
     },
     sheet: {

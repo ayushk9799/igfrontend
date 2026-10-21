@@ -11,22 +11,24 @@ import {
     View,
     useWindowDimensions,
 } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
+import { useSharedValue } from 'react-native-reanimated';
 import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Send, X } from 'lucide-react-native';
 import BirdPickerSheet from '../components/letters/BirdPickerSheet';
-import LetterSendAnimation, { getRolledScroll } from '../components/letters/LetterSendAnimation';
+import LetterPaper, { getLetterPaper, getLetterTextSize } from '../components/letters/LetterPaper';
+import LetterStyleControls from '../components/letters/LetterStyleControls';
+import LetterSendAnimation from '../components/letters/LetterSendAnimation';
 import LetterBirdCanvas from '../features/letterBird/LetterBirdCanvas';
 import {
+    BIRD_SIZE,
     PERCH_RIGHT,
     PERCH_SINK,
     PERCH_W,
     flightPose,
     perchedPose,
 } from '../features/letterBird/birdChoreography';
-import LetterPaper, { getLetterPaper, getLetterTextSize } from '../components/letters/LetterPaper';
-import LetterStyleControls from '../components/letters/LetterStyleControls';
+import useReducedMotion from '../hooks/useReducedMotion';
 import { sendLetter } from '../api/lettersApi';
 import { fontFamily } from '../constants/fonts';
 import { translateUiTemplate, translateUiText } from '../i18n/uiTranslation';
@@ -39,8 +41,14 @@ const ScrollContainer = KeyboardAwareScrollView || ScrollView;
 const FLOATING_GAP = 8;
 const TEXT_SIZE_KEY = 'letters_text_size';
 const PAPER_KEY = 'letters_paper';
-// One clock for both bird surfaces so the idle pose doesn't jump when they swap.
+// One clock for the bird so its idle routine doesn't jump between frames.
 const nowSec = () => (global.performance?.now ? global.performance.now() : Date.now()) / 1000;
+const lerp = (a, b, u) => a + (b - a) * u;
+const smooth = (u) => { const v = Math.min(1, Math.max(0, u)); return v * v * (3 - 2 * v); };
+// The bird swoops in from off-screen, so its hop toward the envelope is stretched to this long.
+const SWOOP = 0.95;
+// How small the sealed envelope gets once the bird has it in its feet.
+const CARRIED_SCALE = 0.42;
 
 const readSetting = (key) => {
     try {
@@ -69,30 +77,42 @@ const WriteLetterScreen = ({
     const [body, setBody] = useState('');
     const [birdId, setBirdId] = useState('pigeon');
     const [sending, setSending] = useState(false);
+    const [preparingLetter, setPreparingLetter] = useState(false);
+    const [pickerHeight, setPickerHeight] = useState(0);
+    const preparingInFlight = useRef(false);
+    const sendInFlight = useRef(false);
+    const mounted = useRef(true);
+    // ---- the 3D carrier bird
+    // It waits on the letter while you write, hides while the letter is folded and sealed, and once
+    // the send succeeds it swoops in, takes the sealed envelope and flies off with it.
+    const { width: screenWidth } = useWindowDimensions();
+    const reduceMotion = useReducedMotion();
+    const containerRef = useRef(null);
+    const envelopeRef = useRef(null);
+    const scrollYRef = useRef(0);
+    const scrollBoxRef = useRef({ x: 0, y: 0 });
+    const paperBoxRef = useRef(null);
+    const idleStartRef = useRef(null);
+    const [birdReady, setBirdReady] = useState(false);
+    // Set once the letter is sent: where the envelope sits, and the saved letter to hand on.
+    const [flight, setFlight] = useState(null);
+    const flightStartRef = useRef(null);
+    const finishedRef = useRef(false);
+    const carryX = useSharedValue(0);
+    const carryY = useSharedValue(0);
+    const carryScale = useSharedValue(1);
+    const carryRotate = useSharedValue(0);
     // null while writing, 'birds' to pick a carrier, 'premium' for the upsell.
     const [sheetMode, setSheetMode] = useState(null);
     const [sizeId, setSizeId] = useState(() => getLetterTextSize(readSetting(TEXT_SIZE_KEY)).id);
     const [paperId, setPaperId] = useState(() => getLetterPaper(readSetting(PAPER_KEY)).id);
     const [controlsHeight, setControlsHeight] = useState(0);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
-    // Set once the letter is sent: where the paper sits, and the saved letter to hand on.
-    const [flight, setFlight] = useState(null);
-    const containerRef = useRef(null);
-    const paperRef = useRef(null);
-    const { width: screenWidth } = useWindowDimensions();
-    const reduceMotion = useReducedMotion();
-    // The bird is drawn in one full-screen layer so it can stretch, hover and fly above the
-    // letter without being clipped by the scroll view. It follows the paper as you scroll.
-    const [birdReady, setBirdReady] = useState(false);
-    const [rolled, setRolled] = useState(false);
-    const scrollYRef = useRef(0);
-    const scrollBoxRef = useRef({ x: 0, y: 0 });
-    const paperBoxRef = useRef(null);
-    // When the bird first appeared: its idle routine plays once from here, then it holds still.
-    const idleStartRef = useRef(null);
-    const flightStartRef = useRef(null);
-    const rolledRef = useRef(false);
-    const finishedRef = useRef(false);
+
+    useEffect(() => {
+        mounted.current = true;
+        return () => { mounted.current = false; };
+    }, []);
 
     useEffect(() => {
         const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -109,110 +129,114 @@ const WriteLetterScreen = ({
     const paper = getLetterPaper(paperId);
 
     const trimmed = body.trim();
-    const canContinue = trimmed.length > 0 && !sending && !flight;
+    const busy = sending || preparingLetter;
+    const canContinue = trimmed.length > 0 && !busy;
 
-    // Roll the letter up and let the bird carry it off, then leave the screen.
-    const playSendAnimation = useCallback((letter) => {
-        Keyboard.dismiss();
+    const finishFlight = useCallback((letter) => {
+        if (finishedRef.current || !mounted.current) return;
+        finishedRef.current = true;
+        setFlight(null);
+        setPreparingLetter(false);
+        onSent?.(letter);
+    }, [onSent]);
+
+    // After a successful send: the bird fetches the sealed envelope. Falls back to leaving straight
+    // away when motion is reduced, the bird can't draw, or the envelope can't be measured.
+    const flyOff = useCallback((letter) => {
+        finishedRef.current = false;
         const container = containerRef.current;
-        const paperView = paperRef.current;
-        if (reduceMotion || !container || !paperView) {
-            onSent?.(letter);
+        const envelope = envelopeRef.current;
+        if (reduceMotion || !birdReady || !container || !envelope) {
+            finishFlight(letter);
             return;
         }
-        container.measureInWindow((containerX, containerY) => {
-            paperView.measureInWindow((paperX, paperY, width, height) => {
+        container.measureInWindow((cx, cy) => {
+            envelope.measureInWindow((ex, ey, width, height) => {
                 if (!width || !height) {
-                    onSent?.(letter);
+                    finishFlight(letter);
                     return;
                 }
-                rolledRef.current = false;
                 flightStartRef.current = null;
-                finishedRef.current = false;
-                setRolled(false);
-                setFlight({
-                    letter,
-                    frame: { x: paperX - containerX, y: paperY - containerY, width, height },
-                });
+                carryX.value = 0; carryY.value = 0; carryScale.value = 1; carryRotate.value = 0;
+                setFlight({ letter, envelope: { x: ex - cx, y: ey - cy, width, height } });
             });
         });
-    }, [onSent, reduceMotion]);
+    }, [reduceMotion, birdReady, finishFlight, carryX, carryY, carryScale, carryRotate]);
 
-    const finishFlight = useCallback(() => {
-        if (finishedRef.current) return;
-        finishedRef.current = true;
-        onSent?.(flight?.letter);
-    }, [flight, onSent]);
-
-    // If the 3D bird can't draw, don't keep the user waiting once the letter is rolled.
-    useEffect(() => {
-        if (!rolled || birdReady) return undefined;
-        const timer = setTimeout(finishFlight, 700);
-        return () => clearTimeout(timer);
-    }, [rolled, birdReady, finishFlight]);
-
-    // Where the perched bird stands: on the paper's top edge, towards the right.
+    // Where the waiting bird stands: on the paper's top edge, towards the right.
     const perchFor = (frame) => [frame.x + frame.width - PERCH_RIGHT - PERCH_W / 2, frame.y + PERCH_SINK];
 
     const birdFrame = useCallback((sprite, t) => {
-        if (idleStartRef.current == null) idleStartRef.current = nowSec();
-        const idleT = nowSec() - idleStartRef.current;
         if (!flight) {
-            // Waiting on the letter, following it as the page scrolls.
+            if (preparingLetter || !paperBoxRef.current) {
+                // Out of sight while the letter is folded and sealed.
+                sprite.pose(perchedPose(0, -1000, -1000));
+                return true;
+            }
+            if (idleStartRef.current == null) idleStartRef.current = nowSec();
             const box = paperBoxRef.current;
-            if (!box) return true;
             const frame = {
                 x: scrollBoxRef.current.x + box.x,
                 y: scrollBoxRef.current.y + box.y - scrollYRef.current,
                 width: box.width,
             };
             const [x, y] = perchFor(frame);
-            sprite.pose(perchedPose(idleT, x, y));
+            sprite.pose(perchedPose(nowSec() - idleStartRef.current, x, y));
             return true;
         }
-        const { frame } = flight;
-        const perch = perchFor(frame);
-        if (!rolledRef.current) {
-            // Keep waiting on the letter while it rolls up.
-            sprite.pose(perchedPose(idleT, perch[0], perch[1]));
-            return true;
-        }
-        if (flightStartRef.current == null) {
-            flightStartRef.current = t;
-            sprite.setPaperColor(paper.stops[1]);
-        }
-        const { pose, done } = flightPose(
-            t - flightStartRef.current,
-            perch,
-            getRolledScroll(frame),
-            { width: screenWidth },
-        );
-        sprite.pose(pose);
+        if (flightStartRef.current == null) flightStartRef.current = t;
+        const elapsed = t - flightStartRef.current;
+        // Skip the perched wind-up and stretch the hop into a swoop from the top-right corner.
+        const ft = elapsed < SWOOP ? 0.3 + elapsed * (0.6 / SWOOP) : elapsed - SWOOP + 0.9;
+        const env = flight.envelope;
+        const grab = { x: env.x + env.width / 2, y: env.y, length: 0 };
+        const start = [screenWidth + BIRD_SIZE, Math.max(40, env.y - 260)];
+        const { pose, done } = flightPose(ft, start, grab, { width: screenWidth });
+        // The envelope rides under its feet: follow the carried point, shrink to fit the bird.
+        const held = smooth((ft - 0.94) / 0.16);
+        const k = pose.size / BIRD_SIZE;
+        carryX.value = pose.scroll.x - grab.x;
+        carryY.value = pose.scroll.y - grab.y;
+        carryScale.value = lerp(1, CARRIED_SCALE * k, held);
+        carryRotate.value = pose.scroll.tilt || 0;
+        sprite.pose({ ...pose, scroll: null });
         if (done) {
-            finishFlight();
+            finishFlight(flight.letter);
             return false;
         }
         return true;
-    }, [flight, screenWidth, finishFlight, paper]);
+    }, [flight, preparingLetter, screenWidth, finishFlight, carryX, carryY, carryScale, carryRotate]);
+
+    // If the bird never drew, don't keep the user waiting on a sent letter.
+    useEffect(() => {
+        if (!flight) return undefined;
+        const timer = setTimeout(() => finishFlight(flight.letter), 6000);
+        return () => clearTimeout(timer);
+    }, [flight, finishFlight]);
 
     const submit = useCallback(async (chosenBirdId) => {
-        if (!trimmed || sending) return;
+        if (!trimmed || sendInFlight.current || preparingInFlight.current) return;
+        sendInFlight.current = true;
+        Keyboard.dismiss();
         setSending(true);
         try {
             const data = await sendLetter({ body: trimmed, bird: chosenBirdId });
             trackEvent('letter_sent', { bird: chosenBirdId, length: trimmed.length });
+            if (!mounted.current) return;
             setSheetMode(null);
-            playSendAnimation(data?.letter);
+            flyOff(data?.letter);
         } catch (error) {
+            if (!mounted.current) return;
             if (error.code === 'premium_required') {
                 setSheetMode('premium');
             } else {
                 Alert.alert(translateUiText('Letter not sent'), error.message || translateUiText('Please try again.'));
             }
         } finally {
-            setSending(false);
+            sendInFlight.current = false;
+            if (mounted.current) setSending(false);
         }
-    }, [trimmed, sending, playSendAnimation]);
+    }, [trimmed, flyOff]);
 
     const changeSize = (nextSizeId) => {
         setSizeId(nextSizeId);
@@ -235,10 +259,24 @@ const WriteLetterScreen = ({
         />
     );
 
-    const openBirdPicker = () => {
+    const prepareLetter = () => {
+        if (!trimmed || preparingLetter || preparingInFlight.current || sendInFlight.current) return;
+        preparingInFlight.current = true;
         Keyboard.dismiss();
+        setPreparingLetter(true);
+    };
+
+    const openBirdPicker = useCallback(() => {
+        if (!preparingInFlight.current || !mounted.current) return;
+        preparingInFlight.current = false;
         trackEvent('letter_bird_picker_open', { length: trimmed.length });
         setSheetMode('birds');
+    }, [trimmed]);
+
+    const closeBirdPicker = () => {
+        if (sendInFlight.current) return;
+        setSheetMode(null);
+        setPreparingLetter(false);
     };
 
     const handleSend = (chosenBirdId) => {
@@ -253,10 +291,11 @@ const WriteLetterScreen = ({
 
     return (
         <View ref={containerRef} style={[styles.container, { paddingTop: insets.top }]}>
-            <View style={styles.header}>
+            <View style={styles.header} accessibilityElementsHidden={busy} importantForAccessibility={busy ? 'no-hide-descendants' : 'auto'}>
                 <TouchableOpacity
                     style={styles.iconButton}
                     onPress={onClose}
+                    disabled={busy}
                     accessibilityRole="button"
                     accessibilityLabel={translateUiText('Close')}
                 >
@@ -268,7 +307,7 @@ const WriteLetterScreen = ({
                 </View>
                 <TouchableOpacity
                     style={[styles.send, !canContinue && styles.sendDisabled]}
-                    onPress={openBirdPicker}
+                    onPress={prepareLetter}
                     disabled={!canContinue}
                     activeOpacity={0.85}
                     accessibilityRole="button"
@@ -281,6 +320,8 @@ const WriteLetterScreen = ({
             </View>
 
             <ScrollContainer
+                accessibilityElementsHidden={busy}
+                importantForAccessibility={busy ? 'no-hide-descendants' : 'auto'}
                 contentContainerStyle={[
                     styles.content,
                     { paddingBottom: (keyboardVisible ? controlsHeight : insets.bottom) + 24 },
@@ -293,33 +334,30 @@ const WriteLetterScreen = ({
                 }}
                 onScroll={(event) => { scrollYRef.current = event.nativeEvent.contentOffset.y; }}
             >
-                <View
-                    ref={paperRef}
-                    collapsable={false}
-                    style={styles.paperWrap}
-                    onLayout={(event) => { paperBoxRef.current = event.nativeEvent.layout; }}
-                >
-                    <LetterPaper paperId={paper.id} lineHeight={textSize.lineHeight} style={flight && styles.hidden}>
-                        <TextInput
-                            value={body}
-                            onChangeText={setBody}
-                            multiline
-                            maxLength={LETTER_BODY_MAX_LENGTH}
-                            placeholder={translateUiTemplate('Dear {{0}},', [partnerName])}
-                            placeholderTextColor="#9C8FAD"
-                            style={[
-                                styles.input,
-                                {
-                                    fontSize: textSize.fontSize,
-                                    lineHeight: textSize.lineHeight,
-                                    color: paper.ink,
-                                },
-                            ]}
-                            textAlignVertical="top"
-                            accessibilityLabel={translateUiText('Your letter')}
-                        />
-                        <Text style={styles.counter}>{body.length} / {LETTER_BODY_MAX_LENGTH}</Text>
-                    </LetterPaper>
+                <View style={styles.paperWrap} onLayout={(event) => { paperBoxRef.current = event.nativeEvent.layout; }}>
+                <LetterPaper paperId={paper.id} lineHeight={textSize.lineHeight}>
+                    <TextInput
+                        value={body}
+                        onChangeText={setBody}
+                        multiline
+                        editable={!busy}
+                        caretHidden={busy}
+                        maxLength={LETTER_BODY_MAX_LENGTH}
+                        placeholder={translateUiTemplate('Dear {{0}},', [partnerName])}
+                        placeholderTextColor="#9C8FAD"
+                        style={[
+                            styles.input,
+                            {
+                                fontSize: textSize.fontSize,
+                                lineHeight: textSize.lineHeight,
+                                color: paper.ink,
+                            },
+                        ]}
+                        textAlignVertical="top"
+                        accessibilityLabel={translateUiText('Your letter')}
+                    />
+                    <Text style={styles.counter}>{body.length} / {LETTER_BODY_MAX_LENGTH}</Text>
+                </LetterPaper>
                 </View>
 
                 {keyboardVisible ? null : styleControls}
@@ -330,9 +368,9 @@ const WriteLetterScreen = ({
             <KeyboardStickyView
                 style={[styles.floatingControls, !keyboardVisible && styles.floatingControlsHidden]}
                 offset={{ opened: -FLOATING_GAP }}
-                pointerEvents={keyboardVisible ? 'box-none' : 'none'}
-                accessibilityElementsHidden={!keyboardVisible}
-                importantForAccessibility={keyboardVisible ? 'auto' : 'no-hide-descendants'}
+                pointerEvents={keyboardVisible && !busy ? 'box-none' : 'none'}
+                accessibilityElementsHidden={!keyboardVisible || busy}
+                importantForAccessibility={keyboardVisible && !busy ? 'auto' : 'no-hide-descendants'}
                 onLayout={(event) => setControlsHeight(event.nativeEvent.layout.height + FLOATING_GAP)}
             >
                 <LetterStyleControls
@@ -350,11 +388,13 @@ const WriteLetterScreen = ({
                 partnerName={partnerName}
                 hasPremiumAccess={hasPremiumAccess}
                 sending={sending}
-                onClose={() => setSheetMode(null)}
+                onClose={closeBirdPicker}
+                onHeightChange={setPickerHeight}
                 onSelectBird={setBirdId}
                 onSend={handleSend}
                 onUpgrade={() => {
                     setSheetMode(null);
+                    setPreparingLetter(false);
                     onPremiumPress?.('letters_bird');
                 }}
                 onUseFreeBird={() => {
@@ -363,30 +403,25 @@ const WriteLetterScreen = ({
                     submit('pigeon');
                 }}
             />
-
-            {flight ? (
-                <>
-                    <LetterSendAnimation
-                        frame={flight.frame}
-                        paperId={paper.id}
-                        body={trimmed}
-                        textStyle={{ fontSize: textSize.fontSize, lineHeight: textSize.lineHeight }}
-                        hideScroll={rolled && birdReady}
-                        onRolled={() => {
-                            rolledRef.current = true;
-                            setRolled(true);
-                        }}
-                    />
-                </>
+            {preparingLetter ? (
+                <LetterSendAnimation
+                    body={trimmed}
+                    paperId={paper.id}
+                    sizeId={textSize.id}
+                    choosingBird={sheetMode !== null}
+                    pickerHeight={pickerHeight}
+                    onComplete={openBirdPicker}
+                    envelopeRef={envelopeRef}
+                    carry={flight ? { x: carryX, y: carryY, scale: carryScale, rotate: carryRotate } : null}
+                    carryOrigin={flight ? [flight.envelope.x + flight.envelope.width / 2, flight.envelope.y] : null}
+                />
             ) : null}
 
-            {/* The carrier waits on the letter, then carries it off. Touches pass straight through. */}
+            {/* The 3D carrier bird, drawn over everything; touches pass straight through. */}
             <LetterBirdCanvas
-                style={StyleSheet.absoluteFill}
-                paperColor={paper.stops[1]}
+                style={[StyleSheet.absoluteFill, styles.birdLayer]}
                 onFrame={birdFrame}
                 onReady={() => setBirdReady(true)}
-                onError={() => { if (rolledRef.current) finishFlight(); }}
             />
         </View>
     );
@@ -396,6 +431,13 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFF6F6',
+    },
+    paperWrap: {
+        // Room above the paper for the waiting bird.
+        marginTop: 129,
+    },
+    birdLayer: {
+        zIndex: 200,
     },
     header: {
         flexDirection: 'row',
@@ -433,14 +475,6 @@ const styles = StyleSheet.create({
         paddingTop: 8,
         gap: 14,
     },
-    paperWrap: {
-        // Room above the paper for the perched bird (fixed so the letter doesn't move
-        // when the bird's size changes; the bird stands a little onto the paper instead).
-        marginTop: 129,
-    },
-    hidden: {
-        opacity: 0,
-    },
     floatingControls: {
         position: 'absolute',
         left: 12,
@@ -452,7 +486,7 @@ const styles = StyleSheet.create({
     },
     input: {
         // Same blank-sheet height for every text size; smaller text just gets more rules.
-        minHeight: 288,
+        minHeight: 420,
         fontFamily: fontFamily.handwriting,
         padding: 0,
         paddingTop: 0,

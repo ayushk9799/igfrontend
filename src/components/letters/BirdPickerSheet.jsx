@@ -1,12 +1,16 @@
-import React, { useMemo } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Clock, Crown } from 'lucide-react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Check, Clock, Crown } from 'lucide-react-native';
 import BirdArt from './BirdArt';
 import LettersSheet from './LettersSheet';
 import { PremiumBirdContent } from './PremiumBirdSheet';
 import { fontFamily } from '../../constants/fonts';
 import { translateUiTemplate, translateUiText } from '../../i18n/uiTranslation';
 import { LETTER_BIRDS, formatArrival, formatTravelTime, getLetterBird } from '../../utils/letters';
+
+// Narrow enough that a third card peeks in, hinting the row scrolls.
+const CARD_WIDTH = 148;
+const CARD_GAP = 12;
 
 // Bird choice and the Premium upsell share one sheet; `mode` picks which body shows.
 const BirdPickerSheet = ({
@@ -16,6 +20,7 @@ const BirdPickerSheet = ({
     hasPremiumAccess,
     sending,
     onClose,
+    onHeightChange,
     onSelectBird,
     onSend,
     onUpgrade,
@@ -28,9 +33,21 @@ const BirdPickerSheet = ({
         () => (visible ? formatArrival(new Date(Date.now() + bird.travelMs)) : ''),
         [bird.travelMs, visible],
     );
+    const carouselRef = useRef(null);
+    const showingBirds = mode === 'birds';
+    // Read through a ref so tapping a card doesn't re-run the scroll below.
+    const birdIdRef = useRef(birdId);
+    birdIdRef.current = birdId;
+
+    // Bring the chosen bird into view when the picker opens, e.g. a Falcon picked last time.
+    useEffect(() => {
+        if (!showingBirds) return;
+        const index = LETTER_BIRDS.findIndex((option) => option.id === birdIdRef.current);
+        carouselRef.current?.scrollTo({ x: Math.max(0, index - 1) * (CARD_WIDTH + CARD_GAP), animated: false });
+    }, [showingBirds]);
 
     return (
-        <LettersSheet visible={visible} onClose={sending ? undefined : onClose}>
+        <LettersSheet visible={visible} onClose={sending ? undefined : onClose} onHeightChange={onHeightChange} dimBackdrop={false}>
             {mode === 'premium' ? (
                 <PremiumBirdContent onUpgrade={onUpgrade} onUseFreeBird={onUseFreeBird} />
             ) : (
@@ -40,14 +57,24 @@ const BirdPickerSheet = ({
                         <Text style={styles.subtitle}>{translateUiText('Slower = sweeter')}</Text>
                     </View>
 
-                    <View style={styles.list} accessibilityRole="radiogroup">
+                    <ScrollView
+                        ref={carouselRef}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        decelerationRate="fast"
+                        snapToInterval={CARD_WIDTH + CARD_GAP}
+                        snapToAlignment="start"
+                        style={styles.carousel}
+                        contentContainerStyle={styles.carouselContent}
+                        accessibilityRole="radiogroup"
+                    >
                         {LETTER_BIRDS.map((option) => {
                             const selected = option.id === birdId;
                             const locked = option.premium && !hasPremiumAccess;
                             return (
                                 <TouchableOpacity
                                     key={option.id}
-                                    style={[styles.row, selected && styles.rowSelected]}
+                                    style={[styles.card, selected && styles.cardSelected]}
                                     onPress={() => onSelectBird(option.id)}
                                     disabled={sending}
                                     activeOpacity={0.85}
@@ -56,31 +83,32 @@ const BirdPickerSheet = ({
                                     accessibilityLabel={`${translateUiText(option.name)}, ${formatTravelTime(option.travelMs)}${locked ? `, ${translateUiText('Premium')}` : ''}`}
                                 >
                                     <View style={[styles.tile, { backgroundColor: option.tint }]}>
-                                        <BirdArt bird={option.id} size={42} />
+                                        <BirdArt bird={option.id} size={78} />
+                                        {option.premium ? (
+                                            <View style={[styles.tag, styles.premiumTag]}>
+                                                <Crown size={11} color="#8A5A00" strokeWidth={2.4} />
+                                                <Text style={styles.premiumTagText}>{translateUiText('Premium')}</Text>
+                                            </View>
+                                        ) : (
+                                            <View style={[styles.tag, styles.freeTag]}>
+                                                <Text style={styles.freeTagText}>{translateUiText('Free')}</Text>
+                                            </View>
+                                        )}
+                                        {selected ? (
+                                            <View style={styles.check}>
+                                                <Check size={14} color="#FFFFFF" strokeWidth={3} />
+                                            </View>
+                                        ) : null}
                                     </View>
-                                    <View style={styles.rowText}>
-                                        <View style={styles.nameLine}>
-                                            <Text style={styles.name}>{translateUiText(option.name)}</Text>
-                                            {option.premium ? (
-                                                <View style={styles.premiumTag}>
-                                                    <Crown size={11} color="#8A5A00" strokeWidth={2.4} />
-                                                    <Text style={styles.premiumTagText}>{translateUiText('Premium')}</Text>
-                                                </View>
-                                            ) : (
-                                                <View style={styles.freeTag}>
-                                                    <Text style={styles.freeTagText}>{translateUiText('Free')}</Text>
-                                                </View>
-                                            )}
-                                        </View>
+                                    <Text style={styles.name} numberOfLines={1}>{translateUiText(option.name)}</Text>
+                                    <View style={styles.timeLine}>
+                                        <Clock size={13} color={option.ink} strokeWidth={2.4} />
                                         <Text style={[styles.time, { color: option.ink }]}>{formatTravelTime(option.travelMs)}</Text>
-                                    </View>
-                                    <View style={[styles.radio, selected && styles.radioSelected]}>
-                                        {selected ? <View style={styles.radioDot} /> : null}
                                     </View>
                                 </TouchableOpacity>
                             );
                         })}
-                    </View>
+                    </ScrollView>
 
                     <View style={styles.eta}>
                         <Clock size={18} color="#6E6080" strokeWidth={2} />
@@ -125,55 +153,49 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#6E6080',
     },
-    list: {
-        gap: 10,
+    carousel: {
+        // Let the cards scroll edge to edge past the sheet's side padding.
+        marginHorizontal: -24,
+        flexGrow: 0,
     },
-    row: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        padding: 10,
-        borderRadius: 18,
+    carouselContent: {
+        paddingHorizontal: 24,
+        paddingVertical: 4,
+        gap: CARD_GAP,
+    },
+    card: {
+        width: CARD_WIDTH,
+        padding: 8,
+        paddingBottom: 12,
+        gap: 4,
+        borderRadius: 22,
         borderWidth: 2,
         borderColor: '#FAE8FF',
         backgroundColor: '#FFFFFF',
     },
-    rowSelected: {
+    cardSelected: {
         borderColor: '#D23F66',
         backgroundColor: '#FFF6F8',
     },
     tile: {
-        width: 52,
-        height: 52,
-        borderRadius: 14,
+        height: 112,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
+        marginBottom: 6,
     },
-    rowText: {
-        flex: 1,
-        gap: 2,
-    },
-    nameLine: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    name: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 16,
-        color: '#2E1E3C',
-    },
-    time: {
-        fontFamily: fontFamily.extraBold,
-        fontSize: 13,
-    },
-    premiumTag: {
+    tag: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 3,
         paddingHorizontal: 7,
         paddingVertical: 2,
         borderRadius: 8,
+    },
+    premiumTag: {
         backgroundColor: '#FFF1D6',
     },
     premiumTagText: {
@@ -182,9 +204,6 @@ const styles = StyleSheet.create({
         color: '#8A5A00',
     },
     freeTag: {
-        paddingHorizontal: 7,
-        paddingVertical: 2,
-        borderRadius: 8,
         backgroundColor: '#E4F6EA',
     },
     freeTagText: {
@@ -192,23 +211,32 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#1F6B3A',
     },
-    radio: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        borderWidth: 2,
-        borderColor: '#D8C9E6',
+    check: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#D23F66',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    radioSelected: {
-        borderColor: '#D23F66',
+    name: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 16,
+        color: '#2E1E3C',
+        paddingHorizontal: 4,
     },
-    radioDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#D23F66',
+    timeLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 4,
+    },
+    time: {
+        fontFamily: fontFamily.extraBold,
+        fontSize: 13,
     },
     eta: {
         flexDirection: 'row',
